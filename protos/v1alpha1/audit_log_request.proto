@@ -1,0 +1,78 @@
+// Copyright 2021 Lumberjack authors (see AUTHORS file)
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+syntax = "proto3";
+
+// TODO(b/200983538): Rename proto package name.
+package proto;
+
+import "google/cloud/audit/audit_log.proto";
+import "google/protobuf/descriptor.proto";
+
+option go_package = "github.com/abcxyz/lumberjack/clients/go/apis/v1alpha1";
+option java_multiple_files = true;
+option java_outer_classname = "AuditLogRequestProto";
+option java_package = "com.abcxyz.lumberjack.v1alpha1";
+
+extend google.protobuf.EnumValueOptions {
+  string log_name = 390161750;
+}
+
+// Audit logging data pertaining to an operation, for use in-process.
+//
+// Our cloud logging client converts from this form to one or more
+// google.logging.v2.LogEntry messages for transmission to Cloud Logging.
+message AuditLogRequest {
+  // The log type where this audit log entry goes. Our client converts
+  // the LogType enum to a Cloud Logging log name using the `log_name`
+  // option.
+  enum LogType {
+    UNSPECIFIED = 0 [(log_name) = "auditlog.gcloudsolutions.dev/unspecified"];
+
+    // Administrative actions or changes to configuration through public APIs.
+    ADMIN_ACTIVITY = 1 [(log_name) = "auditlog.gcloudsolutions.dev/activity"];
+
+    // Reads of configuration data and all access to user data through public
+    // APIs.
+    DATA_ACCESS = 2 [(log_name) = "auditlog.gcloudsolutions.dev/data_access"];
+  }
+
+  LogType type = 1;
+
+  // The Cloud audit log payload.
+  google.cloud.audit.AuditLog payload = 2;
+
+  // LogMode specifies the logging mode for the individual log request.
+  enum LogMode {
+    // If unspecified, it's up to the audit client to decide what log
+    // mode to use.
+    LOG_MODE_UNSPECIFIED = 0;
+
+    // In FAIL_CLOSE mode, the log request must be persisted in the system
+    // before return; in case of persistence failure, an error must be returned.
+    FAIL_CLOSE = 1;
+
+    // In BEST_EFFORT mode, the log request will never return error; the
+    // log request will be persisted with best effort.
+    BEST_EFFORT = 2;
+  }
+
+  LogMode mode = 4;
+
+  // A map of key, value pairs that provides additional information about the
+  // log entry. For example, an integration test can store a UUID in this field
+  // to track a test log. Later, the integration test can query the UUID from a
+  // BigQuery sink to ensure that a logging request completed successfully.
+  map<string, string> labels = 3;
+}

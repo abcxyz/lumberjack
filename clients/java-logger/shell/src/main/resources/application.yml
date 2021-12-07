@@ -1,0 +1,11 @@
+server:
+  port: 8080
+version: v1alpha1
+filter:
+  regex:
+    principal_include:
+    principal_exclude:
+backend:
+  address:
+  insecure_enabled: false
+  impersonate_account:
