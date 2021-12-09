@@ -23,7 +23,7 @@ export MallocNanoZone=0
 
 # Run all Go tests.
 # Go test only works from a Go module.
-(cd clients/go && go test -shuffle=on -count=1 -race -timeout=10m ./...)
+(cd clients/go && go test -shuffle=on -count=1 -race -timeout=10m -coverprofile=coverage.out ./...)
 
 
 # terraform validation for level 1 folders inside terrform dir
@@ -39,5 +39,10 @@ done
 # Run tests in java/maven projects.
 mvn clean test --no-transfer-progress -f clients/java-logger
 
-# Run the integration tests.
-./scripts/integration_build.sh
+# Run the integration tests, but not in GitHub Actions yet.
+if [[ -v GITHUB_ACTIONS ]]
+then
+  echo "gh actions not configured for IT"
+else
+  ./scripts/integration_build.sh
+fi
