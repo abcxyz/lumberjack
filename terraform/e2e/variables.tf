@@ -80,3 +80,15 @@ variable "service_name" {
   default     = "audit-logging"
   description = "The name for the audit logging server service."
 }
+
+variable "enable_pubsub_sink" {
+  type        = bool
+  default     = false
+  description = "Whether to enable a PubSub audit log sink."
+}
+
+variable "cal_query_overwrite" {
+  type        = string
+  default     = ""
+  description = "The log query to for the sink."
+}

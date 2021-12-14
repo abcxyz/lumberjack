@@ -25,22 +25,18 @@ variable "project_id" {
   description = "The source GCP project ID that emits the audit logs."
 }
 
-variable "destination_project_id" {
-  type        = string
-  description = "The destination GCP project ID that collects all the audit logs."
-}
-
 variable "destination_log_sinks" {
   type = list(object({
-    kind = string
-    name = string
+    kind       = string
+    project_id = string
+    name       = string
   }))
   description = "The list of log sink destinations by kind and name. E.g. kind=bigquery, name=[dataset name]."
 
   validation {
     # At the moment, we only support bigquery sink.
-    condition     = !contains([for dest in var.destination_log_sinks : dest.kind == "bigquery" && dest.name != ""], false)
-    error_message = "Log sink destination must have kind='bigquery' and a non-empty name."
+    condition     = !contains([for dest in var.destination_log_sinks : (dest.kind == "bigquery" || dest.kind == "pubsub") && dest.name != ""], false)
+    error_message = "Log sink destination must have kind='bigquery' or 'pubsub', and a non-empty name."
   }
 }
 
@@ -61,4 +57,10 @@ resource "google_project_service" "services" {
   depends_on = [
     google_project_service.resourcemanager,
   ]
+}
+
+variable "query_overwrite" {
+  type        = string
+  default     = ""
+  description = "The log query that overwrites the default one to filter the logs."
 }

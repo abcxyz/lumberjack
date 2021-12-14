@@ -20,11 +20,6 @@ variable "log_sink_name" {
   description = "The aggregated log sink name that exports all the cloud audit logs for the folder"
 }
 
-variable "destination_project_id" {
-  type        = string
-  description = "The destination GCP project ID that collects all the audit logs."
-}
-
 variable "folder_id" {
   type        = string
   description = "The folder ID for which the aggregated folder level log sink should be created."
@@ -32,14 +27,21 @@ variable "folder_id" {
 
 variable "destination_log_sinks" {
   type = list(object({
-    kind = string
-    name = string
+    kind       = string
+    project_id = string
+    name       = string
   }))
   description = "The list of log sink destinations by kind and name. E.g. kind=bigquery, name=[dataset name]."
 
   validation {
     # At the moment, we only support bigquery sink.
-    condition     = !contains([for dest in var.destination_log_sinks : dest.kind == "bigquery" && dest.name != ""], false)
-    error_message = "Log sink destination must have kind='bigquery' and a non-empty name."
+    condition     = !contains([for dest in var.destination_log_sinks : (dest.kind == "bigquery" || dest.kind == "pubsub") && dest.name != ""], false)
+    error_message = "Log sink destination must have kind='bigquery' or 'pubsub', and a non-empty name."
   }
+}
+
+variable "query_overwrite" {
+  type        = string
+  default     = ""
+  description = "The log query that overwrites the default one to filter the logs."
 }

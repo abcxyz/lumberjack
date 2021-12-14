@@ -17,47 +17,49 @@
 # Run `terraform init` and `terraform validate`.
 
 module "cal_project_sources" {
-  for_each               = toset(["fake-proj1", "fake-proj2", "fake-proj3"])
-  source                 = "../cal-source-project"
-  project_id             = each.key
-  destination_project_id = "lumberjack-dest"
+  for_each   = toset(["fake-proj1", "fake-proj2", "fake-proj3"])
+  source     = "../cal-source-project"
+  project_id = each.key
   destination_log_sinks = [
     {
-      kind = "bigquery"
-      name = "auditlogs-all"
+      kind       = "bigquery"
+      project_id = "lumberjack-dest"
+      name       = "auditlogs-all"
     },
     {
-      kind = "bigquery"
-      name = "auditlogs-secondary"
+      kind       = "bigquery"
+      project_id = "lumberjack-dest"
+      name       = "auditlogs-secondary"
     }
   ]
 }
 
 module "cal_folder_sources" {
-  for_each               = toset(["fake-folder1", "fake-folder2"])
-  source                 = "../cal-source-folder"
-  folder_id              = each.key
-  destination_project_id = "lumberjack-dest"
+  for_each  = toset(["fake-folder1", "fake-folder2"])
+  source    = "../cal-source-folder"
+  folder_id = each.key
   destination_log_sinks = [
     {
-      kind = "bigquery"
-      name = "auditlogs-all"
+      kind       = "bigquery"
+      project_id = "lumberjack-dest"
+      name       = "auditlogs-all"
     },
     {
-      kind = "bigquery"
-      name = "auditlogs-secondary"
+      kind       = "bigquery"
+      project_id = "lumberjack-dest"
+      name       = "auditlogs-secondary"
     }
   ]
 }
 
 module "server-sink" {
-  source                 = "../server-sink"
-  project_id             = "lumberjack-server"
-  destination_project_id = "lumberjack-dest"
+  source     = "../server-sink"
+  project_id = "lumberjack-server"
   destination_log_sinks = [
     {
-      kind = "bigquery"
-      name = "auditlogs-all"
+      kind       = "bigquery"
+      project_id = "lumberjack-dest"
+      name       = "auditlogs-all"
     }
   ]
 }
@@ -66,6 +68,16 @@ module "server-service" {
   source       = "../server-service"
   project_id   = "lumberjack-server"
   server_image = "gcr.io/lumberjack-server/lumberjack/server:fake"
+}
+
+module "bigquery-destination" {
+  source     = "../bigquery-destination"
+  project_id = "bigquery-destination"
+}
+
+module "pubsub-destination" {
+  source     = "../pubsub-destination"
+  project_id = "pubsub-destination"
 }
 
 provider "google" {
