@@ -1,0 +1,125 @@
+name: CI
+
+on:
+  push:
+    branches:
+    - main
+    - actions-experiment
+  pull_request:
+    branches:
+    - main
+  schedule:
+    - cron: '0 0 */1 * *'
+
+env:
+  GOMAXPROCS: 7
+
+# If a new commit comes in, cancel the current action run.
+concurrency:
+  group: '${{github.workflow}}-${{ github.head_ref || github.ref }}'
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v2
+
+      - name: Set up Go
+        uses: actions/setup-go@v2
+        with:
+          go-version: 1.17
+
+      # Cache go dependencies to reduce time for CI setup
+      - uses: actions/cache@v2
+        with:
+          path: |
+            ~/go/pkg/mod
+          key: ${{ runner.os }}-go-test-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-test-
+            ${{ runner.os }}-go-
+
+      - name: Run Build Script
+        run: |
+          cd ${{ github.workspace }}
+          ./build.sh
+
+      # TODO(crwilcox): Coverage has an issue right now with a module
+      # cover: no required module provides package github.com/abcxyz/lumberjack/clients/go/pkg/audit:
+      # go.mod file not found in current directory or any parent directory; see 'go help modules'
+      # - name: go-coverage
+      #   shell: bash
+      #   run: |-
+      #     OUTPUT="$(go tool cover -func=./clients/go/coverage.out)"
+      #     TOTAL="$(echo $OUTPUT | awk 'END{print $NF}')"
+      #     echo "::group::Coverage (${TOTAL})"
+      #     echo "${OUTPUT}"
+      #     echo "::endgroup::"
+
+
+      # if running the build script succeeded, we can move on to integration tests.
+
+  # TODO(crwilcox): enable once we have WorkloadIdentity setup.
+  # integrationTest:
+  #   # wait to start this until we have a sucessful test run
+  #   needs: test
+  #   name: Integration Tests
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - name: Check out code
+  #       uses: actions/checkout@v2
+
+  #     - name: Set up Go
+  #       uses: actions/setup-go@v2
+  #       with:
+  #         go-version: 1.17
+
+  #     # Cache go dependencies to reduce time for CI setup
+  #     - uses: actions/cache@v2
+  #       with:
+  #         path: |
+  #           ~/go/pkg/mod
+  #         key: ${{ runner.os }}-go-test-${{ hashFiles('**/go.sum') }}
+  #         restore-keys: |
+  #           ${{ runner.os }}-go-test-
+  #           ${{ runner.os }}-go-
+
+  #     - name: Run Build Script
+  #       run: |
+  #         cd ${{ github.workspace }}
+  #         ./build.sh
+
+  #     - id: gcloud
+  #       uses: google-github-actions/setup-gcloud@master
+
+  #     - id: auth
+  #       uses: google-github-actions/auth@v0
+  #       with:
+  #         workload_identity_provider: 'projects/lumberjack-kokoro/locations/global/workloadIdentityPools/gh-pool/providers/gh-provider'
+  #         service_account: 'kokoro-sa@lumberjack-kokoro.iam.gserviceaccount.com'
+
+  #     - name: Set up Cloud SDK
+  #       uses: google-github-actions/setup-gcloud@v0.3.0
+
+  #     - name: Use gcloud CLI
+  #       run: gcloud info
+    
+  #     # TODO: Wait until we can use the workload identity
+  #     - name: Run Integration Build Script
+  #       run: |
+  #         cd ${{ github.workspace }}
+  #         ./scripts/integration_build.sh
+
+  # TODO(crwilcox): enable this once the code passes lint.
+  # lint: 
+  #   name: lint
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - uses: actions/checkout@v2
+  #     - name: golangci-lint
+  #       uses: golangci/golangci-lint-action@v2
+  #       with:
+  #         working-directory: clients/go
