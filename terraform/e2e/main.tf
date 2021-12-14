@@ -167,7 +167,18 @@ resource "google_artifact_registry_repository" "app_project_image_registry" {
 
 // Create the log storage in the same server project.
 module "log_storage" {
-  source     = "../destination"
+  source     = "../bigquery-destination"
+  project_id = google_project.server_project.project_id
+
+  depends_on = [
+    google_project_service.server_project_services,
+  ]
+}
+
+module "pubsub_sink" {
+  count = var.enable_pubsub_sink ? 1 : 0
+
+  source     = "../pubsub-destination"
   project_id = google_project.server_project.project_id
 
   depends_on = [
@@ -176,10 +187,12 @@ module "log_storage" {
 }
 
 module "server_sink" {
-  source                 = "../server-sink"
-  project_id             = google_project.server_project.project_id
-  destination_project_id = google_project.server_project.project_id
-  destination_log_sinks  = [module.log_storage.destination_log_sink]
+  source     = "../server-sink"
+  project_id = google_project.server_project.project_id
+  destination_log_sinks = concat(
+    [module.log_storage.destination_log_sink],
+    module.pubsub_sink[*].destination_log_sink,
+  )
 
   depends_on = [
     google_project_service.server_project_services,
@@ -275,10 +288,13 @@ module "server_service" {
 }
 
 module "folder_sink" {
-  source                 = "../cal-source-folder"
-  destination_project_id = google_project.server_project.project_id
-  folder_id              = google_folder.apps_folder.name
-  destination_log_sinks  = [module.log_storage.destination_log_sink]
+  source          = "../cal-source-folder"
+  folder_id       = google_folder.apps_folder.name
+  query_overwrite = var.cal_query_overwrite
+  destination_log_sinks = concat(
+    [module.log_storage.destination_log_sink],
+    module.pubsub_sink[*].destination_log_sink,
+  )
 }
 
 output "audit_log_server_url" {
