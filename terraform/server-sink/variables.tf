@@ -36,7 +36,7 @@ variable "destination_log_sinks" {
   validation {
     # At the moment, we only support bigquery sink.
     condition     = !contains([for dest in var.destination_log_sinks : (dest.kind == "bigquery" || dest.kind == "pubsub") && dest.name != ""], false)
-    error_message = "Log sink destination must have kind='bigquery' or 'pubsub' and a non-empty name."
+    error_message = "Log sink destination must have kind='bigquery' or 'pubsub', and a non-empty name."
   }
 }
 
