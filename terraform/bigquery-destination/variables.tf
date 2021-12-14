@@ -14,30 +14,21 @@
  * limitations under the License.
  */
 
-variable "log_sink_name" {
+variable "region" {
   type        = string
-  default     = "cloud-audit-logs"
-  description = "The log sink name that exports all the cloud audit logs."
+  default     = "us-central1"
+  description = "The default region for resources in the project; individual resources could have more specific variables defined to specify their region/location"
 }
 
 variable "project_id" {
   type        = string
-  description = "The source GCP project ID that emits the audit logs."
+  description = "The destination GCP project ID that stores the audit logs."
 }
 
-variable "destination_log_sinks" {
-  type = list(object({
-    kind       = string
-    project_id = string
-    name       = string
-  }))
-  description = "The list of log sink destinations by kind and name. E.g. kind=bigquery, name=[dataset name]."
-
-  validation {
-    # At the moment, we only support bigquery sink.
-    condition     = !contains([for dest in var.destination_log_sinks : (dest.kind == "bigquery" || dest.kind == "pubsub") && dest.name != ""], false)
-    error_message = "Log sink destination must have kind='bigquery' or 'pubsub' and a non-empty name."
-  }
+variable "dataset_id" {
+  type        = string
+  default     = "audit_logs"
+  description = "The dataset id used to create the BigQuery dataset as the audit log storage."
 }
 
 resource "google_project_service" "resourcemanager" {
@@ -49,7 +40,7 @@ resource "google_project_service" "resourcemanager" {
 resource "google_project_service" "services" {
   project = var.project_id
   for_each = toset([
-    "logging.googleapis.com",
+    "bigquery.googleapis.com",
   ])
   service            = each.value
   disable_on_destroy = false
@@ -59,8 +50,10 @@ resource "google_project_service" "services" {
   ]
 }
 
-variable "query_overwrite" {
-  type        = string
-  default     = ""
-  description = "The log query that overwrites the default one to filter the logs."
+output "destination_log_sink" {
+  value = {
+    kind       = "bigquery"
+    project_id = var.project_id
+    name       = google_bigquery_dataset.dataset.dataset_id
+  }
 }
