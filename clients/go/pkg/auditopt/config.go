@@ -91,7 +91,7 @@ func FromConfigFile(path string) audit.Option {
 }
 
 func configureClientFromViper(c *audit.Client, v *viper.Viper) error {
-	var opts []audit.Option
+	opts := []audit.Option{audit.WithRuntimeInfo()}
 
 	withPrincipalFilter, err := principalFilterFromViper(v)
 	if err != nil {
