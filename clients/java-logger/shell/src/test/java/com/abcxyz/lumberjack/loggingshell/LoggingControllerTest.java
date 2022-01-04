@@ -25,7 +25,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.abcxyz.lumberjack.v1alpha1.AuditLogRequest;
 import com.abcxyz.lumberjack.auditlogclient.LoggingClient;
-import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -56,11 +55,6 @@ public class LoggingControllerTest {
   private TokenInterceptor interceptor;
   @Captor
   private ArgumentCaptor<AuditLogRequest> auditLogRequestCaptor;
-
-  @BeforeAll
-  static void config() {
-    System.setProperty("AUDIT_CLIENT_BACKEND_ADDRESS", "foo");
-  }
 
   @BeforeEach
   void setUp() {

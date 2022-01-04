@@ -14,18 +14,29 @@
  * limitations under the License.
  */
 
-package com.abcxyz.lumberjack.loggingshell;
+package com.abcxyz.lumberjack.auditlogclient.config;
 
-import com.abcxyz.lumberjack.auditlogclient.LoggingClient;
-import org.junit.jupiter.api.Test;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
+import com.fasterxml.jackson.annotation.JsonProperty;
+import lombok.Data;
 
-@SpringBootTest
-class LoggingShellApplicationTests {
-  @MockBean
-  private LoggingClient loggingClient;
+/**
+ * This represents the entire YAML file, and will be the target for deserialization from the file.
+ */
+@Data
+public class AuditLoggingConfiguration {
+  private String version;
+  private BackendContext backend;
 
-  @Test
-  void contextLoads() {}
+  @JsonProperty("filter")
+  private FilterConfig filters;
+
+  public Filters getFilters() {
+    return filters.getFilters();
+  }
+
+  @Data
+  private class FilterConfig {
+    @JsonProperty("regex")
+    private Filters filters;
+  }
 }

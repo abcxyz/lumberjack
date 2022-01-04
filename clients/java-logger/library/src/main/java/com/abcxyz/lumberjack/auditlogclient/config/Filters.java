@@ -14,25 +14,16 @@
  * limitations under the License.
  */
 
-package com.abcxyz.lumberjack.auditlogclient.processor;
+package com.abcxyz.lumberjack.auditlogclient.config;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.google.cloud.logging.Logging;
-import com.google.cloud.logging.LoggingOptions;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
+import com.fasterxml.jackson.annotation.JsonProperty;
+import lombok.Data;
 
-/** Provides cloud logging-specific configuration. */
-@Configuration
-public class CloudLoggingProcessorConfiguration {
+@Data
+public class Filters {
+  @JsonProperty("principal_include")
+  private String includes;
 
-  @Bean
-  Logging logging() {
-    return LoggingOptions.getDefaultInstance().getService();
-  }
-
-  @Bean
-  ObjectMapper mapper() {
-    return new ObjectMapper();
-  }
+  @JsonProperty("principal_exclude")
+  private String excludes;
 }

@@ -18,19 +18,19 @@ package com.abcxyz.lumberjack.loggingshell;
 
 import com.abcxyz.lumberjack.auditlogclient.LoggingClient;
 import com.abcxyz.lumberjack.auditlogclient.LoggingClientBuilder;
-import org.springframework.context.ApplicationContext;
-import org.springframework.context.annotation.AnnotationConfigApplicationContext;
+import com.abcxyz.lumberjack.auditlogclient.modules.AuditLoggingModule;
+import com.google.inject.Guice;
+import com.google.inject.Injector;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.context.annotation.Import;
 
 /** Provides logging-specific configuration. */
 @Configuration
-@Import(LoggingClientBuilder.class)
 public class LoggingConfiguration {
   @Bean
   LoggingClient loggingClient() {
-    ApplicationContext context = new AnnotationConfigApplicationContext(LoggingClientBuilder.class);
-    return context.getBean(LoggingClientBuilder.class).withDefaultProcessors().build();
+    Injector injector = Guice.createInjector(new AuditLoggingModule());
+    LoggingClientBuilder builder = injector.getInstance(LoggingClientBuilder.class);
+    return builder.withDefaultProcessors().build();
   }
 }

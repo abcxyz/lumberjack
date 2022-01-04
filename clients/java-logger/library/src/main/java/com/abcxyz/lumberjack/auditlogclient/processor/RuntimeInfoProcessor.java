@@ -16,35 +16,31 @@
 
 package com.abcxyz.lumberjack.auditlogclient.processor;
 
-import com.google.cloud.audit.AuditLog;
+import com.abcxyz.lumberjack.auditlogclient.processor.LogProcessor.LogMutator;
 import com.abcxyz.lumberjack.v1alpha1.AuditLogRequest;
+import com.google.cloud.audit.AuditLog;
+import com.google.inject.Inject;
 import com.google.protobuf.Struct;
 import com.google.protobuf.Value;
-import java.util.Optional;
-import lombok.RequiredArgsConstructor;
-import org.springframework.stereotype.Service;
+import javax.annotation.Nullable;
+import lombok.AllArgsConstructor;
 
 /**
- * RuntimeInfo is a processor that contains information about the application's
- * runtime
- * environment.
+ * RuntimeInfo is a processor that contains information about the application's runtime environment.
  */
-@Service
-@RequiredArgsConstructor
-public class RuntimeInfoProcessor implements LogProcessor {
-
-  private final Optional<Value> monitoredResource;
+@AllArgsConstructor(onConstructor = @__({@Inject}))
+public class RuntimeInfoProcessor implements LogMutator {
+  @Nullable private final Value monitoredResource;
 
   /**
-   * Process stores the application's GCP runtime information in the audit log
-   * request. More
+   * Process stores the application's GCP runtime information in the audit log request. More
    * specifically, in the Payload.Metadata under the key "originating_resource".
    *
    * @return modified {@link AuditLogRequest}
    */
   @Override
   public AuditLogRequest process(AuditLogRequest auditLogRequest) {
-    if (monitoredResource.isEmpty()) {
+    if (monitoredResource == null) {
       return auditLogRequest;
     }
     // Add monitored resource to Payload.Metadata as JSON.
@@ -52,15 +48,15 @@ public class RuntimeInfoProcessor implements LogProcessor {
       AuditLogRequest.Builder auditLogRequestToUpdate = auditLogRequest.toBuilder();
       AuditLog.Builder auditLogToUpdate = auditLogRequest.getPayload().toBuilder();
       auditLogToUpdate.setMetadata(Struct.newBuilder().build());
-      auditLogRequest = auditLogRequestToUpdate.clearPayload().setPayload(auditLogToUpdate.build())
-          .build();
+      auditLogRequest =
+          auditLogRequestToUpdate.clearPayload().setPayload(auditLogToUpdate.build()).build();
     }
 
     // add new field with monitoredResource to existing metadata
     AuditLogRequest.Builder auditLogRequestToUpdate = auditLogRequest.toBuilder();
     AuditLog.Builder auditLogToUpdate = auditLogRequest.getPayload().toBuilder();
     Struct.Builder metadataToUpdate = auditLogRequest.getPayload().getMetadata().toBuilder();
-    metadataToUpdate.putFields("originating_resource", monitoredResource.get());
+    metadataToUpdate.putFields("originating_resource", monitoredResource);
     auditLogToUpdate.clearMetadata().setMetadata(metadataToUpdate.build());
     return auditLogRequestToUpdate.clearPayload().setPayload(auditLogToUpdate.build()).build();
   }
