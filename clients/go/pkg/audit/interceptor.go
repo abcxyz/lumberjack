@@ -32,7 +32,7 @@ func (c Client) UnaryLogger(ctx context.Context, req interface{}, info *grpc.Una
 	//   - Payload.Request
 	//   - Payload.AuthenticationInfo.PrincipalEmail
 	s := strings.Split(info.FullMethod, "/")
-	if len(s) < 3 {
+	if len(s) < 3 || len(s[0]) != 0 {
 		return nil, fmt.Errorf("info.FullMethod should have format /$SERVICE_NAME/$METHOD_NAME")
 	}
 	logReq.Payload.ServiceName = s[1]
@@ -84,9 +84,12 @@ func (c Client) UnaryLogger(ctx context.Context, req interface{}, info *grpc.Una
 }
 
 // principalFromContext extracts the principal from the context.
-// This method assumes that a JWT exists the grpcmetadata under
-// the key `authorization` and with prefix `Bearer `. If that's
-// not the case, we return an error.
+// This method assumes that a JWT is set under grpcmetadata as
+// held by the current context.Context. More specifically, the
+// JWT is:
+//   - set under the key `authorization`
+//   - prefixed with string `Bearer `
+// If that's not the case, we return an error.
 func principalFromContext(ctx context.Context) (string, error) {
 	md, ok := grpcmetadata.FromIncomingContext(ctx)
 	if !ok {
@@ -96,7 +99,7 @@ func principalFromContext(ctx context.Context) (string, error) {
 	// Extract the JWT.
 	var idToken string
 	if auths := md["authorization"]; len(auths) > 0 {
-		idToken = strings.TrimPrefix(auths[0], "Bearer ")
+		idToken = auths[0][7:] // trim "Bearer: " prefix
 	}
 	if idToken == "" {
 		return "", fmt.Errorf("cannot extract principal because JWT under the key `authorization` is nil: +%v", md)
