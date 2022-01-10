@@ -32,6 +32,7 @@ import (
 	"github.com/abcxyz/lumberjack/clients/go/pkg/audit"
 	"github.com/abcxyz/lumberjack/clients/go/pkg/filtering"
 	"github.com/abcxyz/lumberjack/clients/go/pkg/remote"
+	"github.com/abcxyz/lumberjack/clients/go/pkg/securitycontext"
 	"github.com/spf13/viper"
 	"google.golang.org/grpc"
 )
@@ -52,6 +53,7 @@ const (
 	backendAddressKey              = "backend.address"
 	backendInsecureEnabledKey      = "backend.insecure_enabled"
 	backendImpersonateAccountKey   = "backend.impersonate_account"
+	securityContextFromRawJWT      = "security_context.from_raw_jwt"
 )
 
 // The version we expect in a config file.
@@ -177,6 +179,14 @@ func backendFromViper(v *viper.Viper) (audit.Option, error) {
 		return nil, err
 	}
 	return audit.WithBackend(b), nil
+}
+
+func securityContextFromViper(v *viper.Viper) (audit.Option, error) {
+	sc, err := securitycontext.NewSecurityContext()
+	if err != nil {
+		return nil, err
+	}
+	return audit.WithMutator(sc), nil
 }
 
 // prepareViper creates a Viper instance that:
