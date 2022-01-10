@@ -23,6 +23,21 @@ import (
 
 type Interceptor struct {
 	*Client
+	SecurityContext SecurityContext
+}
+
+type SecurityContext interface {
+	extractPrincipal(context.Context) (string, error)
+}
+
+type FromRawJWT struct {
+	Key    string
+	Prefix string
+	//TODO(noamrabbani): Add JWKS fields to validate JWT signature.
+}
+
+func (rawJWT *FromRawJWT) extractPrincipal(ctx context.Context) (string, error) {
+	return "", fmt.Errorf("not yet implemented")
 }
 
 // UnaryInterceptor is a unary interceptor that autofills and emits audit logs.

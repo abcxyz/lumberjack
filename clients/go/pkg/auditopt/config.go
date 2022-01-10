@@ -32,7 +32,6 @@ import (
 	"github.com/abcxyz/lumberjack/clients/go/pkg/audit"
 	"github.com/abcxyz/lumberjack/clients/go/pkg/filtering"
 	"github.com/abcxyz/lumberjack/clients/go/pkg/remote"
-	"github.com/abcxyz/lumberjack/clients/go/pkg/securitycontext"
 	"github.com/spf13/viper"
 	"google.golang.org/grpc"
 )
@@ -47,13 +46,17 @@ import (
 //    principal_exclude: test@google.com
 // ```
 const (
-	versionKey                     = "version"
-	filterRegexPrincipalIncludeKey = "filter.regex.principal_include"
-	filterRegexPrincipalExcludeKey = "filter.regex.principal_exclude"
-	backendAddressKey              = "backend.address"
-	backendInsecureEnabledKey      = "backend.insecure_enabled"
-	backendImpersonateAccountKey   = "backend.impersonate_account"
-	securityContextFromRawJWT      = "security_context.from_raw_jwt"
+	versionKey = "version"
+	// TODO(noamrabbani): rename `filter` to `condition`
+	filterRegexPrincipalIncludeKey  = "filter.regex.principal_include"
+	filterRegexPrincipalExcludeKey  = "filter.regex.principal_exclude"
+	backendAddressKey               = "backend.address"
+	backendInsecureEnabledKey       = "backend.insecure_enabled"
+	backendImpersonateAccountKey    = "backend.impersonate_account"
+	securityContext                 = "security_context"
+	securityContextFromRawJWT       = "security_context.from_raw_jwt"
+	securityContextFromRawJWTKey    = "security_context.from_raw_jwt.key"
+	securityContextFromRawJWTPrefix = "security_context.from_raw_jwt.prefix"
 )
 
 // The version we expect in a config file.
@@ -61,17 +64,21 @@ const expectedVersion = "v1alpha1"
 
 const defaultConfigFilePath = "/etc/auditlogging/config.yaml"
 
-// MustFromConfigFile specifies a config file to configure the
-// audit client. `path` is required, and if the config file is
-// missing, we return an error.
-func MustFromConfigFile(path string) audit.Option {
-	return func(c *audit.Client) error {
-		v := prepareViper()
-		if err := setupViperConfigFile(v, path); err != nil {
-			return err
-		}
+// MustFromConfigFile reads a config file to create:
+//   - an Option to configure the audit client
+//   - a SecurityContext to configure the interceptor
+// The field `path` is required. If the config file is missing, we return an error.
+func MustFromConfigFile(path string) (audit.Option, audit.SecurityContext, error) {
+	v := prepareViper()
+	if err := setupViperConfigFile(v, path); err != nil {
+		return nil, nil, err
+	}
+
+	opt := func(c *audit.Client) error {
 		return configureClientFromViper(c, v)
 	}
+	sc := securityContextFromViper(v)
+	return opt, sc, nil
 }
 
 // FromConfigFile specifies a config file to configure the
@@ -91,31 +98,6 @@ func FromConfigFile(path string) audit.Option {
 		}
 		return configureClientFromViper(c, v)
 	}
-}
-
-// WithInterceptorFromConfig returns a gRPC server option that adds a unary interceptor
-// to a gRPC server. This interceptor autofills and emits audit logs for gRPC unary
-// calls. WithInterceptorFromConfig also returns the audit client that the interceptor
-// uses. This allows the caller to close the client when shutting down the gRPC server.
-// For example:
-// ```
-// opt, c, err := audit.WithInterceptorFromConfig("auditconfig.yaml")
-// if err != nil {
-//	log.Fatalf(err)
-// }
-// defer c.Stop()
-// s := grpc.NewServer(opt)
-// ```
-// TODO(noamrabbani): add streaming interceptor.
-func WithInterceptorFromConfig(path string) (grpc.ServerOption, *audit.Client, error) {
-	auditClient, err := audit.NewClient(MustFromConfigFile(path))
-	if err != nil {
-		return nil, nil, fmt.Errorf("failed to create audit client from config file %q: %v", path, err)
-	}
-	interceptor := &audit.Interceptor{
-		Client: auditClient,
-	}
-	return grpc.UnaryInterceptor(interceptor.UnaryInterceptor), auditClient, nil
 }
 
 func configureClientFromViper(c *audit.Client, v *viper.Viper) error {
@@ -181,12 +163,20 @@ func backendFromViper(v *viper.Viper) (audit.Option, error) {
 	return audit.WithBackend(b), nil
 }
 
-func securityContextFromViper(v *viper.Viper) (audit.Option, error) {
-	sc, err := securitycontext.NewSecurityContext()
-	if err != nil {
-		return nil, err
+func securityContextFromViper(v *viper.Viper) audit.SecurityContext {
+	if !v.IsSet(securityContext) {
+		return nil
 	}
-	return audit.WithMutator(sc), nil
+	if !v.IsSet(securityContextFromRawJWT) {
+		return nil
+	}
+	v.SetDefault(securityContextFromRawJWTKey, "authorization")
+	v.SetDefault(securityContextFromRawJWTPrefix, "bearer ")
+
+	return &audit.FromRawJWT{
+		Key:    v.GetString(securityContextFromRawJWTKey),
+		Prefix: v.GetString(securityContextFromRawJWTPrefix),
+	}
 }
 
 // prepareViper creates a Viper instance that:
@@ -228,4 +218,38 @@ func setupViperConfigFile(v *viper.Viper, path string) error {
 		return fmt.Errorf("config version %q unsupported, supported versions are [%q]", configFileVersion, expectedVersion)
 	}
 	return nil
+}
+
+// WithInterceptorFromConfig returns a gRPC server option that adds a unary interceptor
+// to a gRPC server. This interceptor autofills and emits audit logs for gRPC unary
+// calls. WithInterceptorFromConfig also returns the audit client that the interceptor
+// uses. This allows the caller to close the client when shutting down the gRPC server.
+// For example:
+// ```
+// opt, c, err := audit.WithInterceptorFromConfig("auditconfig.yaml")
+// if err != nil {
+//	log.Fatalf(err)
+// }
+// defer c.Stop()
+// s := grpc.NewServer(opt)
+// ```
+// TODO(noamrabbani): add streaming interceptor.
+func WithInterceptorFromConfig(path string) (grpc.ServerOption, *audit.Client, error) {
+	opt, sc, err := MustFromConfigFile(path)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to create audit option and security context from config file %q: %v", path, err)
+	}
+	if sc == nil {
+		return nil, nil, fmt.Errorf("security_context is nil in config file %q", path)
+	}
+
+	auditClient, err := audit.NewClient(opt)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to create audit client from config file %q: %v", path, err)
+	}
+	interceptor := &audit.Interceptor{
+		Client:          auditClient,
+		SecurityContext: sc,
+	}
+	return grpc.UnaryInterceptor(interceptor.UnaryInterceptor), auditClient, nil
 }

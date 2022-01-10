@@ -47,12 +47,14 @@ func (s *fakeServer) ProcessLog(_ context.Context, logReq *alpb.AuditLogRequest)
 func TestMustFromConfigFile(t *testing.T) {
 	// No parallel since testing with env vars.
 	cases := []struct {
-		name          string
-		envs          map[string]string
-		fileContent   string
-		req           *alpb.AuditLogRequest
-		wantReq       *alpb.AuditLogRequest
-		wantErrSubstr string
+		name                string
+		envs                map[string]string
+		fileContent         string
+		req                 *alpb.AuditLogRequest
+		wantReq             *alpb.AuditLogRequest
+		wantSecurityContext audit.SecurityContext
+		wantConfigErrSubstr string
+		wantClientErrSubstr string
 	}{
 		{
 			name: "use_default_when_principal_exclude_unset",
@@ -132,9 +134,61 @@ backend:
 			req: testutil.ReqBuilder().WithPrincipal("abc@project.iam.gserviceaccount.com").Build(),
 		},
 		{
-			name:          "invalid_config_file_should_error",
-			fileContent:   `bananas`,
-			wantErrSubstr: "cannot unmarshal",
+			name: "from_raw_jwt_with_default_values",
+			fileContent: `
+version: v1alpha1
+backend:
+  address: %s
+  insecure_enabled: true
+security_context:
+  from_raw_jwt: {}
+`,
+			req: testutil.ReqBuilder().WithPrincipal("abc@project.iam.gserviceaccount.com").Build(),
+			wantSecurityContext: &audit.FromRawJWT{
+				Key:    "authorization",
+				Prefix: "bearer ",
+			},
+		},
+		{
+			name: "from_raw_jwt_with_user-defined_values",
+			fileContent: `
+version: v1alpha1
+backend:
+  address: %s
+  insecure_enabled: true
+security_context:
+  from_raw_jwt:
+    key: x-jwt-assertion
+    prefix: somePrefix
+`,
+			req: testutil.ReqBuilder().WithPrincipal("abc@project.iam.gserviceaccount.com").Build(),
+			wantSecurityContext: &audit.FromRawJWT{
+				Key:    "x-jwt-assertion",
+				Prefix: "somePrefix",
+			},
+		},
+		{
+			name: "from_raw_jwt_with_empty_string_as_prefix",
+			fileContent: `
+version: v1alpha1
+backend:
+  address: %s
+  insecure_enabled: true
+security_context:
+  from_raw_jwt:
+    key:
+    prefix: ""
+`,
+			req: testutil.ReqBuilder().WithPrincipal("abc@project.iam.gserviceaccount.com").Build(),
+			wantSecurityContext: &audit.FromRawJWT{
+				Key:    "authorization",
+				Prefix: "",
+			},
+		},
+		{
+			name:                "invalid_config_file_should_error",
+			fileContent:         `bananas`,
+			wantConfigErrSubstr: "cannot unmarshal",
 		},
 		{
 			name: "nil_backend_address_should_error",
@@ -145,7 +199,7 @@ backend:
 version: v1alpha1
 noop: %s
 `,
-			wantErrSubstr: "config backend address is nil, set it as an env var or in a config file",
+			wantClientErrSubstr: "config backend address is nil, set it as an env var or in a config file",
 		},
 		{
 			name: "wrong_version_should_error",
@@ -154,7 +208,7 @@ version: v2
 backend:
   address: %s
 `,
-			wantErrSubstr: `config version "v2" unsupported, supported versions are ["v1alpha1"]`,
+			wantConfigErrSubstr: `config version "v2" unsupported, supported versions are ["v1alpha1"]`,
 		},
 	}
 
@@ -182,13 +236,22 @@ backend:
 				t.Fatalf("error creating test config file: %v", err)
 			}
 
-			c, err := audit.NewClient(MustFromConfigFile(path))
-			if diff := errutil.DiffSubstring(err, tc.wantErrSubstr); diff != "" {
-				t.Errorf("audit.NewClient(FromConfigFile(%v)) got unexpected error substring: %v", path, diff)
+			opt, sc, err := MustFromConfigFile(path)
+			if diff := errutil.DiffSubstring(err, tc.wantConfigErrSubstr); diff != "" {
+				t.Errorf("MustFromConfigFile(%v) got unexpected error substring: %v", path, diff)
 			}
 			if err != nil {
 				return
 			}
+
+			c, err := audit.NewClient(opt)
+			if diff := errutil.DiffSubstring(err, tc.wantClientErrSubstr); diff != "" {
+				t.Errorf("audit.NewClient(opt) got unexpected error substring: %v", diff)
+			}
+			if err != nil {
+				return
+			}
+
 			if err := c.Log(context.Background(), tc.req); err != nil {
 				t.Fatalf("client.Log(...) unexpected error: %v", err)
 			}
@@ -201,6 +264,10 @@ backend:
 			}
 			if diff := cmp.Diff(tc.wantReq, r.gotReq, cmpopts...); diff != "" {
 				t.Errorf("audit logging backend got request (-want,+got):\n%s", diff)
+			}
+
+			if diff := cmp.Diff(tc.wantSecurityContext, sc); diff != "" {
+				t.Errorf("unexpected diff in client.SecurityContext (-want,+got):\n%s", diff)
 			}
 		})
 	}
@@ -294,6 +361,74 @@ backend:
 			}
 			if diff := cmp.Diff(tc.wantReq, r.gotReq, cmpopts...); diff != "" {
 				t.Errorf("audit logging backend got request (-want,+got):\n%s", diff)
+			}
+		})
+	}
+}
+
+func TestWithInterceptorFromConfig(t *testing.T) {
+	t.Parallel()
+	cases := []struct {
+		name          string
+		fileContent   string
+		wantErrSubstr string
+	}{
+		{
+			name: "valid_config_file",
+			fileContent: `
+version: v1alpha1
+backend:
+  address: foo:443
+  insecure_enabled: true
+security_context:
+  from_raw_jwt: {}
+`,
+		},
+		{
+			name: "invalid_config_because_security_context_is_nil",
+			// In YAML, empty keys are unset. For details, see:
+			// https://stackoverflow.com/a/64462925
+			fileContent: `
+version: v1alpha1
+backend:
+  address: foo:443
+  insecure_enabled: true
+security_context:
+`,
+			wantErrSubstr: "security_context is nil in config file",
+		},
+		{
+			name: "invalid_config_because_backend_address_is_nil",
+			fileContent: `
+version: v1alpha1
+backend:
+  address:
+  insecure_enabled: true
+security_context:
+  from_raw_jwt: {}
+`,
+			wantErrSubstr: "failed to create audit client from config file",
+		},
+		{
+			name:          "unparsable_config",
+			fileContent:   `bananas`,
+			wantErrSubstr: "failed to create audit option and security context from config file",
+		},
+	}
+
+	for _, tc := range cases {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			path := filepath.Join(t.TempDir(), "config.yaml")
+			if err := ioutil.WriteFile(path, []byte(tc.fileContent), 0o600); err != nil {
+				t.Fatalf("error creating test config file: %v", err)
+			}
+
+			_, _, err := WithInterceptorFromConfig(path)
+			if diff := errutil.DiffSubstring(err, tc.wantErrSubstr); diff != "" {
+				t.Errorf("WithInterceptorFromConfig(%v) got unexpected error substring: %v", path, diff)
 			}
 		})
 	}
