@@ -1,4 +1,4 @@
-// Copyright 2021 Lumberjack authors (see AUTHORS file)
+// Copyright 2022 Lumberjack authors (see AUTHORS file)
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -18,11 +18,15 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/abcxyz/lumberjack/clients/go/pkg/security"
 	"google.golang.org/grpc"
 )
 
+// Interceptor contains the fields required for an interceptor
+// to autofill and emit audit logs.
 type Interceptor struct {
 	*Client
+	SecurityContext security.GRPCContext
 }
 
 // UnaryInterceptor is a unary interceptor that autofills and emits audit logs.
