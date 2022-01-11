@@ -16,6 +16,10 @@
 
 package com.abcxyz.lumberjack.auditlogclient.processor;
 
+import com.abcxyz.lumberjack.auditlogclient.processor.LogProcessor.LogBackend;
+import com.abcxyz.lumberjack.v1alpha1.AuditLogRequest;
+import com.abcxyz.lumberjack.v1alpha1.AuditLogRequest.LogType;
+import com.abcxyz.lumberjack.v1alpha1.AuditLogRequestProto;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -25,9 +29,7 @@ import com.google.cloud.logging.Logging;
 import com.google.cloud.logging.Payload;
 import com.google.cloud.logging.Severity;
 import com.google.cloud.logging.Synchronicity;
-import com.abcxyz.lumberjack.v1alpha1.AuditLogRequest;
-import com.abcxyz.lumberjack.v1alpha1.AuditLogRequest.LogType;
-import com.abcxyz.lumberjack.v1alpha1.AuditLogRequestProto;
+import com.google.inject.Inject;
 import com.google.protobuf.InvalidProtocolBufferException;
 import com.google.protobuf.util.JsonFormat;
 import java.io.UnsupportedEncodingException;
@@ -35,13 +37,12 @@ import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.Collections;
 import java.util.Map;
-import lombok.RequiredArgsConstructor;
-import org.springframework.stereotype.Service;
+import lombok.AccessLevel;
+import lombok.AllArgsConstructor;
 
 /** Cloud logging processor to write logs to google cloud */
-@RequiredArgsConstructor
-@Service
-public class CloudLoggingProcessor implements LogProcessor {
+@AllArgsConstructor(access = AccessLevel.PRIVATE, onConstructor = @__({@Inject}))
+public class CloudLoggingProcessor implements LogBackend {
 
   static final String DEFAULT_LOG_NAME = "lumberjack-ci-test-log";
   private static final String MONITORED_RESOURCE_TYPE = "global";
@@ -51,28 +52,24 @@ public class CloudLoggingProcessor implements LogProcessor {
   /**
    * Sends the {@link AuditLogRequest} to the google cloud logging
    *
-   * @param auditLogRequest Audit log request to be processed/logged using Google
-   *                        Cloud Logging.
-   * @return The identical {@link AuditLogRequest} without any updates performed
-   *         on it.
-   * @throws LogProcessingException if {@code auditLogRequest} proto has problems
-   *                                preventing from
-   *                                being converted to JSON or if the log type is
-   *                                not URL encode-able.
+   * @param auditLogRequest Audit log request to be processed/logged using Google Cloud Logging.
+   * @return The identical {@link AuditLogRequest} without any updates performed on it.
+   * @throws LogProcessingException if {@code auditLogRequest} proto has problems preventing from
+   *     being converted to JSON or if the log type is not URL encode-able.
    */
   @Override
   public AuditLogRequest process(AuditLogRequest auditLogRequest) throws LogProcessingException {
     try {
-      LogEntry entry = LogEntry.newBuilder(
-          Payload.JsonPayload.of(
-              mapper.readValue(
-                  JsonFormat.printer().print(auditLogRequest),
-                  new TypeReference<Map<String, ?>>() {
-                  })))
-          .setSeverity(Severity.INFO)
-          .setLogName(getLogNameFromLogType(auditLogRequest.getType()))
-          .setResource(MonitoredResource.newBuilder(MONITORED_RESOURCE_TYPE).build())
-          .build();
+      LogEntry entry =
+          LogEntry.newBuilder(
+                  Payload.JsonPayload.of(
+                      mapper.readValue(
+                          JsonFormat.printer().print(auditLogRequest),
+                          new TypeReference<Map<String, ?>>() {})))
+              .setSeverity(Severity.INFO)
+              .setLogName(getLogNameFromLogType(auditLogRequest.getType()))
+              .setResource(MonitoredResource.newBuilder(MONITORED_RESOURCE_TYPE).build())
+              .build();
       logging.setWriteSynchronicity(Synchronicity.SYNC);
       logging.write(Collections.singleton(entry));
       return auditLogRequest;
@@ -84,16 +81,15 @@ public class CloudLoggingProcessor implements LogProcessor {
   }
 
   /**
-   * Obtains the URL Encoded Cloud Logging LogName by reading the proto annotation
-   * of the {@link
-   * AuditLogRequest.LogType}. If the proto annotation is missing, we use a
-   * default {@code logName}.
+   * Obtains the URL Encoded Cloud Logging LogName by reading the proto annotation of the {@link
+   * AuditLogRequest.LogType}. If the proto annotation is missing, we use a default {@code logName}.
    *
    * @param type logType
    * @return log name for the given log type
    */
   private String getLogNameFromLogType(LogType type) throws UnsupportedEncodingException {
-    String logName = type.getValueDescriptor().getOptions().getExtension(AuditLogRequestProto.logName);
+    String logName =
+        type.getValueDescriptor().getOptions().getExtension(AuditLogRequestProto.logName);
     return logName.isEmpty()
         ? DEFAULT_LOG_NAME
         : URLEncoder.encode(logName, StandardCharsets.UTF_8);
