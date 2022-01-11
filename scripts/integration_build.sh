@@ -23,7 +23,10 @@ SERVICE_NAME=ci-with-server-${RANDOM}
 GO_BUILD_COMMAND=${ROOT}/clients/go/test/shell/build.sh
 JAVA_BUILD_COMMAND=${ROOT}/clients/java-logger/scripts/build_shell.sh
 
+export TF_LOG=DEBUG
+echo "PRE TERRAFORM"
 terraform -chdir=${TF_ENVS_CI_DIR} init
+echo "PRE APPLY"
 terraform -chdir=${TF_ENVS_CI_DIR} apply -auto-approve
 
 SHELL_APP_PROJECT_ID=$(terraform -chdir=${TF_ENVS_CI_DIR} output -raw app_project)
