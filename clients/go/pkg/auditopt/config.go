@@ -33,6 +33,7 @@ import (
 	"github.com/abcxyz/lumberjack/clients/go/pkg/filtering"
 	"github.com/abcxyz/lumberjack/clients/go/pkg/remote"
 	"github.com/spf13/viper"
+	"google.golang.org/grpc"
 )
 
 // The list of config variables that a user can set in a config
@@ -88,6 +89,31 @@ func FromConfigFile(path string) audit.Option {
 		}
 		return configureClientFromViper(c, v)
 	}
+}
+
+// WithInterceptorFromConfig returns a gRPC server option that adds a unary interceptor
+// to a gRPC server. This interceptor autofills and emits audit logs for gRPC unary
+// calls. WithInterceptorFromConfig also returns the audit client that the interceptor
+// uses. This allows the caller to close the client when shutting down the gRPC server.
+// For example:
+// ```
+// opt, c, err := audit.WithInterceptorFromConfig("auditconfig.yaml")
+// if err != nil {
+//	log.Fatalf(err)
+// }
+// defer c.Stop()
+// s := grpc.NewServer(opt)
+// ```
+// TODO(noamrabbani): add streaming interceptor.
+func WithInterceptorFromConfig(path string) (grpc.ServerOption, *audit.Client, error) {
+	auditClient, err := audit.NewClient(MustFromConfigFile(path))
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to create audit client from config file %q: %v", path, err)
+	}
+	interceptor := &audit.Interceptor{
+		Client: auditClient,
+	}
+	return grpc.UnaryInterceptor(interceptor.UnaryInterceptor), auditClient, nil
 }
 
 func configureClientFromViper(c *audit.Client, v *viper.Viper) error {
