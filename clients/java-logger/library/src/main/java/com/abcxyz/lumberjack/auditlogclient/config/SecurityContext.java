@@ -17,37 +17,24 @@
 package com.abcxyz.lumberjack.auditlogclient.config;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.fasterxml.jackson.annotation.JsonSetter;
-import com.fasterxml.jackson.annotation.Nulls;
 import java.util.List;
+import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-/**
- * This represents the entire YAML file, and will be the target for deserialization from the file.
- */
 @Data
+@AllArgsConstructor
 @NoArgsConstructor
-public class AuditLoggingConfiguration {
-  private String version;
-  private BackendContext backend;
+public class SecurityContext {
+  static final JwtSpecification DEFAULT_SPEC =
+      new JwtSpecification("Authorization", "Bearer ", null);
 
-  @JsonProperty("condition")
-  private ConditionConfig conditions;
+  @JsonProperty("from_raw_jwt")
+  List<JwtSpecification> jwtSpecifications;
 
-  private List<Selector> rules;
-
-  @JsonSetter(nulls = Nulls.FAIL)
-  @JsonProperty("security_context")
-  private SecurityContext securityContext;
-
-  public Filters getFilters() {
-    return conditions.getFilters();
-  }
-
-  @Data
-  private class ConditionConfig {
-    @JsonProperty("regex")
-    private Filters filters;
+  public List<JwtSpecification> getJwtSpecifications() {
+    return jwtSpecifications == null || jwtSpecifications.isEmpty()
+        ? List.of(DEFAULT_SPEC)
+        : jwtSpecifications;
   }
 }
