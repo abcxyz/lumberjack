@@ -32,7 +32,7 @@ BIGQUERY_DATASET_ID=$(terraform -chdir=${TF_ENVS_CI_DIR} output -raw bigquery_da
 
 KOKORO_SERVICE_ACCOUNT=kokoro-sa@lumberjack-kokoro.iam.gserviceaccount.com
 GCLOUD_ACCOUNT=$(gcloud config get-value account)
-
+echo "GCloudAccount" $GCLOUD_ACCOUNT
 if [[ $GCLOUD_ACCOUNT == $KOKORO_SERVICE_ACCOUNT ]]; then
   # When running in Kokoro, impersonate the Kokoro service account to have its email included in the ID token.
   ID_TOKEN=$(gcloud auth print-identity-token --impersonate-service-account=${KOKORO_SERVICE_ACCOUNT} --include-email)
