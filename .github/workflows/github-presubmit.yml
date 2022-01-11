@@ -63,55 +63,55 @@ jobs:
       # if running the build script succeeded, we can move on to integration tests.
 
   # TODO(crwilcox): enable once we have WorkloadIdentity setup.
-  # integrationTest:
-  #   # wait to start this until we have a sucessful test run
-  #   needs: test
-  #   name: Integration Tests
-  #   runs-on: ubuntu-latest
-  #   steps:
-  #     - name: Check out code
-  #       uses: actions/checkout@v2
+  integrationTest:
+    # wait to start this until we have a sucessful test run
+    needs: test
+    name: Integration Tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v2
 
-  #     - name: Set up Go
-  #       uses: actions/setup-go@v2
-  #       with:
-  #         go-version: 1.17
+      - name: Set up Go
+        uses: actions/setup-go@v2
+        with:
+          go-version: 1.17
 
-  #     # Cache go dependencies to reduce time for CI setup
-  #     - uses: actions/cache@v2
-  #       with:
-  #         path: |
-  #           ~/go/pkg/mod
-  #         key: ${{ runner.os }}-go-test-${{ hashFiles('**/go.sum') }}
-  #         restore-keys: |
-  #           ${{ runner.os }}-go-test-
-  #           ${{ runner.os }}-go-
+      # Cache go dependencies to reduce time for CI setup
+      - uses: actions/cache@v2
+        with:
+          path: |
+            ~/go/pkg/mod
+          key: ${{ runner.os }}-go-test-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-test-
+            ${{ runner.os }}-go-
 
-  #     - name: Run Build Script
-  #       run: |
-  #         cd ${{ github.workspace }}
-  #         ./build.sh
+      - name: Run Build Script
+        run: |
+          cd ${{ github.workspace }}
+          ./build.sh
 
-  #     - id: gcloud
-  #       uses: google-github-actions/setup-gcloud@master
+      - id: gcloud
+        uses: google-github-actions/setup-gcloud@master
 
-  #     - id: auth
-  #       uses: google-github-actions/auth@v0
-  #       with:
-  #         workload_identity_provider: 'projects/lumberjack-kokoro/locations/global/workloadIdentityPools/gh-pool/providers/gh-provider'
-  #         service_account: 'kokoro-sa@lumberjack-kokoro.iam.gserviceaccount.com'
+      - id: auth
+        uses: google-github-actions/auth@v0
+        with:
+          workload_identity_provider: 'projects/893639459536/locations/global/workloadIdentityPools/gh-pool/providers/gh-provider'
+          service_account: 'gh-access-sa@lumberjack-kokoro.iam.gserviceaccount.com'
 
-  #     - name: Set up Cloud SDK
-  #       uses: google-github-actions/setup-gcloud@v0.3.0
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v0.3.0
 
-  #     - name: Use gcloud CLI
-  #       run: gcloud info
+      - name: Use gcloud CLI
+        run: gcloud info
     
-  #     # TODO: Wait until we can use the workload identity
-  #     - name: Run Integration Build Script
-  #       run: |
-  #         cd ${{ github.workspace }}
-  #         ./scripts/integration_build.sh
+      # TODO: Wait until we can use the workload identity
+      - name: Run Integration Build Script
+        run: |
+          cd ${{ github.workspace }}
+          ./scripts/integration_build.sh
 
   # TODO(crwilcox): enable this once the code passes lint.
   # lint: 
