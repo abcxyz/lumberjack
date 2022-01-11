@@ -67,6 +67,9 @@ jobs:
     # wait to start this until we have a sucessful test run
     needs: test
     name: Integration Tests
+    permissions:
+      contents: 'read'
+      id-token: 'write'
     runs-on: ubuntu-latest
     steps:
       - name: Check out code
