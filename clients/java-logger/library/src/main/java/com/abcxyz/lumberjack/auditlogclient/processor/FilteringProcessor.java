@@ -16,49 +16,42 @@
 
 package com.abcxyz.lumberjack.auditlogclient.processor;
 
+import com.abcxyz.lumberjack.auditlogclient.processor.LogProcessor.LogMutator;
 import com.abcxyz.lumberjack.v1alpha1.AuditLogRequest;
+import com.google.inject.Inject;
+import com.google.inject.name.Named;
 import java.util.List;
 import java.util.regex.Pattern;
+import lombok.AllArgsConstructor;
 import lombok.Getter;
-import lombok.RequiredArgsConstructor;
-import org.springframework.stereotype.Service;
 
-/**
- * Implements filtering process for the given {@link AuditLogRequest}
- */
-@Service
+/** Implements filtering process for the given {@link AuditLogRequest} */
+@AllArgsConstructor
 @Getter
-@RequiredArgsConstructor
-public class FilteringProcessor implements LogProcessor {
+public class FilteringProcessor implements LogMutator {
 
   /**
-   * includePatterns is list of regex pattern, When an audit log request has a
-   * principal email that
-   * matches one the regular expressions, the audit log request is allowed for
-   * further processing
+   * includePatterns is list of regex pattern, When an audit log request has a principal email that
+   * matches one the regular expressions, the audit log request is allowed for further processing
    */
   private final List<Pattern> includePatterns;
   /**
-   * excludePatterns is list of regex pattern, When an audit log request has a
-   * principal email that
-   * matches one the regular expressions, the audit log request is dropped for
-   * further processing
+   * excludePatterns is list of regex pattern, When an audit log request has a principal email that
+   * matches one the regular expressions, the audit log request is dropped for further processing
    */
   private final List<Pattern> excludePatterns;
 
   /**
-   * Process uses include and exclude regex list to match with PrincipleEmail from
-   * the {@link
-   * com.google.cloud.audit.AuthenticationInfo} to filter the
-   * {@link AuditLogRequest}
+   * Process uses include and exclude regex list to match with PrincipleEmail from the {@link
+   * com.google.cloud.audit.AuthenticationInfo} to filter the {@link AuditLogRequest}
    */
   @Override
   public AuditLogRequest process(AuditLogRequest auditLogRequest) throws IllegalArgumentException {
     if (includePatterns.isEmpty() && excludePatterns.isEmpty()) {
       return auditLogRequest;
     }
-    String principalEmail = auditLogRequest.getPayload().getAuthenticationInfo()
-        .getPrincipalEmail();
+    String principalEmail =
+        auditLogRequest.getPayload().getAuthenticationInfo().getPrincipalEmail();
     if (includePatterns.stream().anyMatch(p -> p.matcher(principalEmail).matches())) {
       return auditLogRequest;
     }
@@ -69,8 +62,7 @@ public class FilteringProcessor implements LogProcessor {
 
     if (excludePatterns.stream().anyMatch(p -> p.matcher(principalEmail).matches())) {
       throw new IllegalArgumentException(
-          "request.Payload.AuthenticationInfo.PrincipalEmail "
-              + "present in excludePattern List");
+          "request.Payload.AuthenticationInfo.PrincipalEmail " + "present in excludePattern List");
     }
     return auditLogRequest;
   }

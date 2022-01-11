@@ -20,14 +20,15 @@ import static io.jsonwebtoken.security.Keys.secretKeyFor;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
+import com.abcxyz.lumberjack.auditlogclient.LoggingClient;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
 import java.util.Map;
 import javax.servlet.http.HttpServletResponse;
-import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mock;
+import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.web.method.HandlerMethod;
 
@@ -50,16 +51,12 @@ public class TokenInterceptorTest {
   private static final String UNSIGNED_JWT_WITH_EMAIL_FIELD =
       Jwts.builder().addClaims(Map.of(TokenInterceptor.JWT_EMAIL_FIELD_KEY, TEST_EMAIL)).compact();
 
+  @MockBean
+  private LoggingClient loggingClient;
+
   @Mock private HttpServletResponse mockResponse;
   @Mock private HandlerMethod mockHandler;
   private MockHttpServletRequest request;
-
-  @BeforeAll
-  static void config() {
-    System.setProperty("GOOGLE_CLOUD_PROJECT", "foo");
-    System.setProperty("AUDIT_CLIENT_BACKEND_ADDRESS", "foo");
-    System.setProperty("AUDIT_CLIENT_BACKEND_INSECURE_ENABLED", "true");
-  }
 
   @BeforeEach
   void setUp() {
