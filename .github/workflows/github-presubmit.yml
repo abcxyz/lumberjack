@@ -62,11 +62,10 @@ jobs:
 
       # if running the build script succeeded, we can move on to integration tests.
 
-  # TODO(crwilcox): enable once we have WorkloadIdentity setup.
+  # TODO(crwilcox): Configure WorkloadIdentity.
   integrationTest:
     # wait to start this until we have a sucessful test run
-    # TODO: add needs test back
-    # needs: test
+    needs: test
     name: Integration Tests
     permissions:
       contents: 'read'
