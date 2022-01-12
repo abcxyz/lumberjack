@@ -34,6 +34,8 @@ import (
 	"github.com/abcxyz/lumberjack/clients/go/pkg/remote"
 	"github.com/spf13/viper"
 	"google.golang.org/grpc"
+
+	alpb "github.com/abcxyz/lumberjack/clients/go/apis/v1alpha1"
 )
 
 // The list of config variables that a user can set in a config
@@ -48,15 +50,16 @@ import (
 const (
 	versionKey = "version"
 	// TODO(noamrabbani): rename `filter` to `condition`
-	filterRegexPrincipalIncludeKey  = "filter.regex.principal_include"
-	filterRegexPrincipalExcludeKey  = "filter.regex.principal_exclude"
-	backendAddressKey               = "backend.address"
-	backendInsecureEnabledKey       = "backend.insecure_enabled"
-	backendImpersonateAccountKey    = "backend.impersonate_account"
-	securityContext                 = "security_context"
-	securityContextFromRawJWT       = "security_context.from_raw_jwt"
-	securityContextFromRawJWTKey    = "security_context.from_raw_jwt.key"
-	securityContextFromRawJWTPrefix = "security_context.from_raw_jwt.prefix"
+	filterRegexPrincipalIncludeKey     = "filter.regex.principal_include"
+	filterRegexPrincipalExcludeKey     = "filter.regex.principal_exclude"
+	backendAddressKey                  = "backend.address"
+	backendInsecureEnabledKey          = "backend.insecure_enabled"
+	backendImpersonateAccountKey       = "backend.impersonate_account"
+	securityContextKey                 = "security_context"
+	securityContextFromRawJWTKey       = "security_context.from_raw_jwt"
+	securityContextFromRawJWTKeyKey    = "security_context.from_raw_jwt.key"
+	securityContextFromRawJWTPrefixKey = "security_context.from_raw_jwt.prefix"
+	rulesKey                           = "rules"
 )
 
 // The version we expect in a config file.
@@ -68,17 +71,18 @@ const defaultConfigFilePath = "/etc/auditlogging/config.yaml"
 //   - an Option to configure the audit client
 //   - a SecurityContext to configure the interceptor
 // The field `path` is required. If the config file is missing, we return an error.
-func MustFromConfigFile(path string) (audit.Option, audit.SecurityContext, error) {
+func MustFromConfigFile(path string) (audit.Option, audit.SecurityContext, []audit.Rule, error) {
 	v := prepareViper()
 	if err := setupViperConfigFile(v, path); err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 
 	opt := func(c *audit.Client) error {
 		return configureClientFromViper(c, v)
 	}
 	sc := securityContextFromViper(v)
-	return opt, sc, nil
+	rules := rulesFromViper(v)
+	return opt, sc, rules, nil
 }
 
 // FromConfigFile specifies a config file to configure the
@@ -164,19 +168,89 @@ func backendFromViper(v *viper.Viper) (audit.Option, error) {
 }
 
 func securityContextFromViper(v *viper.Viper) audit.SecurityContext {
-	if !v.IsSet(securityContext) {
+	if !v.IsSet(securityContextKey) {
 		return nil
 	}
-	if !v.IsSet(securityContextFromRawJWT) {
+	if !v.IsSet(securityContextFromRawJWTKey) {
 		return nil
 	}
-	v.SetDefault(securityContextFromRawJWTKey, "authorization")
-	v.SetDefault(securityContextFromRawJWTPrefix, "bearer ")
+	v.SetDefault(securityContextFromRawJWTKeyKey, "authorization")
+	v.SetDefault(securityContextFromRawJWTPrefixKey, "bearer ")
 
 	return &audit.FromRawJWT{
-		Key:    v.GetString(securityContextFromRawJWTKey),
-		Prefix: v.GetString(securityContextFromRawJWTPrefix),
+		Key:    v.GetString(securityContextFromRawJWTKeyKey),
+		Prefix: v.GetString(securityContextFromRawJWTPrefixKey),
 	}
+}
+
+func rulesFromViper(v *viper.Viper) ([]audit.Rule, error) {
+	if !v.IsSet(rulesKey) {
+		return nil, nil
+	}
+
+	configRules, ok := v.Get(rulesKey).([]map[string]string)
+	if !ok {
+		return nil, fmt.Errorf("`rules` in config file have invalid format because fail casting to []map[string]string")
+	}
+
+	var auditRules []audit.Rule
+	for _, ruleValByRuleKey := range configRules {
+		r := audit.Rule{}
+
+		selectorString, ok := ruleValByRuleKey["selector"]
+		if !ok {
+			return nil, fmt.Errorf("config file has audit rule with unset selector")
+		}
+		r.Selector = selectorString
+
+		directiveString, ok := ruleValByRuleKey["directive"]
+		if !ok {
+			// If directive is unset, default to AUDIT.
+			r.Directive = audit.AuditOnly
+		} else {
+			directive, err := directiveFromString(directiveString)
+			if err != nil {
+				return nil, err
+			}
+			r.Directive = directive
+		}
+
+		logTypeString, ok := ruleValByRuleKey["log_type"]
+		if !ok {
+			// If log_type is unset, default to DATA_ACCESS.
+			r.LogType = alpb.AuditLogRequest_DATA_ACCESS
+		} else {
+			logType, err := logTypeFromString(logTypeString)
+			if err != nil {
+				return nil, err
+			}
+			r.LogType = logType
+		}
+
+		auditRules = append(auditRules, r)
+	}
+
+	return auditRules, nil
+}
+
+func logTypeFromString(s string) (alpb.AuditLogRequest_LogType, error) {
+	logTypeNumber, ok := alpb.AuditLogRequest_LogType_value[s]
+	if !ok {
+		return 0, fmt.Errorf("config file contains invalid log type %q", s)
+	}
+	return alpb.AuditLogRequest_LogType(logTypeNumber), nil
+}
+
+func directiveFromString(s string) (audit.Directive, error) {
+	switch {
+	case s == string(audit.AuditRequestAndResponse):
+		return audit.AuditRequestAndResponse, nil
+	case s == string(audit.AuditRequestOnly):
+		return audit.AuditRequestOnly, nil
+	case s == string(audit.AuditOnly):
+		return audit.AuditOnly, nil
+	}
+	return "", fmt.Errorf("config file contains invalid directive %q", s)
 }
 
 // prepareViper creates a Viper instance that:

@@ -19,11 +19,14 @@ import (
 	"fmt"
 
 	"google.golang.org/grpc"
+
+	alpb "github.com/abcxyz/lumberjack/clients/go/apis/v1alpha1"
 )
 
 type Interceptor struct {
 	*Client
 	SecurityContext SecurityContext
+	Rules           []Rule
 }
 
 type SecurityContext interface {
@@ -35,6 +38,20 @@ type FromRawJWT struct {
 	Prefix string
 	//TODO(noamrabbani): Add JWKS fields to validate JWT signature.
 }
+
+type Rule struct {
+	Selector  string
+	Directive Directive
+	LogType   alpb.AuditLogRequest_LogType
+}
+
+type Directive string
+
+const (
+	AuditRequestAndResponse Directive = "AUDIT_REQUEST_AND_RESPONSE"
+	AuditRequestOnly        Directive = "AUDIT_REQUEST_ONLY"
+	AuditOnly               Directive = "AUDIT"
+)
 
 func (rawJWT *FromRawJWT) extractPrincipal(ctx context.Context) (string, error) {
 	return "", fmt.Errorf("not yet implemented")
