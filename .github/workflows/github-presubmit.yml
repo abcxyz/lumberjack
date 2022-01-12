@@ -44,7 +44,6 @@ jobs:
 
       - name: Run Build Script
         run: |
-          # cd ${{ github.workspace }}
           ./build.sh
 
       # TODO(crwilcox): Coverage has an issue right now with a module
@@ -92,12 +91,12 @@ jobs:
 
       - name: Run Build Script
         run: |
-          # cd ${{ github.workspace }}
           ./build.sh
 
       # TODO: Workload Identity doesn't work with GCS Provider. For now, use a service 
       # account. But once we can remove all of the 'with' elements
       - id: gcloud
+        name: Set up Cloud SDK
         uses: google-github-actions/setup-gcloud@v0
         with:
           service_account_email: 'gh-access-sa@lumberjack-dev-infra.iam.gserviceaccount.com'
@@ -112,9 +111,6 @@ jobs:
       #     workload_identity_provider: 'projects/638387980668/locations/global/workloadIdentityPools/gh-pool/providers/gh-provider'
       #     service_account: 'gh-access-sa@lumberjack-dev-infra.iam.gserviceaccount.com'
 
-      - name: Set up Cloud SDK
-        uses: google-github-actions/setup-gcloud@v0
-
       - name: Use gcloud CLI
         run: gcloud info
       
@@ -123,7 +119,6 @@ jobs:
             SERVICE_ACCOUNT: ${{ secrets.SERVICE_ACCOUNT }}
         run: |
           gcloud auth configure-docker us-docker.pkg.dev
-          # cd ${{ github.workspace }}
           ./scripts/integration_build.sh
 
   # TODO(crwilcox): enable this once the code passes lint.
