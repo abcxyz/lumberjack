@@ -97,12 +97,14 @@ jobs:
           ./build.sh
 
       # TODO: Workload Identity doesn't work with GCS Provider. For now, use a service 
-      # account. But once we can remove env, and the setting here.
+      # account. But once we can remove all of the 'with' elements
       - id: gcloud
         uses: google-github-actions/setup-gcloud@v0
         with:
           service_account_email: 'gh-access-sa@lumberjack-dev-infra.iam.gserviceaccount.com'
           service_account_key: ${{ secrets.SERVICE_ACCOUNT }}
+          export_default_credentials: true
+          cleanup_credentials: true
       
       # TODO: enable using wif
       # - id: auth
