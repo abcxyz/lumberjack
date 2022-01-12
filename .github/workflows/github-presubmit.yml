@@ -44,7 +44,7 @@ jobs:
 
       - name: Run Build Script
         run: |
-          cd ${{ github.workspace }}
+          # cd ${{ github.workspace }}
           ./build.sh
 
       # TODO(crwilcox): Coverage has an issue right now with a module
@@ -92,7 +92,7 @@ jobs:
 
       - name: Run Build Script
         run: |
-          cd ${{ github.workspace }}
+          # cd ${{ github.workspace }}
           ./build.sh
 
       # TODO: Workload Identity doesn't work with GCS Provider. For now, use a service 
@@ -123,7 +123,7 @@ jobs:
             SERVICE_ACCOUNT: ${{ secrets.SERVICE_ACCOUNT }}
         run: |
           gcloud auth configure-docker us-docker.pkg.dev
-          cd ${{ github.workspace }}
+          # cd ${{ github.workspace }}
           ./scripts/integration_build.sh
 
   # TODO(crwilcox): enable this once the code passes lint.
