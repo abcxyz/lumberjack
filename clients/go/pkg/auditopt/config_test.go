@@ -253,7 +253,7 @@ backend:
 		},
 		{
 			name: "include_and_exclude_in_filter",
-			path: path.Join(dir, "inexistent.yaml"),
+			path: path.Join(dir, "inexistent2.yaml"),
 			envs: map[string]string{
 				"AUDIT_CLIENT_FILTER_REGEX_PRINCIPAL_INCLUDE": "iam.gserviceaccount.com$",
 				"AUDIT_CLIENT_FILTER_REGEX_PRINCIPAL_EXCLUDE": "iam.gserviceaccount.com$",
