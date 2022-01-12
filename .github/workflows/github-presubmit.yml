@@ -114,6 +114,7 @@ jobs:
       # TODO: Wait until we can use the workload identity
       - name: Run Integration Build Script
         run: |
+          gcloud config set account gh-access-sa@lumberjack-dev-infra.iam.gserviceaccount.com
           cd ${{ github.workspace }}
           ./scripts/integration_build.sh
 
