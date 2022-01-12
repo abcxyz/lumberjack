@@ -123,7 +123,6 @@ jobs:
         env:
             SERVICE_ACCOUNT: ${{ secrets.SERVICE_ACCOUNT }}
         run: |
-          # gcloud config set account gh-access-sa@lumberjack-dev-infra.iam.gserviceaccount.com
           cd ${{ github.workspace }}
           ./scripts/integration_build.sh
 
