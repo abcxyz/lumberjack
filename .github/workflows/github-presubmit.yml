@@ -104,7 +104,8 @@ jobs:
         with:
           workload_identity_provider: 'projects/638387980668/locations/global/workloadIdentityPools/gh-pool/providers/gh-provider'
           service_account: 'gh-access-sa@lumberjack-dev-infra.iam.gserviceaccount.com'
-
+          create_credentials_file: true
+          activate_credentials_file: true
       - name: Set up Cloud SDK
         uses: google-github-actions/setup-gcloud@v0
 
@@ -114,7 +115,7 @@ jobs:
       # TODO: Wait until we can use the workload identity
       - name: Run Integration Build Script
         run: |
-          gcloud config set account gh-access-sa@lumberjack-dev-infra.iam.gserviceaccount.com
+          # gcloud config set account gh-access-sa@lumberjack-dev-infra.iam.gserviceaccount.com
           cd ${{ github.workspace }}
           ./scripts/integration_build.sh
 
