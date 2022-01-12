@@ -52,7 +52,7 @@ variable "renew_random_tag" {
 module "e2e" {
   source        = "../../e2e"
   folder_parent = "folders/316290568068"
-  top_folder_id = "ci-e2e"
+  top_folder_id = "github-ci-e2e"
 
   // The billing account 'Gong Test'.
   billing_account = "016242-61A3FB-F92462"
