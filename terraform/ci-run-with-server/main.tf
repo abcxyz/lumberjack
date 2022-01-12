@@ -42,6 +42,7 @@ module "server_service" {
   server_image = "${local.repo}/server:${local.tag}"
   service_name = var.service_name
 
+
   audit_log_writers = [
     "serviceAccount:${local.log_writer}"
   ]
