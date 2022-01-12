@@ -252,6 +252,27 @@ backend:
 			wantReq: testutil.ReqBuilder().WithPrincipal("abc@project.iam.gserviceaccount.com").Build(),
 		},
 		{
+			name: "include_and_exclude_in_filter",
+			path: path.Join(dir, "inexistent2.yaml"),
+			envs: map[string]string{
+				"AUDIT_CLIENT_FILTER_REGEX_PRINCIPAL_INCLUDE": "iam.gserviceaccount.com$",
+				"AUDIT_CLIENT_FILTER_REGEX_PRINCIPAL_EXCLUDE": "iam.gserviceaccount.com$",
+				"AUDIT_CLIENT_BACKEND_INSECURE_ENABLED":       "true",
+			},
+			req:     testutil.ReqBuilder().WithPrincipal("abc@project.iam.gserviceaccount.com").Build(),
+			wantReq: testutil.ReqBuilder().WithPrincipal("abc@project.iam.gserviceaccount.com").Build(),
+		},
+		{
+			name: "include_overwrites_default_exclude",
+			path: path.Join(dir, "inexistent2.yaml"),
+			envs: map[string]string{
+				"AUDIT_CLIENT_FILTER_REGEX_PRINCIPAL_INCLUDE": "iam.gserviceaccount.com$",
+				"AUDIT_CLIENT_BACKEND_INSECURE_ENABLED":       "true",
+			},
+			req:     testutil.ReqBuilder().WithPrincipal("abc@project.iam.gserviceaccount.com").Build(),
+			wantReq: testutil.ReqBuilder().WithPrincipal("abc@project.iam.gserviceaccount.com").Build(),
+		},
+		{
 			name:          "invalid_config_file_should_error",
 			path:          path.Join(dir, "invalid.yaml"),
 			wantErrSubstr: "cannot unmarshal",
