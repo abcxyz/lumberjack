@@ -48,10 +48,9 @@ variable "renew_random_tag" {
   description = "Whether to renew a random tag. If set a new random tag will be assigned and trigger a new build."
 }
 
-
+# lumberjack-envs project
 module "e2e" {
   source        = "../../e2e"
-  # lumberjack-envs
   folder_parent = "folders/316290568068"
   top_folder_id = "ci-e2e"
 
