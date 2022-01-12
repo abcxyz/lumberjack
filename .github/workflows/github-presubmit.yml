@@ -123,6 +123,7 @@ jobs:
         env:
             SERVICE_ACCOUNT: ${{ secrets.SERVICE_ACCOUNT }}
         run: |
+          gcloud auth configure-docker us-docker.pkg.dev
           cd ${{ github.workspace }}
           ./scripts/integration_build.sh
 
