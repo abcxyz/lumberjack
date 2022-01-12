@@ -65,7 +65,8 @@ jobs:
   # TODO(crwilcox): enable once we have WorkloadIdentity setup.
   integrationTest:
     # wait to start this until we have a sucessful test run
-    needs: test
+    # TODO: add needs test back
+    # needs: test
     name: Integration Tests
     permissions:
       contents: 'read'
