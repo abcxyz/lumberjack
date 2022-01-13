@@ -28,7 +28,7 @@ SHELL_APP_PROJECT_ID=github-ci-app-0
 BACKEND_PROJECT_ID=github-ci-server
 BIGQUERY_DATASET_ID=audit_logs
 
-CI_SERVICE_ACCOUNT=github-access-sa@lumberjack-dev-infra.iam.gserviceaccount.com
+CI_SERVICE_ACCOUNT=gh-access-sa@lumberjack-dev-infra.iam.gserviceaccount.com
 GCLOUD_ACCOUNT=$(gcloud config get-value account)
 if [[ $GCLOUD_ACCOUNT == $CI_SERVICE_ACCOUNT ]]; then
   # When running in CI, impersonate the service account to have its email included in the ID token.
