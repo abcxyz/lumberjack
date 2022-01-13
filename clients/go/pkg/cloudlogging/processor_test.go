@@ -295,11 +295,10 @@ func TestProcessor_Stop(t *testing.T) {
 				t.Fatalf("net.Listen(tcp, localhost:0) failed: %v", err)
 			}
 			go func() {
-				s.Serve(lis)
-				// err := s.Serve(lis)
-				// if err != nil {
-				// 	t.Errorf("net.Listen(tcp, localhost:0) serve failed: %v", err)
-				// }
+				err := s.Serve(lis)
+				if err != nil {
+					t.Errorf("net.Listen(tcp, localhost:0) serve failed: %v", err)
+				}
 			}()
 
 			addr := lis.Addr().String()
@@ -324,10 +323,11 @@ func TestProcessor_Stop(t *testing.T) {
 
 			// Write the logs.
 			for _, r := range tc.logReqs {
-				err := p.Process(ctx, r)
-				if err != nil {
-					t.Errorf("failed to process: %v", err)
-				}
+				p.Process(ctx, r)
+				// err := p.Process(ctx, r)
+				// if err != nil {
+				// 	t.Errorf("failed to process: %v", err)
+				// }
 			}
 
 			// Run test.

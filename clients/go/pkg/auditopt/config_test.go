@@ -170,12 +170,10 @@ backend:
 				t.Fatalf("net.Listen(tcp, localhost:0) failed: %v", err)
 			}
 			go func() {
-				s.Serve(lis)
-				// err := s.Serve(lis)
-				// if err != nil {
-				// 	// t.Errorf("net.Listen(tcp, localhost:0) serve failed: %v", err)
-				// 	t.Logf("net.Listen(tcp, localhost:0) serve failed: %v", err)
-				// }
+				err := s.Serve(lis)
+				if err != nil {
+					t.Errorf("net.Listen(tcp, localhost:0) serve failed: %v", err)
+				}
 			}()
 
 			for k, v := range tc.envs {
