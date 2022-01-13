@@ -172,7 +172,8 @@ backend:
 			go func() {
 				err := s.Serve(lis)
 				if err != nil {
-					t.Errorf("net.Listen(tcp, localhost:0) serve failed: %v", err)
+					t.Logf("net.Listen(tcp, localhost:0) serve failed: %v", err)
+					// t.Errorf("net.Listen(tcp, localhost:0) serve failed: %v", err)
 				}
 			}()
 
@@ -276,8 +277,9 @@ backend:
 			go func() {
 				err := s.Serve(lis)
 				if err != nil {
-					t.Logf("had err: err")
-					// t.Errorf("net.Listen(tcp, localhost:0) serve failed: %v", err)
+					// TODO(crwilcox)
+					// t.Logf("had err: err")
+					t.Errorf("net.Listen(tcp, localhost:0) serve failed: %v", err)
 				}
 			}()
 
