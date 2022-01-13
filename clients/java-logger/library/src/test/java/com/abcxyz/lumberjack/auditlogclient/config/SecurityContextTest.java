@@ -17,18 +17,30 @@
 package com.abcxyz.lumberjack.auditlogclient.config;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
 
+import com.abcxyz.lumberjack.auditlogclient.exceptions.AuthorizationException;
 import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
+import io.grpc.Metadata;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
-import org.mockito.internal.matchers.Null;
 
 public class SecurityContextTest {
+  /*
+   * { "sub": "1234567890",
+   *   "name": "John Doe",
+   *   "iat": 1516239022,
+   *   "email": "me@example.com" }
+   */
+  private static final String ENCODED_Jwt = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyLCJlbWFpbCI6Im1lQGV4YW1wbGUuY29tIn0.6hBdfWsZcIn4crnRNBSMgztRaacHWmZmAtbaOc-efnI";
+
   @Test
   public void getsJwtSpecifications() {
     JwtSpecification jwtSpecification = mock(JwtSpecification.class);
@@ -39,7 +51,7 @@ public class SecurityContextTest {
   @Test
   public void getsJwtSpecifications_default() {
     SecurityContext securityContext = new SecurityContext();
-    assertThat(securityContext.getJwtSpecifications().size()).isEqualTo(1);
+    assertThat(securityContext.getSecuritySpecifications().size()).isEqualTo(1);
     JwtSpecification jwtSpecification = securityContext.getJwtSpecifications().get(0);
     assertThat(jwtSpecification.getKey()).isEqualTo("Authorization");
     assertThat(jwtSpecification.getPrefix()).isEqualTo("Bearer ");
@@ -86,5 +98,67 @@ public class SecurityContextTest {
         mapper.readValue(
             this.getClass().getClassLoader().getResourceAsStream("no_security_context.yml"),
             AuditLoggingConfiguration.class));
+  }
+
+  @Test
+  public void getsPrincipalFromJwt() throws Exception {
+    List<JwtSpecification> specifications = new ArrayList<>();
+    String key = "jwt-key";
+    String prefix = "jwt-prefix ";
+    specifications.add(new JwtSpecification(key, prefix, null));
+    specifications.add(new JwtSpecification("not-found-key", "not-found", null));
+    SecurityContext securityContext = new SecurityContext(specifications);
+
+    Metadata headers = new Metadata();
+    Metadata.Key jwtKey =
+        Metadata.Key.of(key, Metadata.ASCII_STRING_MARSHALLER);
+    headers.put(jwtKey, prefix + ENCODED_Jwt);
+    Metadata.Key otherKey =
+        Metadata.Key.of("other-key", Metadata.ASCII_STRING_MARSHALLER);
+    headers.put(otherKey, "irrelevant");
+
+    Optional<String> returnVal = securityContext.getPrincipal(headers);
+    assertThat(returnVal.isPresent()).isTrue();
+    assertThat(returnVal.get()).isEqualTo("me@example.com");
+  }
+
+  @Test
+  public void getsPrincipalFromJwt_CaseInsensitive() throws Exception {
+    List<JwtSpecification> specifications = new ArrayList<>();
+    String key = "jwt-key";
+    String prefix = "jwt-prefix ";
+    specifications.add(new JwtSpecification(key, prefix, null));
+    specifications.add(new JwtSpecification("not-found-key", "not-found", null));
+    SecurityContext securityContext = new SecurityContext(specifications);
+
+    Metadata headers = new Metadata();
+    Metadata.Key jwtKey =
+        Metadata.Key.of(key.toUpperCase(), Metadata.ASCII_STRING_MARSHALLER);
+    headers.put(jwtKey, prefix + ENCODED_Jwt);
+    Metadata.Key otherKey =
+        Metadata.Key.of("other-key", Metadata.ASCII_STRING_MARSHALLER);
+    headers.put(otherKey, "irrelevant");
+
+    Optional<String> returnVal = securityContext.getPrincipal(headers);
+    assertThat(returnVal.isPresent()).isTrue();
+    assertThat(returnVal.get()).isEqualTo("me@example.com");
+  }
+
+  @Test
+  public void getsPrincipalFromJwt_NoMatch() throws Exception {
+    List<JwtSpecification> specifications = new ArrayList<>();
+    String key = "jwt-key";
+    String prefix = "jwt-prefix ";
+    specifications.add(new JwtSpecification(key, prefix, null));
+    specifications.add(new JwtSpecification("not-found-key", "not-found", null));
+    SecurityContext securityContext = new SecurityContext(specifications);
+
+    Metadata headers = new Metadata();
+    Metadata.Key otherKey =
+        Metadata.Key.of("other-key", Metadata.ASCII_STRING_MARSHALLER);
+    headers.put(otherKey, "irrelevant");
+
+    Optional<String> returnVal = securityContext.getPrincipal(headers);
+    assertThat(returnVal.isPresent()).isFalse();
   }
 }
