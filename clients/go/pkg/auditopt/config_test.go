@@ -183,7 +183,9 @@ backend:
 			// 	}
 			// }()
 			// TODO(crwilcox)
-			go wrappedServe(t, s, lis)
+			// go wrappedServe(t, s, lis)
+			// TODO(crwilcox); wrapping serve, returning any error, creates a failure.
+			go s.Serve(lis)
 
 			for k, v := range tc.envs {
 				t.Setenv(k, v)
