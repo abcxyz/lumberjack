@@ -106,7 +106,7 @@ jobs:
           # workload_identity_provider: 'projects/638387980668/locations/global/workloadIdentityPools/gh-pool/providers/gh-provider'
           #service_account: 'gh-access-sa@lumberjack-dev-infra.iam.gserviceaccount.com'
           project_id: lumberjack-dev-infra
-          credentials_json: : ${{ secrets.SERVICE_ACCOUNT }}
+          credentials_json: ${{ secrets.SERVICE_ACCOUNT }}
 
       # TODO: Workload Identity doesn't work with GCS Provider. For now, use a service 
       # account. But once we can remove all of the 'with' elements
