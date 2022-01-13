@@ -1,4 +1,4 @@
-name: CI - Test Terraform
+name: CI - Validate Terraform
 
 on:
   push:
@@ -19,7 +19,7 @@ concurrency:
 
 jobs:
   test:
-    name: Validate Terraform
+    name: Tests
     runs-on: ubuntu-latest
     steps:
       - name: Check out code

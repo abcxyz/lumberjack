@@ -33,7 +33,7 @@ jobs:
   #         working-directory: clients/go
 
   test:
-    name: Test Java Client
+    name: Tests
     runs-on: ubuntu-latest
     steps:
       - name: Check out code

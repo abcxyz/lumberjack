@@ -23,7 +23,7 @@ concurrency:
 
 jobs:
   test:
-    name: No Test
+    name: Tests
     runs-on: ubuntu-latest
     steps:
       - name: Print No Tests
