@@ -39,9 +39,6 @@ automated and manual testing.
     ```sh
     # The audit logging server URL.
     export SERVER_URL=${$(terraform output -raw audit_log_server_url)#"https://"}:443
-    # The service account to impersonate to write audit logs.
-    # The default compute service account is already allowed to impersonate.
-    export LOG_WRITER=$(terraform output -raw audit_log_writer)
     # The application project.
     export APP_PROJECT=$(terraform output -json app_projects | jq -r '.[0]')
     # The audit logging server project.
@@ -69,7 +66,7 @@ automated and manual testing.
     --memory=512Mi \
     --region=us-west1 \
     --project=${APP_PROJECT} \
-    --set-env-vars="AUDIT_CLIENT_FILTER_REGEX_PRINCIPAL_INCLUDE=.iam.gserviceaccount.com$,AUDIT_CLIENT_BACKEND_ADDRESS=${SERVER_URL},AUDIT_CLIENT_BACKEND_IMPERSONATE_ACCOUNT=${LOG_WRITER}"
+    --set-env-vars="AUDIT_CLIENT_FILTER_REGEX_PRINCIPAL_INCLUDE=.iam.gserviceaccount.com$,AUDIT_CLIENT_BACKEND_ADDRESS=${SERVER_URL}"
     ```
 
 1.  Create a log with a trace ID by triggering the deployed service:

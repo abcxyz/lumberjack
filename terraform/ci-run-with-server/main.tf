@@ -17,7 +17,6 @@
 locals {
   tag        = var.use_random_tag ? uuid() : var.tag
   repo       = "${var.artifact_registry_location}-docker.pkg.dev/${var.server_project_id}/images/lumberjack"
-  log_writer = "audit-log-writer@${var.server_project_id}.iam.gserviceaccount.com"
 }
 
 resource "null_resource" "server_build" {
@@ -42,10 +41,6 @@ module "server_service" {
   server_image = "${local.repo}/server:${local.tag}"
   service_name = var.service_name
 
-  audit_log_writers = [
-    "serviceAccount:${local.log_writer}"
-  ]
-
   depends_on = [
     null_resource.server_build,
   ]
@@ -54,7 +49,6 @@ module "server_service" {
 locals {
   env_vars = {
     "AUDIT_CLIENT_BACKEND_ADDRESS" : "${trimprefix(module.server_service.audit_log_server_url, "https://")}:443",
-    "AUDIT_CLIENT_BACKEND_IMPERSONATE_ACCOUNT" : local.log_writer,
   }
 }
 

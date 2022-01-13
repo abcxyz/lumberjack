@@ -53,30 +53,19 @@ resource "google_project_iam_member" "server_project_editor" {
   member   = each.value
 }
 
-resource "google_service_account" "audit_log_writer" {
-  account_id   = "audit-log-writer"
-  display_name = "Audit Log Writer"
-  project      = google_project.server_project.project_id
-}
-
 # Give the default compute engine service account in each app project
-# the permission to impersonate the audit log writer service account.
-resource "google_service_account_iam_member" "audit_log_writer_iam" {
+# the permission to invoke the audit logging sever in the server project.
+# Given the project level roles/run.invoker to simplify the e2e env set up and avoid the IAM propagation delay
+# which may cause flakiness. Ideally, project level roles/run.invoker is not needed. We only need roles/run.invoker for the audit logging server.
+resource "google_project_iam_member" "audit_log_writer_iam" {
   count              = var.apps_count
-  service_account_id = google_service_account.audit_log_writer.name
-  role               = "roles/iam.serviceAccountTokenCreator"
+  project            = google_project.server_project.project_id
+  role               = "roles/run.invoker"
   member             = "serviceAccount:${google_project.app_project[count.index].number}-compute@developer.gserviceaccount.com"
 
   depends_on = [
     google_project_service.app_project_services,
   ]
-}
-
-resource "google_service_account_iam_member" "additional_audit_log_writer_iam" {
-  for_each           = toset(var.audit_log_writers)
-  service_account_id = google_service_account.audit_log_writer.name
-  role               = "roles/iam.serviceAccountTokenCreator"
-  member             = each.value
 }
 
 resource "google_project" "app_project" {
@@ -276,13 +265,12 @@ module "server_service" {
   server_image = "${var.registry_location}-docker.pkg.dev/${google_project.server_project.project_id}/images/lumberjack/server:${local.tag}"
   service_name = var.service_name
 
-  # If we directly use google_service_account.audit_log_writer, terraform will complain.
-  # Instead, we assemble the email directly.
-  audit_log_writers = ["serviceAccount:audit-log-writer@${google_project.server_project.project_id}.iam.gserviceaccount.com"]
+  # Give the list of IAM entities in the input variables
+  # the permission to invoke the audit logging server.
+  audit_log_writers = var.audit_log_writers
 
   depends_on = [
     google_project_service.server_project_services,
-    google_service_account.audit_log_writer,
     null_resource.build,
   ]
 }
@@ -299,10 +287,6 @@ module "folder_sink" {
 
 output "audit_log_server_url" {
   value = module.server_service.audit_log_server_url
-}
-
-output "audit_log_writer" {
-  value = google_service_account.audit_log_writer.email
 }
 
 output "app_projects" {
