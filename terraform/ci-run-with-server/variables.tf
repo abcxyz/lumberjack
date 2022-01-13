@@ -64,3 +64,8 @@ variable "app_project_id" {
   type        = string
   description = "Project ID for the Cloud project where the audit logging shell app is deployed."
 }
+
+variable "app_project_compute_engine_default_service_account" {
+  type        = string
+  description = "Compute Engine default service account for the Cloud project where the audit logging shell app is deployed."
+}

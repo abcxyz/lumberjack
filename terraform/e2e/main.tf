@@ -296,6 +296,13 @@ output "app_projects" {
   ])
 }
 
+output "app_projects_compute_engine_default_service_accounts" {
+  # value = google_project.app_project.number
+  value = toset([
+  for p in google_project.app_project : "${p.number}-compute@developer.gserviceaccount.com"
+  ])
+}
+
 output "server_project" {
   value = google_project.server_project.project_id
 }
