@@ -21,8 +21,6 @@ concurrency:
 jobs:
   # TODO(crwilcox): Configure WorkloadIdentity.
   integrationTest:
-    # wait to start this until we have a sucessful test run
-    needs: test
     name: Integration Tests
     permissions:
       contents: 'read'
