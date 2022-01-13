@@ -15,8 +15,8 @@
  */
 
 locals {
-  tag        = var.use_random_tag ? uuid() : var.tag
-  repo       = "${var.artifact_registry_location}-docker.pkg.dev/${var.server_project_id}/images/lumberjack"
+  tag  = var.use_random_tag ? uuid() : var.tag
+  repo = "${var.artifact_registry_location}-docker.pkg.dev/${var.server_project_id}/images/lumberjack"
 }
 
 resource "null_resource" "server_build" {
