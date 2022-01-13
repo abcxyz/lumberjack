@@ -1,0 +1,59 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'clients/java-logger/**'
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'clients/java-logger/**'
+  schedule:
+    - cron: '0 0 */1 * *'
+
+env:
+  GOMAXPROCS: 7
+
+# If a new commit comes in, cancel the current action run.
+concurrency:
+  group: '${{github.workflow}}-${{ github.head_ref || github.ref }}'
+  cancel-in-progress: true
+
+jobs:
+  # TODO: enable linting for java
+  # lint:
+  #   name: lint
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - uses: actions/checkout@v2
+  #     - name: golangci-lint
+  #       uses: golangci/golangci-lint-action@v2
+  #       with:
+  #         working-directory: clients/go
+
+  test:
+    name: Test Java Client
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v2
+
+      - name: Run test script
+        run: |
+          cd ${{ github.workspace }}
+          ./scripts/test_java.sh
+
+  # TODO: enable coverage for java
+  # cover: no required module provides package github.com/abcxyz/lumberjack/clients/go/pkg/audit:
+  # go.mod file not found in current directory or any parent directory; see 'go help modules'
+  # - name: go-coverage
+  #   shell: bash
+  #   run: |-
+  #     OUTPUT="$(go tool cover -func=./clients/go/coverage.out)"
+  #     TOTAL="$(echo $OUTPUT | awk 'END{print $NF}')"
+  #     echo "::group::Coverage (${TOTAL})"
+  #     echo "${OUTPUT}"
+  #     echo "::endgroup::"

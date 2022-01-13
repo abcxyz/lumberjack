@@ -1,0 +1,33 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'terraform/**'
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'terraform/**'
+  schedule:
+    - cron: '0 0 */1 * *'
+
+# If a new commit comes in, cancel the current action run.
+concurrency:
+  group: '${{github.workflow}}-${{ github.head_ref || github.ref }}'
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Validate Terraform
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v2
+
+      - name: Run validate script
+        run: |
+          cd ${{ github.workspace }}
+          ./scripts/validate_tf.sh
