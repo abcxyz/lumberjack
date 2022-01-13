@@ -323,7 +323,10 @@ func TestProcessor_Stop(t *testing.T) {
 
 			// Write the logs.
 			for _, r := range tc.logReqs {
-				p.Process(ctx, r)
+				err := p.Process(ctx, r)
+				if err != nil {
+					log.Errorf("failed to process: %v", err)
+				}
 			}
 
 			// Run test.
