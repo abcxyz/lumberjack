@@ -169,13 +169,15 @@ backend:
 			if err != nil {
 				t.Fatalf("net.Listen(tcp, localhost:0) failed: %v", err)
 			}
-			go func() {
-				err := s.Serve(lis)
-				if err != nil {
-					t.Logf("net.Listen(tcp, localhost:0) serve failed: %v", err)
-					// t.Errorf("net.Listen(tcp, localhost:0) serve failed: %v", err)
-				}
-			}()
+			// go func() {
+			// 	err := s.Serve(lis)
+			// 	if err != nil {
+			// 		t.Logf("net.Listen(tcp, localhost:0) serve failed: %v", err)
+			// 		// t.Errorf("net.Listen(tcp, localhost:0) serve failed: %v", err)
+			// 	}
+			// }()
+			// TODO(crwilcox)
+			go s.Serve(lis)
 
 			for k, v := range tc.envs {
 				t.Setenv(k, v)
