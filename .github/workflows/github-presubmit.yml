@@ -44,7 +44,6 @@ jobs:
 
       - name: Run Build Script
         run: |
-          cd ${{ github.workspace }}
           ./build.sh
 
       # TODO(crwilcox): Coverage has an issue right now with a module
@@ -62,56 +61,62 @@ jobs:
 
       # if running the build script succeeded, we can move on to integration tests.
 
-  # TODO(crwilcox): enable once we have WorkloadIdentity setup.
-  # integrationTest:
-  #   # wait to start this until we have a sucessful test run
-  #   needs: test
-  #   name: Integration Tests
-  #   runs-on: ubuntu-latest
-  #   steps:
-  #     - name: Check out code
-  #       uses: actions/checkout@v2
+  # TODO(crwilcox): Configure WorkloadIdentity.
+  integrationTest:
+    # wait to start this until we have a sucessful test run
+    needs: test
+    name: Integration Tests
+    permissions:
+      contents: 'read'
+      id-token: 'write'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v2
 
-  #     - name: Set up Go
-  #       uses: actions/setup-go@v2
-  #       with:
-  #         go-version: 1.17
+      - name: Set up Go
+        uses: actions/setup-go@v2
+        with:
+          go-version: 1.17
 
-  #     # Cache go dependencies to reduce time for CI setup
-  #     - uses: actions/cache@v2
-  #       with:
-  #         path: |
-  #           ~/go/pkg/mod
-  #         key: ${{ runner.os }}-go-test-${{ hashFiles('**/go.sum') }}
-  #         restore-keys: |
-  #           ${{ runner.os }}-go-test-
-  #           ${{ runner.os }}-go-
+      # Cache go dependencies to reduce time for CI setup
+      - uses: actions/cache@v2
+        with:
+          path: |
+            ~/go/pkg/mod
+          key: ${{ runner.os }}-go-test-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-test-
+            ${{ runner.os }}-go-
 
-  #     - name: Run Build Script
-  #       run: |
-  #         cd ${{ github.workspace }}
-  #         ./build.sh
+      - name: Run Build Script
+        run: |
+          ./build.sh
 
-  #     - id: gcloud
-  #       uses: google-github-actions/setup-gcloud@master
+      - id: auth
+        uses: google-github-actions/auth@v0
+        with:
+          # TODO: enable using wif once gcs tf provider functional.
+          # workload_identity_provider: 'projects/638387980668/locations/global/workloadIdentityPools/gh-pool/providers/gh-provider'
+          # service_account: 'gh-access-sa@lumberjack-dev-infra.iam.gserviceaccount.com'
+          project_id: lumberjack-dev-infra
+          credentials_json: ${{ secrets.SERVICE_ACCOUNT }}
 
-  #     - id: auth
-  #       uses: google-github-actions/auth@v0
-  #       with:
-  #         workload_identity_provider: 'projects/lumberjack-kokoro/locations/global/workloadIdentityPools/gh-pool/providers/gh-provider'
-  #         service_account: 'kokoro-sa@lumberjack-kokoro.iam.gserviceaccount.com'
-
-  #     - name: Set up Cloud SDK
-  #       uses: google-github-actions/setup-gcloud@v0.3.0
-
-  #     - name: Use gcloud CLI
-  #       run: gcloud info
-    
-  #     # TODO: Wait until we can use the workload identity
-  #     - name: Run Integration Build Script
-  #       run: |
-  #         cd ${{ github.workspace }}
-  #         ./scripts/integration_build.sh
+      # TODO: Workload Identity doesn't work with GCS Provider. For now, use a service 
+      # account. But once we can remove all of the 'with' elements
+      - id: gcloud
+        name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v0
+      
+      - name: Use gcloud CLI
+        run: gcloud info
+      
+      - name: Run Integration Build Script
+        env:
+            SERVICE_ACCOUNT: ${{ secrets.SERVICE_ACCOUNT }}
+        run: |
+          gcloud auth configure-docker us-docker.pkg.dev
+          ./scripts/integration_build.sh
 
   # TODO(crwilcox): enable this once the code passes lint.
   # lint: 
