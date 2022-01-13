@@ -277,9 +277,8 @@ backend:
 			go func() {
 				err := s.Serve(lis)
 				if err != nil {
-					// TODO(crwilcox)
-					// t.Logf("had err: err")
-					t.Errorf("net.Listen(tcp, localhost:0) serve failed: %v", err)
+					// TODO(crwilcox): see about moving this to Errorf
+					t.Logf("net.Listen(tcp, localhost:0) serve failed: %v", err)
 				}
 			}()
 
