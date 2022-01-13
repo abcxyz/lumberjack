@@ -17,15 +17,10 @@
 package com.abcxyz.lumberjack.auditlogclient;
 
 import com.abcxyz.lumberjack.auditlogclient.config.AuditLoggingConfiguration;
-import com.abcxyz.lumberjack.auditlogclient.config.JwtSpecification;
 import com.abcxyz.lumberjack.auditlogclient.config.Selector;
 import com.abcxyz.lumberjack.auditlogclient.exceptions.AuthorizationException;
 import com.abcxyz.lumberjack.auditlogclient.processor.LogProcessingException;
 import com.abcxyz.lumberjack.v1alpha1.AuditLogRequest;
-import com.auth0.jwt.JWT;
-import com.auth0.jwt.exceptions.JWTDecodeException;
-import com.auth0.jwt.interfaces.Claim;
-import com.auth0.jwt.interfaces.DecodedJWT;
 import com.google.cloud.audit.AuditLog;
 import com.google.cloud.audit.AuthenticationInfo;
 import com.google.inject.Inject;
@@ -34,6 +29,8 @@ import com.google.protobuf.Message;
 import com.google.protobuf.MessageOrBuilder;
 import com.google.protobuf.Struct;
 import com.google.protobuf.util.JsonFormat;
+import io.grpc.Context;
+import io.grpc.Contexts;
 import io.grpc.ForwardingServerCall.SimpleForwardingServerCall;
 import io.grpc.ForwardingServerCallListener;
 import io.grpc.Metadata;
@@ -51,6 +48,7 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 @RequiredArgsConstructor(onConstructor = @__({@Inject}))
 public class AuditLoggingServerInterceptor<ReqT extends Message> implements ServerInterceptor {
+  public static final Context.Key<AuditLog.Builder> AUDIT_LOG_CTX_KEY = Context.key("audit-log");
 
   /**
    * Keeps track of the relevant selectors for specific methods. As the selectors that are relevant
@@ -95,8 +93,12 @@ public class AuditLoggingServerInterceptor<ReqT extends Message> implements Serv
       next.startCall(call, headers);
     }
 
-    Listener<ReqT> delegate =
-        next.startCall(
+    Context ctx = Context.current().withValue(AUDIT_LOG_CTX_KEY, logBuilder);
+
+    // Add the builder into the context, this makes it available to the server code.
+    ServerCall.Listener<ReqT> delegate =
+        Contexts.interceptCall(
+            ctx,
             new SimpleForwardingServerCall<ReqT, RespT>(call) {
               @Override
               public void sendMessage(RespT message) {
@@ -119,7 +121,8 @@ public class AuditLoggingServerInterceptor<ReqT extends Message> implements Serv
                 super.sendMessage(message);
               }
             },
-            headers);
+            headers,
+            next);
 
     return new ForwardingServerCallListener.SimpleForwardingServerCallListener<ReqT>(delegate) {
       @Override
@@ -133,8 +136,6 @@ public class AuditLoggingServerInterceptor<ReqT extends Message> implements Serv
       }
     };
   }
-
-
 
   /**
    * Converts a proto message of unknown type to a proto struct. In order to do this, the method
