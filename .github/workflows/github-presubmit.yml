@@ -20,6 +20,17 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # TODO(crwilcox): enable this once the code passes lint.
+  lint: 
+    name: lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: golangci-lint
+        uses: golangci/golangci-lint-action@v2
+        with:
+          working-directory: clients/go
+
   test:
     name: Tests
     runs-on: ubuntu-latest
@@ -117,14 +128,3 @@ jobs:
         run: |
           gcloud auth configure-docker us-docker.pkg.dev
           ./scripts/integration_build.sh
-
-  # TODO(crwilcox): enable this once the code passes lint.
-  # lint: 
-  #   name: lint
-  #   runs-on: ubuntu-latest
-  #   steps:
-  #     - uses: actions/checkout@v2
-  #     - name: golangci-lint
-  #       uses: golangci/golangci-lint-action@v2
-  #       with:
-  #         working-directory: clients/go
