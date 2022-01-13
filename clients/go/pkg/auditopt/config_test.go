@@ -177,7 +177,7 @@ backend:
 			// 	}
 			// }()
 			// TODO(crwilcox)
-			go s.Serve(lis)
+			go func() { s.Serve(lis) }()
 
 			for k, v := range tc.envs {
 				t.Setenv(k, v)
