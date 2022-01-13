@@ -58,10 +58,10 @@ resource "google_project_iam_member" "server_project_editor" {
 # Given the project level roles/run.invoker to simplify the e2e env set up and avoid the IAM propagation delay
 # which may cause flakiness. Ideally, project level roles/run.invoker is not needed. We only need roles/run.invoker for the audit logging server.
 resource "google_project_iam_member" "audit_log_writer_iam" {
-  count              = var.apps_count
-  project            = google_project.server_project.project_id
-  role               = "roles/run.invoker"
-  member             = "serviceAccount:${google_project.app_project[count.index].number}-compute@developer.gserviceaccount.com"
+  count   = var.apps_count
+  project = google_project.server_project.project_id
+  role    = "roles/run.invoker"
+  member  = "serviceAccount:${google_project.app_project[count.index].number}-compute@developer.gserviceaccount.com"
 
   depends_on = [
     google_project_service.app_project_services,
@@ -78,33 +78,33 @@ resource "google_project" "app_project" {
 
 locals {
   app_projects_editors = flatten([
-    for i in range(var.apps_count) : [
-      for e in var.projects_editors : {
-        index  = i
-        editor = e
-      }
-    ]
+  for i in range(var.apps_count) : [
+  for e in var.projects_editors : {
+    index  = i
+    editor = e
+  }
+  ]
   ])
 }
 
 locals {
   app_projects_services = flatten([
-    for i in range(var.apps_count) : [
-      for s in toset([
-        "run.googleapis.com",
-        "compute.googleapis.com",
-        "artifactregistry.googleapis.com",
-        "iamcredentials.googleapis.com",
-        ]) : {
-        index   = i
-        service = s
-      }
-    ]
+  for i in range(var.apps_count) : [
+  for s in toset([
+    "run.googleapis.com",
+    "compute.googleapis.com",
+    "artifactregistry.googleapis.com",
+    "iamcredentials.googleapis.com",
+  ]) : {
+    index   = i
+    service = s
+  }
+  ]
   ])
 }
 
 resource "google_project_iam_member" "app_project_editor" {
-  for_each = { for e in local.app_projects_editors : "${e.editor}-${e.index}" => e }
+  for_each = {for e in local.app_projects_editors : "${e.editor}-${e.index}" => e}
   project  = google_project.server_project.project_id
   role     = "roles/editor"
   member   = each.value.editor
@@ -129,7 +129,7 @@ resource "google_project_service" "app_project_resourcemanager" {
 }
 
 resource "google_project_service" "app_project_services" {
-  for_each           = { for s in local.app_projects_services : "${s.service}-${s.index}" => s }
+  for_each           = {for s in local.app_projects_services : "${s.service}-${s.index}" => s}
   project            = google_project.app_project[each.value.index].project_id
   service            = each.value.service
   disable_on_destroy = false
@@ -176,11 +176,11 @@ module "pubsub_sink" {
 }
 
 module "server_sink" {
-  source     = "../server-sink"
-  project_id = google_project.server_project.project_id
+  source                = "../server-sink"
+  project_id            = google_project.server_project.project_id
   destination_log_sinks = concat(
-    [module.log_storage.destination_log_sink],
-    module.pubsub_sink[*].destination_log_sink,
+  [module.log_storage.destination_log_sink],
+  module.pubsub_sink[*].destination_log_sink,
   )
 
   depends_on = [
@@ -212,8 +212,8 @@ module "monitoring_dashboards" {
 }
 
 resource "google_project_service" "server_project_services" {
-  project = google_project.server_project.project_id
-  for_each = toset([
+  project            = google_project.server_project.project_id
+  for_each           = toset([
     "serviceusage.googleapis.com",
     "artifactregistry.googleapis.com",
   ])
@@ -276,12 +276,12 @@ module "server_service" {
 }
 
 module "folder_sink" {
-  source          = "../cal-source-folder"
-  folder_id       = google_folder.apps_folder.name
-  query_overwrite = var.cal_query_overwrite
+  source                = "../cal-source-folder"
+  folder_id             = google_folder.apps_folder.name
+  query_overwrite       = var.cal_query_overwrite
   destination_log_sinks = concat(
-    [module.log_storage.destination_log_sink],
-    module.pubsub_sink[*].destination_log_sink,
+  [module.log_storage.destination_log_sink],
+  module.pubsub_sink[*].destination_log_sink,
   )
 }
 
@@ -292,7 +292,7 @@ output "audit_log_server_url" {
 output "app_projects" {
   # value = google_project.app_project.project_id
   value = toset([
-    for p in google_project.app_project : p.project_id
+  for p in google_project.app_project : p.project_id
   ])
 }
 
