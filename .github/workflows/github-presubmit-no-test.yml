@@ -4,13 +4,17 @@ on:
   push:
     branches:
       - main
-    paths:
+    paths-ignore:
       - 'terraform/**'
+      - 'clients/go/**'
+      - 'clients/java-logger/**'
   pull_request:
     branches:
       - main
-    paths:
+    paths-ignore:
       - 'terraform/**'
+      - 'clients/go/**'
+      - 'clients/java-logger/**'
 
 # If a new commit comes in, cancel the current action run.
 concurrency:
@@ -19,13 +23,6 @@ concurrency:
 
 jobs:
   test:
-    name: Validate Terraform
     runs-on: ubuntu-latest
     steps:
-      - name: Check out code
-        uses: actions/checkout@v2
-
-      - name: Run validate script
-        run: |
-          cd ${{ github.workspace }}
-          ./scripts/validate_tf.sh
+      - run: 'echo "Files changed do not require test."'

@@ -1,4 +1,4 @@
-name: CI
+name: CI - Go
 
 on:
   push:
@@ -11,8 +11,6 @@ on:
       - main
     paths:
       - 'clients/go/**'
-  schedule:
-    - cron: '0 0 */1 * *'
 
 env:
   GOMAXPROCS: 7

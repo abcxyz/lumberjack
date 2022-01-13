@@ -11,8 +11,6 @@ on:
       - main
     paths:
       - 'clients/java-logger/**'
-  schedule:
-    - cron: '0 0 */1 * *'
 
 env:
   GOMAXPROCS: 7
