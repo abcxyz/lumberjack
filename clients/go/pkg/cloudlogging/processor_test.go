@@ -49,7 +49,7 @@ func TestNewProcessor(t *testing.T) {
 	t.Parallel()
 
 	opts := []Option{WithLoggingClient(&logging.Client{})}
-	p, err := NewProcessor(nil, opts...)
+	p, err := NewProcessor(context.TODO(), opts...)
 	if err != nil {
 		t.Errorf("NewProcessor(%v) unexpected error: %v", opts, err)
 	}
