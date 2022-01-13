@@ -22,14 +22,6 @@ SERVICE_NAME=ci-with-server-${RANDOM}
 GO_BUILD_COMMAND=${ROOT}/clients/go/test/shell/build.sh
 JAVA_BUILD_COMMAND=${ROOT}/clients/java-logger/scripts/build_shell.sh
 
-# export TF_LOG=DEBUG
-
-#terraform -chdir=${TF_ENVS_CI_DIR} init
-#terraform -chdir=${TF_ENVS_CI_DIR} apply -auto-approve
-
-#SHELL_APP_PROJECT_ID=$(terraform -chdir=${TF_ENVS_CI_DIR} output -raw app_project)
-#BACKEND_PROJECT_ID=$(terraform -chdir=${TF_ENVS_CI_DIR} output -raw server_project)
-#BIGQUERY_DATASET_ID=$(terraform -chdir=${TF_ENVS_CI_DIR} output -raw bigquery_dataset_id)
 # Hardcode these values.
 # Re-applying the CI env in each CI run might cause unexpected changes being applied to the CI env.
 SHELL_APP_PROJECT_ID=github-ci-app-0
