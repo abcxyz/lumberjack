@@ -1,4 +1,4 @@
-name: CI
+name: CI - Integration Tests
 
 on:
   push:
@@ -13,7 +13,7 @@ env:
 
 # If a new commit comes in, cancel the current action run.
 concurrency:
-  group: "${{github.workflow}}-${{ github.head_ref || github.ref }}"
+  group: '${{github.workflow}}-${{ github.head_ref || github.ref }}'
   cancel-in-progress: true
 
 jobs:
@@ -21,8 +21,8 @@ jobs:
   integrationTest:
     name: Integration Tests
     permissions:
-      contents: "read"
-      id-token: "write"
+      contents: 'read'
+      id-token: 'write'
     runs-on: ubuntu-latest
     steps:
       - name: Check out code

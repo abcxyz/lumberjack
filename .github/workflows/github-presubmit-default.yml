@@ -1,4 +1,4 @@
-name: CI
+name: CI - No Tests
 
 on:
   push:
@@ -23,6 +23,8 @@ concurrency:
 
 jobs:
   test:
+    name: No Test
     runs-on: ubuntu-latest
     steps:
-      - run: 'echo "Files changed do not require test."'
+      - name: Print No Tests
+        run: 'echo "No testable files were changed."'
