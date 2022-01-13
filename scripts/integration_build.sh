@@ -24,8 +24,8 @@ JAVA_BUILD_COMMAND=${ROOT}/clients/java-logger/scripts/build_shell.sh
 
 # Hardcode these values.
 # Re-applying the CI env in each CI run might cause unexpected changes being applied to the CI env.
-SHELL_APP_PROJECT_ID=xiyue-dev-debug-app-0
-BACKEND_PROJECT_ID=xiyue-dev-debug-server
+SHELL_APP_PROJECT_ID=github-ci-app-0
+BACKEND_PROJECT_ID=github-ci-server
 BIGQUERY_DATASET_ID=audit_logs
 
 CI_SERVICE_ACCOUNT=github-access-sa@lumberjack-dev-infra.iam.gserviceaccount.com
