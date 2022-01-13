@@ -21,7 +21,7 @@ concurrency:
 
 jobs:
   test:
-    name: Tests
+    name: Test Go Client
     runs-on: ubuntu-latest
     steps:
       - name: Check out code
@@ -44,7 +44,31 @@ jobs:
 
       - name: Run Build Script
         run: |
-          ./build.sh
+          ./scripts/test_go.sh
+
+  test-java:
+    name: Test Java Client
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v2
+
+      - name: Run test script
+        run: |
+          cd ${{ github.workspace }}
+          ./scripts/test_java.sh
+
+  validate-terraform:
+    name: Validate Terraform
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v2
+
+      - name: Run validate script
+        run: |
+          cd ${{ github.workspace }}
+          ./scripts/validate_tf.sh
 
       # TODO(crwilcox): Coverage has an issue right now with a module
       # cover: no required module provides package github.com/abcxyz/lumberjack/clients/go/pkg/audit:
