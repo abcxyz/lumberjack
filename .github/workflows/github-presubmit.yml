@@ -93,24 +93,30 @@ jobs:
         run: |
           ./build.sh
 
-      # TODO: Workload Identity doesn't work with GCS Provider. For now, use a service 
-      # account. But once we can remove all of the 'with' elements
-      - id: gcloud
-        name: Set up Cloud SDK
-        uses: google-github-actions/setup-gcloud@v0
-        with:
-          service_account_email: 'gh-access-sa@lumberjack-dev-infra.iam.gserviceaccount.com'
-          service_account_key: ${{ secrets.SERVICE_ACCOUNT }}
-          export_default_credentials: true
-          cleanup_credentials: true
-      
-      # TODO: enable using wif
       # - id: auth
       #   uses: google-github-actions/auth@v0
       #   with:
       #     workload_identity_provider: 'projects/638387980668/locations/global/workloadIdentityPools/gh-pool/providers/gh-provider'
       #     service_account: 'gh-access-sa@lumberjack-dev-infra.iam.gserviceaccount.com'
+      
+      - id: auth
+        uses: google-github-actions/auth@v0
+        with:
+          # TODO: enable using wif once gcs tf provider functional.
+          # workload_identity_provider: 'projects/638387980668/locations/global/workloadIdentityPools/gh-pool/providers/gh-provider'
+          #service_account: 'gh-access-sa@lumberjack-dev-infra.iam.gserviceaccount.com'
+          project_id: lumberjack-dev-infra
+          credentials_json: : ${{ secrets.SERVICE_ACCOUNT }}
 
+      # TODO: Workload Identity doesn't work with GCS Provider. For now, use a service 
+      # account. But once we can remove all of the 'with' elements
+      - id: gcloud
+        name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v0
+        # with:
+        #   service_account_email: 'gh-access-sa@lumberjack-dev-infra.iam.gserviceaccount.com'
+        #   service_account_key: ${{ secrets.SERVICE_ACCOUNT }}
+      
       - name: Use gcloud CLI
         run: gcloud info
       
