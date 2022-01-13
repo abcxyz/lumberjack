@@ -65,10 +65,6 @@ output "audit_log_server_url" {
   value = module.e2e.audit_log_server_url
 }
 
-output "audit_log_writer" {
-  value = module.e2e.audit_log_writer
-}
-
 output "server_project" {
   value = module.e2e.server_project
 }
