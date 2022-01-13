@@ -73,10 +73,6 @@ output "app_project" {
   value = tolist(module.e2e.app_projects).0
 }
 
-output "app_project_compute_engine_default_service_account" {
-  value = tolist(module.e2e.app_projects_compute_engine_default_service_accounts).0
-}
-
 output "bigquery_dataset_id" {
   value = module.e2e.bigquery_dataset_id
 }

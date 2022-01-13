@@ -72,7 +72,3 @@ output "server_project" {
 output "app_projects" {
   value = module.e2e.app_projects
 }
-
-output "app_projects_compute_engine_default_service_accounts" {
-  value = module.e2e.app_projects_compute_engine_default_service_accounts
-}
