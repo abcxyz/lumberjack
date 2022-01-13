@@ -185,7 +185,12 @@ func TestProcessor_Process(t *testing.T) {
 			if err != nil {
 				t.Fatalf("net.Listen(tcp, localhost:0) failed: %v", err)
 			}
-			go s.Serve(lis)
+			go func() {
+				err := s.Serve(lis)
+				if err != nil {
+					t.Errorf("net.Listen(tcp, localhost:0) serve failed: %v", err)
+				}
+			}()
 
 			addr := lis.Addr().String()
 			conn, err := grpc.Dial(addr, grpc.WithInsecure())
@@ -289,7 +294,12 @@ func TestProcessor_Stop(t *testing.T) {
 			if err != nil {
 				t.Fatalf("net.Listen(tcp, localhost:0) failed: %v", err)
 			}
-			go s.Serve(lis)
+			go func() {
+				err := s.Serve(lis)
+				if err != nil {
+					t.Errorf("net.Listen(tcp, localhost:0) serve failed: %v", err)
+				}
+			}()
 
 			addr := lis.Addr().String()
 			conn, err := grpc.Dial(addr, grpc.WithInsecure())

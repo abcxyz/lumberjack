@@ -157,11 +157,11 @@ const (
 	levelAlert     = "ALERT"
 	levelEmergency = "EMERGENCY"
 
-	encodingConsole = "console"
-	encodingJSON    = "json"
+	//encodingConsole = "console"
+	//encodingJSON    = "json"
 )
 
-var outputStderr = []string{"stderr"}
+//var outputStderr = []string{"stderr"}
 
 var productionEncoderConfig = zapcore.EncoderConfig{
 	TimeKey:        timestamp,

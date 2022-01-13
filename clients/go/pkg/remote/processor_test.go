@@ -105,14 +105,24 @@ func TestProcessor_Process_Insecure(t *testing.T) {
 			if err != nil {
 				t.Fatalf("net.Listen(tcp, localhost:0) failed: %v", err)
 			}
-			go s.Serve(lis)
+			go func() {
+				err := s.Serve(lis)
+				if err != nil {
+					t.Errorf("net.Listen(tcp, localhost:0) serve failed: %v", err)
+				}
+			}()
 
 			addr := lis.Addr().String()
 			p, err := NewProcessor(addr)
 			if err != nil {
 				t.Fatalf("NewProcessor() failed: %v", err)
 			}
-			defer p.Stop()
+			defer func() {
+				err := p.Stop()
+				if err != nil {
+					t.Errorf("failed to stop processor: %v", err)
+				}
+			}()
 
 			gotErr := p.Process(context.Background(), tc.req)
 			if !cmp.Equal(tc.wantErr, gotErr, cmpopts.EquateErrors()) {
