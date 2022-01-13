@@ -117,12 +117,12 @@ func TestProcessor_Process_Insecure(t *testing.T) {
 			if err != nil {
 				t.Fatalf("NewProcessor() failed: %v", err)
 			}
-			defer func() {
+			t.Cleanup(func() {
 				err := p.Stop()
 				if err != nil {
 					t.Errorf("failed to stop processor: %v", err)
 				}
-			}()
+			})
 
 			gotErr := p.Process(context.Background(), tc.req)
 			if !cmp.Equal(tc.wantErr, gotErr, cmpopts.EquateErrors()) {
