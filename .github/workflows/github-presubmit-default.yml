@@ -8,14 +8,26 @@ on:
     paths-ignore:
       - "terraform/**"
       - "clients/go/**"
+      - '.github/workflows/github-presubmit-tf.yml'
+      - 'scripts/validate_tf.sh'
+      - '.github/workflows/github-presubmit-go.yml'
+      - 'scripts/test_go.sh'
       - "clients/java-logger/**"
+      - '.github/workflows/github-presubmit-java.yml'
+      - 'scripts/test_java.sh'
   pull_request:
     branches:
       - main
     paths-ignore:
       - "terraform/**"
       - "clients/go/**"
+      - '.github/workflows/github-presubmit-tf.yml'
+      - 'scripts/validate_tf.sh'
+      - '.github/workflows/github-presubmit-go.yml'
+      - 'scripts/test_go.sh'
       - "clients/java-logger/**"
+      - '.github/workflows/github-presubmit-java.yml'
+      - 'scripts/test_java.sh'
 
 # If a new commit comes in, cancel the current action run.
 concurrency:
