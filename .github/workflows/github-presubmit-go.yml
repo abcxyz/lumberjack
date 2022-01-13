@@ -6,11 +6,15 @@ on:
       - main
     paths:
       - 'clients/go/**'
+      - '.github/workflows/github-presubmit-go.yml'
+      - 'scripts/test_go.sh'
   pull_request:
     branches:
       - main
     paths:
       - 'clients/go/**'
+      - '.github/workflows/github-presubmit-go.yml'
+      - 'scripts/test_go.sh'
 
 env:
   GOMAXPROCS: 7

@@ -6,11 +6,15 @@ on:
       - main
     paths:
       - 'terraform/**'
+      - '.github/workflows/github-presubmit-tf.yml'
+      - 'scripts/validate_tf.sh'
   pull_request:
     branches:
       - main
     paths:
       - 'terraform/**'
+      - '.github/workflows/github-presubmit-tf.yml'
+      - 'scripts/validate_tf.sh'
 
 # If a new commit comes in, cancel the current action run.
 concurrency:
