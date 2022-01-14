@@ -6,6 +6,7 @@ on:
     branches:
       - main
     paths:
+      - '**/'
       - '!terraform/**'
       - '!clients/go/**'
       - '!.github/workflows/github-presubmit-tf.yml'
@@ -19,6 +20,7 @@ on:
     branches:
       - main
     paths:
+      - '**/'
       - '!terraform/**'
       - '!clients/go/**'
       - '!.github/workflows/github-presubmit-tf.yml'
@@ -40,7 +42,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: No lint required
-      - run: 'echo "No lint-able files were changed."'
+        run: 'echo "No lint-able files were changed."'
 
   test:
     name: Tests
