@@ -30,13 +30,12 @@ SHELL_APP_PROJECT_ID=ci-e2e-app-0
 BACKEND_PROJECT_ID=ci-e2e-server
 BIGQUERY_DATASET_QUERY=audit_logs.auditlog_gcloudsolutions_dev_data_access
 AUDIT_CLIENT_BACKEND_ADDRESS=audit-logging-bi4j6tgkkq-uc.a.run.app:443
-AUDIT_CLIENT_BACKEND_IMPERSONATE_ACCOUNT=audit-log-writer@ci-e2e-server.iam.gserviceaccount.com
 
 terraform -chdir=${TF_CI_DIR} init
 terraform -chdir=${TF_CI_DIR} apply -auto-approve \
   -var="project_id=${SHELL_APP_PROJECT_ID}" \
   -var="service_name=${SERVICE_NAME}" \
-  -var='env_vars={"AUDIT_CLIENT_BACKEND_ADDRESS":"'${AUDIT_CLIENT_BACKEND_ADDRESS}'", "AUDIT_CLIENT_BACKEND_IMPERSONATE_ACCOUNT":"'${AUDIT_CLIENT_BACKEND_IMPERSONATE_ACCOUNT}'"}' \
+  -var='env_vars={"AUDIT_CLIENT_BACKEND_ADDRESS":"'${AUDIT_CLIENT_BACKEND_ADDRESS}'"}' \
   -var='build_commands={"app":"'${BUILD_COMMAND}'"}' \
   -var="use_random_tag=true"
 

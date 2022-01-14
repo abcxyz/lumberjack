@@ -17,14 +17,10 @@
 package com.abcxyz.lumberjack.auditlogclient;
 
 import com.abcxyz.lumberjack.auditlogclient.config.AuditLoggingConfiguration;
-import com.abcxyz.lumberjack.auditlogclient.config.JwtSpecification;
 import com.abcxyz.lumberjack.auditlogclient.config.Selector;
+import com.abcxyz.lumberjack.auditlogclient.exceptions.AuthorizationException;
 import com.abcxyz.lumberjack.auditlogclient.processor.LogProcessingException;
 import com.abcxyz.lumberjack.v1alpha1.AuditLogRequest;
-import com.auth0.jwt.JWT;
-import com.auth0.jwt.exceptions.JWTDecodeException;
-import com.auth0.jwt.interfaces.Claim;
-import com.auth0.jwt.interfaces.DecodedJWT;
 import com.google.cloud.audit.AuditLog;
 import com.google.cloud.audit.AuthenticationInfo;
 import com.google.inject.Inject;
@@ -33,6 +29,8 @@ import com.google.protobuf.Message;
 import com.google.protobuf.MessageOrBuilder;
 import com.google.protobuf.Struct;
 import com.google.protobuf.util.JsonFormat;
+import io.grpc.Context;
+import io.grpc.Contexts;
 import io.grpc.ForwardingServerCall.SimpleForwardingServerCall;
 import io.grpc.ForwardingServerCallListener;
 import io.grpc.Metadata;
@@ -41,7 +39,6 @@ import io.grpc.ServerCall.Listener;
 import io.grpc.ServerCallHandler;
 import io.grpc.ServerInterceptor;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import lombok.RequiredArgsConstructor;
@@ -51,8 +48,7 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 @RequiredArgsConstructor(onConstructor = @__({@Inject}))
 public class AuditLoggingServerInterceptor<ReqT extends Message> implements ServerInterceptor {
-  // TODO: Move security-specific logic out and add easier extensibility.
-  private static final String EMAIL_KEY = "email";
+  public static final Context.Key<AuditLog.Builder> AUDIT_LOG_CTX_KEY = Context.key("audit-log");
 
   /**
    * Keeps track of the relevant selectors for specific methods. As the selectors that are relevant
@@ -76,7 +72,13 @@ public class AuditLoggingServerInterceptor<ReqT extends Message> implements Serv
     }
     Selector selector = selectorOption.get();
 
-    Optional<String> principal = getPrincipalFromJwt(headers);
+    Optional<String> principal = Optional.empty();
+    try {
+      principal = auditLoggingConfiguration.getSecurityContext().getPrincipal(headers);
+    } catch (AuthorizationException e) {
+      log.debug("Exception while trying to determine principal..");
+      next.startCall(call, headers);
+    }
 
     AuditLog.Builder logBuilder = AuditLog.newBuilder();
     String fullMethodName = call.getMethodDescriptor().getFullMethodName();
@@ -88,10 +90,15 @@ public class AuditLoggingServerInterceptor<ReqT extends Message> implements Serv
           AuthenticationInfo.newBuilder().setPrincipalEmail(principal.get()).build());
     } else {
       log.debug("Unable to determine principal for request.");
+      next.startCall(call, headers);
     }
 
-    Listener<ReqT> delegate =
-        next.startCall(
+    Context ctx = Context.current().withValue(AUDIT_LOG_CTX_KEY, logBuilder);
+
+    // Add the builder into the context, this makes it available to the server code.
+    ServerCall.Listener<ReqT> delegate =
+        Contexts.interceptCall(
+            ctx,
             new SimpleForwardingServerCall<ReqT, RespT>(call) {
               @Override
               public void sendMessage(RespT message) {
@@ -114,7 +121,8 @@ public class AuditLoggingServerInterceptor<ReqT extends Message> implements Serv
                 super.sendMessage(message);
               }
             },
-            headers);
+            headers,
+            next);
 
     return new ForwardingServerCallListener.SimpleForwardingServerCallListener<ReqT>(delegate) {
       @Override
@@ -127,40 +135,6 @@ public class AuditLoggingServerInterceptor<ReqT extends Message> implements Serv
         super.onMessage(message);
       }
     };
-  }
-
-  /**
-   * TODO: currently no handling is implemented for JWKS checks.
-   */
-  Optional<String> getPrincipalFromJwt(Metadata headers) {
-    List<JwtSpecification> jwtSpecifications =
-        auditLoggingConfiguration.getSecurityContext().getJwtSpecifications();
-    for (JwtSpecification jwtSpecification : jwtSpecifications) {
-      Metadata.Key<String> metadataKey =
-          Metadata.Key.of(jwtSpecification.getKey(), Metadata.ASCII_STRING_MARSHALLER);
-      if (!headers.containsKey(metadataKey)) {
-        continue;
-      }
-      String idToken = headers.get(metadataKey);
-      if (idToken.startsWith(jwtSpecification.getPrefix())) {
-        idToken = idToken.substring(jwtSpecification.getPrefix().length());
-      }
-      try {
-        DecodedJWT jwt = JWT.decode(idToken);
-        Map<String, Claim> claims = jwt.getClaims();
-        if (!claims.containsKey(EMAIL_KEY)) {
-          continue;
-        }
-        String principal = claims.get(EMAIL_KEY).asString();
-        log.info("Found JWT key {} with email {}", jwtSpecification.getKey(), principal);
-        return Optional.of(principal);
-      } catch (JWTDecodeException e) {
-        // invalid token
-        throw new RuntimeException(e);
-      }
-    }
-
-    return Optional.empty();
   }
 
   /**

@@ -19,7 +19,7 @@ terraform {
     # Bucket is in project "lumberjack-dev-infra"
     # We can reuse this project for CI and sandbox envs with a different prefix.
     bucket = "lumberjack-dev-terraform"
-    prefix = "ci"
+    prefix = "github-ci"
   }
 }
 
@@ -52,7 +52,7 @@ variable "renew_random_tag" {
 module "e2e" {
   source        = "../../e2e"
   folder_parent = "folders/316290568068"
-  top_folder_id = "ci-e2e"
+  top_folder_id = "github-ci"
 
   // The billing account 'Gong Test'.
   billing_account = "016242-61A3FB-F92462"
@@ -61,23 +61,8 @@ module "e2e" {
   renew_random_tag = var.renew_random_tag
 }
 
-# Preemptively give the audit log writer permission to invoke any Cloud Run
-# instance in the Server project. While the invoker permission is also granted
-# on the individual service level for each service spawned in the server
-# project, this way, the IAM propagation delay for individual Cloud Run
-# instances during an integration run is aimed to be avoided.
-resource "google_project_iam_member" "audit_log_writer" {
-  project  = module.e2e.server_project
-  role     = "roles/run.invoker"
-  member   = "serviceAccount:${module.e2e.audit_log_writer}"
-}
-
 output "audit_log_server_url" {
   value = module.e2e.audit_log_server_url
-}
-
-output "audit_log_writer" {
-  value = module.e2e.audit_log_writer
 }
 
 output "server_project" {
