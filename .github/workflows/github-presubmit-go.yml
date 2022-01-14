@@ -34,11 +34,18 @@ jobs:
         uses: golangci/golangci-lint-action@v2
         with:
           working-directory: clients/go
-
+      
+      - name: Set up Go
+        uses: actions/setup-go@v2
+        with:
+          go-version: 1.17
+      
       - name: gofmt
+        working-directory: clients/go
         run: gofmt -s -d -l . 2>&1 | tee /dev/stderr | (! read)
 
       - name: goimports
+        working-directory: clients/go
         run: goimports -l . 2>&1 | tee /dev/stderr | (! read)
 
       - name: gomodtidy
