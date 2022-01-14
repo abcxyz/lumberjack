@@ -1,4 +1,4 @@
-name: CI - Integration Tests
+name: Integration Tests
 
 on:
   push:

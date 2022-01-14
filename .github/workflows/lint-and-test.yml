@@ -1,0 +1,127 @@
+name: Lint and Test
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'clients/go/**'
+      - '.github/workflows/github-presubmit-go.yml'
+      - 'scripts/test_go.sh'
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'clients/go/**'
+      - '.github/workflows/github-presubmit-go.yml'
+      - 'scripts/test_go.sh'
+
+env:
+  GOMAXPROCS: 7
+
+# If a new commit comes in, cancel the current action run.
+concurrency:
+  group: '${{ github.workflow }}-${{ github.head_ref || github.ref }}'
+  cancel-in-progress: true
+
+jobs:
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - id: filter
+        name: Apply path filters
+        uses: dorny/paths-filter@v2.2.1
+        with:
+          filters: |
+            ci:
+              - '.github/workflows/github-presubmit-test.yml'
+            go:
+              - 'clients/go/**'
+              - 'scripts/test_go.sh'
+            java:
+              - 'clients/java-logger/**'
+              - 'scripts/test_java.sh'
+            terraform:
+              - 'terraform/**'
+              - 'scripts/validate_tf.sh'
+
+      - name: golangci-lint
+        uses: golangci/golangci-lint-action@v2
+        if: ${{ steps.filter.outputs.ci == 'true' || steps.filter.outputs.go == 'true' }}
+        with:
+          working-directory: clients/go
+
+  test:
+    name: Tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v2
+
+      - id: filter
+        name: Apply path filters
+        uses: dorny/paths-filter@v2.2.1
+        with:
+          filters: |
+            ci:
+              - '.github/workflows/github-presubmit-test.yml'
+            go:
+              - 'clients/go/**'
+              - 'scripts/test_go.sh'
+            java:
+              - 'clients/java-logger/**'
+              - 'scripts/test_java.sh'
+            terraform:
+              - 'terraform/**'
+              - 'scripts/validate_tf.sh'
+
+      - name: Set up Go
+        if: ${{ steps.filter.outputs.ci == 'true' || steps.filter.outputs.go == 'true' }}
+        uses: actions/setup-go@v2
+        with:
+          go-version: 1.17
+
+      # Cache go dependencies to reduce time for CI setup
+      - name: Cache go deps
+        uses: actions/cache@v2
+        if: ${{ steps.filter.outputs.ci == 'true' || steps.filter.outputs.go == 'true' }}
+        with:
+          path: |
+            ~/go/pkg/mod
+          key: ${{ runner.os }}-go-test-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-test-
+            ${{ runner.os }}-go-
+
+      - name: Run test go script
+        if: ${{ steps.filter.outputs.ci == 'true' || steps.filter.outputs.go == 'true' }}
+        run: |
+          ./scripts/test_go.sh
+
+      - name: Run test java script
+        if: ${{ steps.filter.outputs.ci == 'true' || steps.filter.outputs.java == 'true' }}
+        run: |
+          cd ${{ github.workspace }}
+          ./scripts/test_java.sh
+
+      - name: Run validate terraform script
+        if: ${{ steps.filter.outputs.ci == 'true' || steps.filter.outputs.tf == 'true' }}
+        run: |
+          cd ${{ github.workspace }}
+          ./scripts/validate_tf.sh
+
+  # TODO(crwilcox): Coverage has an issue right now with a module
+  # cover: no required module provides package github.com/abcxyz/lumberjack/clients/go/pkg/audit:
+  # go.mod file not found in current directory or any parent directory; see 'go help modules'
+  # - name: go-coverage
+  #   shell: bash
+  #   run: |-
+  #     OUTPUT="$(go tool cover -func=./clients/go/coverage.out)"
+  #     TOTAL="$(echo $OUTPUT | awk 'END{print $NF}')"
+  #     echo "::group::Coverage (${TOTAL})"
+  #     echo "${OUTPUT}"
+  #     echo "::endgroup::"
