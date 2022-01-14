@@ -35,9 +35,16 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - name: No lint required
+      - run: 'echo "No lint-able files were changed."'
+
   test:
     name: Tests
     runs-on: ubuntu-latest
     steps:
-      - name: Print No Tests
+      - name: No tests required
         run: 'echo "No testable files were changed."'
