@@ -6,32 +6,32 @@ on:
     branches:
       - main
     paths:
-      - '!terraform/**'
-      - '!clients/go/**'
-      - '!.github/workflows/github-presubmit-tf.yml'
-      - '!scripts/validate_tf.sh'
-      - '!.github/workflows/github-presubmit-go.yml'
-      - '!scripts/test_go.sh'
-      - '!clients/java-logger/**'
-      - '!.github/workflows/github-presubmit-java.yml'
-      - '!scripts/test_java.sh'
+      - "!terraform/**"
+      - "!clients/go/**"
+      - "!.github/workflows/github-presubmit-tf.yml"
+      - "!scripts/validate_tf.sh"
+      - "!.github/workflows/github-presubmit-go.yml"
+      - "!scripts/test_go.sh"
+      - "!clients/java-logger/**"
+      - "!.github/workflows/github-presubmit-java.yml"
+      - "!scripts/test_java.sh"
   pull_request:
     branches:
       - main
     paths:
-      - '!terraform/**'
-      - '!clients/go/**'
-      - '!.github/workflows/github-presubmit-tf.yml'
-      - '!scripts/validate_tf.sh'
-      - '!.github/workflows/github-presubmit-go.yml'
-      - '!scripts/test_go.sh'
-      - '!clients/java-logger/**'
-      - '!.github/workflows/github-presubmit-java.yml'
-      - '!scripts/test_java.sh'
+      - "!terraform/**"
+      - "!clients/go/**"
+      - "!.github/workflows/github-presubmit-tf.yml"
+      - "!scripts/validate_tf.sh"
+      - "!.github/workflows/github-presubmit-go.yml"
+      - "!scripts/test_go.sh"
+      - "!clients/java-logger/**"
+      - "!.github/workflows/github-presubmit-java.yml"
+      - "!scripts/test_java.sh"
 
 # If a new commit comes in, cancel the current action run.
 concurrency:
-  group: '${{ github.workflow }}-${{ github.head_ref || github.ref }}'
+  group: "${{ github.workflow }}-${{ github.head_ref || github.ref }}"
   cancel-in-progress: true
 
 jobs:
@@ -40,7 +40,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: No lint required
-      - run: 'echo "No lint-able files were changed."'
+        run: 'echo "No lint-able files were changed."'
 
   test:
     name: Tests
