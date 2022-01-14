@@ -1,4 +1,4 @@
-// Copyright 2021 Lumberjack authors (see AUTHORS file)
+// Copyright 2022 Lumberjack authors (see AUTHORS file)
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -31,6 +31,7 @@ import (
 	alpb "github.com/abcxyz/lumberjack/clients/go/apis/v1alpha1"
 	"github.com/abcxyz/lumberjack/clients/go/pkg/audit"
 	"github.com/abcxyz/lumberjack/clients/go/pkg/errutil"
+	"github.com/abcxyz/lumberjack/clients/go/pkg/security"
 	"github.com/abcxyz/lumberjack/clients/go/pkg/testutil"
 )
 
@@ -308,6 +309,226 @@ backend:
 			}
 			if diff := cmp.Diff(tc.wantReq, r.gotReq, cmpopts...); diff != "" {
 				t.Errorf("audit logging backend got request (-want,+got):\n%s", diff)
+			}
+		})
+	}
+}
+
+func TestFromRawJWTFromViper(t *testing.T) {
+	t.Parallel()
+
+	cases := []struct {
+		name           string
+		fileContent    string
+		wantFromRawJWT *security.FromRawJWT
+		wantErrSubstr  string
+	}{
+		{
+			name: "unset_security_context",
+			fileContent: `
+version: v1alpha1
+backend:
+  address: foo:443
+  insecure_enabled: true
+security_context:
+`,
+		},
+		{
+			name: "unset_security_context_again",
+			fileContent: `
+version: v1alpha1
+backend:
+  address: foo:443
+  insecure_enabled: true
+`,
+		},
+		{
+			name: "raw_jwt_with_default_value_due_to_braces",
+			fileContent: `
+version: v1alpha1
+backend:
+  address: foo:443
+  insecure_enabled: true
+security_context:
+  from_raw_jwt: {}
+`,
+			wantFromRawJWT: &security.FromRawJWT{
+				Key:    "authorization",
+				Prefix: "bearer ",
+			},
+		},
+		{
+			name: "raw_jwt_with_default_value_due_to_null",
+			fileContent: `
+version: v1alpha1
+backend:
+  address: foo:443
+  insecure_enabled: true
+security_context:
+  from_raw_jwt:
+`,
+			wantFromRawJWT: &security.FromRawJWT{
+				Key:    "authorization",
+				Prefix: "bearer ",
+			},
+		},
+		{
+			name: "raw_jwt_with_default_value_due_to_empty_string",
+			fileContent: `
+version: v1alpha1
+backend:
+  address: foo:443
+  insecure_enabled: true
+security_context:
+  from_raw_jwt:
+    key: ""
+    prefix: ""
+`,
+			wantFromRawJWT: &security.FromRawJWT{
+				Key:    "authorization",
+				Prefix: "bearer ",
+			},
+		},
+		{
+			name: "raw_jwt_with_user-defined_values_fully_set",
+			fileContent: `
+version: v1alpha1
+backend:
+  address: foo:443
+  insecure_enabled: true
+security_context:
+  from_raw_jwt:
+    key: x-jwt-assertion
+    prefix: somePrefix
+`,
+			wantFromRawJWT: &security.FromRawJWT{
+				Key:    "x-jwt-assertion",
+				Prefix: "somePrefix",
+			},
+		},
+		{
+			name: "raw_jwt_with_user-defined_values_partially_set",
+			fileContent: `
+version: v1alpha1
+backend:
+  address: foo:443
+  insecure_enabled: true
+security_context:
+  from_raw_jwt:
+    key: x-jwt-assertion
+    prefix:
+`,
+			wantFromRawJWT: &security.FromRawJWT{
+				Key:    "x-jwt-assertion",
+				Prefix: "",
+			},
+		},
+		{
+			name: "raw_jwt_with_user-defined_values_partially_set_again",
+			fileContent: `
+version: v1alpha1
+backend:
+  address: foo:443
+  insecure_enabled: true
+security_context:
+  from_raw_jwt:
+    key: x-jwt-assertion
+`,
+			wantFromRawJWT: &security.FromRawJWT{
+				Key:    "x-jwt-assertion",
+				Prefix: "",
+			},
+		},
+	}
+
+	for _, tc := range cases {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			path := filepath.Join(t.TempDir(), "config.yaml")
+			if err := ioutil.WriteFile(path, []byte(tc.fileContent), 0o600); err != nil {
+				t.Fatalf("error creating test config file: %v", err)
+			}
+			v := prepareViper()
+			if err := setupViperConfigFile(v, path); err != nil {
+				t.Fatal(err)
+			}
+
+			fromRawJWT, err := fromRawJWTFromViper(v)
+			if diff := errutil.DiffSubstring(err, tc.wantErrSubstr); diff != "" {
+				t.Errorf("fromRawJWTFromViper(path) got unexpected error substring: %v", diff)
+			}
+			if diff := cmp.Diff(tc.wantFromRawJWT, fromRawJWT); diff != "" {
+				t.Errorf("unexpected diff in fromRawJWT (-want,+got):\n%s", diff)
+			}
+		})
+	}
+}
+
+func TestWithInterceptorFromConfigFile(t *testing.T) {
+	t.Parallel()
+	cases := []struct {
+		name          string
+		fileContent   string
+		wantErrSubstr string
+	}{
+		{
+			name: "valid_config_file",
+			fileContent: `
+version: v1alpha1
+backend:
+  address: foo:443
+  insecure_enabled: true
+security_context:
+  from_raw_jwt: {}
+`,
+		},
+		{
+			name: "invalid_config_because_security_context_is_nil",
+			// In YAML, empty keys are unset. For details, see:
+			// https://stackoverflow.com/a/64462925
+			fileContent: `
+version: v1alpha1
+backend:
+  address: foo:443
+  insecure_enabled: true
+security_context:
+`,
+			wantErrSubstr: `no supported security context configured in config file`,
+		},
+		{
+			name: "invalid_config_because_backend_address_is_nil",
+			fileContent: `
+version: v1alpha1
+backend:
+  address:
+  insecure_enabled: true
+security_context:
+  from_raw_jwt: {}
+`,
+			wantErrSubstr: "failed to create audit client from config file",
+		},
+		{
+			name:          "unparsable_config",
+			fileContent:   `bananas`,
+			wantErrSubstr: `failed to setup viper from config file`,
+		},
+	}
+
+	for _, tc := range cases {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			path := filepath.Join(t.TempDir(), "config.yaml")
+			if err := ioutil.WriteFile(path, []byte(tc.fileContent), 0o600); err != nil {
+				t.Fatalf("error creating test config file: %v", err)
+			}
+
+			_, _, err := WithInterceptorFromConfigFile(path)
+			if diff := errutil.DiffSubstring(err, tc.wantErrSubstr); diff != "" {
+				t.Errorf("WithInterceptorFromConfigFile(path) got unexpected error substring: %v", diff)
 			}
 		})
 	}
