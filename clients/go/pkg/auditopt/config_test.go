@@ -44,12 +44,12 @@ func (s *fakeServer) ProcessLog(_ context.Context, logReq *alpb.AuditLogRequest)
 	return &alpb.AuditLogResponse{Result: logReq}, nil
 }
 
-func wrappedServe(t *testing.T, s *grpc.Server, lis net.Listener) {
-	err := s.Serve(lis)
-	if err != nil {
-		t.Errorf("failed serving: %v", err)
-	}
-}
+// func wrappedServe(t *testing.T, s *grpc.Server, lis net.Listener) {
+// 	err := s.Serve(lis)
+// 	if err != nil {
+// 		t.Errorf("failed serving: %v", err)
+// 	}
+// }
 
 func TestMustFromConfigFile(t *testing.T) {
 	// No parallel since testing with env vars.
@@ -176,7 +176,12 @@ backend:
 			if err != nil {
 				t.Fatalf("net.Listen(tcp, localhost:0) failed: %v", err)
 			}
-			go wrappedServe(t, s, lis)
+			go func(t *testing.T, s *grpc.Server, lis net.Listener) {
+				err := s.Serve(lis)
+				if err != nil {
+					t.Logf("net.Listen(tcp, localhost:0) serve failed: %v", err)
+				}
+			}(t, s, lis)
 
 			for k, v := range tc.envs {
 				t.Setenv(k, v)
