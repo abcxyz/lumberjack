@@ -49,7 +49,7 @@ func TestNewProcessor(t *testing.T) {
 	t.Parallel()
 
 	opts := []Option{WithLoggingClient(&logging.Client{})}
-	p, err := NewProcessor(nil, opts...)
+	p, err := NewProcessor(context.Background(), opts...)
 	if err != nil {
 		t.Errorf("NewProcessor(%v) unexpected error: %v", opts, err)
 	}
@@ -185,7 +185,12 @@ func TestProcessor_Process(t *testing.T) {
 			if err != nil {
 				t.Fatalf("net.Listen(tcp, localhost:0) failed: %v", err)
 			}
-			go s.Serve(lis)
+			go func(t *testing.T, s *grpc.Server, lis net.Listener) {
+				err := s.Serve(lis)
+				if err != nil {
+					t.Errorf("net.Listen(tcp, localhost:0) serve failed: %v", err)
+				}
+			}(t, s, lis)
 
 			addr := lis.Addr().String()
 			conn, err := grpc.Dial(addr, grpc.WithInsecure())
@@ -289,7 +294,12 @@ func TestProcessor_Stop(t *testing.T) {
 			if err != nil {
 				t.Fatalf("net.Listen(tcp, localhost:0) failed: %v", err)
 			}
-			go s.Serve(lis)
+			go func(t *testing.T, s *grpc.Server, lis net.Listener) {
+				err := s.Serve(lis)
+				if err != nil {
+					t.Errorf("net.Listen(tcp, localhost:0) serve failed: %v", err)
+				}
+			}(t, s, lis)
 
 			addr := lis.Addr().String()
 			conn, err := grpc.Dial(addr, grpc.WithInsecure())
@@ -313,7 +323,11 @@ func TestProcessor_Stop(t *testing.T) {
 
 			// Write the logs.
 			for _, r := range tc.logReqs {
-				p.Process(ctx, r)
+				err := p.Process(ctx, r)
+				if err != nil {
+					// TODO: see about using Errorf here instead of Logf
+					t.Logf("failed to process: %v", err)
+				}
 			}
 
 			// Run test.
