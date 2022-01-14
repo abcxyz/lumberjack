@@ -15,6 +15,7 @@
 package audit
 
 import (
+	"context"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -160,7 +161,7 @@ func TestRuntimeInfo_Process(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
-			err := tc.r.Process(nil, tc.logReq)
+			err := tc.r.Process(context.Background(), tc.logReq)
 			if err != nil {
 				t.Errorf("Process(%+v) error unexpected error: %v", tc.logReq, err)
 			}

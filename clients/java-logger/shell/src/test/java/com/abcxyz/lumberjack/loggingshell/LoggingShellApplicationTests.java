@@ -16,18 +16,15 @@
 
 package com.abcxyz.lumberjack.loggingshell;
 
-import org.junit.jupiter.api.BeforeAll;
+import com.abcxyz.lumberjack.auditlogclient.LoggingClient;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.mock.mockito.MockBean;
 
 @SpringBootTest
 class LoggingShellApplicationTests {
-  @BeforeAll
-  static void setUp() {
-    System.setProperty("GOOGLE_CLOUD_PROJECT", "foo");
-    System.setProperty("AUDIT_CLIENT_BACKEND_ADDRESS", "foo");
-    System.setProperty("AUDIT_CLIENT_BACKEND_INSECURE_ENABLED", "true");
-  }
+  @MockBean
+  private LoggingClient loggingClient;
 
   @Test
   void contextLoads() {}

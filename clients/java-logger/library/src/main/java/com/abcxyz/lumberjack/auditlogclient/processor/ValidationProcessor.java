@@ -16,20 +16,16 @@
 
 package com.abcxyz.lumberjack.auditlogclient.processor;
 
+import com.abcxyz.lumberjack.auditlogclient.processor.LogProcessor.LogValidator;
 import com.abcxyz.lumberjack.v1alpha1.AuditLogRequest;
-import lombok.RequiredArgsConstructor;
-import org.springframework.stereotype.Service;
+import com.google.inject.Inject;
+import lombok.AllArgsConstructor;
 
-/**
- * Implements validation process for the given {@link AuditLogRequest}
- */
-@RequiredArgsConstructor
-@Service
-public class ValidationProcessor implements LogProcessor {
+/** Implements validation process for the given {@link AuditLogRequest} */
+@AllArgsConstructor(onConstructor = @__({@Inject}))
+public class ValidationProcessor implements LogValidator {
 
-  /**
-   * Validates the given {@link AuditLogRequest}
-   */
+  /** Validates the given {@link AuditLogRequest} */
   @Override
   public AuditLogRequest process(AuditLogRequest auditLogRequest) throws IllegalArgumentException {
 
