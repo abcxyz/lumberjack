@@ -173,7 +173,7 @@ backend:
 				err := s.Serve(lis)
 				if err != nil {
 					// TODO: see about using Errorf here instead of Logf
-					t.Logf("net.Listen(tcp, localhost:0) serve failed: %v", err)
+					t.Errorf("net.Listen(tcp, localhost:0) serve failed: %v", err)
 				}
 			}(t, s, lis)
 
