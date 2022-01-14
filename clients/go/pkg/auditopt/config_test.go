@@ -284,13 +284,15 @@ backend:
 			if err != nil {
 				t.Fatalf("net.Listen(tcp, localhost:0) failed: %v", err)
 			}
-			go func() {
-				err := s.Serve(lis)
-				if err != nil {
-					// TODO(crwilcox): see about moving this to Errorf
-					t.Logf("net.Listen(tcp, localhost:0) serve failed: %v", err)
-				}
-			}()
+			// TODO: adding this caused a data race?
+			// go func() {
+			// 	err := s.Serve(lis)
+			// 	if err != nil {
+			// 		// TODO(crwilcox): see about moving this to Errorf
+			// 		t.Logf("net.Listen(tcp, localhost:0) serve failed: %v", err)
+			// 	}
+			// }()
+			s.Serve(lis)
 
 			t.Setenv("AUDIT_CLIENT_BACKEND_ADDRESS", lis.Addr().String())
 			for k, v := range tc.envs {
