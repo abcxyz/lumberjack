@@ -26,6 +26,10 @@ import java.util.List;
 import java.util.regex.Pattern;
 
 public class FilteringProcessorModule extends AbstractModule {
+  // By default, log requests that have an IAM service account as the principal are filtered out.
+  private static final List<Pattern> DEFAULT_EXCLUDE_PATTERN_LIST =
+      List.of(Pattern.compile(".*.iam.gserviceaccount.com$"));
+
   private List<Pattern> includePatterns(Filters filters) {
     if (filters == null || filters.getIncludes() == null || filters.getIncludes().isBlank()) {
       return Collections.emptyList();
@@ -39,7 +43,7 @@ public class FilteringProcessorModule extends AbstractModule {
 
   private List<Pattern> excludePatterns(Filters filters) {
     if (filters == null || filters.getExcludes() == null || filters.getExcludes().isBlank()) {
-      return Collections.emptyList();
+      return DEFAULT_EXCLUDE_PATTERN_LIST;
     }
     List<Pattern> excludePatternsFromString = new ArrayList<>();
     for (String regex : filters.getExcludes().split(",")) {
