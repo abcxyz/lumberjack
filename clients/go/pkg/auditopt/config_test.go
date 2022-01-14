@@ -50,6 +50,7 @@ func wrappedServe(t *testing.T, s *grpc.Server, lis net.Listener) {
 		t.Errorf("failed serving: %v", err)
 	}
 }
+
 func TestMustFromConfigFile(t *testing.T) {
 	// No parallel since testing with env vars.
 	cases := []struct {
@@ -274,7 +275,13 @@ backend:
 			if err != nil {
 				t.Fatalf("net.Listen(tcp, localhost:0) failed: %v", err)
 			}
-			go wrappedServe(t, s, lis)
+			// go wrappedServe(t, s, lis)
+			go func(t *testing.T, s *grpc.Server, lis net.Listener) {
+				err := s.Serve(lis)
+				if err != nil {
+					t.Logf("net.Listen(tcp, localhost:0) serve failed: %v", err)
+				}
+			}(t, s, lis)
 
 			t.Setenv("AUDIT_CLIENT_BACKEND_ADDRESS", lis.Addr().String())
 			for k, v := range tc.envs {

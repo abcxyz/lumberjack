@@ -45,6 +45,12 @@ func (s *fakeServer) WriteLogEntries(_ context.Context, req *logpb.WriteLogEntri
 	return s.resp, s.returnErr
 }
 
+func wrappedServe(t *testing.T, s *grpc.Server, lis net.Listener) {
+	err := s.Serve(lis)
+	if err != nil {
+		t.Errorf("failed serving: %v", err)
+	}
+}
 func TestNewProcessor(t *testing.T) {
 	t.Parallel()
 
