@@ -19,23 +19,25 @@ package com.abcxyz.lumberjack.auditlogclient.processor;
 import com.abcxyz.lumberjack.v1alpha1.AuditLogRequest;
 
 /**
- * This interface is defined to add different processors to process an
- * {@link AuditLogRequest }
+ * This interface is defined to add different processors to process an {@link AuditLogRequest }
  *
- * <p>
- * Example
+ * <p>Example
  *
  * <ul>
- * <li>validation processor to validate the
- * {@link AuditLogRequest}auditLogRequest
- * <li>processor to send the audit log to the GCP
+ *   <li>validation processor to validate the {@link AuditLogRequest}auditLogRequest
+ *   <li>processor to send the audit log to the GCP
  * </ul>
  */
 public interface LogProcessor {
   /**
-   * Performs the "processing logic" on the given {@link AuditLogRequest} and
-   * returns an new one
+   * Performs the "processing logic" on the given {@link AuditLogRequest} and returns an new one
    * with updates if any.
    */
   AuditLogRequest process(AuditLogRequest auditLogRequest) throws LogProcessingException;
+
+  interface LogValidator extends LogProcessor {}
+
+  interface LogMutator extends LogProcessor {}
+
+  interface LogBackend extends LogProcessor {}
 }

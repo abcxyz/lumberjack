@@ -1,4 +1,4 @@
-// Copyright 2021 Lumberjack authors (see AUTHORS file)
+// Copyright 2022 Lumberjack authors (see AUTHORS file)
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -31,6 +31,7 @@ import (
 	alpb "github.com/abcxyz/lumberjack/clients/go/apis/v1alpha1"
 	"github.com/abcxyz/lumberjack/clients/go/pkg/audit"
 	"github.com/abcxyz/lumberjack/clients/go/pkg/errutil"
+	"github.com/abcxyz/lumberjack/clients/go/pkg/security"
 	"github.com/abcxyz/lumberjack/clients/go/pkg/testutil"
 )
 
@@ -47,14 +48,12 @@ func (s *fakeServer) ProcessLog(_ context.Context, logReq *alpb.AuditLogRequest)
 func TestMustFromConfigFile(t *testing.T) {
 	// No parallel since testing with env vars.
 	cases := []struct {
-		name                string
-		envs                map[string]string
-		fileContent         string
-		req                 *alpb.AuditLogRequest
-		wantReq             *alpb.AuditLogRequest
-		wantSecurityContext audit.SecurityContext
-		wantConfigErrSubstr string
-		wantClientErrSubstr string
+		name          string
+		envs          map[string]string
+		fileContent   string
+		req           *alpb.AuditLogRequest
+		wantReq       *alpb.AuditLogRequest
+		wantErrSubstr string
 	}{
 		{
 			name: "use_default_when_principal_exclude_unset",
@@ -134,61 +133,9 @@ backend:
 			req: testutil.ReqBuilder().WithPrincipal("abc@project.iam.gserviceaccount.com").Build(),
 		},
 		{
-			name: "from_raw_jwt_with_default_values",
-			fileContent: `
-version: v1alpha1
-backend:
-  address: %s
-  insecure_enabled: true
-security_context:
-  from_raw_jwt: {}
-`,
-			req: testutil.ReqBuilder().WithPrincipal("abc@project.iam.gserviceaccount.com").Build(),
-			wantSecurityContext: &audit.FromRawJWT{
-				Key:    "authorization",
-				Prefix: "bearer ",
-			},
-		},
-		{
-			name: "from_raw_jwt_with_user-defined_values",
-			fileContent: `
-version: v1alpha1
-backend:
-  address: %s
-  insecure_enabled: true
-security_context:
-  from_raw_jwt:
-    key: x-jwt-assertion
-    prefix: somePrefix
-`,
-			req: testutil.ReqBuilder().WithPrincipal("abc@project.iam.gserviceaccount.com").Build(),
-			wantSecurityContext: &audit.FromRawJWT{
-				Key:    "x-jwt-assertion",
-				Prefix: "somePrefix",
-			},
-		},
-		{
-			name: "from_raw_jwt_with_empty_string_as_prefix",
-			fileContent: `
-version: v1alpha1
-backend:
-  address: %s
-  insecure_enabled: true
-security_context:
-  from_raw_jwt:
-    key:
-    prefix: ""
-`,
-			req: testutil.ReqBuilder().WithPrincipal("abc@project.iam.gserviceaccount.com").Build(),
-			wantSecurityContext: &audit.FromRawJWT{
-				Key:    "authorization",
-				Prefix: "",
-			},
-		},
-		{
-			name:                "invalid_config_file_should_error",
-			fileContent:         `bananas`,
-			wantConfigErrSubstr: "cannot unmarshal",
+			name:          "invalid_config_file_should_error",
+			fileContent:   `bananas`,
+			wantErrSubstr: "cannot unmarshal",
 		},
 		{
 			name: "nil_backend_address_should_error",
@@ -199,7 +146,7 @@ security_context:
 version: v1alpha1
 noop: %s
 `,
-			wantClientErrSubstr: "config backend address is nil, set it as an env var or in a config file",
+			wantErrSubstr: "config backend address is nil, set it as an env var or in a config file",
 		},
 		{
 			name: "wrong_version_should_error",
@@ -208,7 +155,7 @@ version: v2
 backend:
   address: %s
 `,
-			wantConfigErrSubstr: `config version "v2" unsupported, supported versions are ["v1alpha1"]`,
+			wantErrSubstr: `config version "v2" unsupported, supported versions are ["v1alpha1"]`,
 		},
 	}
 
@@ -223,7 +170,15 @@ backend:
 			if err != nil {
 				t.Fatalf("net.Listen(tcp, localhost:0) failed: %v", err)
 			}
-			go s.Serve(lis)
+			go func(t *testing.T, s *grpc.Server, lis net.Listener) {
+				err := s.Serve(lis)
+				if err != nil {
+					// TODO: see about using Errorf here instead of Logf
+					// doing a logf here creates a data race under intergration testing.
+					fmt.Printf("net.Listen(tcp, localhost:0) serve failed: %v", err)
+					// t.Logf("net.Listen(tcp, localhost:0) serve failed: %v", err)
+				}
+			}(t, s, lis)
 
 			for k, v := range tc.envs {
 				t.Setenv(k, v)
@@ -236,22 +191,13 @@ backend:
 				t.Fatalf("error creating test config file: %v", err)
 			}
 
-			opt, sc, err := MustFromConfigFile(path)
-			if diff := errutil.DiffSubstring(err, tc.wantConfigErrSubstr); diff != "" {
-				t.Errorf("MustFromConfigFile(%v) got unexpected error substring: %v", path, diff)
+			c, err := audit.NewClient(MustFromConfigFile(path))
+			if diff := errutil.DiffSubstring(err, tc.wantErrSubstr); diff != "" {
+				t.Errorf("audit.NewClient(FromConfigFile(%v)) got unexpected error substring: %v", path, diff)
 			}
 			if err != nil {
 				return
 			}
-
-			c, err := audit.NewClient(opt)
-			if diff := errutil.DiffSubstring(err, tc.wantClientErrSubstr); diff != "" {
-				t.Errorf("audit.NewClient(opt) got unexpected error substring: %v", diff)
-			}
-			if err != nil {
-				return
-			}
-
 			if err := c.Log(context.Background(), tc.req); err != nil {
 				t.Fatalf("client.Log(...) unexpected error: %v", err)
 			}
@@ -264,10 +210,6 @@ backend:
 			}
 			if diff := cmp.Diff(tc.wantReq, r.gotReq, cmpopts...); diff != "" {
 				t.Errorf("audit logging backend got request (-want,+got):\n%s", diff)
-			}
-
-			if diff := cmp.Diff(tc.wantSecurityContext, sc); diff != "" {
-				t.Errorf("unexpected diff in client.SecurityContext (-want,+got):\n%s", diff)
 			}
 		})
 	}
@@ -335,7 +277,13 @@ backend:
 			if err != nil {
 				t.Fatalf("net.Listen(tcp, localhost:0) failed: %v", err)
 			}
-			go s.Serve(lis)
+			go func(t *testing.T, s *grpc.Server, lis net.Listener) {
+				err := s.Serve(lis)
+				if err != nil {
+					// TODO: see about using Errorf here instead of Logf
+					t.Logf("net.Listen(tcp, localhost:0) serve failed: %v", err)
+				}
+			}(t, s, lis)
 
 			t.Setenv("AUDIT_CLIENT_BACKEND_ADDRESS", lis.Addr().String())
 			for k, v := range tc.envs {
@@ -361,6 +309,159 @@ backend:
 			}
 			if diff := cmp.Diff(tc.wantReq, r.gotReq, cmpopts...); diff != "" {
 				t.Errorf("audit logging backend got request (-want,+got):\n%s", diff)
+			}
+		})
+	}
+}
+
+func TestFromRawJWTFromConfigFile(t *testing.T) {
+	t.Parallel()
+
+	cases := []struct {
+		name           string
+		fileContent    string
+		wantFromRawJWT *security.FromRawJWT
+		wantErrSubstr  string
+	}{
+		{
+			name: "unset_security_context",
+			fileContent: `
+version: v1alpha1
+backend:
+  address: foo:443
+  insecure_enabled: true
+security_context:
+`,
+		},
+		{
+			name: "unset_security_context_again",
+			fileContent: `
+version: v1alpha1
+backend:
+  address: foo:443
+  insecure_enabled: true
+`,
+		},
+		{
+			name: "raw_jwt_with_default_value_due_to_braces",
+			fileContent: `
+version: v1alpha1
+backend:
+  address: foo:443
+  insecure_enabled: true
+security_context:
+  from_raw_jwt: {}
+`,
+			wantFromRawJWT: &security.FromRawJWT{
+				Key:    "authorization",
+				Prefix: "bearer ",
+			},
+		},
+		{
+			name: "raw_jwt_with_default_value_due_to_null",
+			fileContent: `
+version: v1alpha1
+backend:
+  address: foo:443
+  insecure_enabled: true
+security_context:
+  from_raw_jwt:
+`,
+			wantFromRawJWT: &security.FromRawJWT{
+				Key:    "authorization",
+				Prefix: "bearer ",
+			},
+		},
+		{
+			name: "raw_jwt_with_default_value_due_to_empty_string",
+			fileContent: `
+version: v1alpha1
+backend:
+  address: foo:443
+  insecure_enabled: true
+security_context:
+  from_raw_jwt:
+    key: ""
+    prefix: ""
+`,
+			wantFromRawJWT: &security.FromRawJWT{
+				Key:    "authorization",
+				Prefix: "bearer ",
+			},
+		},
+		{
+			name: "raw_jwt_with_user-defined_values_fully_set",
+			fileContent: `
+version: v1alpha1
+backend:
+  address: foo:443
+  insecure_enabled: true
+security_context:
+  from_raw_jwt:
+    key: x-jwt-assertion
+    prefix: somePrefix
+`,
+			wantFromRawJWT: &security.FromRawJWT{
+				Key:    "x-jwt-assertion",
+				Prefix: "somePrefix",
+			},
+		},
+		{
+			name: "raw_jwt_with_user-defined_values_partially_set",
+			fileContent: `
+version: v1alpha1
+backend:
+  address: foo:443
+  insecure_enabled: true
+security_context:
+  from_raw_jwt:
+    key: x-jwt-assertion
+    prefix:
+`,
+			wantFromRawJWT: &security.FromRawJWT{
+				Key:    "x-jwt-assertion",
+				Prefix: "",
+			},
+		},
+		{
+			name: "raw_jwt_with_user-defined_values_partially_set_again",
+			fileContent: `
+version: v1alpha1
+backend:
+  address: foo:443
+  insecure_enabled: true
+security_context:
+  from_raw_jwt:
+    key: x-jwt-assertion
+`,
+			wantFromRawJWT: &security.FromRawJWT{
+				Key:    "x-jwt-assertion",
+				Prefix: "",
+			},
+		},
+		{
+			name:          "invalid_config_file_should_error",
+			fileContent:   `bananas`,
+			wantErrSubstr: "cannot unmarshal",
+		},
+	}
+
+	for _, tc := range cases {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			path := filepath.Join(t.TempDir(), "config.yaml")
+			if err := ioutil.WriteFile(path, []byte(tc.fileContent), 0o600); err != nil {
+				t.Fatalf("error creating test config file: %v", err)
+			}
+
+			fromRawJWT, err := fromRawJWTFromConfigFile(path)
+			if diff := errutil.DiffSubstring(err, tc.wantErrSubstr); diff != "" {
+				t.Errorf("fromRawJWTFromConfigFile(path) got unexpected error substring: %v", diff)
+			}
+			if diff := cmp.Diff(tc.wantFromRawJWT, fromRawJWT); diff != "" {
+				t.Errorf("unexpected diff in fromRawJWT (-want,+got):\n%s", diff)
 			}
 		})
 	}
@@ -395,7 +496,7 @@ backend:
   insecure_enabled: true
 security_context:
 `,
-			wantErrSubstr: "security_context is nil in config file",
+			wantErrSubstr: `no supported security context configured in config file`,
 		},
 		{
 			name: "invalid_config_because_backend_address_is_nil",
@@ -412,7 +513,7 @@ security_context:
 		{
 			name:          "unparsable_config",
 			fileContent:   `bananas`,
-			wantErrSubstr: "failed to create audit option and security context from config file",
+			wantErrSubstr: `failed to create audit client from config file`,
 		},
 	}
 
@@ -428,7 +529,7 @@ security_context:
 
 			_, _, err := WithInterceptorFromConfig(path)
 			if diff := errutil.DiffSubstring(err, tc.wantErrSubstr); diff != "" {
-				t.Errorf("WithInterceptorFromConfig(%v) got unexpected error substring: %v", path, diff)
+				t.Errorf("WithInterceptorFromConfig(path) got unexpected error substring: %v", diff)
 			}
 		})
 	}

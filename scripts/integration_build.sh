@@ -17,25 +17,22 @@
 set -eEuo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." &>/dev/null; pwd -P)"
-TF_ENVS_CI_DIR=${ROOT}/terraform/envs/ci
 TF_CI_WITH_SERVER_DIR=${ROOT}/terraform/ci-run-with-server
 SERVICE_NAME=ci-with-server-${RANDOM}
 GO_BUILD_COMMAND=${ROOT}/clients/go/test/shell/build.sh
 JAVA_BUILD_COMMAND=${ROOT}/clients/java-logger/scripts/build_shell.sh
 
-terraform -chdir=${TF_ENVS_CI_DIR} init
-terraform -chdir=${TF_ENVS_CI_DIR} apply -auto-approve
+# Hardcode these values.
+# Re-applying the CI env in each CI run might cause unexpected changes being applied to the CI env.
+SHELL_APP_PROJECT_ID=github-ci-app-0
+BACKEND_PROJECT_ID=github-ci-server
+BIGQUERY_DATASET_ID=audit_logs
 
-SHELL_APP_PROJECT_ID=$(terraform -chdir=${TF_ENVS_CI_DIR} output -raw app_project)
-BACKEND_PROJECT_ID=$(terraform -chdir=${TF_ENVS_CI_DIR} output -raw server_project)
-BIGQUERY_DATASET_ID=$(terraform -chdir=${TF_ENVS_CI_DIR} output -raw bigquery_dataset_id)
-
-KOKORO_SERVICE_ACCOUNT=kokoro-sa@lumberjack-kokoro.iam.gserviceaccount.com
+CI_SERVICE_ACCOUNT=gh-access-sa@lumberjack-dev-infra.iam.gserviceaccount.com
 GCLOUD_ACCOUNT=$(gcloud config get-value account)
-
-if [[ $GCLOUD_ACCOUNT == $KOKORO_SERVICE_ACCOUNT ]]; then
-  # When running in Kokoro, impersonate the Kokoro service account to have its email included in the ID token.
-  ID_TOKEN=$(gcloud auth print-identity-token --impersonate-service-account=${KOKORO_SERVICE_ACCOUNT} --include-email)
+if [[ $GCLOUD_ACCOUNT == $CI_SERVICE_ACCOUNT ]]; then
+  # When running in CI, impersonate the service account to have its email included in the ID token.
+  ID_TOKEN=$(gcloud auth print-identity-token --impersonate-service-account=${CI_SERVICE_ACCOUNT} --include-email)
   # Override the default filters that exclude service accounts during integration tests.
   ENV_VARS='env_vars={"AUDIT_CLIENT_FILTER_REGEX_PRINCIPAL_INCLUDE":".iam.gserviceaccount.com$"}'
 else

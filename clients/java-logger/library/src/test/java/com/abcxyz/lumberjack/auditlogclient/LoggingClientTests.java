@@ -27,6 +27,8 @@ import com.abcxyz.lumberjack.auditlogclient.processor.LogProcessingException;
 import com.abcxyz.lumberjack.auditlogclient.processor.RemoteProcessor;
 import com.abcxyz.lumberjack.auditlogclient.processor.RuntimeInfoProcessor;
 import com.abcxyz.lumberjack.auditlogclient.processor.ValidationProcessor;
+import java.util.Collections;
+import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -73,7 +75,7 @@ public class LoggingClientTests {
 
   @Test
   void logMethodCallsValidateProcessorTest() throws LogProcessingException {
-    LoggingClient loggingClient = loggingClientBuilder.withValidationProcessor().build();
+    LoggingClient loggingClient = new LoggingClient(List.of(validationProcessor), Collections.emptyList(), Collections.emptyList());
     AuditLogRequest logRequest = AuditLogRequest.newBuilder().getDefaultInstanceForType();
     loggingClient.log(logRequest);
     verify(validationProcessor).process(logRequest);
@@ -81,7 +83,7 @@ public class LoggingClientTests {
 
   @Test
   void logMethodCallsRemoteServiceLoggingProcessorTest() throws LogProcessingException {
-    LoggingClient loggingClient = loggingClientBuilder.withRemoteProcessor().build();
+    LoggingClient loggingClient = new LoggingClient(Collections.emptyList(), Collections.emptyList(), List.of(remoteProcessor));
     AuditLogRequest logRequest = AuditLogRequest.newBuilder().getDefaultInstanceForType();
     loggingClient.log(logRequest);
     verify(remoteProcessor).process(logRequest);
@@ -89,7 +91,7 @@ public class LoggingClientTests {
 
   @Test
   void logMethodCallsFilteringProcessorTest() throws LogProcessingException {
-    LoggingClient loggingClient = loggingClientBuilder.withFilteringProcessor().build();
+    LoggingClient loggingClient = new LoggingClient(Collections.emptyList(), List.of(filteringProcessor), Collections.emptyList());
     AuditLogRequest logRequest = AuditLogRequest.newBuilder().getDefaultInstanceForType();
     loggingClient.log(logRequest);
     verify(filteringProcessor).process(logRequest);
@@ -97,7 +99,7 @@ public class LoggingClientTests {
 
   @Test
   void logMethodCallsRuntimeInfoProcessorTest() throws LogProcessingException {
-    LoggingClient loggingClient = loggingClientBuilder.withRuntimeInfoProcessor().build();
+    LoggingClient loggingClient = new LoggingClient(Collections.emptyList(), List.of(runtimeInfoProcessor), Collections.emptyList());
     AuditLogRequest logRequest = AuditLogRequest.newBuilder().getDefaultInstanceForType();
     loggingClient.log(logRequest);
     verify(runtimeInfoProcessor).process(logRequest);
@@ -105,7 +107,7 @@ public class LoggingClientTests {
 
   @Test
   void logMethodCallsCloudLoggingProcessorTest() throws LogProcessingException {
-    LoggingClient loggingClient = loggingClientBuilder.withCloudLoggingProcessor().build();
+    LoggingClient loggingClient = new LoggingClient(Collections.emptyList(), Collections.emptyList(), List.of(cloudLoggingProcessor));
     AuditLogRequest logRequest = AuditLogRequest.newBuilder().getDefaultInstanceForType();
     loggingClient.log(logRequest);
     verify(cloudLoggingProcessor).process(logRequest);
@@ -113,11 +115,7 @@ public class LoggingClientTests {
 
   @Test
   void logCallsMultipleProcessorsWhenClientHasMultiple() throws LogProcessingException {
-    LoggingClient loggingClient = loggingClientBuilder
-        .withValidationProcessor()
-        .withCloudLoggingProcessor()
-        .withRemoteProcessor()
-        .build();
+    LoggingClient loggingClient = new LoggingClient(List.of(validationProcessor), Collections.emptyList(), List.of(cloudLoggingProcessor, remoteProcessor));
     AuditLogRequest logRequest = AuditLogRequest.newBuilder().getDefaultInstanceForType();
     doReturn(logRequest).when(validationProcessor).process(logRequest);
     doReturn(logRequest).when(cloudLoggingProcessor).process(logRequest);
@@ -130,13 +128,9 @@ public class LoggingClientTests {
   @Test
   void logCallsMultipleProcessorsInCorrectOrderWhenClientHasMultiple()
       throws LogProcessingException {
-    LoggingClient loggingClient = loggingClientBuilder
-        .withValidationProcessor()
-        .withCloudLoggingProcessor()
-        .withRemoteProcessor()
-        .withFilteringProcessor()
-        .withRuntimeInfoProcessor()
-        .build();
+    LoggingClient loggingClient = new LoggingClient(List.of(validationProcessor),
+        List.of(filteringProcessor, runtimeInfoProcessor),
+        List.of(cloudLoggingProcessor, remoteProcessor));
     AuditLogRequest logRequest = AuditLogRequest.newBuilder().getDefaultInstanceForType();
     doReturn(logRequest).when(validationProcessor).process(logRequest);
     doReturn(logRequest).when(filteringProcessor).process(logRequest);

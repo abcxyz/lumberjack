@@ -18,19 +18,16 @@ package com.abcxyz.lumberjack.auditlogclient.processor;
 
 import static com.google.common.base.Preconditions.checkState;
 
+import com.abcxyz.lumberjack.auditlogclient.processor.LogProcessor.LogBackend;
 import com.abcxyz.lumberjack.v1alpha1.AuditLogAgentGrpc;
 import com.abcxyz.lumberjack.v1alpha1.AuditLogRequest;
 import com.abcxyz.lumberjack.v1alpha1.AuditLogResponse;
-import lombok.RequiredArgsConstructor;
-import org.springframework.stereotype.Service;
+import com.google.inject.Inject;
+import lombok.AllArgsConstructor;
 
-/**
- * Sends the {@link AuditLogRequest} to remote service via GRPC for log
- * processing.
- */
-@Service
-@RequiredArgsConstructor
-public class RemoteProcessor implements LogProcessor {
+/** Sends the {@link AuditLogRequest} to remote service via GRPC for log processing. */
+@AllArgsConstructor(onConstructor = @__({@Inject}))
+public class RemoteProcessor implements LogBackend {
   private final AuditLogAgentGrpc.AuditLogAgentBlockingStub blockingStub;
 
   @Override
