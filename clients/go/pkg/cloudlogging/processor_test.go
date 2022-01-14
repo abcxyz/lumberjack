@@ -45,13 +45,6 @@ func (s *fakeServer) WriteLogEntries(_ context.Context, req *logpb.WriteLogEntri
 	return s.resp, s.returnErr
 }
 
-// func wrappedServe(t *testing.T, s *grpc.Server, lis net.Listener) {
-// 	err := s.Serve(lis)
-// 	if err != nil {
-// 		t.Errorf("failed serving: %v", err)
-// 	}
-// }
-
 func TestNewProcessor(t *testing.T) {
 	t.Parallel()
 
@@ -330,9 +323,9 @@ func TestProcessor_Stop(t *testing.T) {
 
 			// Write the logs.
 			for _, r := range tc.logReqs {
-				// TODO(crwilcox): see about using Errorf here instead of Logf
 				err := p.Process(ctx, r)
 				if err != nil {
+					// TODO: see about using Errorf here instead of Logf
 					t.Logf("failed to process: %v", err)
 				}
 			}
