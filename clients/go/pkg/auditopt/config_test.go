@@ -314,7 +314,7 @@ backend:
 	}
 }
 
-func TestFromRawJWTFromConfigFile(t *testing.T) {
+func TestFromRawJWTFromViper(t *testing.T) {
 	t.Parallel()
 
 	cases := []struct {
@@ -439,11 +439,6 @@ security_context:
 				Prefix: "",
 			},
 		},
-		{
-			name:          "invalid_config_file_should_error",
-			fileContent:   `bananas`,
-			wantErrSubstr: "cannot unmarshal",
-		},
 	}
 
 	for _, tc := range cases {
@@ -455,10 +450,14 @@ security_context:
 			if err := ioutil.WriteFile(path, []byte(tc.fileContent), 0o600); err != nil {
 				t.Fatalf("error creating test config file: %v", err)
 			}
+			v := prepareViper()
+			if err := setupViperConfigFile(v, path); err != nil {
+				t.Fatal(err)
+			}
 
-			fromRawJWT, err := fromRawJWTFromConfigFile(path)
+			fromRawJWT, err := fromRawJWTFromViper(v)
 			if diff := errutil.DiffSubstring(err, tc.wantErrSubstr); diff != "" {
-				t.Errorf("fromRawJWTFromConfigFile(path) got unexpected error substring: %v", diff)
+				t.Errorf("fromRawJWTFromViper(path) got unexpected error substring: %v", diff)
 			}
 			if diff := cmp.Diff(tc.wantFromRawJWT, fromRawJWT); diff != "" {
 				t.Errorf("unexpected diff in fromRawJWT (-want,+got):\n%s", diff)
@@ -467,7 +466,7 @@ security_context:
 	}
 }
 
-func TestWithInterceptorFromConfig(t *testing.T) {
+func TestWithInterceptorFromConfigFile(t *testing.T) {
 	t.Parallel()
 	cases := []struct {
 		name          string
@@ -513,7 +512,7 @@ security_context:
 		{
 			name:          "unparsable_config",
 			fileContent:   `bananas`,
-			wantErrSubstr: `failed to create audit client from config file`,
+			wantErrSubstr: `failed to setup viper from config file`,
 		},
 	}
 
@@ -527,9 +526,9 @@ security_context:
 				t.Fatalf("error creating test config file: %v", err)
 			}
 
-			_, _, err := WithInterceptorFromConfig(path)
+			_, _, err := WithInterceptorFromConfigFile(path)
 			if diff := errutil.DiffSubstring(err, tc.wantErrSubstr); diff != "" {
-				t.Errorf("WithInterceptorFromConfig(path) got unexpected error substring: %v", diff)
+				t.Errorf("WithInterceptorFromConfigFile(path) got unexpected error substring: %v", diff)
 			}
 		})
 	}

@@ -98,6 +98,52 @@ func FromConfigFile(path string) audit.Option {
 	}
 }
 
+// WithInterceptorFromConfigFile returns a gRPC server option that adds a unary interceptor
+// to a gRPC server. This interceptor autofills and emits audit logs for gRPC unary
+// calls. WithInterceptorFromConfigFile also returns the audit client that the interceptor
+// uses. This allows the caller to close the client when shutting down the gRPC server.
+// For example:
+// ```
+// opt, c, err := audit.WithInterceptorFromConfigFile("auditconfig.yaml")
+// if err != nil {
+//	log.Fatalf(err)
+// }
+// defer c.Stop()
+// s := grpc.NewServer(opt)
+// ```
+// TODO(noamrabbani): add streaming interceptor.
+func WithInterceptorFromConfigFile(path string) (grpc.ServerOption, *audit.Client, error) {
+	v := prepareViper()
+	if err := setupViperConfigFile(v, path); err != nil {
+		return nil, nil, fmt.Errorf("failed to setup viper from config file %q, %w", path, err)
+	}
+
+	auditOpt := func(c *audit.Client) error {
+		return configureClientFromViper(c, v)
+	}
+	auditClient, err := audit.NewClient(auditOpt)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to create audit client from config file %q: %w", path, err)
+	}
+
+	interceptor := &audit.Interceptor{
+		Client: auditClient,
+	}
+
+	fromRawJWT, err := fromRawJWTFromViper(v)
+	if err != nil {
+		return nil, nil, fmt.Errorf("error reading %q in config file %q: %w", securityContextFromRawJWTKey, path, err)
+	}
+	switch {
+	case fromRawJWT != nil:
+		interceptor.SecurityContext = fromRawJWT
+	default:
+		return nil, nil, fmt.Errorf("no supported security context configured in config file %q", path)
+	}
+
+	return grpc.UnaryInterceptor(interceptor.UnaryInterceptor), auditClient, nil
+}
+
 func configureClientFromViper(c *audit.Client, v *viper.Viper) error {
 	opts := []audit.Option{audit.WithRuntimeInfo()}
 
@@ -161,7 +207,7 @@ func backendFromViper(v *viper.Viper) (audit.Option, error) {
 	return audit.WithBackend(b), nil
 }
 
-// fromRawJWTFromConfigFile populates a `fromRawJWT`` from the config file.
+// fromRawJWTFromViper populates a `fromRawJWT`` from a Viper instance.
 // We handle nil and unset values in the following way:
 //
 // security_context:
@@ -193,12 +239,7 @@ func backendFromViper(v *viper.Viper) (audit.Option, error) {
 // # -> no defaulting because the user specified one value for `from_raw_jwt`
 //
 // TODO(noamrabbani): add support for lists in `security_context`
-func fromRawJWTFromConfigFile(path string) (*security.FromRawJWT, error) {
-	v := prepareViper()
-	if err := setupViperConfigFile(v, path); err != nil {
-		return nil, err
-	}
-
+func fromRawJWTFromViper(v *viper.Viper) (*security.FromRawJWT, error) {
 	if !v.IsSet(securityContextKey) {
 		return nil, nil
 	}
@@ -327,40 +368,4 @@ func setupViperConfigFile(v *viper.Viper, path string) error {
 		return fmt.Errorf("config version %q unsupported, supported versions are [%q]", configFileVersion, expectedVersion)
 	}
 	return nil
-}
-
-// WithInterceptorFromConfig returns a gRPC server option that adds a unary interceptor
-// to a gRPC server. This interceptor autofills and emits audit logs for gRPC unary
-// calls. WithInterceptorFromConfig also returns the audit client that the interceptor
-// uses. This allows the caller to close the client when shutting down the gRPC server.
-// For example:
-// ```
-// opt, c, err := audit.WithInterceptorFromConfig("auditconfig.yaml")
-// if err != nil {
-//	log.Fatalf(err)
-// }
-// defer c.Stop()
-// s := grpc.NewServer(opt)
-// ```
-// TODO(noamrabbani): add streaming interceptor.
-func WithInterceptorFromConfig(path string) (grpc.ServerOption, *audit.Client, error) {
-	interceptor := &audit.Interceptor{}
-	auditClient, err := audit.NewClient(MustFromConfigFile(path))
-	if err != nil {
-		return nil, nil, fmt.Errorf("failed to create audit client from config file %q: %w", path, err)
-	}
-	interceptor.Client = auditClient
-
-	fromRawJWT, err := fromRawJWTFromConfigFile(path)
-	if err != nil {
-		return nil, nil, fmt.Errorf("error reading %q in config file %q: %w", securityContextFromRawJWTKey, path, err)
-	}
-	switch {
-	case fromRawJWT != nil:
-		interceptor.SecurityContext = fromRawJWT
-	default:
-		return nil, nil, fmt.Errorf("no supported security context configured in config file %q", path)
-	}
-
-	return grpc.UnaryInterceptor(interceptor.UnaryInterceptor), auditClient, nil
 }
