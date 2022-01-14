@@ -173,7 +173,9 @@ backend:
 				err := s.Serve(lis)
 				if err != nil {
 					// TODO: see about using Errorf here instead of Logf
-					t.Logf("net.Listen(tcp, localhost:0) serve failed: %v", err)
+					// doing a logf here creates a data race under intergration testing.
+					fmt.Printf("net.Listen(tcp, localhost:0) serve failed: %v", err)
+					// t.Logf("net.Listen(tcp, localhost:0) serve failed: %v", err)
 				}
 			}(t, s, lis)
 
