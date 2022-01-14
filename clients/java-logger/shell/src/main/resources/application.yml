@@ -1,7 +1,5 @@
-server:
-  port: 8080
 version: v1alpha1
-filter:
+condition:
   regex:
     principal_include:
     principal_exclude:

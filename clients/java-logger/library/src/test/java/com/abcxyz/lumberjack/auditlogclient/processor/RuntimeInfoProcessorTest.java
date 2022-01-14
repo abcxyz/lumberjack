@@ -49,7 +49,7 @@ public class RuntimeInfoProcessorTest {
     void shouldWriteMonitoredResourceToPayloadMetadata()
             throws LogProcessingException {
         RuntimeInfoProcessor runtimeInfoProcessor = new RuntimeInfoProcessor(
-                Optional.of(monitoredResource));
+                monitoredResource);
         AuditLogRequest wantAuditLogRequest = runtimeInfoProcessor.process(auditLogRequest);
         assertThat(
                 wantAuditLogRequest.getPayload().getMetadata().containsFields("originating_resource"))
@@ -68,7 +68,7 @@ public class RuntimeInfoProcessorTest {
                 .build();
 
         RuntimeInfoProcessor runtimeInfoProcessor = new RuntimeInfoProcessor(
-                Optional.of(monitoredResource));
+                monitoredResource);
         AuditLogRequest wantAuditLogRequest = runtimeInfoProcessor.process(auditLogRequest);
         assertThat(wantAuditLogRequest.getPayload().getMetadata().getFieldsCount()).isEqualTo(2);
         assertThat(
@@ -78,7 +78,7 @@ public class RuntimeInfoProcessorTest {
 
     @Test
     void nullMonitoredResourceShouldLeaveMetadataUntouched() {
-        RuntimeInfoProcessor runtimeInfoProcessor = new RuntimeInfoProcessor(Optional.empty());
+        RuntimeInfoProcessor runtimeInfoProcessor = new RuntimeInfoProcessor(null);
         AuditLogRequest wantAuditLogRequest = runtimeInfoProcessor.process(auditLogRequest);
         assertThat(
                 wantAuditLogRequest.getPayload().hasMetadata()).isFalse();

@@ -16,8 +16,13 @@
 
 package com.abcxyz.lumberjack.auditlogclient;
 
+import com.abcxyz.lumberjack.auditlogclient.processor.LogProcessor.LogBackend;
+import com.abcxyz.lumberjack.auditlogclient.processor.LogProcessor.LogMutator;
+import com.abcxyz.lumberjack.auditlogclient.processor.LogProcessor.LogValidator;
+import com.google.inject.Inject;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
+import lombok.AllArgsConstructor;
 import lombok.RequiredArgsConstructor;
 import com.abcxyz.lumberjack.auditlogclient.processor.CloudLoggingProcessor;
 import com.abcxyz.lumberjack.auditlogclient.processor.FilteringProcessor;
@@ -25,13 +30,9 @@ import com.abcxyz.lumberjack.auditlogclient.processor.LogProcessor;
 import com.abcxyz.lumberjack.auditlogclient.processor.RemoteProcessor;
 import com.abcxyz.lumberjack.auditlogclient.processor.RuntimeInfoProcessor;
 import com.abcxyz.lumberjack.auditlogclient.processor.ValidationProcessor;
-import org.springframework.context.annotation.ComponentScan;
-import org.springframework.stereotype.Component;
 
 /** Builder for {@link LoggingClient}. */
-@RequiredArgsConstructor
-@Component
-@ComponentScan
+@RequiredArgsConstructor(onConstructor = @__({@Inject}))
 public class LoggingClientBuilder {
 
   private final CloudLoggingProcessor cloudLoggingProcessor;
@@ -40,9 +41,9 @@ public class LoggingClientBuilder {
   private final RuntimeInfoProcessor runtimeInfoProcessor;
   private final ValidationProcessor validationProcessor;
 
-  private final LinkedHashSet<LogProcessor> validators = new LinkedHashSet<>();
-  private final LinkedHashSet<LogProcessor> mutators = new LinkedHashSet<>();
-  private final LinkedHashSet<LogProcessor> backends = new LinkedHashSet<>();
+  private final LinkedHashSet<LogValidator> validators = new LinkedHashSet<>();
+  private final LinkedHashSet<LogMutator> mutators = new LinkedHashSet<>();
+  private final LinkedHashSet<LogBackend> backends = new LinkedHashSet<>();
 
   /**
    * Provides a {@link LoggingClientBuilder} with default {@link LogProcessor}s; {@link

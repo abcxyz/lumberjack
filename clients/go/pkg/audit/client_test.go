@@ -154,7 +154,12 @@ func TestLog(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			defer c.Stop()
+			t.Cleanup(func() {
+				err := c.Stop()
+				if err != nil {
+					t.Errorf("failed to stop client: %v", err)
+				}
+			})
 			err = c.Log(ctx, test.logReq)
 			if diff := errutil.DiffSubstring(err, test.wantErrSubstr); diff != "" {
 				t.Errorf("Log(%+v) got unexpected error substring: %v", test.logReq, diff)

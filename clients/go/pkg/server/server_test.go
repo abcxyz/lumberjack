@@ -118,7 +118,12 @@ func TestAuditLogAgent_ProcessLog(t *testing.T) {
 			if err != nil {
 				t.Fatalf("net.Listen(tcp, localhost:0) failed: %v", err)
 			}
-			go s.Serve(lis)
+			go func() {
+				err := s.Serve(lis)
+				if err != nil {
+					t.Errorf("net.Listen(tcp, localhost:0) serve failed: %v", err)
+				}
+			}()
 
 			conn, err := grpc.Dial(lis.Addr().String(), grpc.WithInsecure())
 			if err != nil {
