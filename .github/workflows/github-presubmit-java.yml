@@ -26,15 +26,12 @@ concurrency:
 
 jobs:
   # TODO: enable linting for java
-  # lint:
-  #   name: lint
-  #   runs-on: ubuntu-latest
-  #   steps:
-  #     - uses: actions/checkout@v2
-  #     - name: golangci-lint
-  #       uses: golangci/golangci-lint-action@v2
-  #       with:
-  #         working-directory: clients/go
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - name: No java lint implemented
+        run: 'echo "Java linting is not currently implemented."'
 
   test:
     name: Tests
