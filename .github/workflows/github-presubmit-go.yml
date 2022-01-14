@@ -35,6 +35,23 @@ jobs:
         with:
           working-directory: clients/go
 
+      - name: gofmt
+        run: gofmt -s -d -l . 2>&1 | tee /dev/stderr | (! read)
+
+      - name: goimports
+        run: goimports -l . 2>&1 | tee /dev/stderr | (! read)
+
+      - name: gomodtidy
+        run: |
+          go mod tidy
+          for i in $(find . -name go.mod); do
+            pushd $(dirname $i)
+            go mod tidy
+            popd
+          done
+          git diff go.mod | tee /dev/stderr | (! read)
+          git diff go.sum | tee /dev/stderr | (! read)
+
   test:
     name: Tests
     runs-on: ubuntu-latest
