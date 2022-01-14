@@ -46,7 +46,9 @@ jobs:
 
       - name: goimports
         working-directory: clients/go
-        run: goimports -l . 2>&1 | tee /dev/stderr | (! read)
+        run: |
+          go install golang.org/x/tools/cmd/goimports@latest
+          goimports -l . 2>&1 | tee /dev/stderr | (! read)
 
       - name: gomodtidy
         run: |
