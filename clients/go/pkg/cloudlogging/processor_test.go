@@ -16,6 +16,7 @@ package cloudlogging
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"net"
 	"testing"
