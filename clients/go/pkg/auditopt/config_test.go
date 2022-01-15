@@ -173,10 +173,8 @@ backend:
 			go func(t *testing.T, s *grpc.Server, lis net.Listener) {
 				err := s.Serve(lis)
 				if err != nil {
-					// TODO: see about using Errorf here instead of Logf
-					// doing a logf here creates a data race under intergration testing.
+					// TODO: it may be worth validating this scenario. #47
 					fmt.Printf("net.Listen(tcp, localhost:0) serve failed: %v", err)
-					// t.Logf("net.Listen(tcp, localhost:0) serve failed: %v", err)
 				}
 			}(t, s, lis)
 
@@ -280,8 +278,8 @@ backend:
 			go func(t *testing.T, s *grpc.Server, lis net.Listener) {
 				err := s.Serve(lis)
 				if err != nil {
-					// TODO: see about using Errorf here instead of Logf
-					t.Logf("net.Listen(tcp, localhost:0) serve failed: %v", err)
+					// TODO: it may be worth validating this scenario. #47
+					fmt.Printf("net.Listen(tcp, localhost:0) serve failed: %v\n", err)
 				}
 			}(t, s, lis)
 
