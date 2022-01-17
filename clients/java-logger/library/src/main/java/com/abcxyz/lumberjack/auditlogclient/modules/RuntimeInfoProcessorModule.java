@@ -39,6 +39,8 @@ import javax.annotation.Nullable;
  */
 public class RuntimeInfoProcessorModule extends AbstractModule {
 
+  private static final String metadataUrl = "http://metadata.google.internal";
+
   @Provides
   @Inject
   @Nullable
@@ -78,11 +80,11 @@ public class RuntimeInfoProcessorModule extends AbstractModule {
      if (!isNullOrBlank(envConfig.getMetadataHostEnv())) {
        return true;
      }
-      URL url = new URL("http://metadata.google.internal");
+      URL url = new URL(metadataUrl);
       URLConnection connection = url.openConnection();
       Map<String, List<String>> map = connection.getHeaderFields();
-      List<String> metadataFlavour = map.get("Metadata-Flavor");
-      return metadataFlavour.contains("Google");
+      List<String> metadataFlavor = map.get("Metadata-Flavor");
+      return metadataFlavor.contains("Google");
   }
 
   private MonitoredResource detectKubernetesResource(EnvironmentVariableConfiguration envConfig)
@@ -183,7 +185,7 @@ public class RuntimeInfoProcessorModule extends AbstractModule {
 
   private String getClusterName() {
     String clusterName = MetadataConfig.getClusterName();
-    if (clusterName == null || clusterName.isBlank()) {
+    if (isNullOrBlank(clusterName)) {
       throw new IllegalArgumentException("Cluster name not found in metadata.");
     }
     return clusterName;
@@ -191,7 +193,7 @@ public class RuntimeInfoProcessorModule extends AbstractModule {
 
   private String getZone() {
     String zone = MetadataConfig.getZone();
-    if (zone == null || zone.isBlank()) {
+    if (isNullOrBlank(zone)) {
       throw new IllegalArgumentException("Zone not found in metadata.");
     }
     return zone;
@@ -199,7 +201,7 @@ public class RuntimeInfoProcessorModule extends AbstractModule {
 
   private String getProjectId() {
     String projectId = MetadataConfig.getProjectId();
-    if (projectId == null || projectId.isBlank()) {
+    if (isNullOrBlank(projectId)) {
       throw new IllegalArgumentException("Project ID not found in metadata.");
     }
     return projectId;
@@ -207,7 +209,7 @@ public class RuntimeInfoProcessorModule extends AbstractModule {
 
   private String getInstanceId() {
     String instanceId = MetadataConfig.getInstanceId();
-    if (instanceId == null || instanceId.isBlank()) {
+    if (isNullOrBlank(instanceId)) {
       throw new IllegalArgumentException("Instance Id not found in metadata.");
     }
     return instanceId;
@@ -215,7 +217,7 @@ public class RuntimeInfoProcessorModule extends AbstractModule {
 
   private String getInstanceName() {
     String instanceName = MetadataConfig.getAttribute("instance/name");
-    if (instanceName == null || instanceName.isBlank()) {
+    if (isNullOrBlank(instanceName)) {
       throw new IllegalArgumentException("instance Name not found in metadata.");
     }
     return instanceName;
