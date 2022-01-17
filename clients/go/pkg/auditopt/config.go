@@ -1,4 +1,4 @@
-// Copyright 2021 Lumberjack authors (see AUTHORS file)
+// Copyright 2022 Lumberjack authors (see AUTHORS file)
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -32,6 +32,7 @@ import (
 	"github.com/abcxyz/lumberjack/clients/go/pkg/audit"
 	"github.com/abcxyz/lumberjack/clients/go/pkg/filtering"
 	"github.com/abcxyz/lumberjack/clients/go/pkg/remote"
+	"github.com/abcxyz/lumberjack/clients/go/pkg/security"
 	"github.com/spf13/viper"
 	"google.golang.org/grpc"
 )
@@ -46,12 +47,15 @@ import (
 //    principal_exclude: test@google.com
 // ```
 const (
-	versionKey                     = "version"
+	versionKey = "version"
+	// TODO(noamrabbani): rename `filter` to `condition`
 	filterRegexPrincipalIncludeKey = "filter.regex.principal_include"
 	filterRegexPrincipalExcludeKey = "filter.regex.principal_exclude"
 	backendAddressKey              = "backend.address"
 	backendInsecureEnabledKey      = "backend.insecure_enabled"
 	backendImpersonateAccountKey   = "backend.impersonate_account"
+	securityContextKey             = "security_context"
+	securityContextFromRawJWTKey   = "security_context.from_raw_jwt"
 )
 
 // The version we expect in a config file.
@@ -63,8 +67,8 @@ const defaultConfigFilePath = "/etc/auditlogging/config.yaml"
 // audit client. `path` is required, and if the config file is
 // missing, we return an error.
 func MustFromConfigFile(path string) audit.Option {
+	v := prepareViper()
 	return func(c *audit.Client) error {
-		v := prepareViper()
 		if err := setupViperConfigFile(v, path); err != nil {
 			return err
 		}
@@ -77,11 +81,11 @@ func MustFromConfigFile(path string) audit.Option {
 // path. If the config file is not found, we keep going by
 // using env vars and default values to configure the client.
 func FromConfigFile(path string) audit.Option {
+	v := prepareViper()
 	return func(c *audit.Client) error {
 		if path == "" {
 			path = defaultConfigFilePath
 		}
-		v := prepareViper()
 		// We don't return an error if the file is not found because we
 		// still use env vars and defaults to setup the client.
 		if err := setupViperConfigFile(v, path); err != nil && !errors.Is(err, fs.ErrNotExist) {
@@ -91,13 +95,13 @@ func FromConfigFile(path string) audit.Option {
 	}
 }
 
-// WithInterceptorFromConfig returns a gRPC server option that adds a unary interceptor
+// WithInterceptorFromConfigFile returns a gRPC server option that adds a unary interceptor
 // to a gRPC server. This interceptor autofills and emits audit logs for gRPC unary
-// calls. WithInterceptorFromConfig also returns the audit client that the interceptor
+// calls. WithInterceptorFromConfigFile also returns the audit client that the interceptor
 // uses. This allows the caller to close the client when shutting down the gRPC server.
 // For example:
 // ```
-// opt, c, err := audit.WithInterceptorFromConfig("auditconfig.yaml")
+// opt, c, err := audit.WithInterceptorFromConfigFile("auditconfig.yaml")
 // if err != nil {
 //	log.Fatalf(err)
 // }
@@ -105,14 +109,35 @@ func FromConfigFile(path string) audit.Option {
 // s := grpc.NewServer(opt)
 // ```
 // TODO(noamrabbani): add streaming interceptor.
-func WithInterceptorFromConfig(path string) (grpc.ServerOption, *audit.Client, error) {
-	auditClient, err := audit.NewClient(MustFromConfigFile(path))
-	if err != nil {
-		return nil, nil, fmt.Errorf("failed to create audit client from config file %q: %v", path, err)
+func WithInterceptorFromConfigFile(path string) (grpc.ServerOption, *audit.Client, error) {
+	v := prepareViper()
+	if err := setupViperConfigFile(v, path); err != nil {
+		return nil, nil, fmt.Errorf("failed to setup viper from config file %q, %w", path, err)
 	}
+
+	auditOpt := func(c *audit.Client) error {
+		return configureClientFromViper(c, v)
+	}
+	auditClient, err := audit.NewClient(auditOpt)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to create audit client from config file %q: %w", path, err)
+	}
+
 	interceptor := &audit.Interceptor{
 		Client: auditClient,
 	}
+
+	fromRawJWT, err := fromRawJWTFromViper(v)
+	if err != nil {
+		return nil, nil, fmt.Errorf("error reading %q in config file %q: %w", securityContextFromRawJWTKey, path, err)
+	}
+	switch {
+	case fromRawJWT != nil:
+		interceptor.SecurityContext = fromRawJWT
+	default:
+		return nil, nil, fmt.Errorf("no supported security context configured in config file %q", path)
+	}
+
 	return grpc.UnaryInterceptor(interceptor.UnaryInterceptor), auditClient, nil
 }
 
@@ -177,6 +202,57 @@ func backendFromViper(v *viper.Viper) (audit.Option, error) {
 		return nil, err
 	}
 	return audit.WithBackend(b), nil
+}
+
+// fromRawJWTFromViper populates a `fromRawJWT`` from a Viper instance.
+// We handle nil and unset values in the following way:
+//
+// security_context:
+// # -> no defaulting because security_context is nil/unset
+//
+// security_context:
+//   from_raw_jwt:
+// # -> default values for `from_raw_jwt`
+//
+// security_context:
+//   from_raw_jwt: {}
+// # -> default values for `from_raw_jwt`
+//
+// security_context:
+//   from_raw_jwt:
+//     key: x-jwt-assertion
+//     prefix:
+// # -> no defaulting because the user specified values for `from_raw_jwt`
+//
+// security_context:
+//   from_raw_jwt:
+//     key: x-jwt-assertion
+//     prefix: ""
+// # -> no defaulting because the user specified one value for `from_raw_jwt`
+//
+// security_context:
+//   from_raw_jwt:
+//     key: x-jwt-assertion
+// # -> no defaulting because the user specified one value for `from_raw_jwt`
+//
+// TODO(noamrabbani): add support for lists in `security_context`
+func fromRawJWTFromViper(v *viper.Viper) (*security.FromRawJWT, error) {
+	if !v.IsSet(securityContextKey) {
+		return nil, nil
+	}
+
+	fromRawJWT := &security.FromRawJWT{}
+	err := v.UnmarshalKey(securityContextFromRawJWTKey, fromRawJWT)
+	if err != nil {
+		return nil, fmt.Errorf("error unmarshalling key %q from config file: %w", securityContextFromRawJWTKey, err)
+	}
+
+	if fromRawJWT.Key == "" && fromRawJWT.Prefix == "" {
+		fromRawJWT.Key = "authorization"
+		fromRawJWT.Prefix = "bearer "
+	}
+
+	return fromRawJWT, nil
 }
 
 // prepareViper creates a Viper instance that:
