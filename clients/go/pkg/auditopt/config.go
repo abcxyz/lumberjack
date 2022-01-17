@@ -280,7 +280,7 @@ func prepareViper() *viper.Viper {
 	v := viper.New()
 
 	// Set defaults
-	// draft comment: if we don't set the default or the config file, automatic env doesn't pull them
+	// draft: if we don't set the default or the config file, automatic env doesn't pull them
 	// todo: test this with a SA include because it has no default yet.
 	// - I tested it and confirmed this is the actual behaviour
 	// maybe add a test for prepareViper?
