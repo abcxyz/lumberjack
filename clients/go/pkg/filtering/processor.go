@@ -57,7 +57,7 @@ func WithIncludes(includes ...string) Option {
 // WithExcludes adds include filters by compiling strings into regular expressions.
 // When an audit log request has a principal email that matches one of the regular
 // expressions, the audit log request is dropped by the client. Passing an empty
-// string in `includes` is a noop.
+// string in `excludes` is a noop.
 func WithExcludes(excludes ...string) Option {
 	return func(m *PrincipalEmailMatcher) error {
 		for _, e := range excludes {

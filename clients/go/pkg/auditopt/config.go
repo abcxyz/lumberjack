@@ -54,12 +54,14 @@ const (
 	versionKey                        = "version"
 	conditionRegexPrincipalIncludeKey = "condition.regex.principal_include"
 	// todo: add test to try overwriting unset key
-	conditionRegexPrincipalExcludeKey = "condition.regex.principal_exclude"
-	backendAddressKey                 = "backend.address"
-	backendInsecureEnabledKey         = "backend.insecure_enabled"
-	backendImpersonateAccountKey      = "backend.impersonate_account"
-	securityContextKey                = "security_context"
-	securityContextFromRawJWTKey      = "security_context.from_raw_jwt"
+	conditionRegexPrincipalExcludeKey  = "condition.regex.principal_exclude"
+	backendAddressKey                  = "backend.address"
+	backendInsecureEnabledKey          = "backend.insecure_enabled"
+	backendImpersonateAccountKey       = "backend.impersonate_account"
+	securityContextKey                 = "security_context"
+	securityContextFromRawJWTKey       = "security_context.from_raw_jwt"
+	securityContextFromRawJWTKeyKey    = "security_context.from_raw_jwt.Prefix"
+	securityContextFromRawJWTPrefixKey = "security_context.from_raw_jwt.Key"
 )
 
 // The version we expect in a config file.
@@ -141,19 +143,14 @@ func WithInterceptorFromConfigFile(path string) (grpc.ServerOption, *audit.Clien
 		return nil, nil, fmt.Errorf("failed to create audit client from config file %q: %w", path, err)
 	}
 
-	interceptor := &audit.Interceptor{
-		Client: auditClient,
+	fromRawJWT, err := fromRawJWTFromConfig(cfg)
+	if err != nil {
+		return nil, nil, err
 	}
 
-	fromRawJWT, err := fromRawJWTFromViper(v)
-	if err != nil {
-		return nil, nil, fmt.Errorf("error reading %q in config file %q: %w", securityContextFromRawJWTKey, path, err)
-	}
-	switch {
-	case fromRawJWT != nil:
-		interceptor.SecurityContext = fromRawJWT
-	default:
-		return nil, nil, fmt.Errorf("no supported security context configured in config file %q", path)
+	interceptor := &audit.Interceptor{
+		Client:          auditClient,
+		SecurityContext: fromRawJWT,
 	}
 
 	return grpc.UnaryInterceptor(interceptor.UnaryInterceptor), auditClient, nil
@@ -197,9 +194,10 @@ func principalFilterFromConfig(cfg *alpb.Config) (audit.Option, error) {
 }
 
 func backendFromConfig(cfg *alpb.Config) (audit.Option, error) {
-	if cfg == nil || cfg.Backend == nil {
-		return nil, fmt.Errorf("config backend is nil, set it as an env var or in a config file")
+	if cfg == nil || cfg.Backend == nil || cfg.Backend.Address == "" {
+		return nil, fmt.Errorf("config %q is nil, set it as an env var or in a config file", backendAddressKey)
 	}
+	addr := cfg.Backend.Address
 	authopts := []remote.Option{}
 	if !cfg.Backend.InsecureEnabled {
 		impersonate := cfg.Backend.ImpersonateAccount
@@ -209,10 +207,6 @@ func backendFromConfig(cfg *alpb.Config) (audit.Option, error) {
 			authopts = append(authopts, remote.WithImpersonatedIDTokenAuth(context.Background(), impersonate))
 		}
 	}
-	addr := cfg.Backend.Address
-	if cfg.Backend.Address == "" {
-		return nil, fmt.Errorf("config backend address is nil, set it as an env var or in a config file")
-	}
 	b, err := remote.NewProcessor(addr, authopts...)
 	if err != nil {
 		return nil, err
@@ -220,7 +214,7 @@ func backendFromConfig(cfg *alpb.Config) (audit.Option, error) {
 	return audit.WithBackend(b), nil
 }
 
-// fromRawJWTFromViper populates a `fromRawJWT`` from a Viper instance.
+// fromRawJWTFromConfig populates a `fromRawJWT`` from a Viper instance.
 // We handle nil and unset values in the following way:
 //
 // security_context:
@@ -252,22 +246,18 @@ func backendFromConfig(cfg *alpb.Config) (audit.Option, error) {
 // # -> no defaulting because the user specified one value for `from_raw_jwt`
 //
 // TODO(noamrabbani): add support for lists in `security_context`
-func fromRawJWTFromViper(v *viper.Viper) (*security.FromRawJWT, error) {
-	if !v.IsSet(securityContextKey) {
-		return nil, nil
+func fromRawJWTFromConfig(cfg *alpb.Config) (*security.FromRawJWT, error) {
+	if cfg == nil || cfg.SecurityContext == nil || cfg.SecurityContext.FromRawJWT == nil {
+		return nil, fmt.Errorf("config %q is nil, set it as an env var or in a config file", securityContextFromRawJWTKey)
 	}
-
-	fromRawJWT := &security.FromRawJWT{}
-	err := v.UnmarshalKey(securityContextFromRawJWTKey, fromRawJWT)
-	if err != nil {
-		return nil, fmt.Errorf("error unmarshalling key %q from config file: %w", securityContextFromRawJWTKey, err)
+	fromRawJWT := &security.FromRawJWT{
+		Key:    cfg.SecurityContext.FromRawJWT.Key,
+		Prefix: cfg.SecurityContext.FromRawJWT.Prefix,
 	}
-
 	if fromRawJWT.Key == "" && fromRawJWT.Prefix == "" {
 		fromRawJWT.Key = "authorization"
 		fromRawJWT.Prefix = "bearer "
 	}
-
 	return fromRawJWT, nil
 }
 
@@ -287,6 +277,7 @@ func prepareViper() *viper.Viper {
 	v.SetDefault(versionKey, "v1alpha1")
 	v.SetDefault(backendAddressKey, "")
 	v.SetDefault(backendInsecureEnabledKey, false)
+	v.SetDefault(securityContextKey, nil)
 	// By default, we filter log requests that have an IAM
 	// service account as the principal.
 	v.SetDefault(conditionRegexPrincipalExcludeKey, ".iam.gserviceaccount.com$")
@@ -302,7 +293,7 @@ func prepareViper() *viper.Viper {
 	return v
 }
 
-// configFromViper populates the config struct from a Viper.
+// configFromViper populates the config struct from a Viper instance.
 func configFromViper(v *viper.Viper) (*alpb.Config, error) {
 	config := &alpb.Config{}
 	if err := v.Unmarshal(config); err != nil {

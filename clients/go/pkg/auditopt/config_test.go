@@ -31,6 +31,7 @@ import (
 	alpb "github.com/abcxyz/lumberjack/clients/go/apis/v1alpha1"
 	"github.com/abcxyz/lumberjack/clients/go/pkg/audit"
 	"github.com/abcxyz/lumberjack/clients/go/pkg/errutil"
+	"github.com/abcxyz/lumberjack/clients/go/pkg/security"
 	"github.com/abcxyz/lumberjack/clients/go/pkg/testutil"
 )
 
@@ -145,7 +146,7 @@ backend:
 version: v1alpha1
 noop: %s
 `,
-			wantErrSubstr: "config backend address is nil, set it as an env var or in a config file",
+			wantErrSubstr: `config "backend.address" is nil, set it as an env var or in a config file`,
 		},
 		{
 			name: "wrong_version_should_error",
@@ -313,157 +314,165 @@ backend:
 	}
 }
 
-// func TestFromRawJWTFromViper(t *testing.T) {
-// 	t.Parallel()
+func TestFromRawJWTFromConfig(t *testing.T) {
+	t.Parallel()
 
-// 	cases := []struct {
-// 		name           string
-// 		fileContent    string
-// 		wantFromRawJWT *security.FromRawJWT
-// 		wantErrSubstr  string
-// 	}{
-// 		{
-// 			name: "unset_security_context",
-// 			fileContent: `
-// version: v1alpha1
-// backend:
-//   address: foo:443
-//   insecure_enabled: true
-// security_context:
-// `,
-// 		},
-// 		{
-// 			name: "unset_security_context_again",
-// 			fileContent: `
-// version: v1alpha1
-// backend:
-//   address: foo:443
-//   insecure_enabled: true
-// `,
-// 		},
-// 		{
-// 			name: "raw_jwt_with_default_value_due_to_braces",
-// 			fileContent: `
-// version: v1alpha1
-// backend:
-//   address: foo:443
-//   insecure_enabled: true
-// security_context:
-//   from_raw_jwt: {}
-// `,
-// 			wantFromRawJWT: &security.FromRawJWT{
-// 				Key:    "authorization",
-// 				Prefix: "bearer ",
-// 			},
-// 		},
-// 		{
-// 			name: "raw_jwt_with_default_value_due_to_null",
-// 			fileContent: `
-// version: v1alpha1
-// backend:
-//   address: foo:443
-//   insecure_enabled: true
-// security_context:
-//   from_raw_jwt:
-// `,
-// 			wantFromRawJWT: &security.FromRawJWT{
-// 				Key:    "authorization",
-// 				Prefix: "bearer ",
-// 			},
-// 		},
-// 		{
-// 			name: "raw_jwt_with_default_value_due_to_empty_string",
-// 			fileContent: `
-// version: v1alpha1
-// backend:
-//   address: foo:443
-//   insecure_enabled: true
-// security_context:
-//   from_raw_jwt:
-//     key: ""
-//     prefix: ""
-// `,
-// 			wantFromRawJWT: &security.FromRawJWT{
-// 				Key:    "authorization",
-// 				Prefix: "bearer ",
-// 			},
-// 		},
-// 		{
-// 			name: "raw_jwt_with_user-defined_values_fully_set",
-// 			fileContent: `
-// version: v1alpha1
-// backend:
-//   address: foo:443
-//   insecure_enabled: true
-// security_context:
-//   from_raw_jwt:
-//     key: x-jwt-assertion
-//     prefix: somePrefix
-// `,
-// 			wantFromRawJWT: &security.FromRawJWT{
-// 				Key:    "x-jwt-assertion",
-// 				Prefix: "somePrefix",
-// 			},
-// 		},
-// 		{
-// 			name: "raw_jwt_with_user-defined_values_partially_set",
-// 			fileContent: `
-// version: v1alpha1
-// backend:
-//   address: foo:443
-//   insecure_enabled: true
-// security_context:
-//   from_raw_jwt:
-//     key: x-jwt-assertion
-//     prefix:
-// `,
-// 			wantFromRawJWT: &security.FromRawJWT{
-// 				Key:    "x-jwt-assertion",
-// 				Prefix: "",
-// 			},
-// 		},
-// 		{
-// 			name: "raw_jwt_with_user-defined_values_partially_set_again",
-// 			fileContent: `
-// version: v1alpha1
-// backend:
-//   address: foo:443
-//   insecure_enabled: true
-// security_context:
-//   from_raw_jwt:
-//     key: x-jwt-assertion
-// `,
-// 			wantFromRawJWT: &security.FromRawJWT{
-// 				Key:    "x-jwt-assertion",
-// 				Prefix: "",
-// 			},
-// 		},
-// 	}
+	cases := []struct {
+		name           string
+		fileContent    string
+		wantFromRawJWT *security.FromRawJWT
+		wantErrSubstr  string
+	}{
+		{
+			name: "unset_security_context",
+			fileContent: `
+version: v1alpha1
+backend:
+  address: foo:443
+  insecure_enabled: true
+security_context:
+`,
+			wantErrSubstr: `config "security_context.from_raw_jwt" is nil, set it as an env var or in a config file`,
+		},
+		{
+			name: "unset_security_context_again",
+			fileContent: `
+version: v1alpha1
+backend:
+  address: foo:443
+  insecure_enabled: true
+`,
+			wantErrSubstr: `config "security_context.from_raw_jwt" is nil, set it as an env var or in a config file`,
+		},
+		{
+			name: "raw_jwt_with_default_value_due_to_braces",
+			fileContent: `
+version: v1alpha1
+backend:
+  address: foo:443
+  insecure_enabled: true
+security_context:
+  from_raw_jwt: {}
+`,
+			wantFromRawJWT: &security.FromRawJWT{
+				Key:    "authorization",
+				Prefix: "bearer ",
+			},
+		},
+		{
+			name: "raw_jwt_with_default_value_due_to_null",
+			fileContent: `
+version: v1alpha1
+backend:
+  address: foo:443
+  insecure_enabled: true
+security_context:
+  from_raw_jwt:
+`,
+			wantFromRawJWT: &security.FromRawJWT{
+				Key:    "authorization",
+				Prefix: "bearer ",
+			},
+		},
+		{
+			name: "raw_jwt_with_default_value_due_to_empty_string",
+			fileContent: `
+version: v1alpha1
+backend:
+  address: foo:443
+  insecure_enabled: true
+security_context:
+  from_raw_jwt:
+    key: ""
+    prefix: ""
+`,
+			wantFromRawJWT: &security.FromRawJWT{
+				Key:    "authorization",
+				Prefix: "bearer ",
+			},
+		},
+		{
+			name: "raw_jwt_with_user-defined_values_fully_set",
+			fileContent: `
+version: v1alpha1
+backend:
+  address: foo:443
+  insecure_enabled: true
+security_context:
+  from_raw_jwt:
+    key: x-jwt-assertion
+    prefix: somePrefix
+`,
+			wantFromRawJWT: &security.FromRawJWT{
+				Key:    "x-jwt-assertion",
+				Prefix: "somePrefix",
+			},
+		},
+		{
+			name: "raw_jwt_with_user-defined_values_partially_set",
+			fileContent: `
+version: v1alpha1
+backend:
+  address: foo:443
+  insecure_enabled: true
+security_context:
+  from_raw_jwt:
+    key: x-jwt-assertion
+    prefix:
+`,
+			wantFromRawJWT: &security.FromRawJWT{
+				Key:    "x-jwt-assertion",
+				Prefix: "",
+			},
+		},
+		{
+			name: "raw_jwt_with_user-defined_values_partially_set_again",
+			fileContent: `
+version: v1alpha1
+backend:
+  address: foo:443
+  insecure_enabled: true
+security_context:
+  from_raw_jwt:
+    key: x-jwt-assertion
+`,
+			wantFromRawJWT: &security.FromRawJWT{
+				Key:    "x-jwt-assertion",
+				Prefix: "",
+			},
+		},
+	}
 
-// 	for _, tc := range cases {
-// 		tc := tc
-// 		t.Run(tc.name, func(t *testing.T) {
-// 			t.Parallel()
+	for _, tc := range cases {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			// t.Parallel()
 
-// 			path := filepath.Join(t.TempDir(), "config.yaml")
-// 			if err := ioutil.WriteFile(path, []byte(tc.fileContent), 0o600); err != nil {
-// 				t.Fatalf("error creating test config file: %v", err)
-// 			}
-// 			v := prepareViper()
-// 			if err := configFromFile(v, path); err != nil {
-// 				t.Fatal(err)
-// 			}
+			path := filepath.Join(t.TempDir(), "config.yaml")
+			if err := ioutil.WriteFile(path, []byte(tc.fileContent), 0o600); err != nil {
+				t.Fatalf("error creating test config file: %v", err)
+			}
 
-// 			fromRawJWT, err := fromRawJWTFromViper(v)
-// 			if diff := errutil.DiffSubstring(err, tc.wantErrSubstr); diff != "" {
-// 				t.Errorf("fromRawJWTFromViper(path) got unexpected error substring: %v", diff)
-// 			}
-// 			if diff := cmp.Diff(tc.wantFromRawJWT, fromRawJWT); diff != "" {
-// 				t.Errorf("unexpected diff in fromRawJWT (-want,+got):\n%s", diff)
-// 			}
-// 		})
-// 	}
-// }
+			v := prepareViper()
+			v.SetConfigFile(path)
+			if err := v.ReadInConfig(); err != nil {
+				t.Fatalf("failed reading config file at %q: %v", path, err)
+			}
+			cfg, err := configFromViper(v)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			fromRawJWT, err := fromRawJWTFromConfig(cfg)
+			if diff := errutil.DiffSubstring(err, tc.wantErrSubstr); diff != "" {
+				t.Errorf("fromRawJWTFromConfig(path) got unexpected error substring: %v", diff)
+			}
+			if diff := cmp.Diff(tc.wantFromRawJWT, fromRawJWT); diff != "" {
+				t.Errorf("unexpected diff in fromRawJWT (-want,+got):\n%s", diff)
+			}
+		})
+	}
+}
 
 // func TestWithInterceptorFromConfigFile(t *testing.T) {
 // 	t.Parallel()
