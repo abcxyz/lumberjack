@@ -316,16 +316,16 @@ backend:
 }
 
 func TestFromRawJWTFromConfig(t *testing.T) {
-	t.Parallel()
-
+	// No parallel since testing with env vars.
 	cases := []struct {
 		name           string
 		fileContent    string
+		envs           map[string]string
 		wantFromRawJWT *security.FromRawJWT
 		wantErrSubstr  string
 	}{
 		{
-			name: "unset_security_context",
+			name: "security_context_unset",
 			fileContent: `
 version: v1alpha1
 backend:
@@ -336,7 +336,7 @@ security_context:
 			wantErrSubstr: "fromRawJWT in the config is nil, set it as an env var or in a config file",
 		},
 		{
-			name: "unset_security_context_again",
+			name: "security_context_unset_again",
 			fileContent: `
 version: v1alpha1
 backend:
@@ -344,6 +344,35 @@ backend:
   insecure_enabled: true
 `,
 			wantErrSubstr: "fromRawJWT in the config is nil, set it as an env var or in a config file",
+		},
+		{
+			name: "raw_jwt_unset_due_to_null",
+			fileContent: `
+version: v1alpha1
+backend:
+  address: foo:443
+  insecure_enabled: true
+security_context:
+  from_raw_jwt:
+`,
+			wantErrSubstr: "fromRawJWT in the config is nil, set it as an env var or in a config file",
+		},
+		{
+			name: "raw_jwt_set_in_env_vars",
+			fileContent: `
+version: v1alpha1
+backend:
+  address: foo:443
+  insecure_enabled: true
+`,
+			envs: map[string]string{
+				"AUDIT_CLIENT_SECURITY_CONTEXT_FROM_RAW_JWT_KEY":    "x-jwt-assertion",
+				"AUDIT_CLIENT_SECURITY_CONTEXT_FROM_RAW_JWT_PREFIX": "somePrefix ",
+			},
+			wantFromRawJWT: &security.FromRawJWT{
+				Key:    "x-jwt-assertion",
+				Prefix: "somePrefix ",
+			},
 		},
 		{
 			name: "raw_jwt_with_default_value_due_to_braces",
@@ -359,18 +388,6 @@ security_context:
 				Key:    "authorization",
 				Prefix: "bearer ",
 			},
-		},
-		{
-			name: "raw_jwt_with_default_value_due_to_null",
-			fileContent: `
-version: v1alpha1
-backend:
-  address: foo:443
-  insecure_enabled: true
-security_context:
-  from_raw_jwt:
-`,
-			wantErrSubstr: "fromRawJWT in the config is nil, set it as an env var or in a config file",
 		},
 		{
 			name: "raw_jwt_with_default_value_due_to_empty_string",
@@ -442,13 +459,14 @@ security_context:
 	}
 
 	for _, tc := range cases {
-		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
-			t.Parallel()
-
 			path := filepath.Join(t.TempDir(), "config.yaml")
 			if err := ioutil.WriteFile(path, []byte(tc.fileContent), 0o600); err != nil {
 				t.Fatalf("error creating test config file: %v", err)
+			}
+
+			for k, v := range tc.envs {
+				t.Setenv(k, v)
 			}
 
 			v := prepareViper()

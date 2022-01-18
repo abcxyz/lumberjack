@@ -39,6 +39,16 @@ import (
 	"github.com/abcxyz/lumberjack/clients/go/pkg/security"
 )
 
+// The list of leaf config variables that a user can set in a config
+// file. The "." delimeter represents a nested field. For example,
+// the config variable "condition.regex.principal_include" is represented
+// in a YAML config file as:
+// ```
+// condition:
+//  regex:
+//    principal_exclude: test@google.com
+// ```
+
 // The version we expect in a config file.
 const expectedVersion = "v1alpha1"
 
@@ -245,24 +255,22 @@ func fromRawJWTFromConfig(cfg *alpb.Config) (*security.FromRawJWT, error) {
 // The Viper library does most of the heavy lifting. For details, see:
 // https://github.com/spf13/viper#what-is-viper
 func prepareViper() *viper.Viper {
-	v := viper.New()
+	backendAddressKey := "backend.address"
+	backendImpersonateAccountKey := "backend.impersonate_account"
+	backendInsecureEnabledKey := "backend.insecure_enabled"
+	conditionRegexPrincipalExcludeKey := "condition.regex.principal_exclude"
+	conditionRegexPrincipalIncludeKey := "condition.regex.principal_include"
+	securityContextFromRawJWTKey := "security_context.from_raw_jwt"
+	securityContextFromRawJWTKeyKey := "security_context.from_raw_jwt.prefix"
+	securityContextFromRawJWTPrefixKey := "security_context.from_raw_jwt.key"
+	versionKey := "version"
 
-	// If you add a new key, you need to explicitly give it a default value.
-	// Otherwise, Viper fails to map the new key to its env var representation.
-	defaultByKey := map[string]interface{}{
-		"backend.address":             "",
-		"backend.impersonate_account": "",
-		"backend.insecure_enabled":    false,
-		// By default, we filter log requests that have an IAM
-		// service account as the principal.
-		"condition.regex.principal_exclude": ".iam.gserviceaccount.com$",
-		"condition.regex.principal_include": "",
-		"security_context":                  nil,
-		"version":                           "",
-	}
-	for key, d := range defaultByKey {
-		v.SetDefault(key, d)
-	}
+	v := viper.New()
+	// By default, we filter log requests that have an IAM
+	// service account as the principal.
+	v.SetDefault(conditionRegexPrincipalExcludeKey, ".iam.gserviceaccount.com$")
+	// ok
+	v.SetDefault(securityContextFromRawJWTKey, nil)
 
 	// Bind env vars to our config variables.
 	//   - Env vars should be prefixed with "AUDIT_CLIENT".
@@ -271,7 +279,18 @@ func prepareViper() *viper.Viper {
 	//     can be set with the env var "AUDIT_CLIENT_BACKEND_ADDRESS".
 	v.SetEnvPrefix("AUDIT_CLIENT")
 	v.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
-	v.AutomaticEnv()
+	// We explicitly bind env vars to leaf Viper keys instead of using
+	// v.AutomaticEnv(). This allows us to map an env var to a Viper key
+	// even when the key is inexistent in the config file and is missing
+	// an explicit default value.
+	v.BindEnv(backendAddressKey)
+	v.BindEnv(backendImpersonateAccountKey)
+	v.BindEnv(backendInsecureEnabledKey)
+	v.BindEnv(conditionRegexPrincipalIncludeKey)
+	v.BindEnv(conditionRegexPrincipalExcludeKey)
+	v.BindEnv(securityContextFromRawJWTKeyKey)
+	v.BindEnv(securityContextFromRawJWTPrefixKey)
+	v.BindEnv(versionKey)
 	return v
 }
 
