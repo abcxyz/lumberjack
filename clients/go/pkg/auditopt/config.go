@@ -61,22 +61,6 @@ const (
 	versionKey                         = "version"
 )
 
-// If you add a new key, you need to explicitly give it a default value.
-// Otherwise, Viper fails to map the new key to its env var representation.
-var defaultByKey = map[string]interface{}{
-	backendAddressKey:            "",
-	backendImpersonateAccountKey: "",
-	backendInsecureEnabledKey:    false,
-	// By default, we filter log requests that have an IAM
-	// service account as the principal.
-	conditionRegexPrincipalExcludeKey: ".iam.gserviceaccount.com$",
-	conditionRegexPrincipalIncludeKey: "",
-	// securityContextFromRawJWTPrefixKey: nil,
-	// securityContextFromRawJWTKeyKey:    nil,
-	securityContextKey: nil,
-	versionKey:         "",
-}
-
 // The version we expect in a config file.
 const expectedVersion = "v1alpha1"
 
@@ -285,6 +269,21 @@ func fromRawJWTFromConfig(cfg *alpb.Config) (*security.FromRawJWT, error) {
 func prepareViper() *viper.Viper {
 	v := viper.New()
 
+	// If you add a new key, you need to explicitly give it a default value.
+	// Otherwise, Viper fails to map the new key to its env var representation.
+	defaultByKey := map[string]interface{}{
+		backendAddressKey:            "",
+		backendImpersonateAccountKey: "",
+		backendInsecureEnabledKey:    false,
+		// By default, we filter log requests that have an IAM
+		// service account as the principal.
+		conditionRegexPrincipalExcludeKey: ".iam.gserviceaccount.com$",
+		conditionRegexPrincipalIncludeKey: "",
+		// securityContextFromRawJWTPrefixKey: nil,
+		// securityContextFromRawJWTKeyKey:    nil,
+		securityContextKey: nil,
+		versionKey:         "",
+	}
 	for key, d := range defaultByKey {
 		v.SetDefault(key, d)
 	}
