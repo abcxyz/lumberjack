@@ -525,7 +525,7 @@ security_context:
 	for _, tc := range cases {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
-			// t.Parallel()
+			t.Parallel()
 
 			path := filepath.Join(t.TempDir(), "config.yaml")
 			if err := ioutil.WriteFile(path, []byte(tc.fileContent), 0o600); err != nil {
