@@ -39,28 +39,6 @@ import (
 	"github.com/abcxyz/lumberjack/clients/go/pkg/security"
 )
 
-// The list of config variables that a user can set in a config
-// file. The "." delimeter represents a nested field. For example,
-// the config variable "condition.regex.principal_include" is represented
-// in a YAML config file as:
-// ```
-// condition:
-//  regex:
-//    principal_exclude: test@google.com
-// ```
-const (
-	backendAddressKey                  = "backend.address"
-	backendImpersonateAccountKey       = "backend.impersonate_account"
-	backendInsecureEnabledKey          = "backend.insecure_enabled"
-	conditionRegexPrincipalExcludeKey  = "condition.regex.principal_exclude"
-	conditionRegexPrincipalIncludeKey  = "condition.regex.principal_include"
-	securityContextFromRawJWTKey       = "security_context.from_raw_jwt"
-	securityContextFromRawJWTKeyKey    = "security_context.from_raw_jwt.Prefix"
-	securityContextFromRawJWTPrefixKey = "security_context.from_raw_jwt.Key"
-	securityContextKey                 = "security_context"
-	versionKey                         = "version"
-)
-
 // The version we expect in a config file.
 const expectedVersion = "v1alpha1"
 
@@ -193,7 +171,7 @@ func principalFilterFromConfig(cfg *alpb.Config) (audit.Option, error) {
 
 func backendFromConfig(cfg *alpb.Config) (audit.Option, error) {
 	if cfg == nil || cfg.Backend == nil || cfg.Backend.Address == "" {
-		return nil, fmt.Errorf("config %q is nil, set it as an env var or in a config file", backendAddressKey)
+		return nil, fmt.Errorf("backend address in the config is nil, set it as an env var or in a config file")
 	}
 	addr := cfg.Backend.Address
 	authopts := []remote.Option{}
@@ -248,7 +226,7 @@ func backendFromConfig(cfg *alpb.Config) (audit.Option, error) {
 // TODO(noamrabbani): add support for lists in `security_context`
 func fromRawJWTFromConfig(cfg *alpb.Config) (*security.FromRawJWT, error) {
 	if cfg == nil || cfg.SecurityContext == nil || cfg.SecurityContext.FromRawJWT == nil {
-		return nil, fmt.Errorf("config %q is nil, set it as an env var or in a config file", securityContextFromRawJWTKey)
+		return nil, fmt.Errorf("fromRawJWT in the config is nil, set it as an env var or in a config file")
 	}
 	fromRawJWT := &security.FromRawJWT{
 		Key:    cfg.SecurityContext.FromRawJWT.Key,
@@ -272,17 +250,15 @@ func prepareViper() *viper.Viper {
 	// If you add a new key, you need to explicitly give it a default value.
 	// Otherwise, Viper fails to map the new key to its env var representation.
 	defaultByKey := map[string]interface{}{
-		backendAddressKey:            "",
-		backendImpersonateAccountKey: "",
-		backendInsecureEnabledKey:    false,
+		"backend.address":             "",
+		"backend.impersonate_account": "",
+		"backend.insecure_enabled":    false,
 		// By default, we filter log requests that have an IAM
 		// service account as the principal.
-		conditionRegexPrincipalExcludeKey: ".iam.gserviceaccount.com$",
-		conditionRegexPrincipalIncludeKey: "",
-		// securityContextFromRawJWTPrefixKey: nil,
-		// securityContextFromRawJWTKeyKey:    nil,
-		securityContextKey: nil,
-		versionKey:         "",
+		"condition.regex.principal_exclude": ".iam.gserviceaccount.com$",
+		"condition.regex.principal_include": "",
+		"security_context":                  nil,
+		"version":                           "",
 	}
 	for key, d := range defaultByKey {
 		v.SetDefault(key, d)

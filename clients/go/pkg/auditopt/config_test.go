@@ -146,7 +146,7 @@ backend:
 version: v1alpha1
 noop: %s
 `,
-			wantErrSubstr: `config "backend.address" is nil, set it as an env var or in a config file`,
+			wantErrSubstr: "backend address in the config is nil, set it as an env var or in a config file",
 		},
 		{
 			name: "wrong_version_should_error",
@@ -333,7 +333,7 @@ backend:
   insecure_enabled: true
 security_context:
 `,
-			wantErrSubstr: `config "security_context.from_raw_jwt" is nil, set it as an env var or in a config file`,
+			wantErrSubstr: "fromRawJWT in the config is nil, set it as an env var or in a config file",
 		},
 		{
 			name: "unset_security_context_again",
@@ -343,7 +343,7 @@ backend:
   address: foo:443
   insecure_enabled: true
 `,
-			wantErrSubstr: `config "security_context.from_raw_jwt" is nil, set it as an env var or in a config file`,
+			wantErrSubstr: "fromRawJWT in the config is nil, set it as an env var or in a config file",
 		},
 		{
 			name: "raw_jwt_with_default_value_due_to_braces",
@@ -370,7 +370,7 @@ backend:
 security_context:
   from_raw_jwt:
 `,
-			wantErrSubstr: `config "security_context.from_raw_jwt" is nil, set it as an env var or in a config file`,
+			wantErrSubstr: "fromRawJWT in the config is nil, set it as an env var or in a config file",
 		},
 		{
 			name: "raw_jwt_with_default_value_due_to_empty_string",
