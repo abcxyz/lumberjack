@@ -29,25 +29,15 @@ import (
 	"io/fs"
 	"strings"
 
-	"github.com/spf13/viper"
-	"google.golang.org/grpc"
-
-	alpb "github.com/abcxyz/lumberjack/clients/go/apis/v1alpha1"
 	"github.com/abcxyz/lumberjack/clients/go/pkg/audit"
 	"github.com/abcxyz/lumberjack/clients/go/pkg/filtering"
 	"github.com/abcxyz/lumberjack/clients/go/pkg/remote"
 	"github.com/abcxyz/lumberjack/clients/go/pkg/security"
-)
+	"github.com/spf13/viper"
+	"google.golang.org/grpc"
 
-// The list of leaf config variables that a user can set in a config
-// file. The "." delimeter represents a nested field. For example,
-// the config variable "condition.regex.principal_include" is represented
-// in a YAML config file as:
-// ```
-// condition:
-//  regex:
-//    principal_exclude: test@google.com
-// ```
+	alpb "github.com/abcxyz/lumberjack/clients/go/apis/v1alpha1"
+)
 
 // The version we expect in a config file.
 const expectedVersion = "v1alpha1"
@@ -58,15 +48,19 @@ const defaultConfigFilePath = "/etc/auditlogging/config.yaml"
 // audit client. `path` is required, and if the config file is
 // missing, we return an error.
 func MustFromConfigFile(path string) audit.Option {
-	v := prepareViper()
 	return func(c *audit.Client) error {
+		v := viper.New()
 		v.SetConfigFile(path)
 		if err := v.ReadInConfig(); err != nil {
 			return fmt.Errorf("failed reading config file at %q: %w", path, err)
 		}
+		v, err := loadDefaultsAndEnvVars(v)
+		if err != nil {
+			return err
+		}
 		cfg, err := configFromViper(v)
 		if err != nil {
-			return fmt.Errorf("failed to setup config from viper: %w", err)
+			return err
 		}
 		return clientFromConfig(c, cfg)
 	}
@@ -77,8 +71,8 @@ func MustFromConfigFile(path string) audit.Option {
 // path. If the config file is not found, we keep going by
 // using env vars and default values to configure the client.
 func FromConfigFile(path string) audit.Option {
-	v := prepareViper()
 	return func(c *audit.Client) error {
+		v := viper.New()
 		if path == "" {
 			path = defaultConfigFilePath
 		}
@@ -88,9 +82,13 @@ func FromConfigFile(path string) audit.Option {
 		if err := v.ReadInConfig(); err != nil && !errors.Is(err, fs.ErrNotExist) {
 			return fmt.Errorf("failed reading config file at %q: %w", path, err)
 		}
+		v, err := loadDefaultsAndEnvVars(v)
+		if err != nil {
+			return err
+		}
 		cfg, err := configFromViper(v)
 		if err != nil {
-			return fmt.Errorf("failed to setup config from viper, %w", err)
+			return err
 		}
 		return clientFromConfig(c, cfg)
 	}
@@ -111,14 +109,33 @@ func FromConfigFile(path string) audit.Option {
 // ```
 // TODO(noamrabbani): add streaming interceptor.
 func WithInterceptorFromConfigFile(path string) (grpc.ServerOption, *audit.Client, error) {
-	v := prepareViper()
+	v := viper.New()
 	v.SetConfigFile(path)
 	if err := v.ReadInConfig(); err != nil {
 		return nil, nil, fmt.Errorf("failed reading config file at %q: %w", path, err)
 	}
+	v, err := loadDefaultsAndEnvVars(v)
+	if err != nil {
+		return nil, nil, err
+	}
 	cfg, err := configFromViper(v)
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to setup config from viper: %w", err)
+		return nil, nil, err
+	}
+
+	if cfg == nil || cfg.SecurityContext == nil {
+		return nil, nil, fmt.Errorf("no supported security context configured in config file %q", path)
+	}
+	interceptor := &audit.Interceptor{}
+	switch {
+	case cfg.SecurityContext.FromRawJWT != nil:
+		fromRawJWT, err := fromRawJWTFromConfig(cfg)
+		if err != nil {
+			return nil, nil, fmt.Errorf("error getting `from_raw_jwt` in config file %q: %w", path, err)
+		}
+		interceptor.SecurityContext = fromRawJWT
+	default:
+		return nil, nil, fmt.Errorf("no supported security context configured in config file %q", path)
 	}
 
 	auditOpt := func(c *audit.Client) error {
@@ -128,16 +145,7 @@ func WithInterceptorFromConfigFile(path string) (grpc.ServerOption, *audit.Clien
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to create audit client from config file %q: %w", path, err)
 	}
-
-	fromRawJWT, err := fromRawJWTFromConfig(cfg)
-	if err != nil {
-		return nil, nil, fmt.Errorf("no supported security context configured in config file: %w", err)
-	}
-
-	interceptor := &audit.Interceptor{
-		Client:          auditClient,
-		SecurityContext: fromRawJWT,
-	}
+	interceptor.Client = auditClient
 
 	return grpc.UnaryInterceptor(interceptor.UnaryInterceptor), auditClient, nil
 }
@@ -208,9 +216,7 @@ func backendFromConfig(cfg *alpb.Config) (audit.Option, error) {
 //
 // security_context:
 //   from_raw_jwt:
-// # -> no defaulting because security_context is nil/unset
-// # This is inconsistent with the Java implementation, where
-// # the config snippet provides default values for `from_raw_jwt`.
+// # -> default values for `from_raw_jwt`
 //
 // security_context:
 //   from_raw_jwt: {}
@@ -249,49 +255,71 @@ func fromRawJWTFromConfig(cfg *alpb.Config) (*security.FromRawJWT, error) {
 	return fromRawJWT, nil
 }
 
-// prepareViper creates a Viper instance that:
-//   1. declares config variables defaults
-//   2. reads environment variables and maps them to config variables
+// loadDefaultsAndEnvVars modifies a Viper instance to:
+//   - map env vars to config vars
+//   - have config variable defaults
 // The Viper library does most of the heavy lifting. For details, see:
 // https://github.com/spf13/viper#what-is-viper
-func prepareViper() *viper.Viper {
-	backendAddressKey := "backend.address"
-	backendImpersonateAccountKey := "backend.impersonate_account"
-	backendInsecureEnabledKey := "backend.insecure_enabled"
-	conditionRegexPrincipalExcludeKey := "condition.regex.principal_exclude"
-	conditionRegexPrincipalIncludeKey := "condition.regex.principal_include"
-	securityContextFromRawJWTKey := "security_context.from_raw_jwt"
-	securityContextFromRawJWTKeyKey := "security_context.from_raw_jwt.prefix"
-	securityContextFromRawJWTPrefixKey := "security_context.from_raw_jwt.key"
-	versionKey := "version"
-
-	v := viper.New()
-	// By default, we filter log requests that have an IAM
-	// service account as the principal.
-	v.SetDefault(conditionRegexPrincipalExcludeKey, ".iam.gserviceaccount.com$")
-	// ok
-	v.SetDefault(securityContextFromRawJWTKey, nil)
-
-	// Bind env vars to our config variables.
-	//   - Env vars should be prefixed with "AUDIT_CLIENT".
+func loadDefaultsAndEnvVars(v *viper.Viper) (*viper.Viper, error) {
+	// Explicitly bind env vars to leaf Viper keys. Note that:
+	//   - Env vars are prefixed with "AUDIT_CLIENT_".
 	//   - Nested config variables can be set from env vars by replacing
-	//     the "." delimiter with "_". For example, the config variable "backend.address"
+	//     the "." delimiter with "_". E.g. the config variable "backend.address"
 	//     can be set with the env var "AUDIT_CLIENT_BACKEND_ADDRESS".
 	v.SetEnvPrefix("AUDIT_CLIENT")
 	v.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
-	// We explicitly bind env vars to leaf Viper keys instead of using
-	// v.AutomaticEnv(). This allows us to map an env var to a Viper key
-	// even when the key is inexistent in the config file and is missing
-	// an explicit default value.
-	v.BindEnv(backendAddressKey)
-	v.BindEnv(backendImpersonateAccountKey)
-	v.BindEnv(backendInsecureEnabledKey)
-	v.BindEnv(conditionRegexPrincipalIncludeKey)
-	v.BindEnv(conditionRegexPrincipalExcludeKey)
-	v.BindEnv(securityContextFromRawJWTKeyKey)
-	v.BindEnv(securityContextFromRawJWTPrefixKey)
-	v.BindEnv(versionKey)
-	return v
+	v.AllowEmptyEnv(true)
+	leafKeys := []string{
+		// The "." delimeter represents a nested field. For example,
+		// the config variable "condition.regex.principal_include"
+		// is represented in a YAML config file as:
+		// ```
+		// condition:
+		//  regex:
+		//    principal_include: test@google.com
+		// ```
+		"backend.address",
+		"backend.impersonate_account",
+		"backend.insecure_enabled",
+		"condition.regex.principal_exclude",
+		"condition.regex.principal_include",
+		"security_context.from_raw_jwt.prefix",
+		"security_context.from_raw_jwt.key",
+		"version",
+	}
+	for _, lk := range leafKeys {
+		// We don't use v.AutomaticEnv() because it fails to bind env vars
+		// when they are inexistent in the config and when they don't have
+		// an explicit default value.
+		if err := v.BindEnv(lk); err != nil {
+			return nil, fmt.Errorf("error binding key %q to env var: %w", lk, err)
+		}
+	}
+
+	// By default, we filter log requests that have an IAM
+	// service account as the principal.
+	v.SetDefault("condition.regex.principal_exclude", ".iam.gserviceaccount.com$")
+
+	// Set default value for the security context. This
+	// enables the following config file behaviours:
+	//
+	// security_context:
+	// # -> no defaulting because security_context is nil/unset
+	//
+	// security_context:
+	//   from_raw_jwt:
+	// # -> default values for `from_raw_jwt`
+	//
+	// security_context:
+	//   from_raw_jwt: {}
+	// # -> default values for `from_raw_jwt`
+	v.SetDefault("security_context", nil)
+	sc := v.GetStringMap("security_context")
+	if _, ok := sc["from_raw_jwt"]; ok {
+		v.SetDefault("security_context.from_raw_jwt", map[string]string{})
+	}
+
+	return v, nil
 }
 
 // configFromViper populates the config struct from a Viper instance.

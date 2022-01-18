@@ -24,6 +24,7 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/spf13/viper"
 	calpb "google.golang.org/genproto/googleapis/cloud/audit"
 	"google.golang.org/grpc"
 	"google.golang.org/protobuf/testing/protocmp"
@@ -316,16 +317,15 @@ backend:
 }
 
 func TestFromRawJWTFromConfig(t *testing.T) {
-	// No parallel since testing with env vars.
+	t.Parallel()
 	cases := []struct {
 		name           string
 		fileContent    string
-		envs           map[string]string
 		wantFromRawJWT *security.FromRawJWT
 		wantErrSubstr  string
 	}{
 		{
-			name: "security_context_unset",
+			name: "unset_security_context",
 			fileContent: `
 version: v1alpha1
 backend:
@@ -336,7 +336,7 @@ security_context:
 			wantErrSubstr: "fromRawJWT in the config is nil, set it as an env var or in a config file",
 		},
 		{
-			name: "security_context_unset_again",
+			name: "unset_security_context_again",
 			fileContent: `
 version: v1alpha1
 backend:
@@ -344,35 +344,6 @@ backend:
   insecure_enabled: true
 `,
 			wantErrSubstr: "fromRawJWT in the config is nil, set it as an env var or in a config file",
-		},
-		{
-			name: "raw_jwt_unset_due_to_null",
-			fileContent: `
-version: v1alpha1
-backend:
-  address: foo:443
-  insecure_enabled: true
-security_context:
-  from_raw_jwt:
-`,
-			wantErrSubstr: "fromRawJWT in the config is nil, set it as an env var or in a config file",
-		},
-		{
-			name: "raw_jwt_set_in_env_vars",
-			fileContent: `
-version: v1alpha1
-backend:
-  address: foo:443
-  insecure_enabled: true
-`,
-			envs: map[string]string{
-				"AUDIT_CLIENT_SECURITY_CONTEXT_FROM_RAW_JWT_KEY":    "x-jwt-assertion",
-				"AUDIT_CLIENT_SECURITY_CONTEXT_FROM_RAW_JWT_PREFIX": "somePrefix ",
-			},
-			wantFromRawJWT: &security.FromRawJWT{
-				Key:    "x-jwt-assertion",
-				Prefix: "somePrefix ",
-			},
 		},
 		{
 			name: "raw_jwt_with_default_value_due_to_braces",
@@ -383,6 +354,21 @@ backend:
   insecure_enabled: true
 security_context:
   from_raw_jwt: {}
+`,
+			wantFromRawJWT: &security.FromRawJWT{
+				Key:    "authorization",
+				Prefix: "bearer ",
+			},
+		},
+		{
+			name: "raw_jwt_with_default_value_due_to_null",
+			fileContent: `
+version: v1alpha1
+backend:
+  address: foo:443
+  insecure_enabled: true
+security_context:
+  from_raw_jwt:
 `,
 			wantFromRawJWT: &security.FromRawJWT{
 				Key:    "authorization",
@@ -459,24 +445,26 @@ security_context:
 	}
 
 	for _, tc := range cases {
+		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			path := filepath.Join(t.TempDir(), "config.yaml")
 			if err := ioutil.WriteFile(path, []byte(tc.fileContent), 0o600); err != nil {
 				t.Fatalf("error creating test config file: %v", err)
 			}
 
-			for k, v := range tc.envs {
-				t.Setenv(k, v)
-			}
-
-			v := prepareViper()
+			v := viper.New()
 			v.SetConfigFile(path)
 			if err := v.ReadInConfig(); err != nil {
 				t.Fatalf("failed reading config file at %q: %v", path, err)
 			}
+			v, err := loadDefaultsAndEnvVars(v)
+			if err != nil {
+				t.Fatalf("failed preparing Viper: %v", err)
+			}
 			cfg, err := configFromViper(v)
 			if err != nil {
-				t.Fatal(err)
+				t.Fatalf("failed creating config struct from Viper: %v", err)
 			}
 
 			fromRawJWT, err := fromRawJWTFromConfig(cfg)
@@ -509,7 +497,7 @@ security_context:
 `,
 		},
 		{
-			name: "invalid_config_file_due_to_nil_security_context",
+			name: "invalid_config_because_security_context_is_nil",
 			// In YAML, empty keys are unset. For details, see:
 			// https://stackoverflow.com/a/64462925
 			fileContent: `
