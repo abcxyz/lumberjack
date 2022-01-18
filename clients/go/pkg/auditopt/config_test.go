@@ -253,6 +253,7 @@ backend:
 			name: "use_env_var_when_config_file_not_found",
 			path: path.Join(dir, "inexistent.yaml"),
 			envs: map[string]string{
+				"AUDIT_CLIENT_VERSION":                           "v1alpha1",
 				"AUDIT_CLIENT_CONDITION_REGEX_PRINCIPAL_EXCLUDE": "user@example.com$",
 				"AUDIT_CLIENT_BACKEND_INSECURE_ENABLED":          "true",
 				"AUDIT_CLIENT_BACKEND_IMPERSONATE_ACCOUNT":       "example@test.iam.gserviceaccount.com",
@@ -453,10 +454,9 @@ security_context:
 				t.Fatalf("error creating test config file: %v", err)
 			}
 
-			v := prepareViper()
-			v.SetConfigFile(path)
-			if err := v.ReadInConfig(); err != nil {
-				t.Fatalf("failed reading config file at %q: %v", path, err)
+			v, err := prepareViper(path)
+			if err != nil {
+				t.Fatalf("failed preparing Viper: %v", err)
 			}
 			cfg, err := configFromViper(v)
 			if err != nil {
@@ -474,70 +474,70 @@ security_context:
 	}
 }
 
-// func TestWithInterceptorFromConfigFile(t *testing.T) {
-// 	t.Parallel()
-// 	cases := []struct {
-// 		name          string
-// 		fileContent   string
-// 		wantErrSubstr string
-// 	}{
-// 		{
-// 			name: "valid_config_file",
-// 			fileContent: `
-// version: v1alpha1
-// backend:
-//   address: foo:443
-//   insecure_enabled: true
-// security_context:
-//   from_raw_jwt: {}
-// `,
-// 		},
-// 		{
-// 			name: "invalid_config_because_security_context_is_nil",
-// 			// In YAML, empty keys are unset. For details, see:
-// 			// https://stackoverflow.com/a/64462925
-// 			fileContent: `
-// version: v1alpha1
-// backend:
-//   address: foo:443
-//   insecure_enabled: true
-// security_context:
-// `,
-// 			wantErrSubstr: `no supported security context configured in config file`,
-// 		},
-// 		{
-// 			name: "invalid_config_because_backend_address_is_nil",
-// 			fileContent: `
-// version: v1alpha1
-// backend:
-//   address:
-//   insecure_enabled: true
-// security_context:
-//   from_raw_jwt: {}
-// `,
-// 			wantErrSubstr: "failed to create audit client from config file",
-// 		},
-// 		{
-// 			name:          "unparsable_config",
-// 			fileContent:   `bananas`,
-// 			wantErrSubstr: `failed to setup viper from config file`,
-// 		},
-// 	}
+func TestWithInterceptorFromConfigFile(t *testing.T) {
+	t.Parallel()
+	cases := []struct {
+		name          string
+		fileContent   string
+		wantErrSubstr string
+	}{
+		{
+			name: "valid_config_file",
+			fileContent: `
+version: v1alpha1
+backend:
+  address: foo:443
+  insecure_enabled: true
+security_context:
+  from_raw_jwt: {}
+`,
+		},
+		{
+			name: "invalid_config_because_security_context_is_nil",
+			// In YAML, empty keys are unset. For details, see:
+			// https://stackoverflow.com/a/64462925
+			fileContent: `
+version: v1alpha1
+backend:
+  address: foo:443
+  insecure_enabled: true
+security_context:
+`,
+			wantErrSubstr: `no supported security context configured in config file`,
+		},
+		{
+			name: "invalid_config_because_backend_address_is_nil",
+			fileContent: `
+version: v1alpha1
+backend:
+  address:
+  insecure_enabled: true
+security_context:
+  from_raw_jwt: {}
+`,
+			wantErrSubstr: "failed to create audit client from config file",
+		},
+		{
+			name:          "unparsable_config",
+			fileContent:   `bananas`,
+			wantErrSubstr: "failed reading config file",
+		},
+	}
 
-// 	for _, tc := range cases {
-// 		tc := tc
-// 		t.Run(tc.name, func(t *testing.T) {
-// 			t.Parallel()
+	for _, tc := range cases {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 
-// 			path := filepath.Join(t.TempDir(), "config.yaml")
-// 			if err := ioutil.WriteFile(path, []byte(tc.fileContent), 0o600); err != nil {
-// 				t.Fatalf("error creating test config file: %v", err)
-// 			}
+			path := filepath.Join(t.TempDir(), "config.yaml")
+			if err := ioutil.WriteFile(path, []byte(tc.fileContent), 0o600); err != nil {
+				t.Fatalf("error creating test config file: %v", err)
+			}
 
-// 			_, _, err := WithInterceptorFromConfigFile(path)
-// 			if diff := errutil.DiffSubstring(err, tc.wantErrSubstr); diff != "" {
-// 				t.Errorf("WithInterceptorFromConfigFile(path) got unexpected error substring: %v", diff)
-// 			}
-// 		})
-// 	}
-// }
+			_, _, err := WithInterceptorFromConfigFile(path)
+			if diff := errutil.DiffSubstring(err, tc.wantErrSubstr); diff != "" {
+				t.Errorf("WithInterceptorFromConfigFile(path) got unexpected error substring: %v", diff)
+			}
+		})
+	}
+}

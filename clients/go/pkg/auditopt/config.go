@@ -73,11 +73,10 @@ const defaultConfigFilePath = "/etc/auditlogging/config.yaml"
 // audit client. `path` is required, and if the config file is
 // missing, we return an error.
 func MustFromConfigFile(path string) audit.Option {
-	v := prepareViper()
 	return func(c *audit.Client) error {
-		v.SetConfigFile(path)
-		if err := v.ReadInConfig(); err != nil {
-			return fmt.Errorf("failed reading config file at %q: %w", path, err)
+		v, err := prepareViper(path)
+		if err != nil {
+			return err
 		}
 		cfg, err := configFromViper(v)
 		if err != nil {
@@ -92,16 +91,15 @@ func MustFromConfigFile(path string) audit.Option {
 // path. If the config file is not found, we keep going by
 // using env vars and default values to configure the client.
 func FromConfigFile(path string) audit.Option {
-	v := prepareViper()
 	return func(c *audit.Client) error {
 		if path == "" {
 			path = defaultConfigFilePath
 		}
+		v, err := prepareViper(path)
 		// We don't return an error if the file is not found because we
 		// still use env vars and defaults to setup the client.
-		v.SetConfigFile(path)
-		if err := v.ReadInConfig(); err != nil && !errors.Is(err, fs.ErrNotExist) {
-			return fmt.Errorf("failed reading config file at %q: %w", path, err)
+		if err != nil && !errors.Is(err, fs.ErrNotExist) {
+			return err
 		}
 		cfg, err := configFromViper(v)
 		if err != nil {
@@ -126,9 +124,9 @@ func FromConfigFile(path string) audit.Option {
 // ```
 // TODO(noamrabbani): add streaming interceptor.
 func WithInterceptorFromConfigFile(path string) (grpc.ServerOption, *audit.Client, error) {
-	v := prepareViper()
-	if err := v.ReadInConfig(); err != nil {
-		return nil, nil, fmt.Errorf("failed reading config file at %q: %w", path, err)
+	v, err := prepareViper(path)
+	if err != nil {
+		return nil, nil, err
 	}
 	cfg, err := configFromViper(v)
 	if err != nil {
@@ -145,7 +143,7 @@ func WithInterceptorFromConfigFile(path string) (grpc.ServerOption, *audit.Clien
 
 	fromRawJWT, err := fromRawJWTFromConfig(cfg)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, fmt.Errorf("no supported security context configured in config file: %w", err)
 	}
 
 	interceptor := &audit.Interceptor{
@@ -266,7 +264,7 @@ func fromRawJWTFromConfig(cfg *alpb.Config) (*security.FromRawJWT, error) {
 //   2. reads environment variables and maps them to config variables
 // The Viper library does most of the heavy lifting. For details, see:
 // https://github.com/spf13/viper#what-is-viper
-func prepareViper() *viper.Viper {
+func prepareViper(path string) (*viper.Viper, error) {
 	v := viper.New()
 
 	// Set defaults
@@ -274,10 +272,11 @@ func prepareViper() *viper.Viper {
 	// todo: test this with a SA include because it has no default yet.
 	// - I tested it and confirmed this is the actual behaviour
 	// maybe add a test for prepareViper?
-	v.SetDefault(versionKey, "v1alpha1")
+	v.SetDefault(versionKey, "")
 	v.SetDefault(backendAddressKey, "")
 	v.SetDefault(backendInsecureEnabledKey, false)
 	v.SetDefault(securityContextKey, nil)
+	v.SetDefault(securityContextFromRawJWTKey, nil)
 	// By default, we filter log requests that have an IAM
 	// service account as the principal.
 	v.SetDefault(conditionRegexPrincipalExcludeKey, ".iam.gserviceaccount.com$")
@@ -290,7 +289,25 @@ func prepareViper() *viper.Viper {
 	v.SetEnvPrefix("AUDIT_CLIENT")
 	v.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
 	v.AutomaticEnv()
-	return v
+
+	v.SetConfigFile(path)
+	if err := v.ReadInConfig(); err != nil {
+		errMsg := fmt.Errorf("failed reading config file at %q: %w", path, err)
+		// If the config file is not found, we return the Viper alongside the
+		// error. The caller can still use the env vars and defaults in the
+		// Viper as config options.
+		if errors.Is(err, fs.ErrNotExist) {
+			return v, errMsg
+		}
+		return nil, errMsg
+	}
+
+	sc := v.GetStringMap(securityContextKey)
+	if _, ok := sc["from_raw_jwt"]; ok {
+		v.SetDefault(securityContextFromRawJWTKey, map[string]string{})
+	}
+
+	return v, nil
 }
 
 // configFromViper populates the config struct from a Viper instance.
