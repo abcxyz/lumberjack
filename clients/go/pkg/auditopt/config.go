@@ -39,6 +39,31 @@ import (
 	alpb "github.com/abcxyz/lumberjack/clients/go/apis/v1alpha1"
 )
 
+// The list of config variables that a user can set in a config
+// file. The "." delimeter represents a nested field. For example,
+// the config variable "condition.regex.principal_include" is
+// represented in a YAML config file as:
+// ```
+// condition:
+//  regex:
+//    principal_include: test@google.com
+// ```
+// ```
+// filter:
+//  regex:
+//    principal_exclude: test@google.com
+// ```
+const (
+	backendAddressKey                  = "backend.address"
+	backendImpersonateAccountKey       = "backend.impersonate_account"
+	backendInsecureEnabledKey          = "backend.insecure_enabled"
+	conditionRegexPrincipalExcludeKey  = "condition.regex.principal_exclude"
+	conditionRegexPrincipalIncludeKey  = "condition.regex.principal_include"
+	securityContextFromRawJWTPrefixKey = "security_context.from_raw_jwt.prefix"
+	securityContextFromRawJWTKeyKey    = "security_context.from_raw_jwt.key"
+	versionKey                         = "version"
+)
+
 // The version we expect in a config file.
 const expectedVersion = "v1alpha1"
 
@@ -54,10 +79,7 @@ func MustFromConfigFile(path string) audit.Option {
 		if err := v.ReadInConfig(); err != nil {
 			return fmt.Errorf("failed reading config file at %q: %w", path, err)
 		}
-		v, err := loadDefaultsAndEnvVars(v)
-		if err != nil {
-			return err
-		}
+		v = setDefaultValues(v)
 		cfg, err := configFromViper(v)
 		if err != nil {
 			return err
@@ -82,10 +104,7 @@ func FromConfigFile(path string) audit.Option {
 		if err := v.ReadInConfig(); err != nil && !errors.Is(err, fs.ErrNotExist) {
 			return fmt.Errorf("failed reading config file at %q: %w", path, err)
 		}
-		v, err := loadDefaultsAndEnvVars(v)
-		if err != nil {
-			return err
-		}
+		v = bindEnvVars(v)
 		cfg, err := configFromViper(v)
 		if err != nil {
 			return err
@@ -114,10 +133,8 @@ func WithInterceptorFromConfigFile(path string) (grpc.ServerOption, *audit.Clien
 	if err := v.ReadInConfig(); err != nil {
 		return nil, nil, fmt.Errorf("failed reading config file at %q: %w", path, err)
 	}
-	v, err := loadDefaultsAndEnvVars(v)
-	if err != nil {
-		return nil, nil, err
-	}
+	v = bindEnvVars(v)
+	v = setDefaultValues(v)
 	cfg, err := configFromViper(v)
 	if err != nil {
 		return nil, nil, err
@@ -176,6 +193,8 @@ func clientFromConfig(c *audit.Client, cfg *alpb.Config) error {
 func principalFilterFromConfig(cfg *alpb.Config) (audit.Option, error) {
 	var opts []filtering.Option
 	if cfg != nil && cfg.Condition != nil && cfg.Condition.Regex != nil {
+		// Nil `PrincipalInclude` and `PrincipalExclude` is fine because
+		// calling `filtering.WithIncludes("")` is a noop.
 		withIncludes := filtering.WithIncludes(cfg.Condition.Regex.PrincipalInclude)
 		withExcludes := filtering.WithExcludes(cfg.Condition.Regex.PrincipalExclude)
 		opts = append(opts, withIncludes, withExcludes)
@@ -255,50 +274,10 @@ func fromRawJWTFromConfig(cfg *alpb.Config) (*security.FromRawJWT, error) {
 	return fromRawJWT, nil
 }
 
-// loadDefaultsAndEnvVars modifies a Viper instance to:
-//   - map env vars to config vars
-//   - have config variable defaults
-// The Viper library does most of the heavy lifting. For details, see:
-// https://github.com/spf13/viper#what-is-viper
-func loadDefaultsAndEnvVars(v *viper.Viper) (*viper.Viper, error) {
-	// Explicitly bind env vars to leaf Viper keys. Note that:
-	//   - Env vars are prefixed with "AUDIT_CLIENT_".
-	//   - Nested config variables can be set from env vars by replacing
-	//     the "." delimiter with "_". E.g. the config variable "backend.address"
-	//     can be set with the env var "AUDIT_CLIENT_BACKEND_ADDRESS".
-	v.SetEnvPrefix("AUDIT_CLIENT")
-	v.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
-	v.AllowEmptyEnv(true)
-	leafKeys := []string{
-		// The "." delimeter represents a nested field. For example,
-		// the config variable "condition.regex.principal_include"
-		// is represented in a YAML config file as:
-		// ```
-		// condition:
-		//  regex:
-		//    principal_include: test@google.com
-		// ```
-		"backend.address",
-		"backend.impersonate_account",
-		"backend.insecure_enabled",
-		"condition.regex.principal_exclude",
-		"condition.regex.principal_include",
-		"security_context.from_raw_jwt.prefix",
-		"security_context.from_raw_jwt.key",
-		"version",
-	}
-	for _, lk := range leafKeys {
-		// We don't use v.AutomaticEnv() because it fails to bind env vars
-		// when they are inexistent in the config and when they don't have
-		// an explicit default value.
-		if err := v.BindEnv(lk); err != nil {
-			return nil, fmt.Errorf("error binding key %q to env var: %w", lk, err)
-		}
-	}
-
+func setDefaultValues(v *viper.Viper) *viper.Viper {
 	// By default, we filter log requests that have an IAM
 	// service account as the principal.
-	v.SetDefault("condition.regex.principal_exclude", ".iam.gserviceaccount.com$")
+	v.SetDefault(conditionRegexPrincipalExcludeKey, ".iam.gserviceaccount.com$")
 
 	// Set default value for the security context. This
 	// enables the following config file behaviours:
@@ -319,10 +298,49 @@ func loadDefaultsAndEnvVars(v *viper.Viper) (*viper.Viper, error) {
 		v.SetDefault("security_context.from_raw_jwt", map[string]string{})
 	}
 
-	return v, nil
+	return v
 }
 
-// configFromViper populates the config struct from a Viper instance.
+// bindEnvVars associates env vars with Viper config variables. This
+// allows the user to overwrite a config file value or a default value
+// by setting an env var. Note that:
+//   - Env vars are prefixed with "AUDIT_CLIENT_".
+//   - Only leaf config variables can be overwritten with env vars.
+//   - Nested config variables are set from env vars by replacing
+//     the "." delimiter with "_". E.g. the config variable "backend.address"
+//     is set with the env var "AUDIT_CLIENT_BACKEND_ADDRESS".
+func bindEnvVars(v *viper.Viper) *viper.Viper {
+	v.SetEnvPrefix("AUDIT_CLIENT")
+	v.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
+	v.AllowEmptyEnv(true)
+	leafKeys := []string{
+		backendAddressKey,
+		backendImpersonateAccountKey,
+		backendInsecureEnabledKey,
+		conditionRegexPrincipalExcludeKey,
+		conditionRegexPrincipalIncludeKey,
+		securityContextFromRawJWTPrefixKey,
+		securityContextFromRawJWTKeyKey,
+		versionKey,
+	}
+	for _, lk := range leafKeys {
+		// We don't use v.AutomaticEnv() because it fails to bind env vars
+		// when they are inexistent in the config and when they don't have
+		// an explicit default value.
+		mustBindEnv(v, lk)
+	}
+	return v
+}
+
+func mustBindEnv(v *viper.Viper, env string) {
+	// BindEnv only returns an error when the input _slice_ to the variadic
+	// input is empty. Since this function signature requires a string value,
+	// we can ignore the error.
+	if err := v.BindEnv(env); err != nil {
+		panic(fmt.Errorf("failed to bind env %q: %w", env, err))
+	}
+}
+
 func configFromViper(v *viper.Viper) (*alpb.Config, error) {
 	config := &alpb.Config{}
 	if err := v.Unmarshal(config); err != nil {

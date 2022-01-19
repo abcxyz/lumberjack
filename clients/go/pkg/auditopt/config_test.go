@@ -169,7 +169,7 @@ backend:
 
 			lis, err := net.Listen("tcp", "localhost:0")
 			if err != nil {
-				t.Fatalf("net.Listen(tcp, localhost:0) failed: %v", err)
+				t.Fatal(err)
 			}
 			go func(t *testing.T, s *grpc.Server, lis net.Listener) {
 				err := s.Serve(lis)
@@ -187,7 +187,7 @@ backend:
 			// Add address of the fake server to the config file.
 			content := fmt.Sprintf(tc.fileContent, lis.Addr().String())
 			if err := ioutil.WriteFile(path, []byte(content), 0o600); err != nil {
-				t.Fatalf("error creating test config file: %v", err)
+				t.Fatal(err)
 			}
 
 			c, err := audit.NewClient(MustFromConfigFile(path))
@@ -198,7 +198,7 @@ backend:
 				return
 			}
 			if err := c.Log(context.Background(), tc.req); err != nil {
-				t.Fatalf("client.Log(...) unexpected error: %v", err)
+				t.Fatal(err)
 			}
 			cmpopts := []cmp.Option{
 				protocmp.Transform(),
@@ -233,7 +233,7 @@ backend:
 	for name, content := range configFileContentByName {
 		path := filepath.Join(dir, name)
 		if err := ioutil.WriteFile(path, []byte(content), 0o600); err != nil {
-			t.Fatalf("error creating test config file: %v", err)
+			t.Fatal(err)
 		}
 	}
 	cases := []struct {
@@ -277,7 +277,7 @@ backend:
 
 			lis, err := net.Listen("tcp", "localhost:0")
 			if err != nil {
-				t.Fatalf("net.Listen(tcp, localhost:0) failed: %v", err)
+				t.Fatal(err)
 			}
 			go func(t *testing.T, s *grpc.Server, lis net.Listener) {
 				err := s.Serve(lis)
@@ -300,7 +300,7 @@ backend:
 				return
 			}
 			if err := c.Log(context.Background(), tc.req); err != nil {
-				t.Fatalf("client.Log(...) unexpected error: %v", err)
+				t.Fatal(err)
 			}
 			cmpopts := []cmp.Option{
 				protocmp.Transform(),
@@ -450,21 +450,19 @@ security_context:
 			t.Parallel()
 			path := filepath.Join(t.TempDir(), "config.yaml")
 			if err := ioutil.WriteFile(path, []byte(tc.fileContent), 0o600); err != nil {
-				t.Fatalf("error creating test config file: %v", err)
+				t.Fatal(err)
 			}
 
 			v := viper.New()
 			v.SetConfigFile(path)
 			if err := v.ReadInConfig(); err != nil {
-				t.Fatalf("failed reading config file at %q: %v", path, err)
+				t.Fatal(err)
 			}
-			v, err := loadDefaultsAndEnvVars(v)
-			if err != nil {
-				t.Fatalf("failed preparing Viper: %v", err)
-			}
+			v = bindEnvVars(v)
+			v = setDefaultValues(v)
 			cfg, err := configFromViper(v)
 			if err != nil {
-				t.Fatalf("failed creating config struct from Viper: %v", err)
+				t.Fatal(err)
 			}
 
 			fromRawJWT, err := fromRawJWTFromConfig(cfg)
@@ -535,7 +533,7 @@ security_context:
 
 			path := filepath.Join(t.TempDir(), "config.yaml")
 			if err := ioutil.WriteFile(path, []byte(tc.fileContent), 0o600); err != nil {
-				t.Fatalf("error creating test config file: %v", err)
+				t.Fatal(err)
 			}
 
 			_, _, err := WithInterceptorFromConfigFile(path)
