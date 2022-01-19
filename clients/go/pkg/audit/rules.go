@@ -15,8 +15,12 @@
 package audit
 
 import (
+	"strings"
+
 	alpb "github.com/abcxyz/lumberjack/clients/go/apis/v1alpha1"
 )
+
+const wildcard = "*"
 
 // A Rule tells the middleware which methods should be logged and how
 // they should be logged.
@@ -24,4 +28,17 @@ type Rule struct {
 	Selector  string
 	Directive string
 	LogType   alpb.AuditLogRequest_LogType
+}
+
+// isApplicable determines if the a Rule's selector applies to
+// the given method.
+func (r Rule) isApplicable(methodName string) bool {
+	sel := r.Selector
+	if sel == wildcard {
+		return true
+	}
+	if strings.HasSuffix(sel, wildcard) {
+		return strings.HasPrefix(methodName, sel[:len(sel)-1])
+	}
+	return sel == methodName
 }
