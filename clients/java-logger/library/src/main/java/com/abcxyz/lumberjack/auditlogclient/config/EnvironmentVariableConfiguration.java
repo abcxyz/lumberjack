@@ -72,4 +72,8 @@ public class EnvironmentVariableConfiguration {
 
   @Named("CONTAINER_NAME")
   private final String containerName;
+
+  @Named("METADATA_HOST_ENV")
+  private final String metadataHostEnv;
+
 }
