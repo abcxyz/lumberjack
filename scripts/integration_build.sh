@@ -34,7 +34,7 @@ if [[ $GCLOUD_ACCOUNT == $CI_SERVICE_ACCOUNT ]]; then
   # When running in CI, impersonate the service account to have its email included in the ID token.
   ID_TOKEN=$(gcloud auth print-identity-token --impersonate-service-account=${CI_SERVICE_ACCOUNT} --include-email)
   # Override the default filters that exclude service accounts during integration tests.
-  ENV_VARS='env_vars={"AUDIT_CLIENT_VERSION":"v1alpha1","AUDIT_CLIENT_FILTER_REGEX_PRINCIPAL_INCLUDE":".iam.gserviceaccount.com$"}'
+  ENV_VARS='env_vars={"AUDIT_CLIENT_VERSION":"v1alpha1","AUDIT_CLIENT_CONDITION_REGEX_PRINCIPAL_INCLUDE":".iam.gserviceaccount.com$"}'
 else
   ID_TOKEN=$(gcloud auth print-identity-token)
   ENV_VARS='env_vars={}'
