@@ -586,11 +586,39 @@ rules:
 `,
 			wantRules: []audit.Rule{
 				{
-					Selector:  "com.example.1",
+					Selector:  "com.example",
 					Directive: "AUDIT",
 					LogType:   alpb.AuditLogRequest_DATA_ACCESS,
 				},
 			},
+		},
+		{
+			name: "nil_selector_should_error",
+			fileContent: `
+version: v1alpha1
+backend:
+  address: foo:443
+  insecure_enabled: true
+security_context:
+  from_raw_jwt: {}
+rules:
+  - selector: ""
+`,
+			wantErrSubstr: "audit rule selector cannot be nil, specify a selector in all audit rules",
+		},
+		{
+			name: "nil_selector_should_error_again",
+			fileContent: `
+version: v1alpha1
+backend:
+  address: foo:443
+  insecure_enabled: true
+security_context:
+  from_raw_jwt: {}
+rules:
+  - directive: "AUDIT"
+`,
+			wantErrSubstr: "audit rule selector cannot be nil, specify a selector in all audit rules",
 		},
 	}
 

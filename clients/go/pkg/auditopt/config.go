@@ -302,7 +302,7 @@ func auditRulesFromConfig(cfg *alpb.Config) ([]audit.Rule, error) {
 
 		directive := cfgRule.Directive
 		if directive == "" {
-			return nil, fmt.Errorf("audit rule directive cannot be nil, specify a directive in all audit rules")
+			directive = "AUDIT"
 		}
 		auditRule.Directive = directive
 
@@ -319,6 +319,9 @@ func auditRulesFromConfig(cfg *alpb.Config) ([]audit.Rule, error) {
 }
 
 func logTypeFromString(s string) (alpb.AuditLogRequest_LogType, error) {
+	if s == "" {
+		return alpb.AuditLogRequest_DATA_ACCESS, nil
+	}
 	logTypeNumber, ok := alpb.AuditLogRequest_LogType_value[strings.ToUpper(s)]
 	if !ok {
 		return 0, fmt.Errorf("config file contains invalid log type %q", s)
@@ -349,18 +352,6 @@ func setDefaultValues(v *viper.Viper) *viper.Viper {
 	if _, ok := sc["from_raw_jwt"]; ok {
 		v.SetDefault("security_context.from_raw_jwt", map[string]string{})
 	}
-
-	rulesKey := "rules"
-	v.SetDefault(rulesKey, nil)
-	rules, ok := v.Get(rulesKey).([]map[string]string)
-	if !ok {
-		return v
-	}
-	for _, r := range rules {
-		r["directive"] = "AUDIT"
-		r["log_type"] = "DATA_ACCESS"
-	}
-
 	return v
 }
 
@@ -369,6 +360,7 @@ func setDefaultValues(v *viper.Viper) *viper.Viper {
 // by setting an env var. Note that:
 //   - Env vars are prefixed with "AUDIT_CLIENT_".
 //   - Only leaf config variables can be overwritten with env vars.
+//   - Env vars cannot overwrite list config variables, such as `rules`.
 //   - Nested config variables are set from env vars by replacing
 //     the "." delimiter with "_". E.g. the config variable "backend.address"
 //     is set with the env var "AUDIT_CLIENT_BACKEND_ADDRESS".
