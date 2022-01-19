@@ -263,6 +263,16 @@ backend:
 			wantReq: testutil.ReqBuilder().WithPrincipal("abc@project.iam.gserviceaccount.com").Build(),
 		},
 		{
+			name: "use_defaults_when_config_file_not_found",
+			path: path.Join(dir, "inexistent.yaml"),
+			envs: map[string]string{
+				"AUDIT_CLIENT_VERSION":                     "v1alpha1",
+				"AUDIT_CLIENT_BACKEND_INSECURE_ENABLED":    "true",
+				"AUDIT_CLIENT_BACKEND_IMPERSONATE_ACCOUNT": "example@test.iam.gserviceaccount.com",
+			},
+			req: testutil.ReqBuilder().WithPrincipal("abc@project.iam.gserviceaccount.com").Build(),
+		},
+		{
 			name:          "invalid_config_file_should_error",
 			path:          path.Join(dir, "invalid.yaml"),
 			wantErrSubstr: "cannot unmarshal",
@@ -448,6 +458,7 @@ security_context:
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
+
 			path := filepath.Join(t.TempDir(), "config.yaml")
 			if err := ioutil.WriteFile(path, []byte(tc.fileContent), 0o600); err != nil {
 				t.Fatal(err)
@@ -458,8 +469,8 @@ security_context:
 			if err := v.ReadInConfig(); err != nil {
 				t.Fatal(err)
 			}
-			v = bindEnvVars(v)
 			v = setDefaultValues(v)
+			v = bindEnvVars(v)
 			cfg, err := configFromViper(v)
 			if err != nil {
 				t.Fatal(err)

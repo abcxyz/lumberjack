@@ -39,7 +39,7 @@ import (
 	alpb "github.com/abcxyz/lumberjack/clients/go/apis/v1alpha1"
 )
 
-// The list of config variables that a user can set in a config
+// The list of leaf config variables that a user can set in a config
 // file. The "." delimeter represents a nested field. For example,
 // the config variable "condition.regex.principal_include" is
 // represented in a YAML config file as:
@@ -48,19 +48,14 @@ import (
 //  regex:
 //    principal_include: test@google.com
 // ```
-// ```
-// filter:
-//  regex:
-//    principal_exclude: test@google.com
-// ```
 const (
 	backendAddressKey                  = "backend.address"
 	backendImpersonateAccountKey       = "backend.impersonate_account"
 	backendInsecureEnabledKey          = "backend.insecure_enabled"
 	conditionRegexPrincipalExcludeKey  = "condition.regex.principal_exclude"
 	conditionRegexPrincipalIncludeKey  = "condition.regex.principal_include"
-	securityContextFromRawJWTPrefixKey = "security_context.from_raw_jwt.prefix"
 	securityContextFromRawJWTKeyKey    = "security_context.from_raw_jwt.key"
+	securityContextFromRawJWTPrefixKey = "security_context.from_raw_jwt.prefix"
 	versionKey                         = "version"
 )
 
@@ -105,6 +100,7 @@ func FromConfigFile(path string) audit.Option {
 		if err := v.ReadInConfig(); err != nil && !errors.Is(err, fs.ErrNotExist) {
 			return fmt.Errorf("failed reading config file at %q: %w", path, err)
 		}
+		v = setDefaultValues(v)
 		v = bindEnvVars(v)
 		cfg, err := configFromViper(v)
 		if err != nil {
