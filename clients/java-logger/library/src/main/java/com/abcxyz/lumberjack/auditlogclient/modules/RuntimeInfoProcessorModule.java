@@ -25,22 +25,13 @@ import com.google.inject.Provides;
 import com.google.protobuf.InvalidProtocolBufferException;
 import com.google.protobuf.util.JsonFormat;
 import java.io.IOException;
-import java.net.URL;
-import java.net.URLConnection;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.List;
-import java.util.Map;
 import javax.annotation.Nullable;
 
-/**
- * Provides configuration for runtimeInfo processing.
- */
+/** Provides configuration for runtimeInfo processing. */
 public class RuntimeInfoProcessorModule extends AbstractModule {
-
-  private static final String metadataUrl = "http://metadata.google.internal";
-
   @Provides
   @Inject
   @Nullable
@@ -56,35 +47,12 @@ public class RuntimeInfoProcessorModule extends AbstractModule {
       monitoredResource = detectCloudFunction(envConfig);
     } else if (isKubernetesEngine()) {
       monitoredResource = detectKubernetesResource(envConfig);
-    } else if (isOnGCE(envConfig)) {
-      monitoredResource = detectGCEResource(envConfig);
     } else {
       return null;
     }
-
+    // TODO(b/205826340): Add GCE runtime info
     com.google.protobuf.Value value = structToVal(monitoredResource);
     return value;
-  }
-
-  private MonitoredResource detectGCEResource(EnvironmentVariableConfiguration envConfig) {
-    return MonitoredResource.newBuilder()
-        .setType("gce_instance")
-        .putLabels("project_id", getProjectId())
-        .putLabels("instance_id", getInstanceId())
-        .putLabels("instance_name", getInstanceName())
-        .putLabels("zone", getZone())
-        .build();
-  }
-
-  private boolean isOnGCE(EnvironmentVariableConfiguration envConfig) throws IOException {
-     if (!isNullOrBlank(envConfig.getMetadataHostEnv())) {
-       return true;
-     }
-      URL url = new URL(metadataUrl);
-      URLConnection connection = url.openConnection();
-      Map<String, List<String>> map = connection.getHeaderFields();
-      List<String> metadataFlavor = map.get("Metadata-Flavor");
-      return metadataFlavor.contains("Google");
   }
 
   private MonitoredResource detectKubernetesResource(EnvironmentVariableConfiguration envConfig)
@@ -123,11 +91,11 @@ public class RuntimeInfoProcessorModule extends AbstractModule {
 
   private boolean isCloudFunction(EnvironmentVariableConfiguration envConfig) {
     return (!isNullOrBlank(envConfig.getFunctionName())
-        && !isNullOrBlank(envConfig.getFunctionRegion())
-        && !isNullOrBlank(envConfig.getFunctionPoint()))
+            && !isNullOrBlank(envConfig.getFunctionRegion())
+            && !isNullOrBlank(envConfig.getFunctionPoint()))
         || (!isNullOrBlank(envConfig.getFunctionTarget())
-        && !isNullOrBlank(envConfig.getFunctionSignatureType())
-        && !isNullOrBlank(envConfig.getKService()));
+            && !isNullOrBlank(envConfig.getFunctionSignatureType())
+            && !isNullOrBlank(envConfig.getKService()));
   }
 
   private MonitoredResource detectAppEngineResource(EnvironmentVariableConfiguration envConfig) {
@@ -185,7 +153,7 @@ public class RuntimeInfoProcessorModule extends AbstractModule {
 
   private String getClusterName() {
     String clusterName = MetadataConfig.getClusterName();
-    if (isNullOrBlank(clusterName)) {
+    if (clusterName == null || clusterName.isBlank()) {
       throw new IllegalArgumentException("Cluster name not found in metadata.");
     }
     return clusterName;
@@ -193,7 +161,7 @@ public class RuntimeInfoProcessorModule extends AbstractModule {
 
   private String getZone() {
     String zone = MetadataConfig.getZone();
-    if (isNullOrBlank(zone)) {
+    if (zone == null || zone.isBlank()) {
       throw new IllegalArgumentException("Zone not found in metadata.");
     }
     return zone;
@@ -201,26 +169,10 @@ public class RuntimeInfoProcessorModule extends AbstractModule {
 
   private String getProjectId() {
     String projectId = MetadataConfig.getProjectId();
-    if (isNullOrBlank(projectId)) {
+    if (projectId == null || projectId.isBlank()) {
       throw new IllegalArgumentException("Project ID not found in metadata.");
     }
     return projectId;
-  }
-
-  private String getInstanceId() {
-    String instanceId = MetadataConfig.getInstanceId();
-    if (isNullOrBlank(instanceId)) {
-      throw new IllegalArgumentException("Instance Id not found in metadata.");
-    }
-    return instanceId;
-  }
-
-  private String getInstanceName() {
-    String instanceName = MetadataConfig.getAttribute("instance/name");
-    if (isNullOrBlank(instanceName)) {
-      throw new IllegalArgumentException("instance Name not found in metadata.");
-    }
-    return instanceName;
   }
 
   private boolean isNullOrBlank(String val) {
@@ -228,6 +180,5 @@ public class RuntimeInfoProcessorModule extends AbstractModule {
   }
 
   @Override
-  protected void configure() {
-  }
+  protected void configure() {}
 }
