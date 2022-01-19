@@ -54,6 +54,7 @@ const (
 	backendInsecureEnabledKey          = "backend.insecure_enabled"
 	conditionRegexPrincipalExcludeKey  = "condition.regex.principal_exclude"
 	conditionRegexPrincipalIncludeKey  = "condition.regex.principal_include"
+	rulesLogTypeKey                    = "rules.log_type"
 	securityContextFromRawJWTKeyKey    = "security_context.from_raw_jwt.key"
 	securityContextFromRawJWTPrefixKey = "security_context.from_raw_jwt.prefix"
 	versionKey                         = "version"
@@ -125,6 +126,7 @@ func FromConfigFile(path string) audit.Option {
 // ```
 // TODO(noamrabbani): add streaming interceptor.
 func WithInterceptorFromConfigFile(path string) (grpc.ServerOption, *audit.Client, error) {
+	// Prepare Viper config.
 	v := viper.New()
 	v.SetConfigFile(path)
 	if err := v.ReadInConfig(); err != nil {
@@ -136,22 +138,35 @@ func WithInterceptorFromConfigFile(path string) (grpc.ServerOption, *audit.Clien
 	if err != nil {
 		return nil, nil, err
 	}
+	// todo: add test ? impossible to get nil cfg because we have a default val
+	if cfg == nil {
+		return nil, nil, fmt.Errorf("config is nil in config file %q", path)
+	}
 
-	if cfg == nil || cfg.SecurityContext == nil {
-		return nil, nil, fmt.Errorf("no supported security context configured in config file %q", path)
+	// Create security context from config.
+	if cfg.SecurityContext == nil {
+		return nil, nil, fmt.Errorf("no supported security context configured in config")
 	}
 	interceptor := &audit.Interceptor{}
 	switch {
 	case cfg.SecurityContext.FromRawJWT != nil:
 		fromRawJWT, err := fromRawJWTFromConfig(cfg)
 		if err != nil {
-			return nil, nil, fmt.Errorf("error getting `from_raw_jwt` in config file %q: %w", path, err)
+			return nil, nil, fmt.Errorf("error getting `from_raw_jwt` in config: %w", err)
 		}
 		interceptor.SecurityContext = fromRawJWT
 	default:
-		return nil, nil, fmt.Errorf("no supported security context configured in config file %q", path)
+		return nil, nil, fmt.Errorf("no supported security context configured in config")
 	}
 
+	// Create audit rules from config.
+	rules, err := auditRulesFromConfig(cfg)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed getting audit rules from config file %q", path)
+	}
+	interceptor.Rules = rules
+
+	// Create audit client from config.
 	auditOpt := func(c *audit.Client) error {
 		return clientFromConfig(c, cfg)
 	}
@@ -224,7 +239,7 @@ func backendFromConfig(cfg *alpb.Config) (audit.Option, error) {
 	return audit.WithBackend(b), nil
 }
 
-// fromRawJWTFromConfig populates a `fromRawJWT`` from a Viper instance.
+// fromRawJWTFromConfig populates a `fromRawJWT`` from a config instance.
 // We handle nil and unset values in the following way:
 //
 // security_context:
@@ -271,6 +286,46 @@ func fromRawJWTFromConfig(cfg *alpb.Config) (*security.FromRawJWT, error) {
 	return fromRawJWT, nil
 }
 
+func auditRulesFromConfig(cfg *alpb.Config) ([]audit.Rule, error) {
+	if len(cfg.Rules) == 0 {
+		return nil, fmt.Errorf("no audit rules configured in config, add at least one")
+	}
+	var auditRules []audit.Rule
+	for _, cfgRule := range cfg.Rules {
+		auditRule := audit.Rule{}
+
+		selector := cfgRule.Selector
+		if selector == "" {
+			return nil, fmt.Errorf("audit rule selector cannot be nil, specify a selector in all audit rules")
+		}
+		auditRule.Selector = selector
+
+		directive := cfgRule.Directive
+		if directive == "" {
+			return nil, fmt.Errorf("audit rule directive cannot be nil, specify a directive in all audit rules")
+		}
+		auditRule.Directive = directive
+
+		logType, err := logTypeFromString(cfgRule.LogType)
+		if err != nil {
+			return nil, err
+		}
+		auditRule.LogType = logType
+
+		auditRules = append(auditRules, auditRule)
+	}
+
+	return auditRules, nil
+}
+
+func logTypeFromString(s string) (alpb.AuditLogRequest_LogType, error) {
+	logTypeNumber, ok := alpb.AuditLogRequest_LogType_value[strings.ToUpper(s)]
+	if !ok {
+		return 0, fmt.Errorf("config file contains invalid log type %q", s)
+	}
+	return alpb.AuditLogRequest_LogType(logTypeNumber), nil
+}
+
 func setDefaultValues(v *viper.Viper) *viper.Viper {
 	// By default, we filter log requests that have an IAM
 	// service account as the principal.
@@ -293,6 +348,17 @@ func setDefaultValues(v *viper.Viper) *viper.Viper {
 	sc := v.GetStringMap("security_context")
 	if _, ok := sc["from_raw_jwt"]; ok {
 		v.SetDefault("security_context.from_raw_jwt", map[string]string{})
+	}
+
+	rulesKey := "rules"
+	v.SetDefault(rulesKey, nil)
+	rules, ok := v.Get(rulesKey).([]map[string]string)
+	if !ok {
+		return v
+	}
+	for _, r := range rules {
+		r["directive"] = "AUDIT"
+		r["log_type"] = "DATA_ACCESS"
 	}
 
 	return v

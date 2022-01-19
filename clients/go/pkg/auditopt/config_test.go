@@ -487,6 +487,146 @@ security_context:
 	}
 }
 
+func TestRulesFromConfig(t *testing.T) {
+	t.Parallel()
+	cases := []struct {
+		name          string
+		fileContent   string
+		wantRules     []audit.Rule
+		wantErrSubstr string
+	}{
+		{
+			name: "unset_rules",
+			fileContent: `
+version: v1alpha1
+backend:
+  address: foo:443
+  insecure_enabled: true
+security_context:
+  from_raw_jwt: {}
+`,
+			wantErrSubstr: "no audit rules configured in config, add at least one",
+		},
+		{
+			name: "unset_rules_again",
+			fileContent: `
+version: v1alpha1
+backend:
+  address: foo:443
+  insecure_enabled: true
+security_context:
+  from_raw_jwt: {}
+rules:
+`,
+			wantErrSubstr: "no audit rules configured in config, add at least one",
+		},
+		{
+			name: "one_rule",
+			fileContent: `
+version: v1alpha1
+backend:
+  address: foo:443
+  insecure_enabled: true
+security_context:
+  from_raw_jwt: {}
+rules:
+  - selector: "com.example"
+    directive: "example"
+    log_type: "DATA_ACCESS"
+`,
+			wantRules: []audit.Rule{
+				{
+					Selector:  "com.example",
+					Directive: "example",
+					LogType:   alpb.AuditLogRequest_DATA_ACCESS,
+				},
+			},
+		},
+		{
+			name: "two_rules",
+			fileContent: `
+version: v1alpha1
+backend:
+  address: foo:443
+  insecure_enabled: true
+security_context:
+  from_raw_jwt: {}
+rules:
+  - selector: "com.example.1"
+    directive: "example1"
+    log_type: "UNSPECIFIED"
+  - selector: "com.example.2"
+    directive: "example2"
+    log_type: "admin_activity"
+`,
+			wantRules: []audit.Rule{
+				{
+					Selector:  "com.example.1",
+					Directive: "example1",
+					LogType:   alpb.AuditLogRequest_UNSPECIFIED,
+				},
+				{
+					Selector:  "com.example.2",
+					Directive: "example2",
+					LogType:   alpb.AuditLogRequest_ADMIN_ACTIVITY,
+				},
+			},
+		},
+		{
+			name: "default_values",
+			fileContent: `
+version: v1alpha1
+backend:
+  address: foo:443
+  insecure_enabled: true
+security_context:
+  from_raw_jwt: {}
+rules:
+  - selector: "com.example"
+`,
+			wantRules: []audit.Rule{
+				{
+					Selector:  "com.example.1",
+					Directive: "AUDIT",
+					LogType:   alpb.AuditLogRequest_DATA_ACCESS,
+				},
+			},
+		},
+	}
+
+	for _, tc := range cases {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			path := filepath.Join(t.TempDir(), "config.yaml")
+			if err := ioutil.WriteFile(path, []byte(tc.fileContent), 0o600); err != nil {
+				t.Fatal(err)
+			}
+
+			v := viper.New()
+			v.SetConfigFile(path)
+			if err := v.ReadInConfig(); err != nil {
+				t.Fatal(err)
+			}
+			v = setDefaultValues(v)
+			v = bindEnvVars(v)
+			cfg, err := configFromViper(v)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			auditRules, err := auditRulesFromConfig(cfg)
+			if diff := errutil.DiffSubstring(err, tc.wantErrSubstr); diff != "" {
+				t.Errorf("auditRulesFromConfig() got unexpected error substring: %v", diff)
+			}
+			if diff := cmp.Diff(tc.wantRules, auditRules); diff != "" {
+				t.Errorf("unexpected diff in fromRawJWT (-want,+got):\n%s", diff)
+			}
+		})
+	}
+}
+
 func TestWithInterceptorFromConfigFile(t *testing.T) {
 	t.Parallel()
 	cases := []struct {

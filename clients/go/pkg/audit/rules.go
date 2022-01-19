@@ -15,23 +15,13 @@
 package audit
 
 import (
-	"context"
-	"fmt"
-
-	"github.com/abcxyz/lumberjack/clients/go/pkg/security"
-	"google.golang.org/grpc"
+	alpb "github.com/abcxyz/lumberjack/clients/go/apis/v1alpha1"
 )
 
-// Interceptor contains the fields required for an interceptor
-// to autofill and emit audit logs.
-type Interceptor struct {
-	*Client
-	SecurityContext security.GRPCContext
-	Rules           []Rule
-}
-
-// UnaryInterceptor is a unary interceptor that autofills and emits audit logs.
-// TODO(noamrabbani): implement unary interceptor.
-func (i *Interceptor) UnaryInterceptor(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error) {
-	return nil, fmt.Errorf("not yet implemented")
+// A Rule tells the middleware which methods should be logged and how
+// they should be logged.
+type Rule struct {
+	Selector  string
+	Directive string
+	LogType   alpb.AuditLogRequest_LogType
 }
