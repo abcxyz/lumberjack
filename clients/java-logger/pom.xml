@@ -12,5 +12,6 @@
   <modules>
     <module>library</module>
     <module>shell</module>
+    <module>server-test</module>
   </modules>
 </project>

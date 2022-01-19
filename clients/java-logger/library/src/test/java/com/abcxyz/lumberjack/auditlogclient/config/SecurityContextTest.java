@@ -134,7 +134,7 @@ public class SecurityContextTest {
     Metadata headers = new Metadata();
     Metadata.Key jwtKey =
         Metadata.Key.of(key.toUpperCase(), Metadata.ASCII_STRING_MARSHALLER);
-    headers.put(jwtKey, prefix + ENCODED_Jwt);
+    headers.put(jwtKey, prefix.toUpperCase() + ENCODED_Jwt);
     Metadata.Key otherKey =
         Metadata.Key.of("other-key", Metadata.ASCII_STRING_MARSHALLER);
     headers.put(otherKey, "irrelevant");

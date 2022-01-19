@@ -67,6 +67,23 @@ module "shell_app" {
   artifact_registry_location = var.artifact_registry_location
 }
 
+module "java_hello_app" {
+  source = "../java-hello-app"
+
+  build_command              = var.hello_build_command
+  project_id                 = var.app_project_id
+  service_name               = "${var.service_name}-java-hello"
+  env_vars                   = merge(local.env_vars, var.env_vars)
+  tag                        = var.tag
+  use_random_tag             = var.use_random_tag
+  region                     = var.region
+  artifact_registry_location = var.artifact_registry_location
+}
+
 output "instance_addresses" {
   value = [for key, _ in var.build_commands : module.shell_app[key].instance_address]
+}
+
+output "hello_address" {
+  value = module.java_hello_app.hello_address
 }

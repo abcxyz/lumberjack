@@ -20,6 +20,18 @@ variable "region" {
   description = "The default region for resources in the project; individual resources could have more specific variables defined to specify their region/location"
 }
 
+variable "project_id" {
+  type        = string
+  description = "The GCP project to host the hello app."
+}
+
+variable "env_vars" {
+  type    = map(string)
+  default = {}
+
+  description = "Shell app service environment variables."
+}
+
 variable "tag" {
   type        = string
   default     = "init"
@@ -40,32 +52,10 @@ variable "artifact_registry_location" {
 
 variable "service_name" {
   type        = string
-  description = "Name of the service."
+  description = "Name of the service, e.g. go-hello-app or java-hello-app."
 }
 
-variable "env_vars" {
-  type    = map(string)
-  default = {}
-
-  description = "Shell app environment variables."
-}
-
-variable "build_commands" {
-  type        = map(string)
-  description = "List of name/command pairs to call the shell app build script via the relative path to this terraform module, e.g. ../../clients/go/test/shell/build.sh"
-}
-
-variable "hello_build_command" {
+variable "build_command" {
   type        = string
-  description = "command in order to build the hello grpc server"
-}
-
-variable "server_project_id" {
-  type        = string
-  description = "Project ID for the Cloud project where the audit logging backend service is deployed."
-}
-
-variable "app_project_id" {
-  type        = string
-  description = "Project ID for the Cloud project where the audit logging shell app is deployed."
+  description = "Command to call the hello app build script via the relative path to this terraform module, e.g. ../../clients/java-logger/scripts/build_hello.sh"
 }
