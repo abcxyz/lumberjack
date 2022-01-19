@@ -74,8 +74,6 @@ func MustFromConfigFile(path string) audit.Option {
 		if err := v.ReadInConfig(); err != nil {
 			return fmt.Errorf("failed reading config file at %q: %w", path, err)
 		}
-		v = setDefaultValues(v)
-		v = bindEnvVars(v)
 		cfg, err := configFromViper(v)
 		if err != nil {
 			return err
@@ -100,8 +98,6 @@ func FromConfigFile(path string) audit.Option {
 		if err := v.ReadInConfig(); err != nil && !errors.Is(err, fs.ErrNotExist) {
 			return fmt.Errorf("failed reading config file at %q: %w", path, err)
 		}
-		v = setDefaultValues(v)
-		v = bindEnvVars(v)
 		cfg, err := configFromViper(v)
 		if err != nil {
 			return err
@@ -130,8 +126,6 @@ func WithInterceptorFromConfigFile(path string) (grpc.ServerOption, *audit.Clien
 	if err := v.ReadInConfig(); err != nil {
 		return nil, nil, fmt.Errorf("failed reading config file at %q: %w", path, err)
 	}
-	v = setDefaultValues(v)
-	v = bindEnvVars(v)
 	cfg, err := configFromViper(v)
 	if err != nil {
 		return nil, nil, err
@@ -271,6 +265,21 @@ func fromRawJWTFromConfig(cfg *alpb.Config) (*security.FromRawJWT, error) {
 	return fromRawJWT, nil
 }
 
+func configFromViper(v *viper.Viper) (*alpb.Config, error) {
+	v = setDefaultValues(v)
+	v = bindEnvVars(v)
+	config := &alpb.Config{}
+	if err := v.Unmarshal(config); err != nil {
+		return nil, fmt.Errorf("failed to unmarshall viper into config struct: %w", err)
+	}
+
+	configFileVersion := config.Version
+	if configFileVersion != expectedVersion {
+		return nil, fmt.Errorf("config version %q unsupported, supported versions are [%q]", configFileVersion, expectedVersion)
+	}
+	return config, nil
+}
+
 func setDefaultValues(v *viper.Viper) *viper.Viper {
 	// By default, we filter log requests that have an IAM
 	// service account as the principal.
@@ -336,17 +345,4 @@ func mustBindEnv(v *viper.Viper, env string) {
 	if err := v.BindEnv(env); err != nil {
 		panic(fmt.Errorf("failed to bind env %q: %w", env, err))
 	}
-}
-
-func configFromViper(v *viper.Viper) (*alpb.Config, error) {
-	config := &alpb.Config{}
-	if err := v.Unmarshal(config); err != nil {
-		return nil, fmt.Errorf("failed to unmarshall viper into config struct: %w", err)
-	}
-
-	configFileVersion := config.Version
-	if configFileVersion != expectedVersion {
-		return nil, fmt.Errorf("config version %q unsupported, supported versions are [%q]", configFileVersion, expectedVersion)
-	}
-	return config, nil
 }
