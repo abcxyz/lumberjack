@@ -80,6 +80,7 @@ func MustFromConfigFile(path string) audit.Option {
 			return fmt.Errorf("failed reading config file at %q: %w", path, err)
 		}
 		v = setDefaultValues(v)
+		v = bindEnvVars(v)
 		cfg, err := configFromViper(v)
 		if err != nil {
 			return err
@@ -133,8 +134,8 @@ func WithInterceptorFromConfigFile(path string) (grpc.ServerOption, *audit.Clien
 	if err := v.ReadInConfig(); err != nil {
 		return nil, nil, fmt.Errorf("failed reading config file at %q: %w", path, err)
 	}
-	v = bindEnvVars(v)
 	v = setDefaultValues(v)
+	v = bindEnvVars(v)
 	cfg, err := configFromViper(v)
 	if err != nil {
 		return nil, nil, err
