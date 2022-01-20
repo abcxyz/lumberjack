@@ -33,6 +33,7 @@ import (
 	"github.com/abcxyz/lumberjack/clients/go/pkg/filtering"
 	"github.com/abcxyz/lumberjack/clients/go/pkg/remote"
 	"github.com/abcxyz/lumberjack/clients/go/pkg/security"
+	"github.com/abcxyz/lumberjack/clients/go/pkg/zlogger"
 	"github.com/spf13/viper"
 	"google.golang.org/grpc"
 
@@ -268,6 +269,7 @@ func fromRawJWTFromConfig(cfg *alpb.Config) (*security.FromRawJWT, error) {
 }
 
 func configFromViper(v *viper.Viper) (*alpb.Config, error) {
+	logger := zlogger.Default()
 	v = setDefaultValues(v)
 	v = bindEnvVars(v)
 	config := &alpb.Config{}
@@ -275,9 +277,11 @@ func configFromViper(v *viper.Viper) (*alpb.Config, error) {
 		return nil, fmt.Errorf("failed to unmarshal viper into config struct: %w", err)
 	}
 
-	configFileVersion := config.Version
-	if configFileVersion != expectedVersion {
-		return nil, fmt.Errorf("config version %q unsupported, supported version is %q", configFileVersion, expectedVersion)
+	cfgVersion := config.Version
+	if cfgVersion == "" {
+		logger.Warnf("config version is unset, set your config to the supported version %q", expectedVersion)
+	} else if cfgVersion != expectedVersion {
+		return nil, fmt.Errorf("explicitly specified config version %q unsupported, supported version is %q", cfgVersion, expectedVersion)
 	}
 	return config, nil
 }
