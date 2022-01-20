@@ -22,14 +22,14 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.verify;
 
+import com.abcxyz.lumberjack.v1alpha1.AuditLogRequest;
+import com.abcxyz.lumberjack.v1alpha1.AuditLogRequest.LogType;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.cloud.logging.LogEntry;
 import com.google.cloud.logging.Logging;
 import com.google.cloud.logging.Payload;
-import com.abcxyz.lumberjack.v1alpha1.AuditLogRequest;
-import com.abcxyz.lumberjack.v1alpha1.AuditLogRequest.LogType;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.Set;
@@ -46,27 +46,24 @@ import org.mockito.junit.jupiter.MockitoExtension;
 @ExtendWith(MockitoExtension.class)
 public class CloudLoggingProcessorTests {
 
-  public static final String LOG_NAME_UNSPECIFIED = URLEncoder.encode("auditlog.gcloudsolutions.dev/unspecified",
-      StandardCharsets.UTF_8);
-  public static final String LOG_NAME_DATA_ACCESS = URLEncoder.encode("auditlog.gcloudsolutions.dev/data_access",
-      StandardCharsets.UTF_8);
+  public static final String LOG_NAME_UNSPECIFIED =
+      URLEncoder.encode("auditlog.gcloudsolutions.dev/unspecified", StandardCharsets.UTF_8);
+  public static final String LOG_NAME_DATA_ACCESS =
+      URLEncoder.encode("auditlog.gcloudsolutions.dev/data_access", StandardCharsets.UTF_8);
 
-  @Spy
-  private ObjectMapper mapper;
-  @Mock
-  private Logging logging;
-  @Captor
-  private ArgumentCaptor<Set<LogEntry>> logEntryCaptor;
-  @InjectMocks
-  private CloudLoggingProcessor cloudLoggingProcessor;
+  @Spy private ObjectMapper mapper;
+  @Mock private Logging logging;
+  @Captor private ArgumentCaptor<Set<LogEntry>> logEntryCaptor;
+  @InjectMocks private CloudLoggingProcessor cloudLoggingProcessor;
 
   @Test
   void shouldInvokeCloudLoggerWithLumberjackLogName() throws LogProcessingException {
     cloudLoggingProcessor.process(AuditLogRequest.getDefaultInstance());
     verify(logging).write(logEntryCaptor.capture());
-    LogEntry logEntry = logEntryCaptor.getValue().stream()
-        .findFirst()
-        .orElse(LogEntry.newBuilder(Payload.StringPayload.of("")).build());
+    LogEntry logEntry =
+        logEntryCaptor.getValue().stream()
+            .findFirst()
+            .orElse(LogEntry.newBuilder(Payload.StringPayload.of("")).build());
     assertThat(logEntry.getLogName()).isEqualTo(LOG_NAME_UNSPECIFIED);
   }
 
@@ -78,9 +75,10 @@ public class CloudLoggingProcessorTests {
             .setType(LogType.DATA_ACCESS)
             .build());
     verify(logging).write(logEntryCaptor.capture());
-    LogEntry logEntry = logEntryCaptor.getValue().stream()
-        .findFirst()
-        .orElse(LogEntry.newBuilder(Payload.StringPayload.of("")).build());
+    LogEntry logEntry =
+        logEntryCaptor.getValue().stream()
+            .findFirst()
+            .orElse(LogEntry.newBuilder(Payload.StringPayload.of("")).build());
     assertThat(logEntry.getLogName()).isEqualTo(LOG_NAME_DATA_ACCESS);
   }
 

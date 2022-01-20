@@ -17,10 +17,8 @@
 package com.abcxyz.lumberjack.auditlogclient.config;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
 
-import com.abcxyz.lumberjack.auditlogclient.exceptions.AuthorizationException;
 import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
@@ -39,7 +37,8 @@ public class SecurityContextTest {
    *   "iat": 1516239022,
    *   "email": "me@example.com" }
    */
-  private static final String ENCODED_Jwt = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyLCJlbWFpbCI6Im1lQGV4YW1wbGUuY29tIn0.6hBdfWsZcIn4crnRNBSMgztRaacHWmZmAtbaOc-efnI";
+  private static final String ENCODED_Jwt =
+      "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyLCJlbWFpbCI6Im1lQGV4YW1wbGUuY29tIn0.6hBdfWsZcIn4crnRNBSMgztRaacHWmZmAtbaOc-efnI";
 
   @Test
   public void getsJwtSpecifications() {
@@ -61,9 +60,12 @@ public class SecurityContextTest {
   @Test
   public void deserializesCorrectly() throws Exception {
     ObjectMapper mapper = new ObjectMapper(new YAMLFactory());
-    SecurityContext securityContext = mapper.readValue(
-            this.getClass().getClassLoader().getResourceAsStream("jwt_context.yml"), AuditLoggingConfiguration.class)
-        .getSecurityContext();
+    SecurityContext securityContext =
+        mapper
+            .readValue(
+                this.getClass().getClassLoader().getResourceAsStream("jwt_context.yml"),
+                AuditLoggingConfiguration.class)
+            .getSecurityContext();
     SecurityContext expectedSecurityContext = new SecurityContext();
     JwtSpecification expectedJwtSpec = new JwtSpecification();
     expectedJwtSpec.setKey("x-jwt-assertion");
@@ -80,24 +82,34 @@ public class SecurityContextTest {
   @Test
   public void deserializesCorrectly_default() throws Exception {
     ObjectMapper mapper = new ObjectMapper(new YAMLFactory());
-    SecurityContext securityContext = mapper.readValue(
-        this.getClass().getClassLoader().getResourceAsStream("jwt_default.yml"), AuditLoggingConfiguration.class)
-        .getSecurityContext();
-    assertThat(securityContext.getJwtSpecifications()).isEqualTo(List.of(SecurityContext.DEFAULT_SPEC));
+    SecurityContext securityContext =
+        mapper
+            .readValue(
+                this.getClass().getClassLoader().getResourceAsStream("jwt_default.yml"),
+                AuditLoggingConfiguration.class)
+            .getSecurityContext();
+    assertThat(securityContext.getJwtSpecifications())
+        .isEqualTo(List.of(SecurityContext.DEFAULT_SPEC));
 
-    securityContext = mapper.readValue(
-            this.getClass().getClassLoader().getResourceAsStream("jwt_default_2.yml"), AuditLoggingConfiguration.class)
-        .getSecurityContext();
-    assertThat(securityContext.getJwtSpecifications()).isEqualTo(List.of(SecurityContext.DEFAULT_SPEC));
+    securityContext =
+        mapper
+            .readValue(
+                this.getClass().getClassLoader().getResourceAsStream("jwt_default_2.yml"),
+                AuditLoggingConfiguration.class)
+            .getSecurityContext();
+    assertThat(securityContext.getJwtSpecifications())
+        .isEqualTo(List.of(SecurityContext.DEFAULT_SPEC));
   }
 
   @Test
   public void failsWithNoSecurityContext() throws IOException {
     ObjectMapper mapper = new ObjectMapper(new YAMLFactory());
-    Assertions.assertThrows(JsonMappingException.class, () ->
-        mapper.readValue(
-            this.getClass().getClassLoader().getResourceAsStream("no_security_context.yml"),
-            AuditLoggingConfiguration.class));
+    Assertions.assertThrows(
+        JsonMappingException.class,
+        () ->
+            mapper.readValue(
+                this.getClass().getClassLoader().getResourceAsStream("no_security_context.yml"),
+                AuditLoggingConfiguration.class));
   }
 
   @Test
@@ -110,11 +122,9 @@ public class SecurityContextTest {
     SecurityContext securityContext = new SecurityContext(specifications);
 
     Metadata headers = new Metadata();
-    Metadata.Key jwtKey =
-        Metadata.Key.of(key, Metadata.ASCII_STRING_MARSHALLER);
+    Metadata.Key jwtKey = Metadata.Key.of(key, Metadata.ASCII_STRING_MARSHALLER);
     headers.put(jwtKey, prefix + ENCODED_Jwt);
-    Metadata.Key otherKey =
-        Metadata.Key.of("other-key", Metadata.ASCII_STRING_MARSHALLER);
+    Metadata.Key otherKey = Metadata.Key.of("other-key", Metadata.ASCII_STRING_MARSHALLER);
     headers.put(otherKey, "irrelevant");
 
     Optional<String> returnVal = securityContext.getPrincipal(headers);
@@ -137,6 +147,7 @@ public class SecurityContextTest {
     headers.put(jwtKey, prefix.toUpperCase() + ENCODED_Jwt);
     Metadata.Key otherKey =
         Metadata.Key.of("other-key", Metadata.ASCII_STRING_MARSHALLER);
+
     headers.put(otherKey, "irrelevant");
 
     Optional<String> returnVal = securityContext.getPrincipal(headers);
@@ -154,8 +165,7 @@ public class SecurityContextTest {
     SecurityContext securityContext = new SecurityContext(specifications);
 
     Metadata headers = new Metadata();
-    Metadata.Key otherKey =
-        Metadata.Key.of("other-key", Metadata.ASCII_STRING_MARSHALLER);
+    Metadata.Key otherKey = Metadata.Key.of("other-key", Metadata.ASCII_STRING_MARSHALLER);
     headers.put(otherKey, "irrelevant");
 
     Optional<String> returnVal = securityContext.getPrincipal(headers);

@@ -25,13 +25,15 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  # TODO: enable linting for java
   lint:
     name: Lint
     runs-on: ubuntu-latest
     steps:
-      - name: No java lint implemented
-        run: 'echo "Java linting is not currently implemented."'
+      - name: Check out code
+        uses: actions/checkout@v2
+      - uses: axel-op/googlejavaformat-action@v3
+        with:
+          args: "--set-exit-if-changed"
 
   test:
     name: Tests
