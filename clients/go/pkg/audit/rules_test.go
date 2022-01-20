@@ -89,3 +89,66 @@ func TestIsApplicable(t *testing.T) {
 		})
 	}
 }
+
+func TestMostRelevant(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name       string
+		rules      []Rule
+		methodName string
+		wantRule   Rule
+	}{
+		{
+			name: "exact_match_wins",
+			rules: []Rule{
+				{Selector: "a.b.c"},
+				{Selector: "a.b.*"},
+				{Selector: "*"},
+			},
+			methodName: "a.b.c",
+			wantRule:   Rule{Selector: "a.b.c"},
+		},
+		{
+			name: "partial_wildcard_match_wins",
+			rules: []Rule{
+				{Selector: "a.b.c"},
+				{Selector: "a.b.*"},
+				{Selector: "*"},
+			},
+			methodName: "a.b.d",
+			wantRule:   Rule{Selector: "a.b.*"},
+		},
+		{
+			name: "partial_wildcard_match_wins_again",
+			rules: []Rule{
+				{Selector: "*"},
+				{Selector: "a.b.*"},
+				{Selector: "a.b.c"},
+			},
+			methodName: "a.b.d",
+			wantRule:   Rule{Selector: "a.b.*"},
+		},
+		{
+			name: "wildcard_match_wins",
+			rules: []Rule{
+				{Selector: "a.b.c"},
+				{Selector: "a.b.*"},
+				{Selector: "*"},
+			},
+			methodName: "d.e.f",
+			wantRule:   Rule{Selector: "*"},
+		},
+	}
+	for _, tc := range tests {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			gotRule := mostRelevant(tc.methodName, tc.rules)
+			if gotRule != tc.wantRule {
+				t.Errorf("mostRelevant(%v, %v) = %v, want %v", tc.methodName, tc.rules, gotRule, tc.wantRule)
+			}
+		})
+	}
+}

@@ -30,8 +30,9 @@ type Rule struct {
 	LogType   alpb.AuditLogRequest_LogType
 }
 
-// isApplicable determines if the a Rule's selector applies to
-// the given method.
+// isApplicable determines if a Rule applies to
+// the given method by comparing the Rule's Selector
+// to the methodName.
 func (r Rule) isApplicable(methodName string) bool {
 	sel := r.Selector
 	if sel == wildcard {
@@ -41,4 +42,27 @@ func (r Rule) isApplicable(methodName string) bool {
 		return strings.HasPrefix(methodName, sel[:len(sel)-1])
 	}
 	return sel == methodName
+}
+
+// mostRelevant finds the most relevant Rule for a given method by
+// comparing the Rules's Selector length. For example, given the
+// methodName "com.example.Hello", the selector relevance is
+// the following: "com.example.Hello" > "com.example.*" > "*"
+// If none of the Rules are relevant to the given method (i.e. the
+// the selectors don't match), we return nil.
+func mostRelevant(methodName string, rules []Rule) Rule {
+	var longest int
+	var mostRelevant Rule
+	for _, r := range rules {
+		if r.isApplicable(methodName) && len(r.Selector) > longest {
+			longest = len(r.Selector)
+			mostRelevant = r
+			if longest == len(methodName) {
+				// Return immediately if the methodName
+				// is the same length as the selector.
+				return mostRelevant
+			}
+		}
+	}
+	return mostRelevant
 }
