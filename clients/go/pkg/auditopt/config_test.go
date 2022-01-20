@@ -671,6 +671,8 @@ backend:
   insecure_enabled: true
 security_context:
   from_raw_jwt: {}
+rules:
+  selector: "*"
 `,
 		},
 		{
@@ -683,8 +685,10 @@ backend:
   address: foo:443
   insecure_enabled: true
 security_context:
+rules:
+  selector: "*"
 `,
-			wantErrSubstr: "no supported security context configured in config file",
+			wantErrSubstr: "no supported security context configured in config",
 		},
 		{
 			name: "invalid_config_because_backend_address_is_nil",
@@ -695,6 +699,8 @@ backend:
   insecure_enabled: true
 security_context:
   from_raw_jwt: {}
+rules:
+  selector: "*"
 `,
 			wantErrSubstr: "failed to create audit client from config file",
 		},
