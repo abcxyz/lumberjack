@@ -17,7 +17,8 @@ type Config struct {
 	// If a remote backend is omitted, we audit log to stdout.
 	Backend *Backend `mapstructure:"backend,omitempty" json:"backend,omitempty"`
 
-	// If condition is omitted, we audit log all requests.
+	// If condition is omitted, the default is to discard logs where
+	// the principal is an IAM service account.
 	Condition *Condition `mapstructure:"condition,omitempty" json:"condition,omitempty"`
 
 	// At the moment, we must require security context.
