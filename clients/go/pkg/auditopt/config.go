@@ -299,9 +299,9 @@ func auditRulesFromConfig(cfg *alpb.Config) ([]audit.Rule, error) {
 		}
 		auditRule.Selector = selector
 
-		directive := cfgRule.Directive
-		if directive == "" {
-			directive = "AUDIT"
+		directive, err := directiveFromString(cfgRule.Directive)
+		if err != nil {
+			return nil, err
 		}
 		auditRule.Directive = directive
 
@@ -317,7 +317,24 @@ func auditRulesFromConfig(cfg *alpb.Config) ([]audit.Rule, error) {
 	return auditRules, nil
 }
 
+func directiveFromString(s string) (audit.Directive, error) {
+	// When the directive is nil, default to AUDIT.
+	if s == "" {
+		return audit.Audit, nil
+	}
+	switch strings.ToUpper(s) {
+	case "AUDIT":
+		return audit.Audit, nil
+	case "AUDIT_REQUEST_AND_RESPONSE":
+		return audit.AuditRequestAndResponse, nil
+	case "AUDIT_REQUEST_ONLY":
+		return audit.AuditRequestOnly, nil
+	}
+	return "", fmt.Errorf("invalid audit rule directive %q", s)
+}
+
 func logTypeFromString(s string) (alpb.AuditLogRequest_LogType, error) {
+	// When the log_type is nil, default to DATA_ACCESS.
 	if s == "" {
 		return alpb.AuditLogRequest_DATA_ACCESS, nil
 	}

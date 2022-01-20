@@ -22,11 +22,19 @@ import (
 
 const wildcard = "*"
 
+type Directive string
+
+const (
+	Audit                   Directive = "AUDIT"
+	AuditRequestAndResponse Directive = "AUDIT_REQUEST_AND_RESPONSE"
+	AuditRequestOnly        Directive = "AUDIT_REQUEST_ONLY"
+)
+
 // A Rule tells the middleware which methods should be logged and how
 // they should be logged.
 type Rule struct {
 	Selector  string
-	Directive string
+	Directive Directive
 	LogType   alpb.AuditLogRequest_LogType
 }
 

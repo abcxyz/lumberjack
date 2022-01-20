@@ -530,14 +530,14 @@ backend:
 security_context:
   from_raw_jwt: {}
 rules:
-  - selector: "com.example"
-    directive: "example"
-    log_type: "DATA_ACCESS"
+  - selector: com.example
+    directive: AUDIT
+    log_type: DATA_ACCESS
 `,
 			wantRules: []audit.Rule{
 				{
 					Selector:  "com.example",
-					Directive: "example",
+					Directive: audit.Audit,
 					LogType:   alpb.AuditLogRequest_DATA_ACCESS,
 				},
 			},
@@ -552,22 +552,22 @@ backend:
 security_context:
   from_raw_jwt: {}
 rules:
-  - selector: "com.example.1"
-    directive: "example1"
-    log_type: "UNSPECIFIED"
-  - selector: "com.example.2"
-    directive: "example2"
-    log_type: "admin_activity"
+  - selector: com.example.1
+    directive: AUDIT_REQUEST_AND_RESPONSE
+    log_type: UNSPECIFIED
+  - selector: com.example.2
+    directive: audit_request_only
+    log_type: admin_activity
 `,
 			wantRules: []audit.Rule{
 				{
 					Selector:  "com.example.1",
-					Directive: "example1",
+					Directive: audit.AuditRequestAndResponse,
 					LogType:   alpb.AuditLogRequest_UNSPECIFIED,
 				},
 				{
 					Selector:  "com.example.2",
-					Directive: "example2",
+					Directive: audit.AuditRequestOnly,
 					LogType:   alpb.AuditLogRequest_ADMIN_ACTIVITY,
 				},
 			},
@@ -582,12 +582,12 @@ backend:
 security_context:
   from_raw_jwt: {}
 rules:
-  - selector: "com.example"
+  - selector: com.example
 `,
 			wantRules: []audit.Rule{
 				{
 					Selector:  "com.example",
-					Directive: "AUDIT",
+					Directive: audit.Audit,
 					LogType:   alpb.AuditLogRequest_DATA_ACCESS,
 				},
 			},
@@ -616,9 +616,39 @@ backend:
 security_context:
   from_raw_jwt: {}
 rules:
-  - directive: "AUDIT"
+  - directive: AUDIT
 `,
 			wantErrSubstr: "audit rule selector cannot be nil, specify a selector in all audit rules",
+		},
+		{
+			name: "invalid_log_type_should_error",
+			fileContent: `
+version: v1alpha1
+backend:
+  address: foo:443
+  insecure_enabled: true
+security_context:
+  from_raw_jwt: {}
+rules:
+  - selector: com.example
+    log_type: invalid
+`,
+			wantErrSubstr: "config file contains invalid log type",
+		},
+		{
+			name: "invalid_directive_should_error",
+			fileContent: `
+version: v1alpha1
+backend:
+  address: foo:443
+  insecure_enabled: true
+security_context:
+  from_raw_jwt: {}
+rules:
+  - selector: com.example
+    directive: invalid
+`,
+			wantErrSubstr: "invalid audit rule directive",
 		},
 	}
 
