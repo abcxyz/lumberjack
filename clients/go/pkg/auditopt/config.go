@@ -54,7 +54,6 @@ const (
 	backendInsecureEnabledKey          = "backend.insecure_enabled"
 	conditionRegexPrincipalExcludeKey  = "condition.regex.principal_exclude"
 	conditionRegexPrincipalIncludeKey  = "condition.regex.principal_include"
-	rulesLogTypeKey                    = "rules.log_type"
 	securityContextFromRawJWTKeyKey    = "security_context.from_raw_jwt.key"
 	securityContextFromRawJWTPrefixKey = "security_context.from_raw_jwt.prefix"
 	versionKey                         = "version"
