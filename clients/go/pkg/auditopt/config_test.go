@@ -156,7 +156,7 @@ version: v2
 backend:
   address: %s
 `,
-			wantErrSubstr: `config version "v2" unsupported, supported versions are ["v1alpha1"]`,
+			wantErrSubstr: `config version "v2" unsupported, supported version is "v1alpha1"`,
 		},
 	}
 
