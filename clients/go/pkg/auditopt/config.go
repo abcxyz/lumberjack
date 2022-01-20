@@ -33,6 +33,7 @@ import (
 	"github.com/abcxyz/lumberjack/clients/go/pkg/filtering"
 	"github.com/abcxyz/lumberjack/clients/go/pkg/remote"
 	"github.com/abcxyz/lumberjack/clients/go/pkg/security"
+	"github.com/abcxyz/lumberjack/clients/go/pkg/zlogger"
 	"github.com/spf13/viper"
 	"google.golang.org/grpc"
 
@@ -290,7 +291,8 @@ func configFromViper(v *viper.Viper) (*alpb.Config, error) {
 
 	configFileVersion := config.Version
 	if configFileVersion != expectedVersion {
-		return nil, fmt.Errorf("config version %q unsupported, supported version is %q", configFileVersion, expectedVersion)
+		logger := zlogger.FromContext(context.Background())
+		logger.Warnf("config version %q unsupported, supported version is %q", configFileVersion, expectedVersion)
 	}
 	return config, nil
 }
@@ -356,6 +358,7 @@ func logTypeFromString(s string) (alpb.AuditLogRequest_LogType, error) {
 }
 
 func setDefaultValues(v *viper.Viper) *viper.Viper {
+	v.SetDefault(versionKey, expectedVersion)
 	// By default, we filter log requests that have an IAM
 	// service account as the principal.
 	v.SetDefault(conditionRegexPrincipalExcludeKey, ".iam.gserviceaccount.com$")

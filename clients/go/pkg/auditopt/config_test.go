@@ -149,15 +149,6 @@ noop: %s
 `,
 			wantErrSubstr: "backend address in the config is nil, set it as an env var or in a config file",
 		},
-		{
-			name: "wrong_version_should_error",
-			fileContent: `
-version: v2
-backend:
-  address: %s
-`,
-			wantErrSubstr: `config version "v2" unsupported, supported version is "v1alpha1"`,
-		},
 	}
 
 	for _, tc := range cases {
