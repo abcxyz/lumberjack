@@ -16,32 +16,23 @@ package abcxyx.helloworld;
  * limitations under the License.
  */
 
-
 import abcxyx.helloworld.generated.GreeterGrpc;
 import abcxyx.helloworld.generated.HelloReply;
 import abcxyx.helloworld.generated.HelloRequest;
-import com.abcxyz.lumberjack.auditlogclient.modules.AuditLoggingModule;
 import com.abcxyz.lumberjack.auditlogclient.AuditLoggingServerInterceptor;
 import com.abcxyz.lumberjack.auditlogclient.AuditLogs;
-import com.abcxyz.lumberjack.auditlogclient.modules.RuntimeInfoProcessorModule;
+import com.abcxyz.lumberjack.auditlogclient.modules.AuditLoggingModule;
 import com.google.cloud.audit.AuditLog;
 import com.google.inject.Guice;
 import com.google.inject.Injector;
-import io.grpc.Context;
-import io.grpc.Grpc;
 import io.grpc.Server;
 import io.grpc.ServerBuilder;
-import io.grpc.ServerCredentials;
-import io.grpc.TlsServerCredentials;
 import io.grpc.stub.StreamObserver;
-import java.io.File;
 import java.io.IOException;
 import java.util.logging.Logger;
 import lombok.RequiredArgsConstructor;
 
-/**
- * Server that manages startup/shutdown of a {@code Greeter} server with TLS enabled.
- */
+/** Server that manages startup/shutdown of a {@code Greeter} server with TLS enabled. */
 @RequiredArgsConstructor
 public class HelloWorldServerTls {
   private static final Logger logger = Logger.getLogger(HelloWorldServerTls.class.getName());
@@ -50,23 +41,25 @@ public class HelloWorldServerTls {
 
   private final int port;
 
-
   private void start(AuditLoggingServerInterceptor interceptor) throws IOException {
-    server = ServerBuilder.forPort(port)
-        .addService(new GreeterImpl())
-        .intercept(interceptor)
-        .build()
-        .start();
+    server =
+        ServerBuilder.forPort(port)
+            .addService(new GreeterImpl())
+            .intercept(interceptor)
+            .build()
+            .start();
     logger.info("Server started, listening on " + port);
-    Runtime.getRuntime().addShutdownHook(new Thread() {
-      @Override
-      public void run() {
-        // Use stderr here since the logger may have been reset by its JVM shutdown hook.
-        System.err.println("*** shutting down gRPC server since JVM is shutting down");
-        HelloWorldServerTls.this.stop();
-        System.err.println("*** server shut down");
-      }
-    });
+    Runtime.getRuntime()
+        .addShutdownHook(
+            new Thread() {
+              @Override
+              public void run() {
+                // Use stderr here since the logger may have been reset by its JVM shutdown hook.
+                System.err.println("*** shutting down gRPC server since JVM is shutting down");
+                HelloWorldServerTls.this.stop();
+                System.err.println("*** server shut down");
+              }
+            });
   }
 
   private void stop() {
@@ -75,24 +68,21 @@ public class HelloWorldServerTls {
     }
   }
 
-  /**
-   * Await termination on the main thread since the grpc library uses daemon threads.
-   */
+  /** Await termination on the main thread since the grpc library uses daemon threads. */
   private void blockUntilShutdown() throws InterruptedException {
     if (server != null) {
       server.awaitTermination();
     }
   }
 
-  /**
-   * Main launches the server from the command line.
-   */
+  /** Main launches the server from the command line. */
   public static void main(String[] args) throws IOException, InterruptedException {
     Injector injector = Guice.createInjector(new AuditLoggingModule());
-    AuditLoggingServerInterceptor interceptor = injector.getInstance(AuditLoggingServerInterceptor.class);
+    AuditLoggingServerInterceptor interceptor =
+        injector.getInstance(AuditLoggingServerInterceptor.class);
 
-    final HelloWorldServerTls server = new HelloWorldServerTls(
-        Integer.parseInt(System.getenv("PORT")));
+    final HelloWorldServerTls server =
+        new HelloWorldServerTls(Integer.parseInt(System.getenv("PORT")));
     server.start(interceptor);
     server.blockUntilShutdown();
   }

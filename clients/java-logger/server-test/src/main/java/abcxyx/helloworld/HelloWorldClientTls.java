@@ -31,25 +31,21 @@ import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-/**
- * A simple client that requests a greeting from the {@link HelloWorldServerTls} with TLS.
- */
+/** A simple client that requests a greeting from the {@link HelloWorldServerTls} with TLS. */
 public class HelloWorldClientTls {
   private static final Logger logger = Logger.getLogger(HelloWorldClientTls.class.getName());
 
   private final GreeterGrpc.GreeterBlockingStub blockingStub;
 
-  /**
-   * Construct client for accessing RouteGuide server using the existing channel.
-   */
-  public HelloWorldClientTls(ManagedChannel channel, GoogleCredentials credentials) throws IOException {
-    blockingStub = GreeterGrpc.newBlockingStub(channel)
-        .withCallCredentials(MoreCallCredentials.from(credentials));
+  /** Construct client for accessing RouteGuide server using the existing channel. */
+  public HelloWorldClientTls(ManagedChannel channel, GoogleCredentials credentials)
+      throws IOException {
+    blockingStub =
+        GreeterGrpc.newBlockingStub(channel)
+            .withCallCredentials(MoreCallCredentials.from(credentials));
   }
 
-  /**
-   * Say hello to server.
-   */
+  /** Say hello to server. */
   public void greet(String name) {
     logger.info("Will try to greet " + name + " ...");
     HelloRequest request = HelloRequest.newBuilder().setName(name).build();
@@ -70,12 +66,14 @@ public class HelloWorldClientTls {
   public static void main(String[] args) throws Exception {
     // this turns an array string into an array. e.g. "["a", "b"]" -> ["a","b"]
     String hostList = args[0];
-    String[] hosts = hostList.replaceAll("\\[", "")
-        .replaceAll("\\]", "")
-        .replace("https://", "")
-        .replaceAll("\\s", "")
-        .replaceAll("\"", "")
-        .split(",");
+    String[] hosts =
+        hostList
+            .replaceAll("\\[", "")
+            .replaceAll("\\]", "")
+            .replace("https://", "")
+            .replaceAll("\\s", "")
+            .replaceAll("\"", "")
+            .split(",");
 
     int port = Integer.parseInt(args[1]);
 
@@ -95,8 +93,7 @@ public class HelloWorldClientTls {
     }
 
     for (String host : hosts) {
-      ManagedChannel channel = ManagedChannelBuilder.forAddress(host, port)
-          .build();
+      ManagedChannel channel = ManagedChannelBuilder.forAddress(host, port).build();
 
       try {
         HelloWorldClientTls client = new HelloWorldClientTls(channel, credentials);
