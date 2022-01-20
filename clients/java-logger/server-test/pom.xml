@@ -184,6 +184,30 @@
         <version>3.11.4</version>
         <executions>
           <execution>
+            <id>gen-hellos</id>
+            <phase>generate-sources</phase>
+            <goals>
+              <goal>run</goal>
+            </goals>
+            <configuration>
+              <includeStdTypes>true</includeStdTypes>
+              <inputDirectories>
+                <include>src/main/proto</include>
+              </inputDirectories>
+              <optimizeCodegen>false</optimizeCodegen>
+              <outputTargets>
+                <outputTarget>
+                  <type>java</type>
+                </outputTarget>
+                <outputTarget>
+                  <type>grpc-java</type>
+                  <pluginArtifact>io.grpc:protoc-gen-grpc-java:1.41.0
+                  </pluginArtifact>
+                </outputTarget>
+              </outputTargets>
+            </configuration>
+          </execution>
+          <execution>
             <phase>generate-sources</phase>
             <goals>
               <goal>run</goal>
