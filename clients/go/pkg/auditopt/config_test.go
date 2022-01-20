@@ -665,8 +665,6 @@ rules:
 			if err := v.ReadInConfig(); err != nil {
 				t.Fatal(err)
 			}
-			v = setDefaultValues(v)
-			v = bindEnvVars(v)
 			cfg, err := configFromViper(v)
 			if err != nil {
 				t.Fatal(err)

@@ -129,8 +129,6 @@ func WithInterceptorFromConfigFile(path string) (grpc.ServerOption, *audit.Clien
 	if err := v.ReadInConfig(); err != nil {
 		return nil, nil, fmt.Errorf(errReadingConfig, path, err)
 	}
-	v = setDefaultValues(v)
-	v = bindEnvVars(v)
 	cfg, err := configFromViper(v)
 	if err != nil {
 		return nil, nil, err
@@ -173,21 +171,6 @@ func WithInterceptorFromConfigFile(path string) (grpc.ServerOption, *audit.Clien
 	interceptor.Client = auditClient
 
 	return grpc.UnaryInterceptor(interceptor.UnaryInterceptor), auditClient, nil
-}
-
-func configFromViper(v *viper.Viper) (*alpb.Config, error) {
-	v = setDefaultValues(v)
-	v = bindEnvVars(v)
-	config := &alpb.Config{}
-	if err := v.Unmarshal(config); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal viper into config struct: %w", err)
-	}
-
-	configFileVersion := config.Version
-	if configFileVersion != expectedVersion {
-		return nil, fmt.Errorf("config version %q unsupported, supported version is %q", configFileVersion, expectedVersion)
-	}
-	return config, nil
 }
 
 func clientFromConfig(c *audit.Client, cfg *alpb.Config) error {
@@ -297,8 +280,23 @@ func fromRawJWTFromConfig(cfg *alpb.Config) (*security.FromRawJWT, error) {
 	return fromRawJWT, nil
 }
 
+func configFromViper(v *viper.Viper) (*alpb.Config, error) {
+	v = setDefaultValues(v)
+	v = bindEnvVars(v)
+	config := &alpb.Config{}
+	if err := v.Unmarshal(config); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal viper into config struct: %w", err)
+	}
+
+	configFileVersion := config.Version
+	if configFileVersion != expectedVersion {
+		return nil, fmt.Errorf("config version %q unsupported, supported version is %q", configFileVersion, expectedVersion)
+	}
+	return config, nil
+}
+
 func auditRulesFromConfig(cfg *alpb.Config) ([]audit.Rule, error) {
-	if len(cfg.Rules) == 0 {
+	if cfg == nil || len(cfg.Rules) == 0 {
 		return nil, fmt.Errorf("no audit rules configured in config, add at least one")
 	}
 	var auditRules []audit.Rule

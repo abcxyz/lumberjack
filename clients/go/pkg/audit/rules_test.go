@@ -76,7 +76,6 @@ func TestIsApplicable(t *testing.T) {
 			want:       false,
 		},
 		{
-			// todo: ask Ryan if this test case is consistent with Java
 			name: "exact_mismatch_again",
 			rule: Rule{
 				Selector: "foo.get",
