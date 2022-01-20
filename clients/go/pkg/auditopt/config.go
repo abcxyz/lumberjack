@@ -64,6 +64,8 @@ const expectedVersion = "v1alpha1"
 
 const defaultConfigFilePath = "/etc/auditlogging/config.yaml"
 
+const errReadingConfig = "failed reading config file at %q: %w"
+
 // MustFromConfigFile specifies a config file to configure the
 // audit client. `path` is required, and if the config file is
 // missing, we return an error.
@@ -72,10 +74,8 @@ func MustFromConfigFile(path string) audit.Option {
 		v := viper.New()
 		v.SetConfigFile(path)
 		if err := v.ReadInConfig(); err != nil {
-			return fmt.Errorf("failed reading config file at %q: %w", path, err)
+			return fmt.Errorf(errReadingConfig, path, err)
 		}
-		v = setDefaultValues(v)
-		v = bindEnvVars(v)
 		cfg, err := configFromViper(v)
 		if err != nil {
 			return err
@@ -98,10 +98,8 @@ func FromConfigFile(path string) audit.Option {
 		// still use env vars and defaults to setup the client.
 		v.SetConfigFile(path)
 		if err := v.ReadInConfig(); err != nil && !errors.Is(err, fs.ErrNotExist) {
-			return fmt.Errorf("failed reading config file at %q: %w", path, err)
+			return fmt.Errorf(errReadingConfig, path, err)
 		}
-		v = setDefaultValues(v)
-		v = bindEnvVars(v)
 		cfg, err := configFromViper(v)
 		if err != nil {
 			return err
@@ -129,7 +127,7 @@ func WithInterceptorFromConfigFile(path string) (grpc.ServerOption, *audit.Clien
 	v := viper.New()
 	v.SetConfigFile(path)
 	if err := v.ReadInConfig(); err != nil {
-		return nil, nil, fmt.Errorf("failed reading config file at %q: %w", path, err)
+		return nil, nil, fmt.Errorf(errReadingConfig, path, err)
 	}
 	v = setDefaultValues(v)
 	v = bindEnvVars(v)
@@ -137,7 +135,6 @@ func WithInterceptorFromConfigFile(path string) (grpc.ServerOption, *audit.Clien
 	if err != nil {
 		return nil, nil, err
 	}
-	// todo: add test ? impossible to get nil cfg because we have a default val
 	if cfg == nil {
 		return nil, nil, fmt.Errorf("config is nil in config file %q", path)
 	}
@@ -171,11 +168,26 @@ func WithInterceptorFromConfigFile(path string) (grpc.ServerOption, *audit.Clien
 	}
 	auditClient, err := audit.NewClient(auditOpt)
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to create audit client from config file %q: %w", path, err)
+		return nil, nil, err
 	}
 	interceptor.Client = auditClient
 
 	return grpc.UnaryInterceptor(interceptor.UnaryInterceptor), auditClient, nil
+}
+
+func configFromViper(v *viper.Viper) (*alpb.Config, error) {
+	v = setDefaultValues(v)
+	v = bindEnvVars(v)
+	config := &alpb.Config{}
+	if err := v.Unmarshal(config); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal viper into config struct: %w", err)
+	}
+
+	configFileVersion := config.Version
+	if configFileVersion != expectedVersion {
+		return nil, fmt.Errorf("config version %q unsupported, supported version is %q", configFileVersion, expectedVersion)
+	}
+	return config, nil
 }
 
 func clientFromConfig(c *audit.Client, cfg *alpb.Config) error {
@@ -238,7 +250,7 @@ func backendFromConfig(cfg *alpb.Config) (audit.Option, error) {
 	return audit.WithBackend(b), nil
 }
 
-// fromRawJWTFromConfig populates a `fromRawJWT`` from a config instance.
+// fromRawJWTFromConfig populates a `*security.FromRawJWT` from a config.
 // We handle nil and unset values in the following way:
 //
 // security_context:
@@ -368,6 +380,7 @@ func setDefaultValues(v *viper.Viper) *viper.Viper {
 	if _, ok := sc["from_raw_jwt"]; ok {
 		v.SetDefault("security_context.from_raw_jwt", map[string]string{})
 	}
+
 	return v
 }
 
@@ -410,17 +423,4 @@ func mustBindEnv(v *viper.Viper, env string) {
 	if err := v.BindEnv(env); err != nil {
 		panic(fmt.Errorf("failed to bind env %q: %w", env, err))
 	}
-}
-
-func configFromViper(v *viper.Viper) (*alpb.Config, error) {
-	config := &alpb.Config{}
-	if err := v.Unmarshal(config); err != nil {
-		return nil, fmt.Errorf("failed to unmarshall viper into config struct: %w", err)
-	}
-
-	configFileVersion := config.Version
-	if configFileVersion != expectedVersion {
-		return nil, fmt.Errorf("config version %q unsupported, supported versions are [%q]", configFileVersion, expectedVersion)
-	}
-	return config, nil
 }

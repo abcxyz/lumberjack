@@ -23,8 +23,7 @@ import org.springframework.boot.test.mock.mockito.MockBean;
 
 @SpringBootTest
 class LoggingShellApplicationTests {
-  @MockBean
-  private LoggingClient loggingClient;
+  @MockBean private LoggingClient loggingClient;
 
   @Test
   void contextLoads() {}

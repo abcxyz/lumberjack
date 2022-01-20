@@ -18,18 +18,14 @@ package com.abcxyz.lumberjack.auditlogclient;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.doReturn;
-import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
 import com.abcxyz.lumberjack.auditlogclient.config.AuditLoggingConfiguration;
-import com.abcxyz.lumberjack.auditlogclient.config.JwtSpecification;
-import com.abcxyz.lumberjack.auditlogclient.config.SecurityContext;
 import com.abcxyz.lumberjack.auditlogclient.config.Selector;
 import com.google.cloud.audit.AuditLog;
 import com.google.protobuf.Struct;
 import com.google.protobuf.Value;
-import io.grpc.Metadata;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -43,10 +39,8 @@ import org.mockito.junit.jupiter.MockitoExtension;
 @ExtendWith(MockitoExtension.class)
 public class AuditLoggingServerInterceptorTests {
 
-  @Mock
-  LoggingClient loggingClient;
-  @Mock
-  AuditLoggingConfiguration auditLoggingConfiguration;
+  @Mock LoggingClient loggingClient;
+  @Mock AuditLoggingConfiguration auditLoggingConfiguration;
   AuditLoggingServerInterceptor interceptor;
 
   @BeforeEach
@@ -61,7 +55,8 @@ public class AuditLoggingServerInterceptorTests {
     builder.setMethodName("test-method");
     Struct struct = interceptor.messageToStruct(builder.build());
     Struct.Builder structBuilder = Struct.newBuilder();
-    structBuilder.putFields("serviceName", Value.newBuilder().setStringValue("test-service").build());
+    structBuilder.putFields(
+        "serviceName", Value.newBuilder().setStringValue("test-service").build());
     structBuilder.putFields("methodName", Value.newBuilder().setStringValue("test-method").build());
     assertThat(struct).isEqualTo(structBuilder.build());
   }

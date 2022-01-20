@@ -156,7 +156,7 @@ version: v2
 backend:
   address: %s
 `,
-			wantErrSubstr: `config version "v2" unsupported, supported versions are ["v1alpha1"]`,
+			wantErrSubstr: `config version "v2" unsupported, supported version is "v1alpha1"`,
 		},
 	}
 
@@ -469,8 +469,6 @@ security_context:
 			if err := v.ReadInConfig(); err != nil {
 				t.Fatal(err)
 			}
-			v = setDefaultValues(v)
-			v = bindEnvVars(v)
 			cfg, err := configFromViper(v)
 			if err != nil {
 				t.Fatal(err)
@@ -732,7 +730,7 @@ security_context:
 rules:
   selector: "*"
 `,
-			wantErrSubstr: "failed to create audit client from config file",
+			wantErrSubstr: "backend address in the config is nil, set it as an env var or in a config file",
 		},
 		{
 			name:          "unparsable_config",

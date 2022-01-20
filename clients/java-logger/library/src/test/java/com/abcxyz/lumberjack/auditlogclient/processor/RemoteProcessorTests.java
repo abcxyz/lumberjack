@@ -34,23 +34,23 @@ import org.junit.Before;
 import org.junit.Rule;
 
 public class RemoteProcessorTests {
-  @Rule
-  public final GrpcCleanupRule grpcCleanup = new GrpcCleanupRule();
+  @Rule public final GrpcCleanupRule grpcCleanup = new GrpcCleanupRule();
 
   private static final class FakeAuditLogAgentImpl extends AuditLogAgentGrpc.AuditLogAgentImplBase {
     @Override
     public void processLog(
         AuditLogRequest request, StreamObserver<AuditLogResponse> responseObserver) {
-      AuditLogResponse response = AuditLogResponse.newBuilder()
-          .setResult(AuditLogRequest.newBuilder().getDefaultInstanceForType())
-          .build();
+      AuditLogResponse response =
+          AuditLogResponse.newBuilder()
+              .setResult(AuditLogRequest.newBuilder().getDefaultInstanceForType())
+              .build();
       responseObserver.onNext(response);
       responseObserver.onCompleted();
     }
   }
 
-  private final AuditLogAgentGrpc.AuditLogAgentImplBase serviceImpl = mock(
-      AuditLogAgentGrpc.AuditLogAgentImplBase.class, delegatesTo(new FakeAuditLogAgentImpl()));
+  private final AuditLogAgentGrpc.AuditLogAgentImplBase serviceImpl =
+      mock(AuditLogAgentGrpc.AuditLogAgentImplBase.class, delegatesTo(new FakeAuditLogAgentImpl()));
 
   private RemoteProcessor remoteProcessor;
 
@@ -63,7 +63,8 @@ public class RemoteProcessorTests {
             .addService(serviceImpl)
             .build()
             .start());
-    ManagedChannel channel = grpcCleanup.register(InProcessChannelBuilder.forName(serverName).directExecutor().build());
+    ManagedChannel channel =
+        grpcCleanup.register(InProcessChannelBuilder.forName(serverName).directExecutor().build());
     AuditLogAgentBlockingStub blockingStub = AuditLogAgentGrpc.newBlockingStub(channel);
     remoteProcessor = new RemoteProcessor(blockingStub);
   }
