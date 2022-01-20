@@ -31,10 +31,7 @@ import lombok.NonNull;
  * configuration for those methods. Multiple selectors could match a single method as we allow wild
  * cards in the patterns.
  *
- * <p>Example patterns:
- * "*"
- * "com.example.*"
- * "com.example.Hello"
+ * <p>Example patterns: "*" "com.example.*" "com.example.Hello"
  */
 @Data
 @AllArgsConstructor
@@ -75,7 +72,7 @@ public class Selector {
   /**
    * This method uses the length of the selector to determine which selector is most relevant.
    *
-   * <p> e.g. com.example.Hello > com.example.* > *
+   * <p>e.g. com.example.Hello > com.example.* > *
    */
   public static Optional<Selector> returnMostRelevant(
       String methodIdentifier, Collection<Selector> selectors) {
