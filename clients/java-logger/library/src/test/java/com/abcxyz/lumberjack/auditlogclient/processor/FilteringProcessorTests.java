@@ -20,9 +20,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
+import com.abcxyz.lumberjack.v1alpha1.AuditLogRequest;
 import com.google.cloud.audit.AuditLog;
 import com.google.cloud.audit.AuthenticationInfo;
-import com.abcxyz.lumberjack.v1alpha1.AuditLogRequest;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Pattern;
@@ -33,15 +33,15 @@ import org.mockito.junit.jupiter.MockitoExtension;
 @ExtendWith(MockitoExtension.class)
 public class FilteringProcessorTests {
 
-  AuthenticationInfo authenticationInfo = AuthenticationInfo.newBuilder()
-      .setPrincipalEmail("foo@google.com").build();
+  AuthenticationInfo authenticationInfo =
+      AuthenticationInfo.newBuilder().setPrincipalEmail("foo@google.com").build();
   AuditLog auditLog = AuditLog.newBuilder().setAuthenticationInfo(authenticationInfo).build();
   AuditLogRequest auditLogRequest = AuditLogRequest.newBuilder().setPayload(auditLog).build();
 
   @Test
   void withIncludeAndExcludeEmptyShouldPass() throws LogProcessingException {
-    FilteringProcessor filteringProcessor = new FilteringProcessor(new ArrayList<>(),
-        new ArrayList<>());
+    FilteringProcessor filteringProcessor =
+        new FilteringProcessor(new ArrayList<>(), new ArrayList<>());
     assertThat(filteringProcessor.getExcludePatterns().isEmpty()).isTrue();
     assertThat(filteringProcessor.getIncludePatterns().isEmpty()).isTrue();
     assertDoesNotThrow(() -> filteringProcessor.process(auditLogRequest));
@@ -105,14 +105,15 @@ public class FilteringProcessorTests {
 
   @Test
   void withMultipleIncludeAndMultipleExcludeShouldPass() throws LogProcessingException {
-    List<Pattern> includes = new ArrayList<>(
-        List.of(Pattern.compile("foo@google.com"), Pattern.compile("bar@google.com")));
-    List<Pattern> excludes = new ArrayList<>(
-        List.of(Pattern.compile("@google.com"), Pattern.compile("bar1@google.com")));
+    List<Pattern> includes =
+        new ArrayList<>(
+            List.of(Pattern.compile("foo@google.com"), Pattern.compile("bar@google.com")));
+    List<Pattern> excludes =
+        new ArrayList<>(
+            List.of(Pattern.compile("@google.com"), Pattern.compile("bar1@google.com")));
     FilteringProcessor filteringProcessor = new FilteringProcessor(includes, excludes);
     assertThat(filteringProcessor.getIncludePatterns().size()).isEqualTo(2);
     assertThat(filteringProcessor.getExcludePatterns().size()).isEqualTo(2);
     assertDoesNotThrow(() -> filteringProcessor.process(auditLogRequest));
   }
-
 }

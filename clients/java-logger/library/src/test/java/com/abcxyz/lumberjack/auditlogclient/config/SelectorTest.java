@@ -94,8 +94,10 @@ public class SelectorTest {
     assertThat(Selector.returnMostRelevant("other.stuff", selectors).get()).isEqualTo(selector1);
     assertThat(Selector.returnMostRelevant("com.example", selectors).get()).isEqualTo(selector1);
     assertThat(Selector.returnMostRelevant("com.example.a", selectors).get()).isEqualTo(selector2);
-    assertThat(Selector.returnMostRelevant("com.example.a.other", selectors).get()).isEqualTo(selector3);
-    assertThat(Selector.returnMostRelevant("com.example.a.stuff.method", selectors).get()).isEqualTo(selector4);
+    assertThat(Selector.returnMostRelevant("com.example.a.other", selectors).get())
+        .isEqualTo(selector3);
+    assertThat(Selector.returnMostRelevant("com.example.a.stuff.method", selectors).get())
+        .isEqualTo(selector4);
   }
 
   @Test
@@ -104,5 +106,4 @@ public class SelectorTest {
     selectors.add(new Selector("com.example.a", null, null));
     assertThat(Selector.returnMostRelevant("com.other", selectors).isEmpty()).isTrue();
   }
-
 }

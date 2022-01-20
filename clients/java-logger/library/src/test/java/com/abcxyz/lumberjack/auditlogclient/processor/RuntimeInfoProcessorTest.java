@@ -18,12 +18,11 @@ package com.abcxyz.lumberjack.auditlogclient.processor;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.abcxyz.lumberjack.v1alpha1.AuditLogRequest;
 import com.google.cloud.audit.AuditLog;
 import com.google.cloud.audit.AuthenticationInfo;
-import com.abcxyz.lumberjack.v1alpha1.AuditLogRequest;
 import com.google.protobuf.Struct;
 import com.google.protobuf.Value;
-import java.util.Optional;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -31,56 +30,65 @@ import org.mockito.junit.jupiter.MockitoExtension;
 @ExtendWith(MockitoExtension.class)
 public class RuntimeInfoProcessorTest {
 
-    Value monitoredResource = Value.newBuilder().setStructValue(Struct.newBuilder()
-            .putFields("type", Value.newBuilder().setStringValue("gce_instance").build())
-            .putFields("labels", Value.newBuilder().setStructValue(Struct.newBuilder()
-                    .putFields("instanceId", Value.newBuilder().setStringValue("testID").build())
-                    .putFields("zone", Value.newBuilder().setStringValue("testZone").build())
-                    .build()).build())
-            .build()).build();
+  Value monitoredResource =
+      Value.newBuilder()
+          .setStructValue(
+              Struct.newBuilder()
+                  .putFields("type", Value.newBuilder().setStringValue("gce_instance").build())
+                  .putFields(
+                      "labels",
+                      Value.newBuilder()
+                          .setStructValue(
+                              Struct.newBuilder()
+                                  .putFields(
+                                      "instanceId",
+                                      Value.newBuilder().setStringValue("testID").build())
+                                  .putFields(
+                                      "zone", Value.newBuilder().setStringValue("testZone").build())
+                                  .build())
+                          .build())
+                  .build())
+          .build();
 
-    // auditLogRequest
-    AuthenticationInfo authenticationInfo = AuthenticationInfo.newBuilder()
-            .setPrincipalEmail("foo@google.com").build();
-    AuditLog auditLog = AuditLog.newBuilder().setAuthenticationInfo(authenticationInfo).build();
-    AuditLogRequest auditLogRequest = AuditLogRequest.newBuilder().setPayload(auditLog).build();
+  // auditLogRequest
+  AuthenticationInfo authenticationInfo =
+      AuthenticationInfo.newBuilder().setPrincipalEmail("foo@google.com").build();
+  AuditLog auditLog = AuditLog.newBuilder().setAuthenticationInfo(authenticationInfo).build();
+  AuditLogRequest auditLogRequest = AuditLogRequest.newBuilder().setPayload(auditLog).build();
 
-    @Test
-    void shouldWriteMonitoredResourceToPayloadMetadata()
-            throws LogProcessingException {
-        RuntimeInfoProcessor runtimeInfoProcessor = new RuntimeInfoProcessor(
-                monitoredResource);
-        AuditLogRequest wantAuditLogRequest = runtimeInfoProcessor.process(auditLogRequest);
-        assertThat(
-                wantAuditLogRequest.getPayload().getMetadata().containsFields("originating_resource"))
-                        .isTrue();
-    }
+  @Test
+  void shouldWriteMonitoredResourceToPayloadMetadata() throws LogProcessingException {
+    RuntimeInfoProcessor runtimeInfoProcessor = new RuntimeInfoProcessor(monitoredResource);
+    AuditLogRequest wantAuditLogRequest = runtimeInfoProcessor.process(auditLogRequest);
+    assertThat(
+            wantAuditLogRequest.getPayload().getMetadata().containsFields("originating_resource"))
+        .isTrue();
+  }
 
-    @Test
-    void shouldAppendMonitoredResourcesToPayloadMetadata() {
-        // add existing metadata
-        AuditLogRequest.Builder auditLogRequestToUpdate = auditLogRequest.toBuilder();
-        AuditLog.Builder auditLogToUpdate = auditLogRequest.getPayload().toBuilder();
-        auditLogToUpdate.setMetadata(Struct.newBuilder()
-                .putFields("existing_key", Value.newBuilder().setStringValue("existing_value").build())
-                .build());
-        auditLogRequest = auditLogRequestToUpdate.clearPayload().setPayload(auditLogToUpdate.build())
-                .build();
+  @Test
+  void shouldAppendMonitoredResourcesToPayloadMetadata() {
+    // add existing metadata
+    AuditLogRequest.Builder auditLogRequestToUpdate = auditLogRequest.toBuilder();
+    AuditLog.Builder auditLogToUpdate = auditLogRequest.getPayload().toBuilder();
+    auditLogToUpdate.setMetadata(
+        Struct.newBuilder()
+            .putFields("existing_key", Value.newBuilder().setStringValue("existing_value").build())
+            .build());
+    auditLogRequest =
+        auditLogRequestToUpdate.clearPayload().setPayload(auditLogToUpdate.build()).build();
 
-        RuntimeInfoProcessor runtimeInfoProcessor = new RuntimeInfoProcessor(
-                monitoredResource);
-        AuditLogRequest wantAuditLogRequest = runtimeInfoProcessor.process(auditLogRequest);
-        assertThat(wantAuditLogRequest.getPayload().getMetadata().getFieldsCount()).isEqualTo(2);
-        assertThat(
-                wantAuditLogRequest.getPayload().getMetadata().containsFields("originating_resource"))
-                        .isTrue();
-    }
+    RuntimeInfoProcessor runtimeInfoProcessor = new RuntimeInfoProcessor(monitoredResource);
+    AuditLogRequest wantAuditLogRequest = runtimeInfoProcessor.process(auditLogRequest);
+    assertThat(wantAuditLogRequest.getPayload().getMetadata().getFieldsCount()).isEqualTo(2);
+    assertThat(
+            wantAuditLogRequest.getPayload().getMetadata().containsFields("originating_resource"))
+        .isTrue();
+  }
 
-    @Test
-    void nullMonitoredResourceShouldLeaveMetadataUntouched() {
-        RuntimeInfoProcessor runtimeInfoProcessor = new RuntimeInfoProcessor(null);
-        AuditLogRequest wantAuditLogRequest = runtimeInfoProcessor.process(auditLogRequest);
-        assertThat(
-                wantAuditLogRequest.getPayload().hasMetadata()).isFalse();
-    }
+  @Test
+  void nullMonitoredResourceShouldLeaveMetadataUntouched() {
+    RuntimeInfoProcessor runtimeInfoProcessor = new RuntimeInfoProcessor(null);
+    AuditLogRequest wantAuditLogRequest = runtimeInfoProcessor.process(auditLogRequest);
+    assertThat(wantAuditLogRequest.getPayload().hasMetadata()).isFalse();
+  }
 }
