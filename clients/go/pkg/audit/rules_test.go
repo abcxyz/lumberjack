@@ -44,6 +44,14 @@ func TestIsApplicable(t *testing.T) {
 			want:       true,
 		},
 		{
+			name: "wildcard_suffix_barley_matches",
+			rule: Rule{
+				Selector: "foo*",
+			},
+			methodName: "foo",
+			want:       true,
+		},
+		{
 			name: "wildcard_suffix_mismatches",
 			rule: Rule{
 				Selector: "foo.*",
@@ -138,6 +146,15 @@ func TestMostRelevant(t *testing.T) {
 			},
 			methodName: "d.e.f",
 			wantRule:   Rule{Selector: "*"},
+		},
+		{
+			name: "no_match",
+			rules: []Rule{
+				{Selector: "a.b.c"},
+				{Selector: "a.b.*"},
+				{Selector: "a.*"},
+			},
+			methodName: "d.e.f",
 		},
 	}
 	for _, tc := range tests {

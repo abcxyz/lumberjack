@@ -45,9 +45,10 @@ func (r Rule) isApplicable(methodName string) bool {
 }
 
 // mostRelevant finds the most relevant Rule for a given method by
-// comparing the Rules's Selector length. For example, given the
-// methodName "com.example.Hello", the selector relevance is
-// the following: "com.example.Hello" > "com.example.*" > "*"
+// comparing the Rules's Selector length. E.g. for the methodName
+// "com.example.Hello", the selector relevance is:
+// "com.example.Hello" > "com.example.*" > "*"
+//
 // If none of the Rules are relevant to the given method (i.e. the
 // the selectors don't match), we return nil.
 func mostRelevant(methodName string, rules []Rule) Rule {
