@@ -34,8 +34,6 @@ jobs:
       - uses: axel-op/googlejavaformat-action@v3
         with:
           skipCommit: true
-          # args: "--set-exit-if-changed"
-          # args: "--skipCommit=true"
       - name: Ensure there were no changes by formatter
         run: |
           git diff --exit-code
