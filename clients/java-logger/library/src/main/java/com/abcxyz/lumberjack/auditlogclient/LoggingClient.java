@@ -18,7 +18,6 @@ package com.abcxyz.lumberjack.auditlogclient;
 
 import com.abcxyz.lumberjack.auditlogclient.processor.LogProcessingException;
 import com.abcxyz.lumberjack.auditlogclient.processor.LogProcessor;
-import com.abcxyz.lumberjack.auditlogclient.processor.LogProcessor.LogBackend;
 import com.abcxyz.lumberjack.auditlogclient.processor.LogProcessor.LogMutator;
 import com.abcxyz.lumberjack.auditlogclient.processor.LogProcessor.LogValidator;
 import com.abcxyz.lumberjack.v1alpha1.AuditLogRequest;
@@ -26,6 +25,7 @@ import java.util.List;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
+import com.abcxyz.lumberjack.auditlogclient.processor.LogProcessor.LogBackend;
 
 /** Logging client for lumberjack audit logging */
 @Getter(AccessLevel.PROTECTED)
@@ -36,7 +36,8 @@ public class LoggingClient {
   private final List<LogBackend> backends;
 
   /**
-   * Iterates through all the log processors for a client sequentially and calls their {@link
+   * Iterates through all the log processors for a client sequentially and calls
+   * their {@link
    * LogProcessor#process(AuditLogRequest)}
    *
    * @param auditLogRequest log request

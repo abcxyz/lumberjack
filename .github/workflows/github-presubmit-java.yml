@@ -32,8 +32,13 @@ jobs:
       - name: Check out code
         uses: actions/checkout@v2
       - uses: axel-op/googlejavaformat-action@v3
-        # with:
-        #   args: "--set-exit-if-changed"
+        with:
+          # args: "--set-exit-if-changed"
+          args: "--skipCommit=true"
+      - name: Ensure there were no changes by formatter
+        run: |
+          git diff --exit-code
+
 
   test:
     name: Tests
