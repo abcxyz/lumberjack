@@ -51,8 +51,7 @@ public class TokenInterceptorTest {
   private static final String UNSIGNED_JWT_WITH_EMAIL_FIELD =
       Jwts.builder().addClaims(Map.of(TokenInterceptor.JWT_EMAIL_FIELD_KEY, TEST_EMAIL)).compact();
 
-  @MockBean
-  private LoggingClient loggingClient;
+  @MockBean private LoggingClient loggingClient;
 
   @Mock private HttpServletResponse mockResponse;
   @Mock private HandlerMethod mockHandler;

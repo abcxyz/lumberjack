@@ -16,20 +16,19 @@
 
 package com.abcxyz.lumberjack.auditlogclient;
 
-import com.abcxyz.lumberjack.auditlogclient.processor.LogProcessor.LogBackend;
-import com.abcxyz.lumberjack.auditlogclient.processor.LogProcessor.LogMutator;
-import com.abcxyz.lumberjack.auditlogclient.processor.LogProcessor.LogValidator;
-import com.google.inject.Inject;
-import java.util.ArrayList;
-import java.util.LinkedHashSet;
-import lombok.AllArgsConstructor;
-import lombok.RequiredArgsConstructor;
 import com.abcxyz.lumberjack.auditlogclient.processor.CloudLoggingProcessor;
 import com.abcxyz.lumberjack.auditlogclient.processor.FilteringProcessor;
 import com.abcxyz.lumberjack.auditlogclient.processor.LogProcessor;
+import com.abcxyz.lumberjack.auditlogclient.processor.LogProcessor.LogBackend;
+import com.abcxyz.lumberjack.auditlogclient.processor.LogProcessor.LogMutator;
+import com.abcxyz.lumberjack.auditlogclient.processor.LogProcessor.LogValidator;
 import com.abcxyz.lumberjack.auditlogclient.processor.RemoteProcessor;
 import com.abcxyz.lumberjack.auditlogclient.processor.RuntimeInfoProcessor;
 import com.abcxyz.lumberjack.auditlogclient.processor.ValidationProcessor;
+import com.google.inject.Inject;
+import java.util.ArrayList;
+import java.util.LinkedHashSet;
+import lombok.RequiredArgsConstructor;
 
 /** Builder for {@link LoggingClient}. */
 @RequiredArgsConstructor(onConstructor = @__({@Inject}))

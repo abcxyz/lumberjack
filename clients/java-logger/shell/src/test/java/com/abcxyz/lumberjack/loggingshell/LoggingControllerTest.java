@@ -23,8 +23,8 @@ import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import com.abcxyz.lumberjack.v1alpha1.AuditLogRequest;
 import com.abcxyz.lumberjack.auditlogclient.LoggingClient;
+import com.abcxyz.lumberjack.v1alpha1.AuditLogRequest;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -41,20 +41,17 @@ public class LoggingControllerTest {
   private static final String TEST_TRACE_ID = "testTraceId";
   private static final String TEST_EMAIL = "testEmail";
   private static final MockHttpServletRequestBuilder GET_REQUEST_BUILDER = get(REQUEST_PATH);
-  private static final MockHttpServletRequestBuilder GET_REQUEST_BUILDER_WITH_EMAIL = get(REQUEST_PATH)
-      .requestAttr(TokenInterceptor.INTERCEPTOR_USER_EMAIL_KEY, TEST_EMAIL);
-  private static final MockHttpServletRequestBuilder GET_REQUEST_BUILDER_WITH_EMAIL_AND_TRACE_ID = get(REQUEST_PATH)
-      .requestAttr(TokenInterceptor.INTERCEPTOR_USER_EMAIL_KEY, TEST_EMAIL)
-      .param(LoggingController.TRACE_ID_PARAMETER_KEY, TEST_TRACE_ID);
+  private static final MockHttpServletRequestBuilder GET_REQUEST_BUILDER_WITH_EMAIL =
+      get(REQUEST_PATH).requestAttr(TokenInterceptor.INTERCEPTOR_USER_EMAIL_KEY, TEST_EMAIL);
+  private static final MockHttpServletRequestBuilder GET_REQUEST_BUILDER_WITH_EMAIL_AND_TRACE_ID =
+      get(REQUEST_PATH)
+          .requestAttr(TokenInterceptor.INTERCEPTOR_USER_EMAIL_KEY, TEST_EMAIL)
+          .param(LoggingController.TRACE_ID_PARAMETER_KEY, TEST_TRACE_ID);
 
-  @Autowired
-  private MockMvc mockMvc;
-  @MockBean
-  private LoggingClient loggingClient;
-  @MockBean
-  private TokenInterceptor interceptor;
-  @Captor
-  private ArgumentCaptor<AuditLogRequest> auditLogRequestCaptor;
+  @Autowired private MockMvc mockMvc;
+  @MockBean private LoggingClient loggingClient;
+  @MockBean private TokenInterceptor interceptor;
+  @Captor private ArgumentCaptor<AuditLogRequest> auditLogRequestCaptor;
 
   @BeforeEach
   void setUp() {
@@ -76,12 +73,12 @@ public class LoggingControllerTest {
     mockMvc.perform(GET_REQUEST_BUILDER_WITH_EMAIL_AND_TRACE_ID);
     verify(loggingClient).log(auditLogRequestCaptor.capture());
     assertThat(
-        auditLogRequestCaptor
-            .getValue()
-            .getPayload()
-            .getAuthenticationInfo()
-            .getPrincipalEmail())
-                .isEqualTo(TEST_EMAIL);
+            auditLogRequestCaptor
+                .getValue()
+                .getPayload()
+                .getAuthenticationInfo()
+                .getPrincipalEmail())
+        .isEqualTo(TEST_EMAIL);
   }
 
   @Test
@@ -94,10 +91,10 @@ public class LoggingControllerTest {
     mockMvc.perform(GET_REQUEST_BUILDER_WITH_EMAIL_AND_TRACE_ID);
     verify(loggingClient).log(auditLogRequestCaptor.capture());
     assertThat(
-        auditLogRequestCaptor
-            .getValue()
-            .getLabelsMap()
-            .getOrDefault(LoggingController.TRACE_ID_PARAMETER_KEY, ""))
-                .isEqualTo(TEST_TRACE_ID);
+            auditLogRequestCaptor
+                .getValue()
+                .getLabelsMap()
+                .getOrDefault(LoggingController.TRACE_ID_PARAMETER_KEY, ""))
+        .isEqualTo(TEST_TRACE_ID);
   }
 }

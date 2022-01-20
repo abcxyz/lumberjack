@@ -19,10 +19,10 @@ package com.abcxyz.lumberjack.auditlogclient.processor;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
-import com.google.cloud.audit.AuditLog;
-import com.google.cloud.audit.AuthenticationInfo;
 import com.abcxyz.lumberjack.v1alpha1.AuditLogRequest;
 import com.abcxyz.lumberjack.v1alpha1.AuditLogRequest.LogType;
+import com.google.cloud.audit.AuditLog;
+import com.google.cloud.audit.AuthenticationInfo;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -39,13 +39,14 @@ public class ValidationProcessorTests {
   @Test
   void validatesWhenRequestIsValid() {
     ValidationProcessor validationProcessor = new ValidationProcessor();
-    AuditLogRequest record = AuditLogRequest.newBuilder()
-        .setPayload(
-            AuditLog.newBuilder()
-                .setAuthenticationInfo(
-                    AuthenticationInfo.newBuilder().setPrincipalEmail("foo").build()))
-        .setType(LogType.DATA_ACCESS)
-        .build();
+    AuditLogRequest record =
+        AuditLogRequest.newBuilder()
+            .setPayload(
+                AuditLog.newBuilder()
+                    .setAuthenticationInfo(
+                        AuthenticationInfo.newBuilder().setPrincipalEmail("foo").build()))
+            .setType(LogType.DATA_ACCESS)
+            .build();
     assertDoesNotThrow(() -> validationProcessor.process(record));
   }
 }
