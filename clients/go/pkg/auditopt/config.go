@@ -152,6 +152,7 @@ func WithInterceptorFromConfigFile(path string) (grpc.ServerOption, *audit.Clien
 	}
 
 	// Create audit rules from config.
+	// todo: default+validate the whole config instead of individual fields
 	for _, r := range cfg.Rules {
 		r.SetDefault()
 		if err := r.Validate(); err != nil {

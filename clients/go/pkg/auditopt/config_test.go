@@ -533,6 +533,21 @@ rules:
 			wantErrSubstr: "backend address in the config is nil, set it as an env var or in a config file",
 		},
 		{
+			name: "invalid_config_due_to_log_type",
+			fileContent: `
+version: v1alpha1
+backend:
+  address: foo:443
+  insecure_enabled: true
+security_context:
+  from_raw_jwt: {}
+rules:
+  selector: "*"
+  log_type: bananas
+`,
+			wantErrSubstr: "failed validating config rule",
+		},
+		{
 			name:          "unparsable_config",
 			fileContent:   `bananas`,
 			wantErrSubstr: "failed reading config file",
