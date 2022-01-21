@@ -76,6 +76,6 @@ echo "ID: ${ID_TOKEN}"
 cd ${ROOT}/clients/java-logger/
 
 # Build the module
-mvn verify
+mvn clean package
 # Run the client
 java -cp grpc-test-app/target/grpc-test-app-0.0.1.jar abcxyz.helloworld.HelloWorldClientTls ${HELLO_ENDPOINT} 443 ${ID_TOKEN}
