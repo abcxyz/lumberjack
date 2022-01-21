@@ -112,6 +112,9 @@ func WithInterceptorFromConfigFile(path string) (grpc.ServerOption, *audit.Clien
 	if err != nil {
 		return nil, nil, err
 	}
+	if err := cfg.ValidateSecurityContext(); err != nil {
+		return nil, nil, err
+	}
 
 	interceptor := &audit.Interceptor{}
 	// Add security context to interceptor.

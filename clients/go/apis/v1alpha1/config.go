@@ -7,6 +7,7 @@ import (
 	"go.uber.org/multierr"
 )
 
+//TODO(#64): when we migrate to koanf, we no longer need leafKeys
 var leafKeys = []string{
 	"backend.address",
 	"backend.impersonate_account",
@@ -72,15 +73,21 @@ func (cfg *Config) Validate() error {
 	} else if cfg.Version != Version {
 		err = multierr.Append(err, fmt.Errorf("unexpected Version %q want %q", cfg.Version, Version))
 	}
-	if cfg.SecurityContext == nil {
-		err = multierr.Append(err, fmt.Errorf("SecurityContext is nil"))
-	} else if serr := cfg.SecurityContext.Validate(); serr != nil {
-		err = multierr.Append(err, serr)
-	}
 	for _, r := range cfg.Rules {
 		if rerr := r.Validate(); rerr != nil {
 			err = multierr.Append(err, rerr)
 		}
+	}
+	return err
+}
+
+// Validate checks if the config SecurityContext is valid.
+func (cfg *Config) ValidateSecurityContext() error {
+	var err error
+	if cfg.SecurityContext == nil {
+		err = multierr.Append(err, fmt.Errorf("SecurityContext is nil"))
+	} else if serr := cfg.SecurityContext.Validate(); serr != nil {
+		err = multierr.Append(err, serr)
 	}
 	return err
 }
@@ -95,10 +102,9 @@ func (cfg *Config) SetDefault() {
 		cfg.Condition = &Condition{}
 	}
 	cfg.Condition.SetDefault()
-	if cfg.SecurityContext == nil {
-		cfg.SecurityContext = &SecurityContext{}
+	if cfg.SecurityContext != nil {
+		cfg.SecurityContext.SetDefault()
 	}
-	cfg.SecurityContext.SetDefault()
 	for _, r := range cfg.Rules {
 		r.SetDefault()
 	}
@@ -154,10 +160,9 @@ func (sc *SecurityContext) Validate() error {
 
 // SetDefault sets default for the security context.
 func (sc *SecurityContext) SetDefault() {
-	if sc.FromRawJWT == nil {
-		sc.FromRawJWT = &FromRawJWT{}
+	if sc.FromRawJWT != nil {
+		sc.FromRawJWT.SetDefault()
 	}
-	sc.FromRawJWT.SetDefault()
 }
 
 // FromRawJWT provides info for how to retrieve security context from
