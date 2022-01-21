@@ -15,7 +15,7 @@ import (
 //  regex:
 //    principal_include: test@google.com
 // ```
-var LeafKeys []string = []string{
+var LeafKeys = []string{
 	"backend.address",
 	"backend.impersonate_account",
 	"backend.insecure_enabled",
