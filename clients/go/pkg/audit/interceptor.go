@@ -33,7 +33,6 @@ type Interceptor struct {
 }
 
 // UnaryInterceptor is a unary interceptor that autofills and emits audit logs.
-// TODO(noamrabbani): implement unary interceptor.
 func (i *Interceptor) UnaryInterceptor(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error) {
 	return nil, fmt.Errorf("not yet implemented")
 }

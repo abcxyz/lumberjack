@@ -19,6 +19,9 @@ package security
 import (
 	"context"
 	"fmt"
+
+	"github.com/golang-jwt/jwt"
+	grpcmetadata "google.golang.org/grpc/metadata"
 )
 
 // GRPCContext is an interface that retrieves the principal
@@ -38,7 +41,33 @@ type FromRawJWT struct {
 	//TODO: Add JWKS fields to validate JWT signature.
 }
 
-// RequestPrincipal returns the principal in a raw JWT.
-func (fromRawJWT *FromRawJWT) RequestPrincipal(ctx context.Context) (string, error) {
-	return "", fmt.Errorf("not yet implemented")
+// principalFromContext extracts the principal from the context.
+func (j *FromRawJWT) RequestPrincipal(ctx context.Context) (string, error) {
+	md, ok := grpcmetadata.FromIncomingContext(ctx)
+	if !ok {
+		return "", fmt.Errorf("gRPC incoming context is missing")
+	}
+
+	// Extract the JWT.
+	var idToken string
+	if auths := md[j.Key]; len(auths) > 0 {
+		idToken = auths[0][len(j.Prefix):] // trim prefix
+	}
+	if idToken == "" {
+		return "", fmt.Errorf("nil JWT under the key %q in metadata %+v", j.Key, md)
+	}
+
+	// Retrieve the principal from the JWT.
+	p := &jwt.Parser{}
+	claims := jwt.MapClaims{}
+	_, _, err := p.ParseUnverified(idToken, claims)
+	if err != nil {
+		return "", fmt.Errorf("unable to parse JWT: %w", err)
+	}
+	principal := claims["email"].(string)
+	if principal == "" {
+		return "", fmt.Errorf(`nil principal under claims "email"`)
+	}
+
+	return principal, nil
 }
