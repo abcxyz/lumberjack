@@ -72,7 +72,7 @@ module "java_grpc_app" {
 
   build_command              = var.java_grpc_build_command
   project_id                 = var.app_project_id
-  service_name               = "${var.service_name}-java-hello"
+  service_name               = "${var.service_name}-java-grpc"
   env_vars                   = merge(local.env_vars, var.env_vars)
   tag                        = var.tag
   use_random_tag             = var.use_random_tag
