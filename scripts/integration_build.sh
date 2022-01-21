@@ -46,7 +46,7 @@ terraform -chdir=${TF_CI_WITH_SERVER_DIR} apply -auto-approve \
   -var="app_project_id=${SHELL_APP_PROJECT_ID}" \
   -var="service_name=${SERVICE_NAME}" \
   -var='build_commands={"go":"'${GO_BUILD_COMMAND}'", "java":"'${JAVA_BUILD_COMMAND}'"}' \
-  -var="hello_build_command=${JAVA_GRPC_BUILD_COMMAND}" \
+  -var="java_grpc_build_command=${JAVA_GRPC_BUILD_COMMAND}" \
   -var=${ENV_VARS} \
   -var="use_random_tag=true"
 
@@ -56,7 +56,7 @@ clean_up() {
     -var="app_project_id=${SHELL_APP_PROJECT_ID}" \
     -var="service_name=${SERVICE_NAME}" \
     -var='build_commands={"go":"'${GO_BUILD_COMMAND}'", "java":"'${JAVA_BUILD_COMMAND}'"}' \
-    -var="hello_build_command=${JAVA_GRPC_BUILD_COMMAND}"
+    -var="java_grpc_build_command=${JAVA_GRPC_BUILD_COMMAND}"
 }
 
 trap clean_up EXIT

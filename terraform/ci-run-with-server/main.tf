@@ -67,10 +67,10 @@ module "shell_app" {
   artifact_registry_location = var.artifact_registry_location
 }
 
-module "java_hello_app" {
-  source = "../java-hello-app"
+module "java_grpc_app" {
+  source = "../shell-app"
 
-  build_command              = var.hello_build_command
+  build_command              = var.java_grpc_build_command
   project_id                 = var.app_project_id
   service_name               = "${var.service_name}-java-hello"
   env_vars                   = merge(local.env_vars, var.env_vars)
@@ -85,5 +85,5 @@ output "instance_addresses" {
 }
 
 output "hello_address" {
-  value = module.java_hello_app.hello_address
+  value = module.java_grpc_app.instance_address
 }
