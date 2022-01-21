@@ -133,9 +133,6 @@ func WithInterceptorFromConfigFile(path string) (grpc.ServerOption, *audit.Clien
 	if err != nil {
 		return nil, nil, err
 	}
-	if cfg == nil {
-		return nil, nil, fmt.Errorf("config is nil in config file %q", path)
-	}
 
 	// Create security context from config.
 	if cfg.SecurityContext == nil {
@@ -333,8 +330,8 @@ func validateDirective(s string) (string, error) {
 	if s == "" {
 		return "AUDIT", nil
 	}
-	if s != "AUDIT" && s != "AUDIT_REQUEST_AND_RESPONSE" && s != "AUDIT_REQUEST_ONLY" {
-		return "", fmt.Errorf("invalid audit rule directive %q", s)
+	if s != alpb.AuditRuleDirectiveDefault && s != alpb.AuditRuleDirectiveRequestAndResponse && s != alpb.AuditRuleDirectiveRequestOnly {
+		return "", fmt.Errorf("config file contains invalid directive %q", s)
 	}
 	return s, nil
 }
