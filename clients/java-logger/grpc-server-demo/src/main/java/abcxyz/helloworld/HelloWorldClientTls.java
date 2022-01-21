@@ -1,5 +1,20 @@
-package abcxyx.helloworld;
+package abcxyz.helloworld;
 
+/*
+ * Copyright 2021 Lumberjack authors (see AUTHORS file)
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 /*
  * Copyright 2015 The gRPC Authors
  *
@@ -16,9 +31,9 @@ package abcxyx.helloworld;
  * limitations under the License.
  */
 
-import abcxyx.helloworld.generated.GreeterGrpc;
-import abcxyx.helloworld.generated.HelloReply;
-import abcxyx.helloworld.generated.HelloRequest;
+import abcxyz.helloworld.generated.GreeterGrpc;
+import abcxyz.helloworld.generated.HelloReply;
+import abcxyz.helloworld.generated.HelloRequest;
 import com.google.auth.oauth2.AccessToken;
 import com.google.auth.oauth2.GoogleCredentials;
 import io.grpc.ManagedChannel;
@@ -37,7 +52,7 @@ public class HelloWorldClientTls {
 
   private final GreeterGrpc.GreeterBlockingStub blockingStub;
 
-  /** Construct client for accessing RouteGuide server using the existing channel. */
+  /** Construct client for accessing {@link HelloWorldServerTls} using the existing channel. */
   public HelloWorldClientTls(ManagedChannel channel, GoogleCredentials credentials)
       throws IOException {
     blockingStub =
@@ -61,7 +76,7 @@ public class HelloWorldClientTls {
 
   /**
    * Greet server. If provided, the first element of {@code args} is the name to use in the
-   * greeting.
+   * greeting. First element can either be a list ( in format '["a", "b"]') or a singular host
    */
   public static void main(String[] args) throws Exception {
     // this turns an array string into an array. e.g. "["a", "b"]" -> ["a","b"]
@@ -87,8 +102,7 @@ public class HelloWorldClientTls {
       credentials = GoogleCredentials.create(new AccessToken(token, currentTime.getTime()));
     } else {
       logger.info("Attempting to use default credentials");
-      // try to use the application default credentials if no
-      // token is specified.
+      // try to use the application default credentials if no token is specified.
       credentials = GoogleCredentials.getApplicationDefault();
     }
 

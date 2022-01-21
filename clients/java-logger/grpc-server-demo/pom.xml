@@ -9,7 +9,7 @@
     <version>2.5.5</version>
     <relativePath/>
   </parent>
-  <artifactId>server-test</artifactId>
+  <artifactId>grpc-server-demo</artifactId>
   <groupId>com.abcxyz.lumberjack</groupId>
   <version>0.0.1</version>
 
@@ -159,8 +159,7 @@
           <archive>
             <manifest>
               <addClasspath>true</addClasspath>
-              <!-- classpathPrefix>lib/</classpathPrefix -->
-              <mainClass>abcxyx.helloworld.HelloWorldServerTls</mainClass>
+              <mainClass>abcxyz.helloworld.HelloWorldServerTls</mainClass>
             </manifest>
           </archive>
         </configuration>

@@ -10,7 +10,7 @@ Run the server (fill out app project and server url below):
 ```
 export APP_PROJECT=
 export REPO=us-docker.pkg.dev/$APP_PROJECT/images
-export APP_NAME=java-server-test-$USER
+export APP_NAME=java-grpc-server-demo-$USER
 export TAG=init
 export SERVER_URL=
 
@@ -26,6 +26,6 @@ gcloud run deploy $APP_NAME \
 
 In another terminal, send requests from the client:
 ```
-export SERVICE_URL=
-mvn exec:java -Dexec.mainClass=abcxyx.helloworld.HelloWorldClientTls -Dexec.args="${SERVICE_URL} 443 $(gcloud auth print-identity-token)"
+export SERVICE_URL=$(gcloud run services describe ${APP_NAME} --platform managed --region us-west1 --format 'value(status.url)')
+mvn exec:java -Dexec.mainClass=HelloWorldClientTls -Dexec.args="${SERVICE_URL} 443 $(gcloud auth print-identity-token)"
 ```

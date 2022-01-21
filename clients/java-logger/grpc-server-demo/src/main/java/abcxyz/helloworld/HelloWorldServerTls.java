@@ -1,5 +1,20 @@
-package abcxyx.helloworld;
+package abcxyz.helloworld;
 
+/*
+ * Copyright 2021 Lumberjack authors (see AUTHORS file)
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 /*
  * Copyright 2015 The gRPC Authors
  *
@@ -16,9 +31,9 @@ package abcxyx.helloworld;
  * limitations under the License.
  */
 
-import abcxyx.helloworld.generated.GreeterGrpc;
-import abcxyx.helloworld.generated.HelloReply;
-import abcxyx.helloworld.generated.HelloRequest;
+import abcxyz.helloworld.generated.GreeterGrpc;
+import abcxyz.helloworld.generated.HelloReply;
+import abcxyz.helloworld.generated.HelloRequest;
 import com.abcxyz.lumberjack.auditlogclient.AuditLoggingServerInterceptor;
 import com.abcxyz.lumberjack.auditlogclient.AuditLogs;
 import com.abcxyz.lumberjack.auditlogclient.modules.AuditLoggingModule;
@@ -87,7 +102,7 @@ public class HelloWorldServerTls {
     server.blockUntilShutdown();
   }
 
-  static class GreeterImpl extends GreeterGrpc.GreeterImplBase {
+  private static class GreeterImpl extends GreeterGrpc.GreeterImplBase {
 
     @Override
     public void sayHello(HelloRequest req, StreamObserver<HelloReply> responseObserver) {
