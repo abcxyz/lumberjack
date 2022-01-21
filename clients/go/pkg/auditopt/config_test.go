@@ -156,7 +156,7 @@ version: v2
 backend:
   address: %s
 `,
-			wantErrSubstr: `config version "v2" unsupported, supported version is "v1alpha1"`,
+			wantErrSubstr: `explicitly specified config version "v2" unsupported, supported version is "v1alpha1"`,
 		},
 	}
 
@@ -254,7 +254,6 @@ backend:
 			name: "use_env_var_when_config_file_not_found",
 			path: path.Join(dir, "inexistent.yaml"),
 			envs: map[string]string{
-				"AUDIT_CLIENT_VERSION":                           "v1alpha1",
 				"AUDIT_CLIENT_CONDITION_REGEX_PRINCIPAL_EXCLUDE": "user@example.com$",
 				"AUDIT_CLIENT_BACKEND_INSECURE_ENABLED":          "true",
 				"AUDIT_CLIENT_BACKEND_IMPERSONATE_ACCOUNT":       "example@test.iam.gserviceaccount.com",
@@ -266,7 +265,6 @@ backend:
 			name: "use_defaults_when_config_file_not_found",
 			path: path.Join(dir, "inexistent.yaml"),
 			envs: map[string]string{
-				"AUDIT_CLIENT_VERSION":                     "v1alpha1",
 				"AUDIT_CLIENT_BACKEND_INSECURE_ENABLED":    "true",
 				"AUDIT_CLIENT_BACKEND_IMPERSONATE_ACCOUNT": "example@test.iam.gserviceaccount.com",
 			},
