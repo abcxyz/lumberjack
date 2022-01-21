@@ -33,12 +33,12 @@ type GRPCContext interface {
 //   - `Key` is the grpcmetadata key that contains the JWT.
 //   - `Prefix` is the prefix that should be be stripped before decoding the JWT.
 type FromRawJWT struct {
-	Key    string `yaml:"key"`
-	Prefix string `yaml:"prefix"`
+	Key    string
+	Prefix string
 	//TODO: Add JWKS fields to validate JWT signature.
 }
 
 // RequestPrincipal returns the principal in a raw JWT.
-func (rawJWT *FromRawJWT) RequestPrincipal(ctx context.Context) (string, error) {
+func (fromRawJWT *FromRawJWT) RequestPrincipal(ctx context.Context) (string, error) {
 	return "", fmt.Errorf("not yet implemented")
 }

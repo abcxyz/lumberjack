@@ -18,8 +18,6 @@ package com.abcxyz.lumberjack.auditlogclient.processor;
 
 import com.abcxyz.lumberjack.auditlogclient.processor.LogProcessor.LogMutator;
 import com.abcxyz.lumberjack.v1alpha1.AuditLogRequest;
-import com.google.inject.Inject;
-import com.google.inject.name.Named;
 import java.util.List;
 import java.util.regex.Pattern;
 import lombok.AllArgsConstructor;

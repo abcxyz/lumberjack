@@ -16,14 +16,14 @@
 
 package com.abcxyz.lumberjack.loggingshell;
 
-import com.google.cloud.audit.AuditLog;
-import com.google.cloud.audit.AuthenticationInfo;
-import com.abcxyz.lumberjack.v1alpha1.AuditLogRequest;
-import com.abcxyz.lumberjack.v1alpha1.AuditLogRequest.LogType;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import com.abcxyz.lumberjack.auditlogclient.LoggingClient;
 import com.abcxyz.lumberjack.auditlogclient.processor.LogProcessingException;
+import com.abcxyz.lumberjack.v1alpha1.AuditLogRequest;
+import com.abcxyz.lumberjack.v1alpha1.AuditLogRequest.LogType;
+import com.google.cloud.audit.AuditLog;
+import com.google.cloud.audit.AuthenticationInfo;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestAttribute;
@@ -31,10 +31,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
-/**
- * Endpoints for the shell app that imports/uses the Audit Logging client
- * library.
- */
+/** Endpoints for the shell app that imports/uses the Audit Logging client library. */
 @Slf4j
 @RequiredArgsConstructor
 @RestController
@@ -50,15 +47,16 @@ public class LoggingController {
       @RequestParam(value = TRACE_ID_PARAMETER_KEY) String traceId,
       @RequestAttribute(TokenInterceptor.INTERCEPTOR_USER_EMAIL_KEY) String userEmail)
       throws LogProcessingException {
-    AuditLogRequest record = AuditLogRequest.newBuilder()
-        .setPayload(
-            AuditLog.newBuilder()
-                .setServiceName(SERVICE_NAME)
-                .setAuthenticationInfo(
-                    AuthenticationInfo.newBuilder().setPrincipalEmail(userEmail).build()))
-        .setType(LogType.DATA_ACCESS)
-        .putLabels(TRACE_ID_PARAMETER_KEY, traceId)
-        .build();
+    AuditLogRequest record =
+        AuditLogRequest.newBuilder()
+            .setPayload(
+                AuditLog.newBuilder()
+                    .setServiceName(SERVICE_NAME)
+                    .setAuthenticationInfo(
+                        AuthenticationInfo.newBuilder().setPrincipalEmail(userEmail).build()))
+            .setType(LogType.DATA_ACCESS)
+            .putLabels(TRACE_ID_PARAMETER_KEY, traceId)
+            .build();
     loggingClient.log(record);
     log.info("Logged successfully with trace id: {} for user: {}", traceId, userEmail);
   }

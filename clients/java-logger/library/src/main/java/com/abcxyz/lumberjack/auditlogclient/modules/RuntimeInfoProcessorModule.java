@@ -20,9 +20,8 @@ import com.abcxyz.lumberjack.auditlogclient.providers.RuntimeInfoValueProvider;
 import com.google.inject.AbstractModule;
 import com.google.protobuf.Value;
 
-/**
- * Provides configuration for runtimeInfo processing.
- */
+
+/** Provides configuration for runtimeInfo processing. */
 public class RuntimeInfoProcessorModule extends AbstractModule {
 
   @Override

@@ -25,13 +25,17 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  # TODO: enable linting for java
   lint:
     name: Lint
     runs-on: ubuntu-latest
     steps:
-      - name: No java lint implemented
-        run: 'echo "Java linting is not currently implemented."'
+      - name: Check out code
+        uses: actions/checkout@v2
+      - name: Run formatter, fail if there were changes required.
+        run: |
+          ./scripts/format_java.sh
+          git -c color.ui=always diff --exit-code
+
 
   test:
     name: Tests

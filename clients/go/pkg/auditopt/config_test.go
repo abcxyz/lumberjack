@@ -24,6 +24,7 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/spf13/viper"
 	calpb "google.golang.org/genproto/googleapis/cloud/audit"
 	"google.golang.org/grpc"
 	"google.golang.org/protobuf/testing/protocmp"
@@ -61,7 +62,7 @@ func TestMustFromConfigFile(t *testing.T) {
 			// https://stackoverflow.com/a/64462925
 			fileContent: `
 version: v1alpha1
-filter:
+condition:
   regex:
     principal_exclude: # unset
 backend:
@@ -76,7 +77,7 @@ backend:
 			name: "overwrite_default_when_principal_exclude_set",
 			fileContent: `
 version: v1alpha1
-filter:
+condition:
   regex:
     principal_exclude: user@example.com$
 backend:
@@ -89,11 +90,11 @@ backend:
 		{
 			name: "env_var_overwrites_config_file",
 			envs: map[string]string{
-				"AUDIT_CLIENT_FILTER_REGEX_PRINCIPAL_EXCLUDE": "user@example.com",
+				"AUDIT_CLIENT_CONDITION_REGEX_PRINCIPAL_EXCLUDE": "user@example.com",
 			},
 			fileContent: `
 version: v1alpha1
-filter:
+condition:
   regex:
     principal_exclude: abc@project.iam.gserviceaccount.com$
 backend:
@@ -107,7 +108,7 @@ backend:
 			name: "explicitly_include_service_account",
 			fileContent: `
 version: v1alpha1
-filter:
+condition:
   regex:
     principal_include: abc@project.iam.gserviceaccount.com
     principal_exclude: .iam.gserviceaccount.com$
@@ -122,7 +123,7 @@ backend:
 			name: "empty_string_allowed_for_regex_filter",
 			fileContent: `
 version: v1alpha1
-filter:
+condition:
   regex:
     principal_include: ""
     principal_exclude: .iam.gserviceaccount.com$
@@ -146,7 +147,7 @@ backend:
 version: v1alpha1
 noop: %s
 `,
-			wantErrSubstr: "config backend address is nil, set it as an env var or in a config file",
+			wantErrSubstr: "backend address in the config is nil, set it as an env var or in a config file",
 		},
 		{
 			name: "wrong_version_should_error",
@@ -155,7 +156,7 @@ version: v2
 backend:
   address: %s
 `,
-			wantErrSubstr: `config version "v2" unsupported, supported versions are ["v1alpha1"]`,
+			wantErrSubstr: `explicitly specified config version "v2" unsupported, supported version is "v1alpha1"`,
 		},
 	}
 
@@ -168,7 +169,7 @@ backend:
 
 			lis, err := net.Listen("tcp", "localhost:0")
 			if err != nil {
-				t.Fatalf("net.Listen(tcp, localhost:0) failed: %v", err)
+				t.Fatal(err)
 			}
 			go func(t *testing.T, s *grpc.Server, lis net.Listener) {
 				err := s.Serve(lis)
@@ -186,7 +187,7 @@ backend:
 			// Add address of the fake server to the config file.
 			content := fmt.Sprintf(tc.fileContent, lis.Addr().String())
 			if err := ioutil.WriteFile(path, []byte(content), 0o600); err != nil {
-				t.Fatalf("error creating test config file: %v", err)
+				t.Fatal(err)
 			}
 
 			c, err := audit.NewClient(MustFromConfigFile(path))
@@ -197,7 +198,7 @@ backend:
 				return
 			}
 			if err := c.Log(context.Background(), tc.req); err != nil {
-				t.Fatalf("client.Log(...) unexpected error: %v", err)
+				t.Fatal(err)
 			}
 			cmpopts := []cmp.Option{
 				protocmp.Transform(),
@@ -218,10 +219,11 @@ func TestFromConfigFile(t *testing.T) {
 	configFileContentByName := map[string]string{
 		"valid.yaml": `
 version: v1alpha1
-filter:
+condition:
   regex:
     principal_exclude: user@example.com$
 backend:
+  # we set the backend address as env var below
   insecure_enabled: true
 `,
 		"invalid.yaml": `bananas`,
@@ -231,7 +233,7 @@ backend:
 	for name, content := range configFileContentByName {
 		path := filepath.Join(dir, name)
 		if err := ioutil.WriteFile(path, []byte(content), 0o600); err != nil {
-			t.Fatalf("error creating test config file: %v", err)
+			t.Fatal(err)
 		}
 	}
 	cases := []struct {
@@ -252,11 +254,21 @@ backend:
 			name: "use_env_var_when_config_file_not_found",
 			path: path.Join(dir, "inexistent.yaml"),
 			envs: map[string]string{
-				"AUDIT_CLIENT_FILTER_REGEX_PRINCIPAL_EXCLUDE": "user@example.com$",
-				"AUDIT_CLIENT_BACKEND_INSECURE_ENABLED":       "true",
+				"AUDIT_CLIENT_CONDITION_REGEX_PRINCIPAL_EXCLUDE": "user@example.com$",
+				"AUDIT_CLIENT_BACKEND_INSECURE_ENABLED":          "true",
+				"AUDIT_CLIENT_BACKEND_IMPERSONATE_ACCOUNT":       "example@test.iam.gserviceaccount.com",
 			},
 			req:     testutil.ReqBuilder().WithPrincipal("abc@project.iam.gserviceaccount.com").Build(),
 			wantReq: testutil.ReqBuilder().WithPrincipal("abc@project.iam.gserviceaccount.com").Build(),
+		},
+		{
+			name: "use_defaults_when_config_file_not_found",
+			path: path.Join(dir, "inexistent.yaml"),
+			envs: map[string]string{
+				"AUDIT_CLIENT_BACKEND_INSECURE_ENABLED":    "true",
+				"AUDIT_CLIENT_BACKEND_IMPERSONATE_ACCOUNT": "example@test.iam.gserviceaccount.com",
+			},
+			req: testutil.ReqBuilder().WithPrincipal("abc@project.iam.gserviceaccount.com").Build(),
 		},
 		{
 			name:          "invalid_config_file_should_error",
@@ -273,7 +285,7 @@ backend:
 
 			lis, err := net.Listen("tcp", "localhost:0")
 			if err != nil {
-				t.Fatalf("net.Listen(tcp, localhost:0) failed: %v", err)
+				t.Fatal(err)
 			}
 			go func(t *testing.T, s *grpc.Server, lis net.Listener) {
 				err := s.Serve(lis)
@@ -296,7 +308,7 @@ backend:
 				return
 			}
 			if err := c.Log(context.Background(), tc.req); err != nil {
-				t.Fatalf("client.Log(...) unexpected error: %v", err)
+				t.Fatal(err)
 			}
 			cmpopts := []cmp.Option{
 				protocmp.Transform(),
@@ -312,9 +324,8 @@ backend:
 	}
 }
 
-func TestFromRawJWTFromViper(t *testing.T) {
+func TestFromRawJWTFromConfig(t *testing.T) {
 	t.Parallel()
-
 	cases := []struct {
 		name           string
 		fileContent    string
@@ -330,6 +341,7 @@ backend:
   insecure_enabled: true
 security_context:
 `,
+			wantErrSubstr: "fromRawJWT in the config is nil, set it as an env var or in a config file",
 		},
 		{
 			name: "unset_security_context_again",
@@ -339,6 +351,7 @@ backend:
   address: foo:443
   insecure_enabled: true
 `,
+			wantErrSubstr: "fromRawJWT in the config is nil, set it as an env var or in a config file",
 		},
 		{
 			name: "raw_jwt_with_default_value_due_to_braces",
@@ -446,16 +459,22 @@ security_context:
 
 			path := filepath.Join(t.TempDir(), "config.yaml")
 			if err := ioutil.WriteFile(path, []byte(tc.fileContent), 0o600); err != nil {
-				t.Fatalf("error creating test config file: %v", err)
-			}
-			v := prepareViper()
-			if err := setupViperConfigFile(v, path); err != nil {
 				t.Fatal(err)
 			}
 
-			fromRawJWT, err := fromRawJWTFromViper(v)
+			v := viper.New()
+			v.SetConfigFile(path)
+			if err := v.ReadInConfig(); err != nil {
+				t.Fatal(err)
+			}
+			cfg, err := configFromViper(v)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			fromRawJWT, err := fromRawJWTFromConfig(cfg)
 			if diff := errutil.DiffSubstring(err, tc.wantErrSubstr); diff != "" {
-				t.Errorf("fromRawJWTFromViper(path) got unexpected error substring: %v", diff)
+				t.Errorf("fromRawJWTFromConfig(path) got unexpected error substring: %v", diff)
 			}
 			if diff := cmp.Diff(tc.wantFromRawJWT, fromRawJWT); diff != "" {
 				t.Errorf("unexpected diff in fromRawJWT (-want,+got):\n%s", diff)
@@ -493,7 +512,7 @@ backend:
   insecure_enabled: true
 security_context:
 `,
-			wantErrSubstr: `no supported security context configured in config file`,
+			wantErrSubstr: "no supported security context configured in config file",
 		},
 		{
 			name: "invalid_config_because_backend_address_is_nil",
@@ -510,7 +529,7 @@ security_context:
 		{
 			name:          "unparsable_config",
 			fileContent:   `bananas`,
-			wantErrSubstr: `failed to setup viper from config file`,
+			wantErrSubstr: "failed reading config file",
 		},
 	}
 
@@ -521,7 +540,7 @@ security_context:
 
 			path := filepath.Join(t.TempDir(), "config.yaml")
 			if err := ioutil.WriteFile(path, []byte(tc.fileContent), 0o600); err != nil {
-				t.Fatalf("error creating test config file: %v", err)
+				t.Fatal(err)
 			}
 
 			_, _, err := WithInterceptorFromConfigFile(path)
