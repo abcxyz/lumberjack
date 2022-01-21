@@ -29,10 +29,10 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/protobuf/testing/protocmp"
 
+	"github.com/abcxyz/lumberjack/clients/go/apis/v1alpha1"
 	alpb "github.com/abcxyz/lumberjack/clients/go/apis/v1alpha1"
 	"github.com/abcxyz/lumberjack/clients/go/pkg/audit"
 	"github.com/abcxyz/lumberjack/clients/go/pkg/errutil"
-	"github.com/abcxyz/lumberjack/clients/go/pkg/security"
 	"github.com/abcxyz/lumberjack/clients/go/pkg/testutil"
 )
 
@@ -147,16 +147,21 @@ backend:
 version: v1alpha1
 noop: %s
 `,
-			wantErrSubstr: "backend address in the config is nil, set it as an env var or in a config file",
+			wantErrSubstr: "backend address is nil",
 		},
 		{
 			name: "wrong_version_should_error",
 			fileContent: `
 version: v2
+condition:
+  regex:
+    principal_include: ""
+    principal_exclude: .iam.gserviceaccount.com$
 backend:
   address: %s
+  insecure_enabled: true
 `,
-			wantErrSubstr: `explicitly specified config version "v2" unsupported, supported version is "v1alpha1"`,
+			wantErrSubstr: `unexpected Version "v2" want "v1alpha1"`,
 		},
 	}
 
@@ -324,65 +329,49 @@ backend:
 	}
 }
 
-func TestFromRawJWTFromConfig(t *testing.T) {
+func TestConfigFromViper(t *testing.T) {
 	t.Parallel()
 	cases := []struct {
-		name           string
-		fileContent    string
-		wantFromRawJWT *security.FromRawJWT
-		wantErrSubstr  string
+		name          string
+		fileContent   string
+		wantCfg       *v1alpha1.Config
+		wantErrSubstr string
 	}{
-		{
-			name: "unset_security_context",
-			fileContent: `
-version: v1alpha1
-backend:
-  address: foo:443
-  insecure_enabled: true
-security_context:
-`,
-			wantErrSubstr: "fromRawJWT in the config is nil, set it as an env var or in a config file",
-		},
-		{
-			name: "unset_security_context_again",
-			fileContent: `
-version: v1alpha1
-backend:
-  address: foo:443
-  insecure_enabled: true
-`,
-			wantErrSubstr: "fromRawJWT in the config is nil, set it as an env var or in a config file",
-		},
-		{
-			name: "raw_jwt_with_default_value_due_to_braces",
-			fileContent: `
-version: v1alpha1
-backend:
-  address: foo:443
-  insecure_enabled: true
-security_context:
-  from_raw_jwt: {}
-`,
-			wantFromRawJWT: &security.FromRawJWT{
-				Key:    "authorization",
-				Prefix: "bearer ",
-			},
-		},
-		{
-			name: "raw_jwt_with_default_value_due_to_null",
-			fileContent: `
-version: v1alpha1
-backend:
-  address: foo:443
-  insecure_enabled: true
-security_context:
-  from_raw_jwt:
-`,
-			wantFromRawJWT: &security.FromRawJWT{
-				Key:    "authorization",
-				Prefix: "bearer ",
-			},
-		},
+		// TODO(#64): re-enable when we migrate to koanf because it can handle nil values
+		// 		{
+		// 			name: "raw_jwt_with_default_value_due_to_braces",
+		// 			fileContent: `
+		// version: v1alpha1
+		// backend:
+		//   address: foo:443
+		//   insecure_enabled: true
+		// security_context:
+		//   from_raw_jwt: {}
+		// `,
+		// 			wantCfg: &v1alpha1.Config{
+		// 				Version:         "v1alpha1",
+		// 				Backend:         &v1alpha1.Backend{Address: "foo:443", InsecureEnabled: true},
+		// 				Condition:       &v1alpha1.Condition{Regex: &v1alpha1.RegexCondition{PrincipalExclude: ".gserviceaccount.com$"}},
+		// 				SecurityContext: &v1alpha1.SecurityContext{FromRawJWT: &v1alpha1.FromRawJWT{Key: "authorization", Prefix: "Bearer "}},
+		// 			},
+		// 		},
+		// 		{
+		// 			name: "raw_jwt_with_default_value_due_to_null",
+		// 			fileContent: `
+		// version: v1alpha1
+		// backend:
+		//   address: foo:443
+		//   insecure_enabled: true
+		// security_context:
+		//   from_raw_jwt:
+		// `,
+		// 			wantCfg: &v1alpha1.Config{
+		// 				Version:         "v1alpha1",
+		// 				Backend:         &v1alpha1.Backend{Address: "foo:443", InsecureEnabled: true},
+		// 				Condition:       &v1alpha1.Condition{Regex: &v1alpha1.RegexCondition{PrincipalExclude: ".gserviceaccount.com$"}},
+		// 				SecurityContext: &v1alpha1.SecurityContext{FromRawJWT: &v1alpha1.FromRawJWT{Key: "authorization", Prefix: "Bearer "}},
+		// 			},
+		// 		},
 		{
 			name: "raw_jwt_with_default_value_due_to_empty_string",
 			fileContent: `
@@ -395,9 +384,11 @@ security_context:
     key: ""
     prefix: ""
 `,
-			wantFromRawJWT: &security.FromRawJWT{
-				Key:    "authorization",
-				Prefix: "bearer ",
+			wantCfg: &v1alpha1.Config{
+				Version:         "v1alpha1",
+				Backend:         &v1alpha1.Backend{Address: "foo:443", InsecureEnabled: true},
+				Condition:       &v1alpha1.Condition{Regex: &v1alpha1.RegexCondition{PrincipalExclude: ".gserviceaccount.com$"}},
+				SecurityContext: &v1alpha1.SecurityContext{FromRawJWT: &v1alpha1.FromRawJWT{Key: "authorization", Prefix: "Bearer "}},
 			},
 		},
 		{
@@ -412,9 +403,11 @@ security_context:
     key: x-jwt-assertion
     prefix: somePrefix
 `,
-			wantFromRawJWT: &security.FromRawJWT{
-				Key:    "x-jwt-assertion",
-				Prefix: "somePrefix",
+			wantCfg: &v1alpha1.Config{
+				Version:         "v1alpha1",
+				Backend:         &v1alpha1.Backend{Address: "foo:443", InsecureEnabled: true},
+				Condition:       &v1alpha1.Condition{Regex: &v1alpha1.RegexCondition{PrincipalExclude: ".gserviceaccount.com$"}},
+				SecurityContext: &v1alpha1.SecurityContext{FromRawJWT: &v1alpha1.FromRawJWT{Key: "x-jwt-assertion", Prefix: "somePrefix"}},
 			},
 		},
 		{
@@ -429,9 +422,11 @@ security_context:
     key: x-jwt-assertion
     prefix:
 `,
-			wantFromRawJWT: &security.FromRawJWT{
-				Key:    "x-jwt-assertion",
-				Prefix: "",
+			wantCfg: &v1alpha1.Config{
+				Version:         "v1alpha1",
+				Backend:         &v1alpha1.Backend{Address: "foo:443", InsecureEnabled: true},
+				Condition:       &v1alpha1.Condition{Regex: &v1alpha1.RegexCondition{PrincipalExclude: ".gserviceaccount.com$"}},
+				SecurityContext: &v1alpha1.SecurityContext{FromRawJWT: &v1alpha1.FromRawJWT{Key: "x-jwt-assertion", Prefix: ""}},
 			},
 		},
 		{
@@ -445,9 +440,11 @@ security_context:
   from_raw_jwt:
     key: x-jwt-assertion
 `,
-			wantFromRawJWT: &security.FromRawJWT{
-				Key:    "x-jwt-assertion",
-				Prefix: "",
+			wantCfg: &v1alpha1.Config{
+				Version:         "v1alpha1",
+				Backend:         &v1alpha1.Backend{Address: "foo:443", InsecureEnabled: true},
+				Condition:       &v1alpha1.Condition{Regex: &v1alpha1.RegexCondition{PrincipalExclude: ".gserviceaccount.com$"}},
+				SecurityContext: &v1alpha1.SecurityContext{FromRawJWT: &v1alpha1.FromRawJWT{Key: "x-jwt-assertion", Prefix: ""}},
 			},
 		},
 	}
@@ -468,16 +465,11 @@ security_context:
 				t.Fatal(err)
 			}
 			cfg, err := configFromViper(v)
-			if err != nil {
-				t.Fatal(err)
-			}
-
-			fromRawJWT, err := fromRawJWTFromConfig(cfg)
 			if diff := errutil.DiffSubstring(err, tc.wantErrSubstr); diff != "" {
-				t.Errorf("fromRawJWTFromConfig(path) got unexpected error substring: %v", diff)
+				t.Errorf("configFromViper(v) got unexpected error substring: %v", diff)
 			}
-			if diff := cmp.Diff(tc.wantFromRawJWT, fromRawJWT); diff != "" {
-				t.Errorf("unexpected diff in fromRawJWT (-want,+got):\n%s", diff)
+			if diff := cmp.Diff(tc.wantCfg, cfg); diff != "" {
+				t.Errorf("unexpected diff in configFromViper (-want,+got):\n%s", diff)
 			}
 		})
 	}
@@ -498,7 +490,9 @@ backend:
   address: foo:443
   insecure_enabled: true
 security_context:
-  from_raw_jwt: {}
+  from_raw_jwt:
+    key: "authorization"
+    prefix: "Bearer "
 rules:
   selector: "*"
 `,
@@ -516,7 +510,19 @@ security_context:
 rules:
   selector: "*"
 `,
-			wantErrSubstr: "no supported security context configured in config",
+			wantErrSubstr: "SecurityContext is nil",
+		},
+		{
+			name: "invalid_config_due_unset_security_context_again",
+			fileContent: `
+version: v1alpha1
+backend:
+  address: foo:443
+  insecure_enabled: true
+rules:
+  selector: "*"
+`,
+			wantErrSubstr: "SecurityContext is nil",
 		},
 		{
 			name: "invalid_config_because_backend_address_is_nil",
@@ -530,7 +536,7 @@ security_context:
 rules:
   selector: "*"
 `,
-			wantErrSubstr: "backend address in the config is nil, set it as an env var or in a config file",
+			wantErrSubstr: "backend address is nil",
 		},
 		{
 			name: "invalid_config_due_to_log_type",
@@ -545,12 +551,12 @@ rules:
   selector: "*"
   log_type: bananas
 `,
-			wantErrSubstr: "failed validating config rule",
+			wantErrSubstr: `unexpected rule.LogType "bananas"`,
 		},
 		{
 			name:          "unparsable_config",
 			fileContent:   `bananas`,
-			wantErrSubstr: "failed reading config file",
+			wantErrSubstr: "cannot unmarshal",
 		},
 	}
 
