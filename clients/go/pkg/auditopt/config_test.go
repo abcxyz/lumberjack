@@ -24,7 +24,6 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
-	"github.com/spf13/viper"
 	calpb "google.golang.org/genproto/googleapis/cloud/audit"
 	"google.golang.org/grpc"
 	"google.golang.org/protobuf/testing/protocmp"
@@ -32,7 +31,6 @@ import (
 	alpb "github.com/abcxyz/lumberjack/clients/go/apis/v1alpha1"
 	"github.com/abcxyz/lumberjack/clients/go/pkg/audit"
 	"github.com/abcxyz/lumberjack/clients/go/pkg/errutil"
-	"github.com/abcxyz/lumberjack/clients/go/pkg/security"
 	"github.com/abcxyz/lumberjack/clients/go/pkg/testutil"
 )
 
@@ -64,10 +62,12 @@ func TestMustFromConfigFile(t *testing.T) {
 version: v1alpha1
 condition:
   regex:
-    principal_exclude: # unset
+    principal_exclude:
 backend:
   address: %s
   insecure_enabled: true
+security_context:
+  from_raw_jwt: {}
 `,
 			// By default, we ignore log requests that have an IAM service account
 			// as a principal.
@@ -83,6 +83,8 @@ condition:
 backend:
   address: %s
   insecure_enabled: true
+security_context:
+  from_raw_jwt: {}
 `,
 			req:     testutil.ReqBuilder().WithPrincipal("abc@project.iam.gserviceaccount.com").Build(),
 			wantReq: testutil.ReqBuilder().WithPrincipal("abc@project.iam.gserviceaccount.com").Build(),
@@ -90,6 +92,7 @@ backend:
 		{
 			name: "env_var_overwrites_config_file",
 			envs: map[string]string{
+				// hold: why is this not overwriting
 				"AUDIT_CLIENT_CONDITION_REGEX_PRINCIPAL_EXCLUDE": "user@example.com",
 			},
 			fileContent: `
@@ -100,6 +103,8 @@ condition:
 backend:
   address: %s
   insecure_enabled: true
+security_context:
+  from_raw_jwt: {}
 `,
 			req:     testutil.ReqBuilder().WithPrincipal("abc@project.iam.gserviceaccount.com").Build(),
 			wantReq: testutil.ReqBuilder().WithPrincipal("abc@project.iam.gserviceaccount.com").Build(),
@@ -115,6 +120,8 @@ condition:
 backend:
   address: %s
   insecure_enabled: true
+security_context:
+  from_raw_jwt: {}
 `,
 			req:     testutil.ReqBuilder().WithPrincipal("abc@project.iam.gserviceaccount.com").Build(),
 			wantReq: testutil.ReqBuilder().WithPrincipal("abc@project.iam.gserviceaccount.com").Build(),
@@ -130,6 +137,8 @@ condition:
 backend:
   address: %s
   insecure_enabled: true
+security_context:
+  from_raw_jwt: {}
 `,
 			req: testutil.ReqBuilder().WithPrincipal("abc@project.iam.gserviceaccount.com").Build(),
 		},
@@ -145,7 +154,15 @@ backend:
 			},
 			fileContent: `
 version: v1alpha1
-noop: %s
+condition:
+  regex:
+    principal_include: ""
+    principal_exclude: .iam.gserviceaccount.com$
+backend:
+  noop: %s
+  insecure_enabled: true
+security_context:
+  from_raw_jwt: {}
 `,
 			wantErrSubstr: "backend address in the config is nil, set it as an env var or in a config file",
 		},
@@ -153,10 +170,17 @@ noop: %s
 			name: "wrong_version_should_error",
 			fileContent: `
 version: v2
+condition:
+  regex:
+    principal_include: ""
+    principal_exclude: .iam.gserviceaccount.com$
 backend:
   address: %s
+  insecure_enabled: true
+security_context:
+  from_raw_jwt: {}
 `,
-			wantErrSubstr: `explicitly specified config version "v2" unsupported, supported version is "v1alpha1"`,
+			wantErrSubstr: `unexpected Version "v2" want "v1alpha1"`,
 		},
 	}
 
@@ -225,6 +249,8 @@ condition:
 backend:
   # we set the backend address as env var below
   insecure_enabled: true
+security_context:
+  from_raw_jwt: {}
 `,
 		"invalid.yaml": `bananas`,
 	}
@@ -324,179 +350,8 @@ backend:
 	}
 }
 
-func TestFromRawJWTFromConfig(t *testing.T) {
-	t.Parallel()
-	cases := []struct {
-		name           string
-		fileContent    string
-		wantFromRawJWT *security.FromRawJWT
-		wantErrSubstr  string
-	}{
-		{
-			name: "unset_security_context",
-			fileContent: `
-version: v1alpha1
-backend:
-  address: foo:443
-  insecure_enabled: true
-security_context:
-`,
-			wantErrSubstr: "fromRawJWT in the config is nil, set it as an env var or in a config file",
-		},
-		{
-			name: "unset_security_context_again",
-			fileContent: `
-version: v1alpha1
-backend:
-  address: foo:443
-  insecure_enabled: true
-`,
-			wantErrSubstr: "fromRawJWT in the config is nil, set it as an env var or in a config file",
-		},
-		{
-			name: "raw_jwt_with_default_value_due_to_braces",
-			fileContent: `
-version: v1alpha1
-backend:
-  address: foo:443
-  insecure_enabled: true
-security_context:
-  from_raw_jwt: {}
-`,
-			wantFromRawJWT: &security.FromRawJWT{
-				FromRawJWT: &alpb.FromRawJWT{
-					Key:    "authorization",
-					Prefix: "Bearer ",
-				},
-			},
-		},
-		{
-			name: "raw_jwt_with_default_value_due_to_null",
-			fileContent: `
-version: v1alpha1
-backend:
-  address: foo:443
-  insecure_enabled: true
-security_context:
-  from_raw_jwt:
-`,
-			wantFromRawJWT: &security.FromRawJWT{
-				FromRawJWT: &alpb.FromRawJWT{
-					Key:    "authorization",
-					Prefix: "Bearer ",
-				},
-			},
-		},
-		{
-			name: "raw_jwt_with_default_value_due_to_empty_string",
-			fileContent: `
-version: v1alpha1
-backend:
-  address: foo:443
-  insecure_enabled: true
-security_context:
-  from_raw_jwt:
-    key: ""
-    prefix: ""
-`,
-			wantFromRawJWT: &security.FromRawJWT{
-				FromRawJWT: &alpb.FromRawJWT{
-					Key:    "authorization",
-					Prefix: "Bearer ",
-				},
-			},
-		},
-		{
-			name: "raw_jwt_with_user-defined_values_fully_set",
-			fileContent: `
-version: v1alpha1
-backend:
-  address: foo:443
-  insecure_enabled: true
-security_context:
-  from_raw_jwt:
-    key: x-jwt-assertion
-    prefix: somePrefix
-`,
-			wantFromRawJWT: &security.FromRawJWT{
-				FromRawJWT: &alpb.FromRawJWT{
-					Key:    "x-jwt-assertion",
-					Prefix: "somePrefix",
-				},
-			},
-		},
-		{
-			name: "raw_jwt_with_user-defined_values_partially_set",
-			fileContent: `
-version: v1alpha1
-backend:
-  address: foo:443
-  insecure_enabled: true
-security_context:
-  from_raw_jwt:
-    key: x-jwt-assertion
-    prefix:
-`,
-			wantFromRawJWT: &security.FromRawJWT{
-				FromRawJWT: &alpb.FromRawJWT{
-					Key:    "x-jwt-assertion",
-					Prefix: "",
-				},
-			},
-		},
-		{
-			name: "raw_jwt_with_user-defined_values_partially_set_again",
-			fileContent: `
-version: v1alpha1
-backend:
-  address: foo:443
-  insecure_enabled: true
-security_context:
-  from_raw_jwt:
-    key: x-jwt-assertion
-`,
-			wantFromRawJWT: &security.FromRawJWT{
-				FromRawJWT: &alpb.FromRawJWT{
-					Key:    "x-jwt-assertion",
-					Prefix: "",
-				},
-			},
-		},
-	}
-
-	for _, tc := range cases {
-		tc := tc
-		t.Run(tc.name, func(t *testing.T) {
-			t.Parallel()
-
-			path := filepath.Join(t.TempDir(), "config.yaml")
-			if err := ioutil.WriteFile(path, []byte(tc.fileContent), 0o600); err != nil {
-				t.Fatal(err)
-			}
-
-			v := viper.New()
-			v.SetConfigFile(path)
-			if err := v.ReadInConfig(); err != nil {
-				t.Fatal(err)
-			}
-			cfg, err := configFromViper(v)
-			if err != nil {
-				t.Fatal(err)
-			}
-
-			fromRawJWT, err := fromRawJWTFromConfig(cfg)
-			if diff := errutil.DiffSubstring(err, tc.wantErrSubstr); diff != "" {
-				t.Errorf("fromRawJWTFromConfig(path) got unexpected error substring: %v", diff)
-			}
-			if diff := cmp.Diff(tc.wantFromRawJWT, fromRawJWT); diff != "" {
-				t.Errorf("unexpected diff in fromRawJWT (-want,+got):\n%s", diff)
-			}
-		})
-	}
-}
-
 func TestWithInterceptorFromConfigFile(t *testing.T) {
-	t.Parallel()
+	// t.Parallel()
 	cases := []struct {
 		name          string
 		fileContent   string
@@ -514,21 +369,6 @@ security_context:
 rules:
   selector: "*"
 `,
-		},
-		{
-			name: "invalid_config_because_security_context_is_nil",
-			// In YAML, empty keys are unset. For details, see:
-			// https://stackoverflow.com/a/64462925
-			fileContent: `
-version: v1alpha1
-backend:
-  address: foo:443
-  insecure_enabled: true
-security_context:
-rules:
-  selector: "*"
-`,
-			wantErrSubstr: "no supported security context configured in config",
 		},
 		{
 			name: "invalid_config_because_backend_address_is_nil",
@@ -557,7 +397,7 @@ rules:
   selector: "*"
   log_type: bananas
 `,
-			wantErrSubstr: "failed validating config rule",
+			wantErrSubstr: `unexpected rule.LogType "bananas"`,
 		},
 		{
 			name:          "unparsable_config",
@@ -569,7 +409,7 @@ rules:
 	for _, tc := range cases {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
-			t.Parallel()
+			// t.Parallel()
 
 			path := filepath.Join(t.TempDir(), "config.yaml")
 			if err := ioutil.WriteFile(path, []byte(tc.fileContent), 0o600); err != nil {

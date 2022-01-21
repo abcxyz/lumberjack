@@ -3,6 +3,7 @@ package v1alpha1
 import (
 	"fmt"
 
+	"github.com/abcxyz/lumberjack/clients/go/pkg/zlogger"
 	"go.uber.org/multierr"
 )
 
@@ -63,9 +64,12 @@ type Config struct {
 
 // Validate checks if the config is valid.
 func (cfg *Config) Validate() error {
+	logger := zlogger.Default()
 	// TODO: do validations for each field if necessary.
 	var err error
-	if cfg.Version != Version {
+	if cfg.Version == "" {
+		logger.Warnf("config version is unset, set your config to the supported version %q", Version)
+	} else if cfg.Version != Version {
 		err = multierr.Append(err, fmt.Errorf("unexpected Version %q want %q", cfg.Version, Version))
 	}
 	if cfg.SecurityContext == nil {
@@ -87,12 +91,14 @@ func (cfg *Config) SetDefault() {
 	if cfg.Version == "" {
 		cfg.Version = Version
 	}
-	if cfg.SecurityContext != nil {
-		cfg.SecurityContext.SetDefault()
+	if cfg.Condition == nil {
+		cfg.Condition = &Condition{}
 	}
-	if cfg.Condition != nil {
-		cfg.Condition.SetDefault()
+	cfg.Condition.SetDefault()
+	if cfg.SecurityContext == nil {
+		cfg.SecurityContext = &SecurityContext{}
 	}
+	cfg.SecurityContext.SetDefault()
 	for _, r := range cfg.Rules {
 		r.SetDefault()
 	}
@@ -112,9 +118,10 @@ type Condition struct {
 
 // SetDefault sets default for the condition.
 func (c *Condition) SetDefault() {
-	if c.Regex != nil {
-		c.Regex.SetDefault()
+	if c.Regex == nil {
+		c.Regex = &RegexCondition{}
 	}
+	c.Regex.SetDefault()
 }
 
 // RegexCondition matches condition with regular expression.
@@ -147,9 +154,10 @@ func (sc *SecurityContext) Validate() error {
 
 // SetDefault sets default for the security context.
 func (sc *SecurityContext) SetDefault() {
-	if sc.FromRawJWT != nil {
-		sc.FromRawJWT.SetDefault()
+	if sc.FromRawJWT == nil {
+		sc.FromRawJWT = &FromRawJWT{}
 	}
+	sc.FromRawJWT.SetDefault()
 }
 
 // FromRawJWT provides info for how to retrieve security context from
