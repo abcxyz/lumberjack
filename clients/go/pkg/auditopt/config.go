@@ -200,26 +200,6 @@ func backendFromConfig(cfg *alpb.Config) (audit.Option, error) {
 func configFromViper(v *viper.Viper) (*alpb.Config, error) {
 	v = bindEnvVars(v)
 
-	// //TODO(#64): remove this when we migrate to koanf  because koanf can handle nil values
-	// Hardcode Viper defaults for Security Context. This
-	// enables the following config file behaviours:
-	//
-	// security_context:
-	// # -> no defaulting because security_context is nil/unset
-	//
-	// security_context:
-	//   from_raw_jwt:
-	// # -> default values for `from_raw_jwt`
-	//
-	// security_context:
-	//   from_raw_jwt: {}
-	// # -> default values for `from_raw_jwt`
-	v.SetDefault("security_context", nil)
-	sc := v.GetStringMap("security_context")
-	if _, ok := sc["from_raw_jwt"]; ok {
-		v.SetDefault("security_context.from_raw_jwt", map[string]string{})
-	}
-
 	cfg := &alpb.Config{}
 	if err := v.Unmarshal(cfg); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal viper into config struct: %w", err)
