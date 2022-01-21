@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"testing"
 
+	"github.com/abcxyz/lumberjack/clients/go/pkg/errutil"
 	"github.com/google/go-cmp/cmp"
 	"github.com/spf13/viper"
 )
@@ -95,6 +96,205 @@ rules:
 
 			if diff := cmp.Diff(tc.wantConfig, gotConfig); diff != "" {
 				t.Errorf("Config unexpected diff (-want,+got):\n%s", diff)
+			}
+		})
+	}
+}
+
+func TestValidate(t *testing.T) {
+	t.Parallel()
+
+	cases := []struct {
+		name    string
+		cfg     *Config
+		wantErr string
+	}{{
+		name: "valid",
+		cfg: &Config{
+			Version: "v1alpha1",
+			SecurityContext: &SecurityContext{
+				FromRawJWT: &FromRawJWT{},
+			},
+			Condition: &Condition{
+				Regex: &RegexCondition{},
+			},
+			Rules: []*AuditRule{{Selector: "*"}},
+		},
+	}, {
+		name: "invalid version",
+		cfg: &Config{
+			Version: "random",
+			SecurityContext: &SecurityContext{
+				FromRawJWT: &FromRawJWT{},
+			},
+			Condition: &Condition{
+				Regex: &RegexCondition{},
+			},
+			Rules: []*AuditRule{{Selector: "*"}},
+		},
+		wantErr: `unexpected Version "random" want "v1alpha1"`,
+	}, {
+		name: "missing security context",
+		cfg: &Config{
+			Version: "v1alpha1",
+			Condition: &Condition{
+				Regex: &RegexCondition{},
+			},
+			Rules: []*AuditRule{{Selector: "*"}},
+		},
+		wantErr: "SecurityContext is nil",
+	}, {
+		name: "empty security context",
+		cfg: &Config{
+			Version:         "v1alpha1",
+			SecurityContext: &SecurityContext{},
+			Condition: &Condition{
+				Regex: &RegexCondition{},
+			},
+			Rules: []*AuditRule{{Selector: "*"}},
+		},
+		wantErr: "one and only one SecurityContext option must be specified",
+	}, {
+		name: "missing rule selector",
+		cfg: &Config{
+			Version: "v1alpha1",
+			SecurityContext: &SecurityContext{
+				FromRawJWT: &FromRawJWT{},
+			},
+			Condition: &Condition{
+				Regex: &RegexCondition{},
+			},
+			Rules: []*AuditRule{{}},
+		},
+		wantErr: "audit rule selector is empty",
+	}, {
+		name: "invalid rule directive",
+		cfg: &Config{
+			Version: "v1alpha1",
+			SecurityContext: &SecurityContext{
+				FromRawJWT: &FromRawJWT{},
+			},
+			Condition: &Condition{
+				Regex: &RegexCondition{},
+			},
+			Rules: []*AuditRule{{
+				Selector:  "*",
+				Directive: "random",
+			}},
+		},
+		wantErr: `unexpected rule.Directive "random" want one of ["AUDIT", "AUDIT_REQUEST_ONLY"`,
+	}, {
+		name: "invalid rule log type",
+		cfg: &Config{
+			Version: "v1alpha1",
+			SecurityContext: &SecurityContext{
+				FromRawJWT: &FromRawJWT{},
+			},
+			Condition: &Condition{
+				Regex: &RegexCondition{},
+			},
+			Rules: []*AuditRule{{
+				Selector: "*",
+				LogType:  "random",
+			}},
+		},
+		wantErr: `unexpected rule.LogType "random" want one of ["ADMIN_ACTIVITY", "DATA_ACCESS"]`,
+	}, {
+		name: "combination of errors",
+		cfg: &Config{
+			Version: "random",
+			Rules:   []*AuditRule{{}},
+		},
+		wantErr: `unexpected Version "random" want "v1alpha1"; SecurityContext is nil; audit rule selector is empty`,
+	}}
+
+	for _, tc := range cases {
+		tc := tc
+
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			err := tc.cfg.Validate()
+			if diff := errutil.DiffSubstring(err, tc.wantErr); diff != "" {
+				t.Errorf("Validate() got unexpected error: %s", diff)
+			}
+		})
+	}
+}
+
+func TestSetDefault(t *testing.T) {
+	t.Parallel()
+
+	cases := []struct {
+		name    string
+		cfg     *Config
+		wantCfg *Config
+	}{{
+		name: "default version",
+		cfg:  &Config{},
+		wantCfg: &Config{
+			Version: "v1alpha1",
+		},
+	}, {
+		name: "default security context",
+		cfg: &Config{
+			Version: "v1alpha1",
+			SecurityContext: &SecurityContext{
+				FromRawJWT: &FromRawJWT{},
+			},
+		},
+		wantCfg: &Config{
+			Version: "v1alpha1",
+			SecurityContext: &SecurityContext{
+				FromRawJWT: &FromRawJWT{
+					Key:    "authorization",
+					Prefix: "Bearer ",
+				},
+			},
+		},
+	}, {
+		name: "default rule fields",
+		cfg: &Config{
+			Version: "v1alpha1",
+			Rules: []*AuditRule{{
+				Selector: "*",
+			}},
+		},
+		wantCfg: &Config{
+			Version: "v1alpha1",
+			Rules: []*AuditRule{{
+				Selector:  "*",
+				Directive: "AUDIT",
+				LogType:   "DATA_ACCESS",
+			}},
+		},
+	}, {
+		name: "default regex condition",
+		cfg: &Config{
+			Version: "v1alpha1",
+			Condition: &Condition{
+				Regex: &RegexCondition{},
+			},
+		},
+		wantCfg: &Config{
+			Version: "v1alpha1",
+			Condition: &Condition{
+				Regex: &RegexCondition{
+					PrincipalExclude: ".gserviceaccount.com$",
+				},
+			},
+		},
+	}}
+
+	for _, tc := range cases {
+		tc := tc
+
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			tc.cfg.SetDefault()
+			if diff := cmp.Diff(tc.wantCfg, tc.cfg); diff != "" {
+				t.Errorf("SetDefault() unexpected diff (-want,+got):\n%s", diff)
 			}
 		})
 	}
