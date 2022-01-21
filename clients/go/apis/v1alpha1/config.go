@@ -201,6 +201,10 @@ func (r *AuditRule) Validate() error {
 
 // SetDefault sets default for the audit rule.
 func (r *AuditRule) SetDefault() {
-	r.Directive = AuditRuleDirectiveDefault
-	r.LogType = AuditLogRequest_DATA_ACCESS.String()
+	if r.Directive == "" {
+		r.Directive = AuditRuleDirectiveDefault
+	}
+	if r.LogType == "" {
+		r.LogType = AuditLogRequest_DATA_ACCESS.String()
+	}
 }

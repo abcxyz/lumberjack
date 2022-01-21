@@ -103,6 +103,7 @@ func FromConfigFile(path string) audit.Option {
 // ```
 // TODO(noamrabbani): add streaming interceptor.
 func WithInterceptorFromConfigFile(path string) (grpc.ServerOption, *audit.Client, error) {
+	// Prepare Viper config.
 	v := viper.New()
 	v.SetConfigFile(path)
 	if err := v.ReadInConfig(); err != nil {
@@ -113,27 +114,39 @@ func WithInterceptorFromConfigFile(path string) (grpc.ServerOption, *audit.Clien
 		return nil, nil, err
 	}
 
+	// Create security context from config.
 	if cfg.SecurityContext == nil {
-		return nil, nil, fmt.Errorf("no supported security context configured in config file %q", path)
+		return nil, nil, fmt.Errorf("no supported security context configured in config %+v", cfg)
 	}
 	interceptor := &audit.Interceptor{}
 	switch {
 	case cfg.SecurityContext.FromRawJWT != nil:
 		fromRawJWT, err := fromRawJWTFromConfig(cfg)
 		if err != nil {
-			return nil, nil, fmt.Errorf("error getting `from_raw_jwt` in config file %q: %w", path, err)
+			return nil, nil, fmt.Errorf("error getting `from_raw_jwt` in config %+v: %w", cfg, err)
 		}
 		interceptor.SecurityContext = fromRawJWT
 	default:
-		return nil, nil, fmt.Errorf("no supported security context configured in config file %q", path)
+		return nil, nil, fmt.Errorf("no supported security context configured in config %+v", cfg)
 	}
 
+	// Create audit rules from config.
+	// todo: default+validate the whole config instead of individual fields
+	for _, r := range cfg.Rules {
+		r.SetDefault()
+		if err := r.Validate(); err != nil {
+			return nil, nil, fmt.Errorf("failed validating config rule %+v: %w", r, err)
+		}
+	}
+	interceptor.Rules = cfg.Rules
+
+	// Create audit client from config.
 	auditOpt := func(c *audit.Client) error {
 		return clientFromConfig(c, cfg)
 	}
 	auditClient, err := audit.NewClient(auditOpt)
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to create audit client from config file %q: %w", path, err)
+		return nil, nil, fmt.Errorf("failed to create audit client from config %+v: %w", cfg, err)
 	}
 	interceptor.Client = auditClient
 
@@ -201,7 +214,7 @@ func backendFromConfig(cfg *alpb.Config) (audit.Option, error) {
 	return audit.WithBackend(b), nil
 }
 
-// fromRawJWTFromConfig populates a `*security.FromRawJWT`` from a config.
+// fromRawJWTFromConfig populates a `*security.FromRawJWT` from a config.
 // We handle nil and unset values in the following way:
 //
 // security_context:
@@ -298,6 +311,7 @@ func setDefaultValues(v *viper.Viper) *viper.Viper {
 // by setting an env var. Note that:
 //   - Env vars are prefixed with "AUDIT_CLIENT_".
 //   - Only leaf config variables can be overwritten with env vars.
+//   - Env vars cannot overwrite list config variables, such as `rules`.
 //   - Nested config variables are set from env vars by replacing
 //     the "." delimiter with "_". E.g. the config variable "backend.address"
 //     is set with the env var "AUDIT_CLIENT_BACKEND_ADDRESS".
