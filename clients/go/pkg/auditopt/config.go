@@ -135,27 +135,27 @@ func WithInterceptorFromConfigFile(path string) (grpc.ServerOption, *audit.Clien
 		return nil, nil, err
 	}
 
-	interceptor := &audit.Interceptor{}
 	// Create security context from config.
 	if cfg.SecurityContext == nil {
-		return nil, nil, fmt.Errorf("no supported security context configured in config")
+		return nil, nil, fmt.Errorf("no supported security context configured in config %+v", cfg)
 	}
+	interceptor := &audit.Interceptor{}
 	switch {
 	case cfg.SecurityContext.FromRawJWT != nil:
 		fromRawJWT, err := fromRawJWTFromConfig(cfg)
 		if err != nil {
-			return nil, nil, fmt.Errorf("error getting `from_raw_jwt` in config: %w", err)
+			return nil, nil, fmt.Errorf("error getting `from_raw_jwt` in config %+v: %w", cfg, err)
 		}
 		interceptor.SecurityContext = fromRawJWT
 	default:
-		return nil, nil, fmt.Errorf("no supported security context configured in config")
+		return nil, nil, fmt.Errorf("no supported security context configured in config %+v", cfg)
 	}
 
 	// Create audit rules from config.
 	for _, r := range cfg.Rules {
 		r.SetDefault()
 		if err := r.Validate(); err != nil {
-			return nil, nil, fmt.Errorf("failed getting audit rules from config file %q", path)
+			return nil, nil, fmt.Errorf("failed validating config rule %+v: %w", r, err)
 		}
 	}
 	interceptor.Rules = cfg.Rules
@@ -166,7 +166,7 @@ func WithInterceptorFromConfigFile(path string) (grpc.ServerOption, *audit.Clien
 	}
 	auditClient, err := audit.NewClient(auditOpt)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, fmt.Errorf("failed to create audit client from config %+v: %w", cfg, err)
 	}
 	interceptor.Client = auditClient
 
@@ -296,31 +296,6 @@ func configFromViper(v *viper.Viper) (*alpb.Config, error) {
 		return nil, fmt.Errorf("explicitly specified config version %q unsupported, supported version is %q", cfgVersion, expectedVersion)
 	}
 	return config, nil
-}
-
-func validateDirective(s string) (string, error) {
-	// When the directive is nil, default to AUDIT.
-	s = strings.ToUpper(s)
-	if s == "" {
-		return "AUDIT", nil
-	}
-	if s != alpb.AuditRuleDirectiveDefault && s != alpb.AuditRuleDirectiveRequestAndResponse && s != alpb.AuditRuleDirectiveRequestOnly {
-		return "", fmt.Errorf("config file contains invalid directive %q", s)
-	}
-	return s, nil
-}
-
-func validateLogType(s string) (string, error) {
-	s = strings.ToUpper(s)
-	// When the log_type is nil, default to DATA_ACCESS.
-	if s == "" {
-		return "DATA_ACCESS", nil
-	}
-	_, ok := alpb.AuditLogRequest_LogType_value[s]
-	if !ok {
-		return "", fmt.Errorf("config file contains invalid log type %q", s)
-	}
-	return s, nil
 }
 
 func setDefaultValues(v *viper.Viper) *viper.Viper {
