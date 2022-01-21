@@ -13,25 +13,5 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-set -eEuo pipefail
-
-if [ -z "${REPO:-}" ]; then
-  echo "✋ Missing REPO!" >&2
-  exit 1
-fi
-
-if [ -z "${APP_NAME:-}" ]; then
-  echo "✋ Missing APP_NAME!" >&2
-  exit 1
-fi
-
-if [ -z "${TAG:-}" ]; then
-  echo "✋ Missing TAG!" >&2
-  exit 1
-fi
-
-ROOT="$(cd "$(dirname "$0")/.." &>/dev/null; pwd -P)"
-IMAGE_NAME=${REPO}/${APP_NAME}:${TAG}
-
-docker build -f ${ROOT}/scripts/server_app.dockerfile -t ${IMAGE_NAME} ${ROOT}/../..
-docker push ${IMAGE_NAME}
+ROOT=$(dirname "$0")
+sh ${ROOT}/build_app.sh ${ROOT}/server_app.dockerfile
