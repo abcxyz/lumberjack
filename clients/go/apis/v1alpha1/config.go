@@ -73,6 +73,11 @@ func (cfg *Config) Validate() error {
 	} else if cfg.Version != Version {
 		err = multierr.Append(err, fmt.Errorf("unexpected Version %q want %q", cfg.Version, Version))
 	}
+	if cfg.Backend == nil {
+		err = multierr.Append(err, fmt.Errorf("backend is nil"))
+	} else if serr := cfg.Backend.Validate(); serr != nil {
+		err = multierr.Append(err, serr)
+	}
 	for _, r := range cfg.Rules {
 		if rerr := r.Validate(); rerr != nil {
 			err = multierr.Append(err, rerr)
@@ -115,6 +120,15 @@ type Backend struct {
 	Address            string `mapstructure:"address,omitempty" json:"address,omitempty"`
 	InsecureEnabled    bool   `mapstructure:"insecure_enabled,omitempty" json:"insecure_enabled,omitempty"`
 	ImpersonateAccount string `mapstructure:"impersonate_account,omitempty" json:"impersonate_account,omitempty"`
+}
+
+// Validate validates the backend.
+// TODO(#74): Fall back to stdout logging if address is missing.
+func (b *Backend) Validate() error {
+	if b.Address == "" {
+		return fmt.Errorf("backend address is nil")
+	}
+	return nil
 }
 
 // Condition is the condition to match to collect audit logs.

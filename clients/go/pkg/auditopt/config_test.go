@@ -64,12 +64,10 @@ func TestMustFromConfigFile(t *testing.T) {
 version: v1alpha1
 condition:
   regex:
-    principal_exclude:
+    principal_exclude: # unset
 backend:
   address: %s
   insecure_enabled: true
-security_context:
-  from_raw_jwt: {}
 `,
 			// By default, we ignore log requests that have an IAM service account
 			// as a principal.
@@ -85,8 +83,6 @@ condition:
 backend:
   address: %s
   insecure_enabled: true
-security_context:
-  from_raw_jwt: {}
 `,
 			req:     testutil.ReqBuilder().WithPrincipal("abc@project.iam.gserviceaccount.com").Build(),
 			wantReq: testutil.ReqBuilder().WithPrincipal("abc@project.iam.gserviceaccount.com").Build(),
@@ -105,8 +101,6 @@ condition:
 backend:
   address: %s
   insecure_enabled: true
-security_context:
-  from_raw_jwt: {}
 `,
 			req:     testutil.ReqBuilder().WithPrincipal("abc@project.iam.gserviceaccount.com").Build(),
 			wantReq: testutil.ReqBuilder().WithPrincipal("abc@project.iam.gserviceaccount.com").Build(),
@@ -122,8 +116,6 @@ condition:
 backend:
   address: %s
   insecure_enabled: true
-security_context:
-  from_raw_jwt: {}
 `,
 			req:     testutil.ReqBuilder().WithPrincipal("abc@project.iam.gserviceaccount.com").Build(),
 			wantReq: testutil.ReqBuilder().WithPrincipal("abc@project.iam.gserviceaccount.com").Build(),
@@ -139,8 +131,6 @@ condition:
 backend:
   address: %s
   insecure_enabled: true
-security_context:
-  from_raw_jwt: {}
 `,
 			req: testutil.ReqBuilder().WithPrincipal("abc@project.iam.gserviceaccount.com").Build(),
 		},
@@ -156,17 +146,9 @@ security_context:
 			},
 			fileContent: `
 version: v1alpha1
-condition:
-  regex:
-    principal_include: ""
-    principal_exclude: .iam.gserviceaccount.com$
-backend:
-  noop: %s
-  insecure_enabled: true
-security_context:
-  from_raw_jwt: {}
+noop: %s
 `,
-			wantErrSubstr: "backend address in the config is nil, set it as an env var or in a config file",
+			wantErrSubstr: "backend address is nil",
 		},
 		{
 			name: "wrong_version_should_error",
@@ -179,8 +161,6 @@ condition:
 backend:
   address: %s
   insecure_enabled: true
-security_context:
-  from_raw_jwt: {}
 `,
 			wantErrSubstr: `unexpected Version "v2" want "v1alpha1"`,
 		},
@@ -251,8 +231,6 @@ condition:
 backend:
   # we set the backend address as env var below
   insecure_enabled: true
-security_context:
-  from_raw_jwt: {}
 `,
 		"invalid.yaml": `bananas`,
 	}
@@ -506,6 +484,31 @@ func TestWithInterceptorFromConfigFile(t *testing.T) {
 		wantErrSubstr string
 	}{
 		{
+			name: "invalid_config_due_unset_security_context",
+			fileContent: `
+version: v1alpha1
+backend:
+  address: foo:443
+  insecure_enabled: true
+security_context:
+rules:
+  selector: "*"
+`,
+			wantErrSubstr: "SecurityContext is nil",
+		},
+		{
+			name: "invalid_config_due_unset_security_context_again",
+			fileContent: `
+version: v1alpha1
+backend:
+  address: foo:443
+  insecure_enabled: true
+rules:
+  selector: "*"
+`,
+			wantErrSubstr: "SecurityContext is nil",
+		},
+		{
 			name: "valid_config_file",
 			fileContent: `
 version: v1alpha1
@@ -530,7 +533,7 @@ security_context:
 rules:
   selector: "*"
 `,
-			wantErrSubstr: "backend address in the config is nil, set it as an env var or in a config file",
+			wantErrSubstr: "backend address is nil",
 		},
 		{
 			name: "invalid_config_due_to_log_type",

@@ -169,13 +169,11 @@ func clientFromConfig(c *audit.Client, cfg *alpb.Config) error {
 
 func principalFilterFromConfig(cfg *alpb.Config) (audit.Option, error) {
 	var opts []filtering.Option
-	if cfg.Condition != nil && cfg.Condition.Regex != nil {
-		// Nil `PrincipalInclude` and `PrincipalExclude` is fine because
-		// calling `filtering.WithIncludes("")` is a noop.
-		withIncludes := filtering.WithIncludes(cfg.Condition.Regex.PrincipalInclude)
-		withExcludes := filtering.WithExcludes(cfg.Condition.Regex.PrincipalExclude)
-		opts = append(opts, withIncludes, withExcludes)
-	}
+	// Nil `PrincipalInclude` and `PrincipalExclude` is fine because
+	// calling `filtering.WithIncludes("")` is a noop.
+	withIncludes := filtering.WithIncludes(cfg.Condition.Regex.PrincipalInclude)
+	withExcludes := filtering.WithExcludes(cfg.Condition.Regex.PrincipalExclude)
+	opts = append(opts, withIncludes, withExcludes)
 	m, err := filtering.NewPrincipalEmailMatcher(opts...)
 	if err != nil {
 		return nil, err
@@ -185,9 +183,6 @@ func principalFilterFromConfig(cfg *alpb.Config) (audit.Option, error) {
 
 func backendFromConfig(cfg *alpb.Config) (audit.Option, error) {
 	// TODO(#74): Fall back to stdout logging if address is missing.
-	if cfg.Backend == nil || cfg.Backend.Address == "" {
-		return nil, fmt.Errorf("backend address in the config is nil, set it as an env var or in a config file")
-	}
 	addr := cfg.Backend.Address
 	authopts := []remote.Option{}
 	if !cfg.Backend.InsecureEnabled {
@@ -207,26 +202,6 @@ func backendFromConfig(cfg *alpb.Config) (audit.Option, error) {
 
 func configFromViper(v *viper.Viper) (*alpb.Config, error) {
 	v = bindEnvVars(v)
-
-	// v.SetDefault("condition.regex", nil)
-	// Set default value for the security context. This
-	// enables the following config file behaviours:
-	//
-	// security_context:
-	// # -> no defaulting because security_context is nil/unset
-	//
-	// security_context:
-	//   from_raw_jwt:
-	// # -> default values for `from_raw_jwt`
-	//
-	// security_context:
-	//   from_raw_jwt: {}
-	// # -> default values for `from_raw_jwt`
-	v.SetDefault("security_context", nil)
-	sc := v.GetStringMap("security_context")
-	if _, ok := sc["from_raw_jwt"]; ok {
-		v.SetDefault("security_context.from_raw_jwt", map[string]string{})
-	}
 
 	cfg := &alpb.Config{}
 	if err := v.Unmarshal(cfg); err != nil {
