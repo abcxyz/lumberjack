@@ -71,7 +71,7 @@ go test github.com/abcxyz/lumberjack/integration/httptestrunner \
   -project-id=${BACKEND_PROJECT_ID} \
   -dataset-query=${BIGQUERY_DATASET_QUERY}
 
-export HELLO_ENDPOINT=$(terraform -chdir=${TF_CI_WITH_SERVER_DIR} output -json hello_address)
+export HELLO_ENDPOINT=$(terraform -chdir=${TF_CI_WITH_SERVER_DIR} output -json grpc_address)
 echo "ID: ${ID_TOKEN}"
 cd ${ROOT}/clients/java-logger/
 
@@ -79,3 +79,4 @@ cd ${ROOT}/clients/java-logger/
 mvn clean package
 # Run the client
 java -cp grpc-test-app/target/grpc-test-app-0.0.1.jar abcxyz.helloworld.HelloWorldClientTls ${HELLO_ENDPOINT} 443 ${ID_TOKEN}
+# TODO: validate that the audit logs end up in the correct spot. May be able to re-use httptestrunner

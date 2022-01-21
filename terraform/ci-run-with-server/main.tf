@@ -84,6 +84,6 @@ output "instance_addresses" {
   value = [for key, _ in var.build_commands : module.shell_app[key].instance_address]
 }
 
-output "hello_address" {
+output "grpc_address" {
   value = module.java_grpc_app.instance_address
 }
