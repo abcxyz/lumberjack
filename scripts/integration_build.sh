@@ -33,12 +33,11 @@ GCLOUD_ACCOUNT=$(gcloud config get-value account)
 if [[ $GCLOUD_ACCOUNT == $CI_SERVICE_ACCOUNT ]]; then
   # When running in CI, impersonate the service account to have its email included in the ID token.
   ID_TOKEN=$(gcloud auth print-identity-token --impersonate-service-account=${CI_SERVICE_ACCOUNT} --include-email)
-  # Override the default filters that exclude service accounts during integration tests.
-  ENV_VARS='env_vars={"AUDIT_CLIENT_VERSION":"v1alpha1","AUDIT_CLIENT_CONDITION_REGEX_PRINCIPAL_INCLUDE":".iam.gserviceaccount.com$"}'
 else
   ID_TOKEN=$(gcloud auth print-identity-token)
-  ENV_VARS='env_vars={}'
 fi
+# Override the default filters that exclude service accounts during integration tests.
+ENV_VARS='env_vars={"AUDIT_CLIENT_CONDITION_REGEX_PRINCIPAL_INCLUDE":".iam.gserviceaccount.com$"}'
 
 terraform -chdir=${TF_CI_WITH_SERVER_DIR} init
 terraform -chdir=${TF_CI_WITH_SERVER_DIR} apply -auto-approve \
