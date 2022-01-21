@@ -90,7 +90,6 @@ backend:
 		{
 			name: "env_var_overwrites_config_file",
 			envs: map[string]string{
-				// hold: why is this not overwriting
 				"AUDIT_CLIENT_CONDITION_REGEX_PRINCIPAL_EXCLUDE": "user@example.com",
 			},
 			fileContent: `
@@ -331,7 +330,7 @@ backend:
 }
 
 func TestConfigFromViper(t *testing.T) {
-	// t.Parallel()
+	t.Parallel()
 	cases := []struct {
 		name          string
 		fileContent   string
@@ -453,7 +452,7 @@ security_context:
 	for _, tc := range cases {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
-			// t.Parallel()
+			t.Parallel()
 
 			path := filepath.Join(t.TempDir(), "config.yaml")
 			if err := ioutil.WriteFile(path, []byte(tc.fileContent), 0o600); err != nil {
@@ -477,14 +476,29 @@ security_context:
 }
 
 func TestWithInterceptorFromConfigFile(t *testing.T) {
-	// t.Parallel()
+	t.Parallel()
 	cases := []struct {
 		name          string
 		fileContent   string
 		wantErrSubstr string
 	}{
 		{
-			name: "invalid_config_due_unset_security_context",
+			name: "valid_config_file",
+			fileContent: `
+version: v1alpha1
+backend:
+  address: foo:443
+  insecure_enabled: true
+security_context:
+  from_raw_jwt: {}
+rules:
+  selector: "*"
+`,
+		},
+		{
+			name: "invalid_config_because_security_context_is_nil",
+			// In YAML, empty keys are unset. For details, see:
+			// https://stackoverflow.com/a/64462925
 			fileContent: `
 version: v1alpha1
 backend:
@@ -507,19 +521,6 @@ rules:
   selector: "*"
 `,
 			wantErrSubstr: "SecurityContext is nil",
-		},
-		{
-			name: "valid_config_file",
-			fileContent: `
-version: v1alpha1
-backend:
-  address: foo:443
-  insecure_enabled: true
-security_context:
-  from_raw_jwt: {}
-rules:
-  selector: "*"
-`,
 		},
 		{
 			name: "invalid_config_because_backend_address_is_nil",
@@ -560,7 +561,7 @@ rules:
 	for _, tc := range cases {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
-			// t.Parallel()
+			t.Parallel()
 
 			path := filepath.Join(t.TempDir(), "config.yaml")
 			if err := ioutil.WriteFile(path, []byte(tc.fileContent), 0o600); err != nil {
