@@ -319,7 +319,7 @@ func bindEnvVars(v *viper.Viper) *viper.Viper {
 	v.SetEnvPrefix("AUDIT_CLIENT")
 	v.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
 	v.AllowEmptyEnv(true)
-	for _, lk := range v1alpha1.LeafKeys {
+	for _, lk := range v1alpha1.LeafKeys() {
 		// We don't use v.AutomaticEnv() because it fails to bind env vars
 		// when they are inexistent in the config and when they don't have
 		// an explicit default value.
