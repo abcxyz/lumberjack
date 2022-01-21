@@ -51,9 +51,9 @@ jobs:
       - name: gomodtidy
         run: |
           for i in $(find . -name go.mod); do
-            pushd $(dirname $i)
+            pushd $(dirname $i) > /dev/null
             go mod tidy
-            popd
+            popd > /dev/null
           done
           git diff go.mod | tee /dev/stderr | (! read)
           git diff go.sum | tee /dev/stderr | (! read)
