@@ -135,11 +135,11 @@ func WithInterceptorFromConfigFile(path string) (grpc.ServerOption, *audit.Clien
 		return nil, nil, err
 	}
 
+	interceptor := &audit.Interceptor{}
 	// Create security context from config.
 	if cfg.SecurityContext == nil {
 		return nil, nil, fmt.Errorf("no supported security context configured in config")
 	}
-	interceptor := &audit.Interceptor{}
 	switch {
 	case cfg.SecurityContext.FromRawJWT != nil:
 		fromRawJWT, err := fromRawJWTFromConfig(cfg)
@@ -152,11 +152,13 @@ func WithInterceptorFromConfigFile(path string) (grpc.ServerOption, *audit.Clien
 	}
 
 	// Create audit rules from config.
-	rules, err := auditRulesFromConfig(cfg)
-	if err != nil {
-		return nil, nil, fmt.Errorf("failed getting audit rules from config file %q", path)
+	for _, r := range cfg.Rules {
+		r.SetDefault()
+		if err := r.Validate(); err != nil {
+			return nil, nil, fmt.Errorf("failed getting audit rules from config file %q", path)
+		}
 	}
-	interceptor.Rules = rules
+	interceptor.Rules = cfg.Rules
 
 	// Create audit client from config.
 	auditOpt := func(c *audit.Client) error {
@@ -294,38 +296,6 @@ func configFromViper(v *viper.Viper) (*alpb.Config, error) {
 		return nil, fmt.Errorf("explicitly specified config version %q unsupported, supported version is %q", cfgVersion, expectedVersion)
 	}
 	return config, nil
-}
-
-func auditRulesFromConfig(cfg *alpb.Config) ([]alpb.AuditRule, error) {
-	if cfg == nil || len(cfg.Rules) == 0 {
-		return nil, fmt.Errorf("no audit rules configured in config, add at least one")
-	}
-	var auditRules []alpb.AuditRule
-	for _, cfgRule := range cfg.Rules {
-		auditRule := alpb.AuditRule{}
-
-		selector := cfgRule.Selector
-		if selector == "" {
-			return nil, fmt.Errorf("audit rule selector cannot be nil, specify a selector in all audit rules")
-		}
-		auditRule.Selector = selector
-
-		directive, err := validateDirective(cfgRule.Directive)
-		if err != nil {
-			return nil, err
-		}
-		auditRule.Directive = directive
-
-		logType, err := validateLogType(cfgRule.LogType)
-		if err != nil {
-			return nil, err
-		}
-		auditRule.LogType = logType
-
-		auditRules = append(auditRules, auditRule)
-	}
-
-	return auditRules, nil
 }
 
 func validateDirective(s string) (string, error) {

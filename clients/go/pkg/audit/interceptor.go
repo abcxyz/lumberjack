@@ -29,7 +29,7 @@ import (
 type Interceptor struct {
 	*Client
 	SecurityContext security.GRPCContext
-	Rules           []alpb.AuditRule
+	Rules           []*alpb.AuditRule
 }
 
 // UnaryInterceptor is a unary interceptor that autofills and emits audit logs.
