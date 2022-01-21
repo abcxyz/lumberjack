@@ -31,12 +31,10 @@ jobs:
     steps:
       - name: Check out code
         uses: actions/checkout@v2
-      - uses: axel-op/googlejavaformat-action@v3
-        with:
-          skipCommit: true
-      - name: Ensure there were no changes by formatter
+      - name: Run formatter, fail if there were changes required.
         run: |
-          git diff --exit-code
+          ./scripts/format_java.sh
+          git -c color.ui=always diff --exit-code
 
 
   test:
