@@ -37,35 +37,14 @@ import (
 	"github.com/spf13/viper"
 	"google.golang.org/grpc"
 
+	"github.com/abcxyz/lumberjack/clients/go/apis/v1alpha1"
 	alpb "github.com/abcxyz/lumberjack/clients/go/apis/v1alpha1"
-)
-
-// The list of leaf config variables that a user can set in a config
-// file. The "." delimeter represents a nested field. For example,
-// the config variable "condition.regex.principal_include" is
-// represented in a YAML config file as:
-// ```
-// condition:
-//  regex:
-//    principal_include: test@google.com
-// ```
-const (
-	backendAddressKey                  = "backend.address"
-	backendImpersonateAccountKey       = "backend.impersonate_account"
-	backendInsecureEnabledKey          = "backend.insecure_enabled"
-	conditionRegexPrincipalExcludeKey  = "condition.regex.principal_exclude"
-	conditionRegexPrincipalIncludeKey  = "condition.regex.principal_include"
-	securityContextFromRawJWTKeyKey    = "security_context.from_raw_jwt.key"
-	securityContextFromRawJWTPrefixKey = "security_context.from_raw_jwt.prefix"
-	versionKey                         = "version"
 )
 
 // The version we expect in a config file.
 const expectedVersion = "v1alpha1"
 
 const defaultConfigFilePath = "/etc/auditlogging/config.yaml"
-
-const errReadingConfig = "failed reading config file at %q: %w"
 
 // MustFromConfigFile specifies a config file to configure the
 // audit client. `path` is required, and if the config file is
@@ -75,7 +54,7 @@ func MustFromConfigFile(path string) audit.Option {
 		v := viper.New()
 		v.SetConfigFile(path)
 		if err := v.ReadInConfig(); err != nil {
-			return fmt.Errorf(errReadingConfig, path, err)
+			return err
 		}
 		cfg, err := configFromViper(v)
 		if err != nil {
@@ -99,7 +78,7 @@ func FromConfigFile(path string) audit.Option {
 		// still use env vars and defaults to setup the client.
 		v.SetConfigFile(path)
 		if err := v.ReadInConfig(); err != nil && !errors.Is(err, fs.ErrNotExist) {
-			return fmt.Errorf(errReadingConfig, path, err)
+			return err
 		}
 		cfg, err := configFromViper(v)
 		if err != nil {
@@ -127,14 +106,14 @@ func WithInterceptorFromConfigFile(path string) (grpc.ServerOption, *audit.Clien
 	v := viper.New()
 	v.SetConfigFile(path)
 	if err := v.ReadInConfig(); err != nil {
-		return nil, nil, fmt.Errorf(errReadingConfig, path, err)
+		return nil, nil, err
 	}
 	cfg, err := configFromViper(v)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	if cfg == nil || cfg.SecurityContext == nil {
+	if cfg.SecurityContext == nil {
 		return nil, nil, fmt.Errorf("no supported security context configured in config file %q", path)
 	}
 	interceptor := &audit.Interceptor{}
@@ -186,7 +165,7 @@ func clientFromConfig(c *audit.Client, cfg *alpb.Config) error {
 
 func principalFilterFromConfig(cfg *alpb.Config) (audit.Option, error) {
 	var opts []filtering.Option
-	if cfg != nil && cfg.Condition != nil && cfg.Condition.Regex != nil {
+	if cfg.Condition != nil && cfg.Condition.Regex != nil {
 		// Nil `PrincipalInclude` and `PrincipalExclude` is fine because
 		// calling `filtering.WithIncludes("")` is a noop.
 		withIncludes := filtering.WithIncludes(cfg.Condition.Regex.PrincipalInclude)
@@ -201,7 +180,8 @@ func principalFilterFromConfig(cfg *alpb.Config) (audit.Option, error) {
 }
 
 func backendFromConfig(cfg *alpb.Config) (audit.Option, error) {
-	if cfg == nil || cfg.Backend == nil || cfg.Backend.Address == "" {
+	// TODO(#74): Fall back to stdout logging if address is missing.
+	if cfg.Backend == nil || cfg.Backend.Address == "" {
 		return nil, fmt.Errorf("backend address in the config is nil, set it as an env var or in a config file")
 	}
 	addr := cfg.Backend.Address
@@ -252,20 +232,19 @@ func backendFromConfig(cfg *alpb.Config) (audit.Option, error) {
 //     key: x-jwt-assertion
 // # -> no defaulting because the user specified one value for `from_raw_jwt`
 //
-// TODO(noamrabbani): add support for lists in `security_context`
+// TODO(#73): add support for lists in `security_context`
 func fromRawJWTFromConfig(cfg *alpb.Config) (*security.FromRawJWT, error) {
-	if cfg == nil || cfg.SecurityContext == nil || cfg.SecurityContext.FromRawJWT == nil {
+	//TODO: do validation+defaulting on the whole config instead of individual fields
+	if cfg.SecurityContext == nil {
 		return nil, fmt.Errorf("fromRawJWT in the config is nil, set it as an env var or in a config file")
 	}
-	fromRawJWT := &security.FromRawJWT{
-		Key:    cfg.SecurityContext.FromRawJWT.Key,
-		Prefix: cfg.SecurityContext.FromRawJWT.Prefix,
+	if err := cfg.SecurityContext.Validate(); err != nil {
+		return nil, err
 	}
-	if fromRawJWT.Key == "" && fromRawJWT.Prefix == "" {
-		fromRawJWT.Key = "authorization"
-		fromRawJWT.Prefix = "bearer "
-	}
-	return fromRawJWT, nil
+	cfg.SecurityContext.FromRawJWT.SetDefault()
+	return &security.FromRawJWT{
+		FromRawJWT: cfg.SecurityContext.FromRawJWT,
+	}, nil
 }
 
 func configFromViper(v *viper.Viper) (*alpb.Config, error) {
@@ -289,7 +268,8 @@ func configFromViper(v *viper.Viper) (*alpb.Config, error) {
 func setDefaultValues(v *viper.Viper) *viper.Viper {
 	// By default, we filter log requests that have an IAM
 	// service account as the principal.
-	v.SetDefault(conditionRegexPrincipalExcludeKey, ".iam.gserviceaccount.com$")
+	// TODO: do validation+defaulting on the whole config instead of individual fields.
+	v.SetDefault("condition.regex.principal_exclude", ".iam.gserviceaccount.com$")
 
 	// Set default value for the security context. This
 	// enables the following config file behaviours:
@@ -325,17 +305,7 @@ func bindEnvVars(v *viper.Viper) *viper.Viper {
 	v.SetEnvPrefix("AUDIT_CLIENT")
 	v.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
 	v.AllowEmptyEnv(true)
-	leafKeys := []string{
-		backendAddressKey,
-		backendImpersonateAccountKey,
-		backendInsecureEnabledKey,
-		conditionRegexPrincipalExcludeKey,
-		conditionRegexPrincipalIncludeKey,
-		securityContextFromRawJWTPrefixKey,
-		securityContextFromRawJWTKeyKey,
-		versionKey,
-	}
-	for _, lk := range leafKeys {
+	for _, lk := range v1alpha1.LeafKeys {
 		// We don't use v.AutomaticEnv() because it fails to bind env vars
 		// when they are inexistent in the config and when they don't have
 		// an explicit default value.

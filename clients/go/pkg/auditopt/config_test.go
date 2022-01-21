@@ -364,8 +364,10 @@ security_context:
   from_raw_jwt: {}
 `,
 			wantFromRawJWT: &security.FromRawJWT{
-				Key:    "authorization",
-				Prefix: "bearer ",
+				FromRawJWT: &alpb.FromRawJWT{
+					Key:    "authorization",
+					Prefix: "Bearer ",
+				},
 			},
 		},
 		{
@@ -379,8 +381,10 @@ security_context:
   from_raw_jwt:
 `,
 			wantFromRawJWT: &security.FromRawJWT{
-				Key:    "authorization",
-				Prefix: "bearer ",
+				FromRawJWT: &alpb.FromRawJWT{
+					Key:    "authorization",
+					Prefix: "Bearer ",
+				},
 			},
 		},
 		{
@@ -396,8 +400,10 @@ security_context:
     prefix: ""
 `,
 			wantFromRawJWT: &security.FromRawJWT{
-				Key:    "authorization",
-				Prefix: "bearer ",
+				FromRawJWT: &alpb.FromRawJWT{
+					Key:    "authorization",
+					Prefix: "Bearer ",
+				},
 			},
 		},
 		{
@@ -413,8 +419,10 @@ security_context:
     prefix: somePrefix
 `,
 			wantFromRawJWT: &security.FromRawJWT{
-				Key:    "x-jwt-assertion",
-				Prefix: "somePrefix",
+				FromRawJWT: &alpb.FromRawJWT{
+					Key:    "x-jwt-assertion",
+					Prefix: "somePrefix",
+				},
 			},
 		},
 		{
@@ -430,8 +438,10 @@ security_context:
     prefix:
 `,
 			wantFromRawJWT: &security.FromRawJWT{
-				Key:    "x-jwt-assertion",
-				Prefix: "",
+				FromRawJWT: &alpb.FromRawJWT{
+					Key:    "x-jwt-assertion",
+					Prefix: "",
+				},
 			},
 		},
 		{
@@ -446,8 +456,10 @@ security_context:
     key: x-jwt-assertion
 `,
 			wantFromRawJWT: &security.FromRawJWT{
-				Key:    "x-jwt-assertion",
-				Prefix: "",
+				FromRawJWT: &alpb.FromRawJWT{
+					Key:    "x-jwt-assertion",
+					Prefix: "",
+				},
 			},
 		},
 	}
@@ -529,7 +541,7 @@ security_context:
 		{
 			name:          "unparsable_config",
 			fileContent:   `bananas`,
-			wantErrSubstr: "failed reading config file",
+			wantErrSubstr: "cannot unmarshal",
 		},
 	}
 

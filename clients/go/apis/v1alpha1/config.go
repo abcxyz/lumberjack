@@ -6,6 +6,26 @@ import (
 	"go.uber.org/multierr"
 )
 
+// The list of leaf config variables that a user can set in a config
+// file. The "." delimeter represents a nested field. For example,
+// the config variable "condition.regex.principal_include" is
+// represented in a YAML config file as:
+// ```
+// condition:
+//  regex:
+//    principal_include: test@google.com
+// ```
+var LeafKeys []string = []string{
+	"backend.address",
+	"backend.impersonate_account",
+	"backend.insecure_enabled",
+	"condition.regex.principal_exclude",
+	"condition.regex.principal_include",
+	"security_context.from_raw_jwt.key",
+	"security_context.from_raw_jwt.prefix",
+	"version",
+}
+
 const (
 	// Version of the API and config.
 	Version = "v1alpha1"

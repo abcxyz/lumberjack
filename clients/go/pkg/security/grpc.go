@@ -19,6 +19,8 @@ package security
 import (
 	"context"
 	"fmt"
+
+	"github.com/abcxyz/lumberjack/clients/go/apis/v1alpha1"
 )
 
 // GRPCContext is an interface that retrieves the principal
@@ -29,16 +31,12 @@ type GRPCContext interface {
 }
 
 // FromRawJWT contains the information needed to retrieve
-// the principal from a raw JWT. More specifically:
-//   - `Key` is the grpcmetadata key that contains the JWT.
-//   - `Prefix` is the prefix that should be be stripped before decoding the JWT.
+// the principal from a raw JWT.
 type FromRawJWT struct {
-	Key    string
-	Prefix string
-	//TODO: Add JWKS fields to validate JWT signature.
+	FromRawJWT *v1alpha1.FromRawJWT
 }
 
 // RequestPrincipal returns the principal in a raw JWT.
-func (fromRawJWT *FromRawJWT) RequestPrincipal(ctx context.Context) (string, error) {
+func (j *FromRawJWT) RequestPrincipal(ctx context.Context) (string, error) {
 	return "", fmt.Errorf("not yet implemented")
 }
