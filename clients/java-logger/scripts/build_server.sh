@@ -31,7 +31,6 @@ if [ -z "${TAG:-}" ]; then
 fi
 
 ROOT="$(cd "$(dirname "$0")/.." &>/dev/null; pwd -P)"
-SHELL_DIR="grpc-serveer-demo"
 IMAGE_NAME=${REPO}/${APP_NAME}:${TAG}
 
 docker build -f ${ROOT}/scripts/server_app.dockerfile -t ${IMAGE_NAME} ${ROOT}/../..

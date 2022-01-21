@@ -10,7 +10,7 @@ Run the server (fill out app project and server url below):
 ```
 export APP_PROJECT=
 export REPO=us-docker.pkg.dev/$APP_PROJECT/images
-export APP_NAME=java-grpc-server-demo-$USER
+export APP_NAME=java-grpc-test-app-$USER
 export TAG=init
 export SERVER_URL=
 

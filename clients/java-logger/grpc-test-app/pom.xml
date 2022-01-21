@@ -9,7 +9,7 @@
     <version>2.5.5</version>
     <relativePath/>
   </parent>
-  <artifactId>grpc-server-demo</artifactId>
+  <artifactId>grpc-test-app</artifactId>
   <groupId>com.abcxyz.lumberjack</groupId>
   <version>0.0.1</version>
 

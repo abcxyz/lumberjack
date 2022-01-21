@@ -12,6 +12,6 @@
   <modules>
     <module>library</module>
     <module>shell</module>
-    <module>grpc-server-demo</module>
+    <module>grpc-test-app</module>
   </modules>
 </project>

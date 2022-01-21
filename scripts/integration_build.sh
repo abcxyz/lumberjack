@@ -74,5 +74,8 @@ go test github.com/abcxyz/lumberjack/integration/httptestrunner \
 export HELLO_ENDPOINT=$(terraform -chdir=${TF_CI_WITH_SERVER_DIR} output -json hello_address)
 echo "ID: ${ID_TOKEN}"
 cd ${ROOT}/clients/java-logger/
+
+# Build the module
 mvn verify
-java -cp grpc-server-demo/target/grpc-server-demo-0.0.1.jar abcxyz.helloworld.HelloWorldClientTls ${HELLO_ENDPOINT} 443 ${ID_TOKEN}
+# Run the client
+java -cp grpc-test-app/target/grpc-test-app-0.0.1.jar abcxyz.helloworld.HelloWorldClientTls ${HELLO_ENDPOINT} 443 ${ID_TOKEN}
