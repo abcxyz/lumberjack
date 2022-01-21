@@ -19,7 +19,7 @@ cd "$(dirname "$0")/.."
 VERSION="1.13.0"
 JAR_NAME="google-java-format-${VERSION}-all-deps.jar"
 
-if [! -f .local/$JAR_NAME ]
+if [ ! -f .local/$JAR_NAME ]
 then
   mkdir .local
   curl -LJ "https://github.com/google/google-java-format/releases/download/v${VERSION}/${JAR_NAME}" -o .local/$JAR_NAME
