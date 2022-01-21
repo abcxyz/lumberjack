@@ -16,20 +16,22 @@ package audit
 
 import (
 	"testing"
+
+	alpb "github.com/abcxyz/lumberjack/clients/go/apis/v1alpha1"
 )
 
-func TestIsApplicable(t *testing.T) {
+func TestIsRuleApplicable(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
 		name       string
-		rule       Rule
+		rule       alpb.AuditRule
 		methodName string
 		want       bool
 	}{
 		{
 			name: "wildcard_matches",
-			rule: Rule{
+			rule: alpb.AuditRule{
 				Selector: "*",
 			},
 			methodName: "foo",
@@ -37,7 +39,7 @@ func TestIsApplicable(t *testing.T) {
 		},
 		{
 			name: "wildcard_suffix_matches",
-			rule: Rule{
+			rule: alpb.AuditRule{
 				Selector: "foo.*",
 			},
 			methodName: "foo.get",
@@ -45,7 +47,7 @@ func TestIsApplicable(t *testing.T) {
 		},
 		{
 			name: "wildcard_suffix_barley_matches",
-			rule: Rule{
+			rule: alpb.AuditRule{
 				Selector: "foo*",
 			},
 			methodName: "foo",
@@ -53,7 +55,7 @@ func TestIsApplicable(t *testing.T) {
 		},
 		{
 			name: "wildcard_suffix_mismatches",
-			rule: Rule{
+			rule: alpb.AuditRule{
 				Selector: "foo.*",
 			},
 			methodName: "bar.get",
@@ -61,7 +63,7 @@ func TestIsApplicable(t *testing.T) {
 		},
 		{
 			name: "exact_match",
-			rule: Rule{
+			rule: alpb.AuditRule{
 				Selector: "foo.get",
 			},
 			methodName: "foo.get",
@@ -69,7 +71,7 @@ func TestIsApplicable(t *testing.T) {
 		},
 		{
 			name: "exact_mismatch",
-			rule: Rule{
+			rule: alpb.AuditRule{
 				Selector: "foo.get",
 			},
 			methodName: "bar.get",
@@ -77,7 +79,7 @@ func TestIsApplicable(t *testing.T) {
 		},
 		{
 			name: "exact_mismatch_again",
-			rule: Rule{
+			rule: alpb.AuditRule{
 				Selector: "foo.get",
 			},
 			methodName: "bar.getgud",
@@ -89,7 +91,7 @@ func TestIsApplicable(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
-			got := tc.rule.isApplicable(tc.methodName)
+			got := IsRuleApplicable(tc.rule, tc.methodName)
 			if got != tc.want {
 				t.Errorf("isApplicable(%v) = %v, want %v", tc.methodName, got, tc.want)
 			}
@@ -97,58 +99,58 @@ func TestIsApplicable(t *testing.T) {
 	}
 }
 
-func TestMostRelevant(t *testing.T) {
+func TestMostRelevantRule(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
 		name       string
-		rules      []Rule
+		rules      []alpb.AuditRule
 		methodName string
-		wantRule   Rule
+		wantRule   alpb.AuditRule
 	}{
 		{
 			name: "exact_match_wins",
-			rules: []Rule{
+			rules: []alpb.AuditRule{
 				{Selector: "a.b.c"},
 				{Selector: "a.b.*"},
 				{Selector: "*"},
 			},
 			methodName: "a.b.c",
-			wantRule:   Rule{Selector: "a.b.c"},
+			wantRule:   alpb.AuditRule{Selector: "a.b.c"},
 		},
 		{
 			name: "partial_wildcard_match_wins",
-			rules: []Rule{
+			rules: []alpb.AuditRule{
 				{Selector: "a.b.c"},
 				{Selector: "a.b.*"},
 				{Selector: "*"},
 			},
 			methodName: "a.b.d",
-			wantRule:   Rule{Selector: "a.b.*"},
+			wantRule:   alpb.AuditRule{Selector: "a.b.*"},
 		},
 		{
 			name: "partial_wildcard_match_wins_again",
-			rules: []Rule{
+			rules: []alpb.AuditRule{
 				{Selector: "*"},
 				{Selector: "a.b.*"},
 				{Selector: "a.b.c"},
 			},
 			methodName: "a.b.d",
-			wantRule:   Rule{Selector: "a.b.*"},
+			wantRule:   alpb.AuditRule{Selector: "a.b.*"},
 		},
 		{
 			name: "wildcard_match_wins",
-			rules: []Rule{
+			rules: []alpb.AuditRule{
 				{Selector: "a.b.c"},
 				{Selector: "a.b.*"},
 				{Selector: "*"},
 			},
 			methodName: "d.e.f",
-			wantRule:   Rule{Selector: "*"},
+			wantRule:   alpb.AuditRule{Selector: "*"},
 		},
 		{
 			name: "no_match",
-			rules: []Rule{
+			rules: []alpb.AuditRule{
 				{Selector: "a.b.c"},
 				{Selector: "a.b.*"},
 				{Selector: "a.*"},
@@ -161,9 +163,9 @@ func TestMostRelevant(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
-			gotRule := mostRelevant(tc.methodName, tc.rules)
+			gotRule := MostRelevantRule(tc.methodName, tc.rules)
 			if gotRule != tc.wantRule {
-				t.Errorf("mostRelevant(%v, %v) = %v, want %v", tc.methodName, tc.rules, gotRule, tc.wantRule)
+				t.Errorf("MostRelevantRule(%v, %v) = %v, want %v", tc.methodName, tc.rules, gotRule, tc.wantRule)
 			}
 		})
 	}

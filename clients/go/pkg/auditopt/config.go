@@ -295,13 +295,13 @@ func configFromViper(v *viper.Viper) (*alpb.Config, error) {
 	return config, nil
 }
 
-func auditRulesFromConfig(cfg *alpb.Config) ([]audit.Rule, error) {
+func auditRulesFromConfig(cfg *alpb.Config) ([]alpb.AuditRule, error) {
 	if cfg == nil || len(cfg.Rules) == 0 {
 		return nil, fmt.Errorf("no audit rules configured in config, add at least one")
 	}
-	var auditRules []audit.Rule
+	var auditRules []alpb.AuditRule
 	for _, cfgRule := range cfg.Rules {
-		auditRule := audit.Rule{}
+		auditRule := alpb.AuditRule{}
 
 		selector := cfgRule.Selector
 		if selector == "" {
@@ -309,13 +309,13 @@ func auditRulesFromConfig(cfg *alpb.Config) ([]audit.Rule, error) {
 		}
 		auditRule.Selector = selector
 
-		directive, err := directiveFromString(cfgRule.Directive)
+		directive, err := validateDirective(cfgRule.Directive)
 		if err != nil {
 			return nil, err
 		}
 		auditRule.Directive = directive
 
-		logType, err := logTypeFromString(cfgRule.LogType)
+		logType, err := validateLogType(cfgRule.LogType)
 		if err != nil {
 			return nil, err
 		}
@@ -327,32 +327,29 @@ func auditRulesFromConfig(cfg *alpb.Config) ([]audit.Rule, error) {
 	return auditRules, nil
 }
 
-func directiveFromString(s string) (audit.Directive, error) {
+func validateDirective(s string) (string, error) {
 	// When the directive is nil, default to AUDIT.
+	s = strings.ToUpper(s)
 	if s == "" {
-		return audit.Audit, nil
+		return "AUDIT", nil
 	}
-	switch strings.ToUpper(s) {
-	case "AUDIT":
-		return audit.Audit, nil
-	case "AUDIT_REQUEST_AND_RESPONSE":
-		return audit.AuditRequestAndResponse, nil
-	case "AUDIT_REQUEST_ONLY":
-		return audit.AuditRequestOnly, nil
+	if s != "AUDIT" && s != "AUDIT_REQUEST_AND_RESPONSE" && s != "AUDIT_REQUEST_ONLY" {
+		return "", fmt.Errorf("invalid audit rule directive %q", s)
 	}
-	return "", fmt.Errorf("invalid audit rule directive %q", s)
+	return s, nil
 }
 
-func logTypeFromString(s string) (alpb.AuditLogRequest_LogType, error) {
+func validateLogType(s string) (string, error) {
+	s = strings.ToUpper(s)
 	// When the log_type is nil, default to DATA_ACCESS.
 	if s == "" {
-		return alpb.AuditLogRequest_DATA_ACCESS, nil
+		return "DATA_ACCESS", nil
 	}
-	logTypeNumber, ok := alpb.AuditLogRequest_LogType_value[strings.ToUpper(s)]
+	_, ok := alpb.AuditLogRequest_LogType_value[s]
 	if !ok {
-		return 0, fmt.Errorf("config file contains invalid log type %q", s)
+		return "", fmt.Errorf("config file contains invalid log type %q", s)
 	}
-	return alpb.AuditLogRequest_LogType(logTypeNumber), nil
+	return s, nil
 }
 
 func setDefaultValues(v *viper.Viper) *viper.Viper {

@@ -490,7 +490,7 @@ func TestRulesFromConfig(t *testing.T) {
 	cases := []struct {
 		name          string
 		fileContent   string
-		wantRules     []audit.Rule
+		wantRules     []alpb.AuditRule
 		wantErrSubstr string
 	}{
 		{
@@ -532,11 +532,11 @@ rules:
     directive: AUDIT
     log_type: DATA_ACCESS
 `,
-			wantRules: []audit.Rule{
+			wantRules: []alpb.AuditRule{
 				{
 					Selector:  "com.example",
-					Directive: audit.Audit,
-					LogType:   alpb.AuditLogRequest_DATA_ACCESS,
+					Directive: "AUDIT",
+					LogType:   "DATA_ACCESS",
 				},
 			},
 		},
@@ -557,16 +557,16 @@ rules:
     directive: audit_request_only
     log_type: admin_activity
 `,
-			wantRules: []audit.Rule{
+			wantRules: []alpb.AuditRule{
 				{
 					Selector:  "com.example.1",
-					Directive: audit.AuditRequestAndResponse,
-					LogType:   alpb.AuditLogRequest_UNSPECIFIED,
+					Directive: "AUDIT_REQUEST_AND_RESPONSE",
+					LogType:   "UNSPECIFIED",
 				},
 				{
 					Selector:  "com.example.2",
-					Directive: audit.AuditRequestOnly,
-					LogType:   alpb.AuditLogRequest_ADMIN_ACTIVITY,
+					Directive: "AUDIT_REQUEST_ONLY",
+					LogType:   "ADMIN_ACTIVITY",
 				},
 			},
 		},
@@ -582,11 +582,11 @@ security_context:
 rules:
   - selector: com.example
 `,
-			wantRules: []audit.Rule{
+			wantRules: []alpb.AuditRule{
 				{
 					Selector:  "com.example",
-					Directive: audit.Audit,
-					LogType:   alpb.AuditLogRequest_DATA_ACCESS,
+					Directive: "AUDIT",
+					LogType:   "DATA_ACCESS",
 				},
 			},
 		},

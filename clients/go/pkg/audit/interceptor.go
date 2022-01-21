@@ -18,8 +18,10 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/abcxyz/lumberjack/clients/go/pkg/security"
 	"google.golang.org/grpc"
+
+	alpb "github.com/abcxyz/lumberjack/clients/go/apis/v1alpha1"
+	"github.com/abcxyz/lumberjack/clients/go/pkg/security"
 )
 
 // Interceptor contains the fields required for an interceptor
@@ -27,7 +29,7 @@ import (
 type Interceptor struct {
 	*Client
 	SecurityContext security.GRPCContext
-	Rules           []Rule
+	Rules           []alpb.AuditRule
 }
 
 // UnaryInterceptor is a unary interceptor that autofills and emits audit logs.

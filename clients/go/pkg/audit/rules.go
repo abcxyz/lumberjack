@@ -22,27 +22,11 @@ import (
 
 const wildcard = "*"
 
-type Directive string
-
-const (
-	Audit                   Directive = "AUDIT"
-	AuditRequestAndResponse Directive = "AUDIT_REQUEST_AND_RESPONSE"
-	AuditRequestOnly        Directive = "AUDIT_REQUEST_ONLY"
-)
-
-// A Rule tells the middleware which methods should be logged and how
-// they should be logged.
-type Rule struct {
-	Selector  string
-	Directive Directive
-	LogType   alpb.AuditLogRequest_LogType
-}
-
-// isApplicable determines if a Rule applies to
+// IsRuleApplicable determines if a Rule applies to
 // the given method by comparing the Rule's Selector
 // to the methodName.
-func (r Rule) isApplicable(methodName string) bool {
-	sel := r.Selector
+func IsRuleApplicable(rule alpb.AuditRule, methodName string) bool {
+	sel := rule.Selector
 	if sel == wildcard {
 		return true
 	}
@@ -52,18 +36,18 @@ func (r Rule) isApplicable(methodName string) bool {
 	return sel == methodName
 }
 
-// mostRelevant finds the most relevant Rule for a given method by
+// MostRelevantRule finds the most relevant Rule for a given method by
 // comparing the Rules's Selector length. E.g. given the methodName
 // "com.example.Hello", the selector relevance is:
 // "com.example.Hello" > "com.example.*" > "*"
 //
 // If none of the Rules are relevant to the given method (i.e. the
 // the selectors don't match), we return nil.
-func mostRelevant(methodName string, rules []Rule) Rule {
+func MostRelevantRule(methodName string, rules []alpb.AuditRule) alpb.AuditRule {
 	var longest int
-	var mostRelevant Rule
+	var mostRelevant alpb.AuditRule
 	for _, r := range rules {
-		if r.isApplicable(methodName) && len(r.Selector) > longest {
+		if IsRuleApplicable(r, methodName) && len(r.Selector) > longest {
 			longest = len(r.Selector)
 			mostRelevant = r
 			if longest == len(methodName) {
