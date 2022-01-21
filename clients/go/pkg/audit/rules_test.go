@@ -25,13 +25,13 @@ func TestIsRuleApplicable(t *testing.T) {
 
 	tests := []struct {
 		name       string
-		rule       alpb.AuditRule
+		rule       *alpb.AuditRule
 		methodName string
 		want       bool
 	}{
 		{
 			name: "wildcard_matches",
-			rule: alpb.AuditRule{
+			rule: &alpb.AuditRule{
 				Selector: "*",
 			},
 			methodName: "foo",
@@ -39,7 +39,7 @@ func TestIsRuleApplicable(t *testing.T) {
 		},
 		{
 			name: "wildcard_suffix_matches",
-			rule: alpb.AuditRule{
+			rule: &alpb.AuditRule{
 				Selector: "foo.*",
 			},
 			methodName: "foo.get",
@@ -47,7 +47,7 @@ func TestIsRuleApplicable(t *testing.T) {
 		},
 		{
 			name: "wildcard_suffix_barley_matches",
-			rule: alpb.AuditRule{
+			rule: &alpb.AuditRule{
 				Selector: "foo*",
 			},
 			methodName: "foo",
@@ -55,7 +55,7 @@ func TestIsRuleApplicable(t *testing.T) {
 		},
 		{
 			name: "wildcard_suffix_mismatches",
-			rule: alpb.AuditRule{
+			rule: &alpb.AuditRule{
 				Selector: "foo.*",
 			},
 			methodName: "bar.get",
@@ -63,7 +63,7 @@ func TestIsRuleApplicable(t *testing.T) {
 		},
 		{
 			name: "exact_match",
-			rule: alpb.AuditRule{
+			rule: &alpb.AuditRule{
 				Selector: "foo.get",
 			},
 			methodName: "foo.get",
@@ -71,7 +71,7 @@ func TestIsRuleApplicable(t *testing.T) {
 		},
 		{
 			name: "exact_mismatch",
-			rule: alpb.AuditRule{
+			rule: &alpb.AuditRule{
 				Selector: "foo.get",
 			},
 			methodName: "bar.get",
@@ -79,7 +79,7 @@ func TestIsRuleApplicable(t *testing.T) {
 		},
 		{
 			name: "exact_mismatch_again",
-			rule: alpb.AuditRule{
+			rule: &alpb.AuditRule{
 				Selector: "foo.get",
 			},
 			methodName: "bar.getgud",
@@ -91,7 +91,7 @@ func TestIsRuleApplicable(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
-			got := IsRuleApplicable(tc.rule, tc.methodName)
+			got := isRuleApplicable(tc.rule, tc.methodName)
 			if got != tc.want {
 				t.Errorf("isApplicable(%v) = %v, want %v", tc.methodName, got, tc.want)
 			}
@@ -104,13 +104,13 @@ func TestMostRelevantRule(t *testing.T) {
 
 	tests := []struct {
 		name       string
-		rules      []alpb.AuditRule
+		rules      []*alpb.AuditRule
 		methodName string
 		wantRule   alpb.AuditRule
 	}{
 		{
 			name: "exact_match_wins",
-			rules: []alpb.AuditRule{
+			rules: []*alpb.AuditRule{
 				{Selector: "a.b.c"},
 				{Selector: "a.b.*"},
 				{Selector: "*"},
@@ -120,7 +120,7 @@ func TestMostRelevantRule(t *testing.T) {
 		},
 		{
 			name: "partial_wildcard_match_wins",
-			rules: []alpb.AuditRule{
+			rules: []*alpb.AuditRule{
 				{Selector: "a.b.c"},
 				{Selector: "a.b.*"},
 				{Selector: "*"},
@@ -130,7 +130,7 @@ func TestMostRelevantRule(t *testing.T) {
 		},
 		{
 			name: "partial_wildcard_match_wins_again",
-			rules: []alpb.AuditRule{
+			rules: []*alpb.AuditRule{
 				{Selector: "*"},
 				{Selector: "a.b.*"},
 				{Selector: "a.b.c"},
@@ -140,7 +140,7 @@ func TestMostRelevantRule(t *testing.T) {
 		},
 		{
 			name: "wildcard_match_wins",
-			rules: []alpb.AuditRule{
+			rules: []*alpb.AuditRule{
 				{Selector: "a.b.c"},
 				{Selector: "a.b.*"},
 				{Selector: "*"},
@@ -150,7 +150,7 @@ func TestMostRelevantRule(t *testing.T) {
 		},
 		{
 			name: "no_match",
-			rules: []alpb.AuditRule{
+			rules: []*alpb.AuditRule{
 				{Selector: "a.b.c"},
 				{Selector: "a.b.*"},
 				{Selector: "a.*"},
@@ -163,9 +163,9 @@ func TestMostRelevantRule(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
-			gotRule := MostRelevantRule(tc.methodName, tc.rules)
+			gotRule := mostRelevantRule(tc.methodName, tc.rules)
 			if gotRule != tc.wantRule {
-				t.Errorf("MostRelevantRule(%v, %v) = %v, want %v", tc.methodName, tc.rules, gotRule, tc.wantRule)
+				t.Errorf("mostRelevantRule(%v, %v) = %v, want %v", tc.methodName, tc.rules, gotRule, tc.wantRule)
 			}
 		})
 	}
