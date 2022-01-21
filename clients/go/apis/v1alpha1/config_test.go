@@ -132,7 +132,7 @@ func TestValidate(t *testing.T) {
 			},
 			Rules: []*AuditRule{{Selector: "*"}},
 		},
-		wantErr: `unexpected Version "random"`,
+		wantErr: `unexpected Version "random" want "v1alpha1"`,
 	}, {
 		name: "missing security context",
 		cfg: &Config{
@@ -168,12 +168,44 @@ func TestValidate(t *testing.T) {
 		},
 		wantErr: "audit rule selector is empty",
 	}, {
+		name: "invalid rule directive",
+		cfg: &Config{
+			Version: "v1alpha1",
+			SecurityContext: &SecurityContext{
+				FromRawJWT: &FromRawJWT{},
+			},
+			Condition: &Condition{
+				Regex: &RegexCondition{},
+			},
+			Rules: []*AuditRule{{
+				Selector:  "*",
+				Directive: "random",
+			}},
+		},
+		wantErr: `unexpected rule.Directive "random" want one of ["AUDIT", "AUDIT_REQUEST_ONLY"`,
+	}, {
+		name: "invalid rule log type",
+		cfg: &Config{
+			Version: "v1alpha1",
+			SecurityContext: &SecurityContext{
+				FromRawJWT: &FromRawJWT{},
+			},
+			Condition: &Condition{
+				Regex: &RegexCondition{},
+			},
+			Rules: []*AuditRule{{
+				Selector: "*",
+				LogType:  "random",
+			}},
+		},
+		wantErr: `unexpected rule.LogType "random" want one of ["ADMIN_ACTIVITY", "DATA_ACCESS"]`,
+	}, {
 		name: "combination of errors",
 		cfg: &Config{
 			Version: "random",
 			Rules:   []*AuditRule{{}},
 		},
-		wantErr: `unexpected Version "random"; SecurityContext is nil; audit rule selector is empty`,
+		wantErr: `unexpected Version "random" want "v1alpha1"; SecurityContext is nil; audit rule selector is empty`,
 	}}
 
 	for _, tc := range cases {

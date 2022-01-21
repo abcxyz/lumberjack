@@ -38,7 +38,7 @@ func (cfg *Config) Validate() error {
 	// TODO: do validations for each field if necessary.
 	var err error
 	if cfg.Version != Version {
-		err = multierr.Append(err, fmt.Errorf("unexpected Version %q", cfg.Version))
+		err = multierr.Append(err, fmt.Errorf("unexpected Version %q want %q", cfg.Version, Version))
 	}
 	if cfg.SecurityContext == nil {
 		err = multierr.Append(err, fmt.Errorf("SecurityContext is nil"))
@@ -156,6 +156,25 @@ type AuditRule struct {
 func (r *AuditRule) Validate() error {
 	if r.Selector == "" {
 		return fmt.Errorf("audit rule selector is empty")
+	}
+	if r.Directive != "" {
+		switch r.Directive {
+		case AuditRuleDirectiveDefault:
+		case AuditRuleDirectiveRequestOnly:
+		case AuditRuleDirectiveRequestAndResponse:
+		default:
+			return fmt.Errorf("unexpected rule.Directive %q want one of [%q, %q, %q]",
+				r.Directive, AuditRuleDirectiveDefault, AuditRuleDirectiveRequestOnly, AuditRuleDirectiveRequestAndResponse)
+		}
+	}
+	if r.LogType != "" {
+		switch r.LogType {
+		case AuditLogRequest_ADMIN_ACTIVITY.String():
+		case AuditLogRequest_DATA_ACCESS.String():
+		default:
+			return fmt.Errorf("unexpected rule.LogType %q want one of [%q, %q]",
+				r.LogType, AuditLogRequest_ADMIN_ACTIVITY.String(), AuditLogRequest_DATA_ACCESS.String())
+		}
 	}
 	return nil
 }
