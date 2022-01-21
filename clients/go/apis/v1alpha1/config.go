@@ -3,7 +3,6 @@ package v1alpha1
 import (
 	"fmt"
 
-	"github.com/abcxyz/lumberjack/clients/go/pkg/zlogger"
 	"go.uber.org/multierr"
 )
 
@@ -65,14 +64,12 @@ type Config struct {
 
 // Validate checks if the config is valid.
 func (cfg *Config) Validate() error {
-	logger := zlogger.Default()
 	// TODO: do validations for each field if necessary.
 	var err error
-	if cfg.Version == "" {
-		logger.Warnf("config version is unset, set your config to the supported version %q", Version)
-	} else if cfg.Version != Version {
+	if cfg.Version != Version {
 		err = multierr.Append(err, fmt.Errorf("unexpected Version %q want %q", cfg.Version, Version))
 	}
+	// TODO(#74): Fall back to stdout logging if backend is nil.
 	if cfg.Backend == nil {
 		err = multierr.Append(err, fmt.Errorf("backend is nil"))
 	} else if serr := cfg.Backend.Validate(); serr != nil {
@@ -86,15 +83,12 @@ func (cfg *Config) Validate() error {
 	return err
 }
 
-// Validate checks if the config SecurityContext is valid.
+// ValidateSecurityContext checks if the config SecurityContext is valid.
 func (cfg *Config) ValidateSecurityContext() error {
-	var err error
 	if cfg.SecurityContext == nil {
-		err = multierr.Append(err, fmt.Errorf("SecurityContext is nil"))
-	} else if serr := cfg.SecurityContext.Validate(); serr != nil {
-		err = multierr.Append(err, serr)
+		return fmt.Errorf("SecurityContext is nil")
 	}
-	return err
+	return cfg.SecurityContext.Validate()
 }
 
 // SetDefault sets default for the config.
@@ -123,7 +117,6 @@ type Backend struct {
 }
 
 // Validate validates the backend.
-// TODO(#74): Fall back to stdout logging if address is missing.
 func (b *Backend) Validate() error {
 	if b.Address == "" {
 		return fmt.Errorf("backend address is nil")

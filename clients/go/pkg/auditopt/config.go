@@ -40,9 +40,6 @@ import (
 	alpb "github.com/abcxyz/lumberjack/clients/go/apis/v1alpha1"
 )
 
-// The version we expect in a config file.
-const expectedVersion = "v1alpha1"
-
 const defaultConfigFilePath = "/etc/auditlogging/config.yaml"
 
 // MustFromConfigFile specifies a config file to configure the
