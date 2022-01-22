@@ -26,6 +26,9 @@ import (
 	"github.com/abcxyz/lumberjack/clients/go/apis/v1alpha1"
 )
 
+// Key in a JWT's `claims` where we expect the principal.
+const emailKey = "email"
+
 // GRPCContext is an interface that retrieves the principal
 // from a gRPC security context. A gRPC security context describes
 // the technology used to authenticate a principal (e.g. JWT).
@@ -64,7 +67,7 @@ func (j *FromRawJWT) RequestPrincipal(ctx context.Context) (string, error) {
 	}
 	principal := claims["email"].(string)
 	if principal == "" {
-		return "", fmt.Errorf(`nil principal under claims "email"`)
+		return "", fmt.Errorf("nil principal under claims %q", emailKey)
 	}
 
 	return principal, nil
