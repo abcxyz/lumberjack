@@ -6,6 +6,35 @@ import (
 	"go.uber.org/multierr"
 )
 
+//TODO(#64): when we migrate to koanf, we no longer need leafKeys
+var leafKeys = []string{
+	"backend.address",
+	"backend.impersonate_account",
+	"backend.insecure_enabled",
+	"condition.regex.principal_exclude",
+	"condition.regex.principal_include",
+	"security_context.from_raw_jwt.key",
+	"security_context.from_raw_jwt.prefix",
+	"version",
+}
+
+// LeafKeys returns a copy of the leaf config vars. Leaf config vars
+// are the only config vars that can be overwritten with env vars.
+// The "." delimeter represents a nested field. E.g., the config var
+// "condition.regex.principal_include" is represented in a YAML config
+// file as:
+// ```
+// condition:
+//  regex:
+//    principal_include: test@google.com
+// ```
+//
+// It's also represented as the following env var:
+// `AUDIT_CLIENT_CONDITION_REGEX_PRINCIPAL_INCLUDE`.
+func LeafKeys() []string {
+	return append([]string(nil), leafKeys...)
+}
+
 const (
 	// Version of the API and config.
 	Version = "v1alpha1"
@@ -40,9 +69,10 @@ func (cfg *Config) Validate() error {
 	if cfg.Version != Version {
 		err = multierr.Append(err, fmt.Errorf("unexpected Version %q want %q", cfg.Version, Version))
 	}
-	if cfg.SecurityContext == nil {
-		err = multierr.Append(err, fmt.Errorf("SecurityContext is nil"))
-	} else if serr := cfg.SecurityContext.Validate(); serr != nil {
+	// TODO(#74): Fall back to stdout logging if backend is nil.
+	if cfg.Backend == nil {
+		err = multierr.Append(err, fmt.Errorf("backend is nil"))
+	} else if serr := cfg.Backend.Validate(); serr != nil {
 		err = multierr.Append(err, serr)
 	}
 	for _, r := range cfg.Rules {
@@ -53,17 +83,26 @@ func (cfg *Config) Validate() error {
 	return err
 }
 
+// ValidateSecurityContext checks if the config SecurityContext is valid.
+func (cfg *Config) ValidateSecurityContext() error {
+	if cfg.SecurityContext == nil {
+		return fmt.Errorf("SecurityContext is nil")
+	}
+	return cfg.SecurityContext.Validate()
+}
+
 // SetDefault sets default for the config.
 func (cfg *Config) SetDefault() {
 	// TODO: set defaults for other fields if necessary.
 	if cfg.Version == "" {
 		cfg.Version = Version
 	}
+	if cfg.Condition == nil {
+		cfg.Condition = &Condition{}
+	}
+	cfg.Condition.SetDefault()
 	if cfg.SecurityContext != nil {
 		cfg.SecurityContext.SetDefault()
-	}
-	if cfg.Condition != nil {
-		cfg.Condition.SetDefault()
 	}
 	for _, r := range cfg.Rules {
 		r.SetDefault()
@@ -77,6 +116,14 @@ type Backend struct {
 	ImpersonateAccount string `mapstructure:"impersonate_account,omitempty" json:"impersonate_account,omitempty"`
 }
 
+// Validate validates the backend.
+func (b *Backend) Validate() error {
+	if b.Address == "" {
+		return fmt.Errorf("backend address is nil")
+	}
+	return nil
+}
+
 // Condition is the condition to match to collect audit logs.
 type Condition struct {
 	Regex *RegexCondition `mapstructure:"regex,omitempty" json:"regex,omitempty"`
@@ -84,9 +131,10 @@ type Condition struct {
 
 // SetDefault sets default for the condition.
 func (c *Condition) SetDefault() {
-	if c.Regex != nil {
-		c.Regex.SetDefault()
+	if c.Regex == nil {
+		c.Regex = &RegexCondition{}
 	}
+	c.Regex.SetDefault()
 }
 
 // RegexCondition matches condition with regular expression.

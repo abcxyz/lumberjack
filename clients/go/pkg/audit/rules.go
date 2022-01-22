@@ -22,6 +22,29 @@ import (
 
 const wildcard = "*"
 
+// mostRelevantRule finds the most relevant Rule for a given method by
+// comparing the Rules's Selector length. E.g. given the methodName
+// "com.example.Hello", the selector relevance is:
+// "com.example.Hello" > "com.example.*" > "*"
+//
+// If none of the Rules are relevant to the given method (i.e. the
+// the selectors don't match), we return nil.
+func mostRelevantRule(methodName string, rules []*alpb.AuditRule) *alpb.AuditRule {
+	var longest int
+	var mostRelevant *alpb.AuditRule
+	for _, r := range rules {
+		if isRuleApplicable(r, methodName) && len(r.Selector) > longest {
+			longest = len(r.Selector)
+			mostRelevant = r
+			if longest == len(methodName) {
+				// Shortcircuit on exact match.
+				return mostRelevant
+			}
+		}
+	}
+	return mostRelevant
+}
+
 // isRuleApplicable determines if a Rule applies to
 // the given method by comparing the Rule's Selector
 // to the methodName.
@@ -34,27 +57,4 @@ func isRuleApplicable(rule *alpb.AuditRule, methodName string) bool {
 		return strings.HasPrefix(methodName, sel[:len(sel)-1])
 	}
 	return sel == methodName
-}
-
-// mostRelevantRule finds the most relevant Rule for a given method by
-// comparing the Rules's Selector length. E.g. given the methodName
-// "com.example.Hello", the selector relevance is:
-// "com.example.Hello" > "com.example.*" > "*"
-//
-// If none of the Rules are relevant to the given method (i.e. the
-// the selectors don't match), we return nil.
-func mostRelevantRule(methodName string, rules []*alpb.AuditRule) alpb.AuditRule {
-	var longest int
-	var mostRelevant alpb.AuditRule
-	for _, r := range rules {
-		if isRuleApplicable(r, methodName) && len(r.Selector) > longest {
-			longest = len(r.Selector)
-			mostRelevant = *r
-			if longest == len(methodName) {
-				// Shortcircuit on exact match.
-				return mostRelevant
-			}
-		}
-	}
-	return mostRelevant
 }

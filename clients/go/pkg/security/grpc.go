@@ -22,6 +22,8 @@ import (
 
 	"github.com/golang-jwt/jwt"
 	grpcmetadata "google.golang.org/grpc/metadata"
+
+	"github.com/abcxyz/lumberjack/clients/go/apis/v1alpha1"
 )
 
 // GRPCContext is an interface that retrieves the principal
@@ -32,13 +34,9 @@ type GRPCContext interface {
 }
 
 // FromRawJWT contains the information needed to retrieve
-// the principal from a raw JWT. More specifically:
-//   - `Key` is the grpcmetadata key that contains the JWT.
-//   - `Prefix` is the prefix that should be be stripped before decoding the JWT.
+// the principal from a raw JWT.
 type FromRawJWT struct {
-	Key    string
-	Prefix string
-	//TODO: Add JWKS fields to validate JWT signature.
+	FromRawJWT *v1alpha1.FromRawJWT
 }
 
 // principalFromContext extracts the principal from the context.
@@ -50,11 +48,11 @@ func (j *FromRawJWT) RequestPrincipal(ctx context.Context) (string, error) {
 
 	// Extract the JWT.
 	var idToken string
-	if auths := md[j.Key]; len(auths) > 0 {
-		idToken = auths[0][len(j.Prefix):] // trim prefix
+	if auths := md[j.FromRawJWT.Key]; len(auths) > 0 {
+		idToken = auths[0][len(j.FromRawJWT.Prefix):] // trim prefix
 	}
 	if idToken == "" {
-		return "", fmt.Errorf("nil JWT under the key %q in metadata %+v", j.Key, md)
+		return "", fmt.Errorf("nil JWT under the key %q in metadata %+v", j.FromRawJWT.Key, md)
 	}
 
 	// Retrieve the principal from the JWT.
