@@ -24,7 +24,9 @@ import (
 	calpb "google.golang.org/genproto/googleapis/cloud/audit"
 	protostatus "google.golang.org/genproto/googleapis/rpc/status"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
+	grpcstatus "google.golang.org/grpc/status"
 	"google.golang.org/protobuf/testing/protocmp"
 	"google.golang.org/protobuf/types/known/structpb"
 
@@ -64,7 +66,7 @@ func TestUnaryInterceptor(t *testing.T) {
 		wantErrSubstr string
 	}{
 		{
-			name: "interceptor_autofills_everything",
+			name: "interceptor_autofills_successful_rpc",
 			ctx: metadata.NewIncomingContext(context.Background(), metadata.New(map[string]string{
 				"authorization": jwt,
 			})),
@@ -89,8 +91,70 @@ func TestUnaryInterceptor(t *testing.T) {
 				},
 			},
 		},
+		{
+			name: "interceptor_autofills__and_emits_log_on_failed_rpc",
+			ctx: metadata.NewIncomingContext(context.Background(), metadata.New(map[string]string{
+				"authorization": jwt,
+			})),
+			info: &grpc.UnaryServerInfo{
+				FullMethod: "/ExampleService/ExampleMethod",
+			},
+			handler: func(ctx context.Context, req interface{}) (interface{}, error) {
+				LogReqInCtx(ctx).Payload.ResourceName = "ExampleResourceName"
+				return nil, grpcstatus.Error(codes.Internal, "fake error")
+			},
+			wantLogReq: &alpb.AuditLogRequest{
+				Payload: &calpb.AuditLog{
+					ServiceName:  "ExampleService",
+					MethodName:   "/ExampleService/ExampleMethod",
+					ResourceName: "ExampleResourceName",
+					AuthenticationInfo: &calpb.AuthenticationInfo{
+						PrincipalEmail: "user@example.com",
+					},
+					Request:  &structpb.Struct{},
+					Response: &structpb.Struct{},
+					Status: &protostatus.Status{
+						Code:    int32(codes.Internal),
+						Message: "fake error",
+					},
+				},
+			},
+			wantErrSubstr: "fake error",
+		},
+		{
+			name: "err_from_malformed_method_info",
+			ctx: metadata.NewIncomingContext(context.Background(), metadata.New(map[string]string{
+				"authorization": jwt,
+			})),
+			info: &grpc.UnaryServerInfo{
+				FullMethod: "bananas",
+			},
+			wantErrSubstr: "info.FullMethod should have format /$SERVICE_NAME/$METHOD_NAME",
+		},
+		{
+			name: "err_extracting_principal",
+			ctx: metadata.NewIncomingContext(context.Background(), metadata.New(map[string]string{
+				"authorization": "bananas",
+			})),
+			info: &grpc.UnaryServerInfo{
+				FullMethod: "/ExampleService/ExampleMethod",
+			},
+			wantErrSubstr: "failed getting principal from ctx in *security.FromRawJWT",
+		},
+		{
+			name: "err_converting_req_to_proto_struct",
+			ctx: metadata.NewIncomingContext(context.Background(), metadata.New(map[string]string{
+				"authorization": jwt,
+			})),
+			info: &grpc.UnaryServerInfo{
+				FullMethod: "/ExampleService/ExampleMethod",
+			},
+			req:           "bananas",
+			wantErrSubstr: "failed converting req bananas into a Google struct proto",
+		},
 	}
 	for _, tc := range tests {
+		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
