@@ -16,6 +16,8 @@ package audit
 
 import (
 	"context"
+	"fmt"
+	"net"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -28,8 +30,19 @@ import (
 
 	alpb "github.com/abcxyz/lumberjack/clients/go/apis/v1alpha1"
 	"github.com/abcxyz/lumberjack/clients/go/pkg/errutil"
+	"github.com/abcxyz/lumberjack/clients/go/pkg/remote"
 	"github.com/abcxyz/lumberjack/clients/go/pkg/security"
 )
+
+type fakeServer struct {
+	alpb.UnimplementedAuditLogAgentServer
+	gotReq *alpb.AuditLogRequest
+}
+
+func (s *fakeServer) ProcessLog(_ context.Context, logReq *alpb.AuditLogRequest) (*alpb.AuditLogResponse, error) {
+	s.gotReq = logReq
+	return &alpb.AuditLogResponse{Result: logReq}, nil
+}
 
 func TestUnaryInterceptor(t *testing.T) {
 	t.Parallel()
@@ -41,7 +54,6 @@ func TestUnaryInterceptor(t *testing.T) {
 	// }
 	jwt := "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6InVzZXIiLCJpYXQiOjE1MTYyMzkwMjIsImVtYWlsIjoidXNlckBleGFtcGxlLmNvbSJ9.PXl-SJniWHMVLNYb77HmVFFqWTlu28xf9fou2GaT0Jc"
 
-	currentLogReq := &alpb.AuditLogRequest{}
 	tests := []struct {
 		name          string
 		ctx           context.Context
@@ -61,7 +73,6 @@ func TestUnaryInterceptor(t *testing.T) {
 			},
 			handler: func(ctx context.Context, req interface{}) (interface{}, error) {
 				LogReqInCtx(ctx).Payload.ResourceName = "ExampleResourceName"
-				currentLogReq = LogReqInCtx(ctx)
 				return nil, nil
 			},
 			wantLogReq: &alpb.AuditLogRequest{
@@ -80,30 +91,51 @@ func TestUnaryInterceptor(t *testing.T) {
 		},
 	}
 	for _, tc := range tests {
-		// No parallel to avoid a race condition on variable currentLogReq.
 		t.Run(tc.name, func(t *testing.T) {
-			c, err := NewClient()
+			t.Parallel()
+
+			i := &Interceptor{}
+
+			r := &fakeServer{}
+			s := grpc.NewServer()
+			defer s.Stop()
+			alpb.RegisterAuditLogAgentServer(s, r)
+			lis, err := net.Listen("tcp", "localhost:0")
+			if err != nil {
+				t.Fatal(err)
+			}
+			go func(t *testing.T, s *grpc.Server, lis net.Listener) {
+				err := s.Serve(lis)
+				if err != nil {
+					// TODO: it may be worth validating this scenario. #47
+					fmt.Printf("net.Listen(tcp, localhost:0) serve failed: %v", err)
+				}
+			}(t, s, lis)
+			p, err := remote.NewProcessor(lis.Addr().String())
+			if err != nil {
+				t.Fatal(err)
+			}
+			c, err := NewClient(WithBackend(p))
 			if err != nil {
 				t.Fatal(err)
 			}
 			defer c.Stop()
+			i.Client = c
+
 			fromRawJWT := &security.FromRawJWT{
 				FromRawJWT: &alpb.FromRawJWT{
 					Key:    "authorization",
 					Prefix: "Bearer ",
 				},
 			}
-			i := &Interceptor{
-				Client:          c,
-				SecurityContext: fromRawJWT,
-			}
+			i.SecurityContext = fromRawJWT
 
 			_, gotErr := i.UnaryInterceptor(tc.ctx, tc.req, tc.info, tc.handler)
 			if diff := errutil.DiffSubstring(gotErr, tc.wantErrSubstr); diff != "" {
 				t.Errorf("UnaryInterceptor(...) got unexpected error substring: %v", diff)
 			}
 
-			if diff := cmp.Diff(tc.wantLogReq, currentLogReq, protocmp.Transform()); diff != "" {
+			if diff := cmp.Diff(tc.wantLogReq, r.gotReq, protocmp.Transform()); diff != "" {
 				t.Errorf("UnaryInterceptor(...) got diff in automatically emitted LogReq (-want, +got): %v", diff)
 			}
 		})

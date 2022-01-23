@@ -64,7 +64,7 @@ func (i *Interceptor) UnaryInterceptor(ctx context.Context, req interface{}, inf
 	}
 	logReq.Payload.AuthenticationInfo.PrincipalEmail = principal
 
-	// Autofill `- Payload.Request` and `Payload.MethodName`
+	// Autofill `Payload.Request` and `Payload.MethodName`
 	reqStruct, err := toProtoStruct(req)
 	if err != nil {
 		return nil, fmt.Errorf("failed converting req %+v into a Google struct proto: %w", req, err)
@@ -86,7 +86,7 @@ func (i *Interceptor) UnaryInterceptor(ctx context.Context, req interface{}, inf
 	logReq.Payload.Status.Code = int32(status.Code())
 	logReq.Payload.Status.Message = status.Message()
 
-	// Autofill `Payload.Payload.Response`.
+	// Autofill `Payload.Response`.
 	respStruct, err := toProtoStruct(handlerResp)
 	if err != nil {
 		return nil, fmt.Errorf("failed converting resp %+v into a Google struct proto: %w", handlerResp, err)
