@@ -26,34 +26,65 @@ import (
 )
 
 func TestFromRawJWT_RequestPrincipal(t *testing.T) {
-	// Test JWT. See link below to view decoded version:
-	// https://jwt.io/#debugger-io?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6InVzZXIiLCJpYXQiOjE1MTYyMzkwMjIsImVtYWlsIjoidXNlckBleGFtcGxlLmNvbSJ9.PXl-SJniWHMVLNYb77HmVFFqWTlu28xf9fou2GaT0Jc
+	t.Parallel()
+
+	// Test JWT:
+	// {
+	// 	 "name": "user",
+	// 	 "email": "user@example.com"
+	// }
 	jwt := "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6InVzZXIiLCJpYXQiOjE1MTYyMzkwMjIsImVtYWlsIjoidXNlckBleGFtcGxlLmNvbSJ9.PXl-SJniWHMVLNYb77HmVFFqWTlu28xf9fou2GaT0Jc"
 	tests := []struct {
 		name          string
-		grpcMetadata  map[string]string
+		ctx           context.Context
 		fromRawJWT    *v1alpha1.FromRawJWT
 		want          string
 		wantErrSubstr string
 	}{
 		{
-			name: "happy",
-			grpcMetadata: map[string]string{
+			name: "valid_jwt",
+			ctx: metadata.NewIncomingContext(context.Background(), metadata.New(map[string]string{
 				"authorization": "Bearer " + jwt,
-			},
+			})),
 			fromRawJWT: &v1alpha1.FromRawJWT{
 				Key:    "authorization",
-				Prefix: "Bearer",
+				Prefix: "Bearer ",
 			},
 			want: "user@example.com",
 		},
+		{
+			name:          "missing_grpc_metadata",
+			ctx:           context.Background(),
+			wantErrSubstr: "gRPC metadata in incoming context is missing",
+		},
+		{
+			name: "nil_jwt",
+			ctx:  metadata.NewIncomingContext(context.Background(), metadata.New(nil)),
+			fromRawJWT: &v1alpha1.FromRawJWT{
+				Key:    "authorization",
+				Prefix: "Bearer ",
+			},
+			wantErrSubstr: `nil JWT under the key "authorization" in grpc metadata`,
+		},
+		{
+			name: "unparsable_jwt",
+			ctx: metadata.NewIncomingContext(context.Background(), metadata.New(map[string]string{
+				"authorization": "Bearer " + "bananas",
+			})),
+			fromRawJWT: &v1alpha1.FromRawJWT{
+				Key:    "authorization",
+				Prefix: "Bearer ",
+			},
+			wantErrSubstr: "unable to parse JWT",
+		},
 	}
 	for _, tc := range tests {
+		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
-			ctx := metadata.NewIncomingContext(context.Background(), metadata.New(tc.grpcMetadata))
-			j := &FromRawJWT{FromRawJWT: tc.fromRawJWT}
+			t.Parallel()
 
-			got, err := j.RequestPrincipal(ctx)
+			j := &FromRawJWT{FromRawJWT: tc.fromRawJWT}
+			got, err := j.RequestPrincipal(tc.ctx)
 			if diff := errutil.DiffSubstring(err, tc.wantErrSubstr); diff != "" {
 				t.Errorf("j.RequestPrincipal()) got unexpected error substring: %v", diff)
 			}

@@ -46,7 +46,7 @@ type FromRawJWT struct {
 func (j *FromRawJWT) RequestPrincipal(ctx context.Context) (string, error) {
 	md, ok := grpcmetadata.FromIncomingContext(ctx)
 	if !ok {
-		return "", fmt.Errorf("gRPC incoming context is missing")
+		return "", fmt.Errorf("gRPC metadata in incoming context is missing")
 	}
 
 	// Extract the JWT.
@@ -55,16 +55,18 @@ func (j *FromRawJWT) RequestPrincipal(ctx context.Context) (string, error) {
 		idToken = auths[0][len(j.FromRawJWT.Prefix):] // trim prefix
 	}
 	if idToken == "" {
-		return "", fmt.Errorf("nil JWT under the key %q in metadata %+v", j.FromRawJWT.Key, md)
+		return "", fmt.Errorf("nil JWT under the key %q in grpc metadata %+v", j.FromRawJWT.Key, md)
 	}
 
-	// Retrieve the principal from the JWT.
+	// Parse the JWT into claims.
 	p := &jwt.Parser{}
 	claims := jwt.MapClaims{}
 	_, _, err := p.ParseUnverified(idToken, claims)
 	if err != nil {
 		return "", fmt.Errorf("unable to parse JWT: %w", err)
 	}
+
+	// Retrieve the principal from claims.
 	principal := claims["email"].(string)
 	if principal == "" {
 		return "", fmt.Errorf("nil principal under claims %q", emailKey)
