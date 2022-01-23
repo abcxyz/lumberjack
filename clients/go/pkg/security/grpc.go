@@ -42,7 +42,7 @@ type FromRawJWT struct {
 	FromRawJWT *v1alpha1.FromRawJWT
 }
 
-// principalFromContext extracts the principal from the context.
+// RequestPrincipal extracts the JWT principal from the grpcmetadata in the context.
 func (j *FromRawJWT) RequestPrincipal(ctx context.Context) (string, error) {
 	md, ok := grpcmetadata.FromIncomingContext(ctx)
 	if !ok {

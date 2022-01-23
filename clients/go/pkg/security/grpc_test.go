@@ -33,7 +33,8 @@ func TestFromRawJWT_RequestPrincipal(t *testing.T) {
 	// 	 "name": "user",
 	// 	 "email": "user@example.com"
 	// }
-	jwt := "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6InVzZXIiLCJpYXQiOjE1MTYyMzkwMjIsImVtYWlsIjoidXNlckBleGFtcGxlLmNvbSJ9.PXl-SJniWHMVLNYb77HmVFFqWTlu28xf9fou2GaT0Jc"
+	jwt := "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6InVzZXIiLCJpYXQiOjE1MTYyMzkwMjIsImVtYWlsIjoidXNlckBleGFtcGxlLmNvbSJ9.PXl-SJniWHMVLNYb77HmVFFqWTlu28xf9fou2GaT0Jc"
+
 	tests := []struct {
 		name          string
 		ctx           context.Context
@@ -44,7 +45,7 @@ func TestFromRawJWT_RequestPrincipal(t *testing.T) {
 		{
 			name: "valid_jwt",
 			ctx: metadata.NewIncomingContext(context.Background(), metadata.New(map[string]string{
-				"authorization": "Bearer " + jwt,
+				"authorization": jwt,
 			})),
 			fromRawJWT: &v1alpha1.FromRawJWT{
 				Key:    "authorization",
@@ -69,11 +70,11 @@ func TestFromRawJWT_RequestPrincipal(t *testing.T) {
 		{
 			name: "unparsable_jwt",
 			ctx: metadata.NewIncomingContext(context.Background(), metadata.New(map[string]string{
-				"authorization": "Bearer " + "bananas",
+				"authorization": "bananas",
 			})),
 			fromRawJWT: &v1alpha1.FromRawJWT{
 				Key:    "authorization",
-				Prefix: "Bearer ",
+				Prefix: "",
 			},
 			wantErrSubstr: "unable to parse JWT",
 		},
