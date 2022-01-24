@@ -115,6 +115,7 @@ func TestValidate(t *testing.T) {
 			SecurityContext: &SecurityContext{
 				FromRawJWT: &FromRawJWT{},
 			},
+			Backend: &Backend{Address: "foo"},
 			Condition: &Condition{
 				Regex: &RegexCondition{},
 			},
@@ -133,27 +134,6 @@ func TestValidate(t *testing.T) {
 			Rules: []*AuditRule{{Selector: "*"}},
 		},
 		wantErr: `unexpected Version "random" want "v1alpha1"`,
-	}, {
-		name: "missing security context",
-		cfg: &Config{
-			Version: "v1alpha1",
-			Condition: &Condition{
-				Regex: &RegexCondition{},
-			},
-			Rules: []*AuditRule{{Selector: "*"}},
-		},
-		wantErr: "SecurityContext is nil",
-	}, {
-		name: "empty security context",
-		cfg: &Config{
-			Version:         "v1alpha1",
-			SecurityContext: &SecurityContext{},
-			Condition: &Condition{
-				Regex: &RegexCondition{},
-			},
-			Rules: []*AuditRule{{Selector: "*"}},
-		},
-		wantErr: "one and only one SecurityContext option must be specified",
 	}, {
 		name: "missing rule selector",
 		cfg: &Config{
@@ -205,7 +185,7 @@ func TestValidate(t *testing.T) {
 			Version: "random",
 			Rules:   []*AuditRule{{}},
 		},
-		wantErr: `unexpected Version "random" want "v1alpha1"; SecurityContext is nil; audit rule selector is empty`,
+		wantErr: `unexpected Version "random" want "v1alpha1"; backend is nil; audit rule selector is empty`,
 	}}
 
 	for _, tc := range cases {
@@ -233,7 +213,8 @@ func TestSetDefault(t *testing.T) {
 		name: "default version",
 		cfg:  &Config{},
 		wantCfg: &Config{
-			Version: "v1alpha1",
+			Version:   "v1alpha1",
+			Condition: &Condition{Regex: &RegexCondition{PrincipalExclude: ".gserviceaccount.com$"}},
 		},
 	}, {
 		name: "default security context",
@@ -242,6 +223,7 @@ func TestSetDefault(t *testing.T) {
 			SecurityContext: &SecurityContext{
 				FromRawJWT: &FromRawJWT{},
 			},
+			Condition: &Condition{Regex: &RegexCondition{PrincipalExclude: ".gserviceaccount.com$"}},
 		},
 		wantCfg: &Config{
 			Version: "v1alpha1",
@@ -251,6 +233,7 @@ func TestSetDefault(t *testing.T) {
 					Prefix: "Bearer ",
 				},
 			},
+			Condition: &Condition{Regex: &RegexCondition{PrincipalExclude: ".gserviceaccount.com$"}},
 		},
 	}, {
 		name: "default rule fields",
@@ -267,6 +250,7 @@ func TestSetDefault(t *testing.T) {
 				Directive: "AUDIT",
 				LogType:   "DATA_ACCESS",
 			}},
+			Condition: &Condition{Regex: &RegexCondition{PrincipalExclude: ".gserviceaccount.com$"}},
 		},
 	}, {
 		name: "default regex condition",
