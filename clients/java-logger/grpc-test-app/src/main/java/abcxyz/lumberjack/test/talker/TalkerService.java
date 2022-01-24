@@ -1,4 +1,4 @@
-package abcxyz.helloworld;
+package abcxyz.lumberjack.test.talker;
 
 /*
  * Copyright 2021 Lumberjack authors (see AUTHORS file)
@@ -31,9 +31,9 @@ package abcxyz.helloworld;
  * limitations under the License.
  */
 
-import abcxyz.helloworld.generated.GreeterGrpc;
-import abcxyz.helloworld.generated.HelloReply;
-import abcxyz.helloworld.generated.HelloRequest;
+import com.abcxyz.lumberjack.test.talker.TalkerGrpc;
+import com.abcxyz.lumberjack.test.talker.HelloResponse;
+import com.abcxyz.lumberjack.test.talker.HelloRequest;
 import com.abcxyz.lumberjack.auditlogclient.AuditLoggingServerInterceptor;
 import com.abcxyz.lumberjack.auditlogclient.AuditLogs;
 import com.abcxyz.lumberjack.auditlogclient.modules.AuditLoggingModule;
@@ -47,10 +47,10 @@ import java.io.IOException;
 import java.util.logging.Logger;
 import lombok.RequiredArgsConstructor;
 
-/** Server that manages startup/shutdown of a {@code Greeter} server with TLS enabled. */
+/** Server that manages startup/shutdown of a {@code Talker} server with TLS enabled. */
 @RequiredArgsConstructor
-public class HelloWorldServerTls {
-  private static final Logger logger = Logger.getLogger(HelloWorldServerTls.class.getName());
+public class TalkerService {
+  private static final Logger logger = Logger.getLogger(TalkerService.class.getName());
 
   private Server server;
 
@@ -59,7 +59,7 @@ public class HelloWorldServerTls {
   private void start(AuditLoggingServerInterceptor interceptor) throws IOException {
     server =
         ServerBuilder.forPort(port)
-            .addService(new GreeterImpl())
+            .addService(new TalkerImpl())
             .intercept(interceptor)
             .build()
             .start();
@@ -71,7 +71,7 @@ public class HelloWorldServerTls {
               public void run() {
                 // Use stderr here since the logger may have been reset by its JVM shutdown hook.
                 System.err.println("*** shutting down gRPC server since JVM is shutting down");
-                HelloWorldServerTls.this.stop();
+                TalkerService.this.stop();
                 System.err.println("*** server shut down");
               }
             });
@@ -96,17 +96,17 @@ public class HelloWorldServerTls {
     AuditLoggingServerInterceptor interceptor =
         injector.getInstance(AuditLoggingServerInterceptor.class);
 
-    final HelloWorldServerTls server =
-        new HelloWorldServerTls(Integer.parseInt(System.getenv("PORT")));
+    final TalkerService server =
+        new TalkerService(Integer.parseInt(System.getenv("PORT")));
     server.start(interceptor);
     server.blockUntilShutdown();
   }
 
-  private static class GreeterImpl extends GreeterGrpc.GreeterImplBase {
+  private static class TalkerImpl extends TalkerGrpc.TalkerImplBase {
 
     @Override
-    public void sayHello(HelloRequest req, StreamObserver<HelloReply> responseObserver) {
-      HelloReply reply = HelloReply.newBuilder().setMessage("Hello " + req.getName()).build();
+    public void hello(HelloRequest req, StreamObserver<HelloResponse> responseObserver) {
+      HelloResponse reply = HelloResponse.newBuilder().setMessage("Hello " + req.getMessage()).build();
 
       AuditLog.Builder auditLogBuilder = AuditLogs.getBuilderFromContext();
       auditLogBuilder.setResourceName("MyResource");
