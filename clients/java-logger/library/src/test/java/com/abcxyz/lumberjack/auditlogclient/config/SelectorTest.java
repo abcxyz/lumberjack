@@ -63,6 +63,14 @@ public class SelectorTest {
   }
 
   @Test
+  public void isApplicable_method() {
+    Selector selector = new Selector("com.example/Hello", null, null);
+    assertThat(selector.isApplicable("com.example/Hello")).isTrue();
+    assertThat(selector.isApplicable("com.example.Hello")).isFalse();
+    assertThat(selector.isApplicable("com.example/Other")).isFalse();
+  }
+
+  @Test
   public void isApplicable_endWild() {
     Selector selector = new Selector("com.example.*", null, null);
     assertThat(selector.isApplicable("com.example.Hello")).isTrue();

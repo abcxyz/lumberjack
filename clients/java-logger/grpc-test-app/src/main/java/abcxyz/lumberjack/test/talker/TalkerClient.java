@@ -31,11 +31,11 @@ package abcxyz.lumberjack.test.talker;
  * limitations under the License.
  */
 
-import com.abcxyz.lumberjack.test.talker.TalkerGrpc;
-import com.abcxyz.lumberjack.test.talker.HelloResponse;
 import com.abcxyz.lumberjack.test.talker.HelloRequest;
-import com.abcxyz.lumberjack.test.talker.WhisperResponse;
+import com.abcxyz.lumberjack.test.talker.HelloResponse;
+import com.abcxyz.lumberjack.test.talker.TalkerGrpc;
 import com.abcxyz.lumberjack.test.talker.WhisperRequest;
+import com.abcxyz.lumberjack.test.talker.WhisperResponse;
 import com.google.auth.oauth2.AccessToken;
 import com.google.auth.oauth2.GoogleCredentials;
 import io.grpc.ManagedChannel;
@@ -55,8 +55,7 @@ public class TalkerClient {
   private final TalkerGrpc.TalkerBlockingStub blockingStub;
 
   /** Construct client for accessing {@link TalkerService} using the existing channel. */
-  public TalkerClient(ManagedChannel channel, GoogleCredentials credentials)
-      throws IOException {
+  public TalkerClient(ManagedChannel channel, GoogleCredentials credentials) throws IOException {
     blockingStub =
         TalkerGrpc.newBlockingStub(channel)
             .withCallCredentials(MoreCallCredentials.from(credentials));
