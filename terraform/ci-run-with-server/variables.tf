@@ -55,6 +55,11 @@ variable "build_commands" {
   description = "List of name/command pairs to call the shell app build script via the relative path to this terraform module, e.g. ../../clients/go/test/shell/build.sh"
 }
 
+variable "java_grpc_build_command" {
+  type        = string
+  description = "command in order to build the hello grpc server"
+}
+
 variable "server_project_id" {
   type        = string
   description = "Project ID for the Cloud project where the audit logging backend service is deployed."
