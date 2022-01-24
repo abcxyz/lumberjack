@@ -78,5 +78,5 @@ cd ${ROOT}/clients/java-logger/
 # Build the module
 mvn clean package
 # Run the client
-java -cp grpc-test-app/target/grpc-test-app-0.0.1.jar abcxyz.helloworld.HelloWorldClientTls ${HELLO_ENDPOINT} 443 ${ID_TOKEN}
+java -cp grpc-test-app/target/grpc-test-app-0.0.1.jar abcxyz.lumberjack.test.talker.TalkerClient ${HELLO_ENDPOINT} 443 ${ID_TOKEN}
 # TODO: validate that the audit logs end up in the correct spot. May be able to re-use httptestrunner
