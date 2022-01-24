@@ -202,7 +202,6 @@ type AuditRule struct {
 
 // Validate validates the audit rule.
 func (r *AuditRule) Validate() error {
-	// todo: add tests
 	if r.Selector == "" {
 		return fmt.Errorf("audit rule selector is empty")
 	}
