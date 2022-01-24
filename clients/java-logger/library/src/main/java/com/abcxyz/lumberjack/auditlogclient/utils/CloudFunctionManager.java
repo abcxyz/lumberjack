@@ -21,6 +21,10 @@ public class CloudFunctionManager {
     this.runtimeInfoUtils = runtimeInfoUtils;
   }
 
+  /**
+   * Detect if current process is being run on an cloud functions. Based on
+   * https://cloud.google.com/functions/docs/configuring/env-var#newer_runtimes
+   */
   public MonitoredResource detectCloudFunction() {
     return MonitoredResource.newBuilder()
         .setType("cloud_function")

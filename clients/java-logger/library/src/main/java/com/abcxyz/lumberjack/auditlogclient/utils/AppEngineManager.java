@@ -7,8 +7,8 @@ import com.google.inject.name.Named;
 
 public class AppEngineManager {
 
-  private RuntimeInfoUtils runtimeInfoUtils;
   private final String service, version, instance, runtime;
+  private final RuntimeInfoUtils runtimeInfoUtils;
 
   @Inject
   public AppEngineManager(@Named("GAE_SERVICE") final String service,
@@ -35,6 +35,10 @@ public class AppEngineManager {
         .build();
   }
 
+  /**
+   * Detect if current process is being run on an App Engine. Based on
+   * https://cloud.google.com/appengine/docs/standard/java11/runtime#environment_variables
+   */
   public boolean isAppEngine() {
     return !runtimeInfoUtils.isNullOrBlank(instance)
         && !runtimeInfoUtils.isNullOrBlank(service)

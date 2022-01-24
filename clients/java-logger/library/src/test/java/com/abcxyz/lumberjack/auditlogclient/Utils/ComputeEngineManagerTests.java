@@ -4,18 +4,9 @@ package com.abcxyz.lumberjack.auditlogclient.Utils;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
-import com.abcxyz.lumberjack.auditlogclient.utils.CloudFunctionManager;
 import com.abcxyz.lumberjack.auditlogclient.utils.ComputeEngineManager;
 import com.abcxyz.lumberjack.auditlogclient.utils.RuntimeInfoUtils;
 import com.google.api.MonitoredResource;
-import java.io.IOException;
-import java.net.URL;
-import java.net.URLConnection;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -45,7 +36,8 @@ public class ComputeEngineManagerTests {
 
   @Test
   void detectGCEResourceThrowsExceptionResourceOnInvalidMetadata() {
-    Mockito.doThrow(new IllegalArgumentException("Exception")).when(runtimeInfoUtils).getProjectId();
+    Mockito.doThrow(new IllegalArgumentException("Exception")).when(runtimeInfoUtils)
+        .getProjectId();
     assertThrows(IllegalArgumentException.class, () -> computeEngineManager.detectGCEResource());
   }
 }

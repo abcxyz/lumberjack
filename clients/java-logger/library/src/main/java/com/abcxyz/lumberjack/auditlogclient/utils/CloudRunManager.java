@@ -33,6 +33,11 @@ public class CloudRunManager {
         .build();
   }
 
+
+  /**
+   * Detect if current process is being run on an cloud functions. Based on
+   * https://cloud.google.com/anthos/run/docs/reference/container-contract#env-vars
+   */
   public boolean isCloudRun() {
     return !runtimeInfoUtils.isNullOrBlank(configuration)
         && !runtimeInfoUtils.isNullOrBlank(service)

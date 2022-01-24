@@ -4,9 +4,6 @@ import com.google.api.MonitoredResource;
 import com.google.inject.Inject;
 import com.google.inject.name.Named;
 import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 
 public class KubernetesManager {
 
@@ -39,7 +36,6 @@ public class KubernetesManager {
     String clusterName = runtimeInfoUtils.getClusterName();
     return clusterName != null && !clusterName.isBlank();
   }
-
 
 
 }
