@@ -67,6 +67,23 @@ module "shell_app" {
   artifact_registry_location = var.artifact_registry_location
 }
 
+module "java_grpc_app" {
+  source = "../shell-app"
+
+  build_command              = var.java_grpc_build_command
+  project_id                 = var.app_project_id
+  service_name               = "${var.service_name}-java-grpc"
+  env_vars                   = merge(local.env_vars, var.env_vars)
+  tag                        = var.tag
+  use_random_tag             = var.use_random_tag
+  region                     = var.region
+  artifact_registry_location = var.artifact_registry_location
+}
+
 output "instance_addresses" {
   value = [for key, _ in var.build_commands : module.shell_app[key].instance_address]
+}
+
+output "grpc_address" {
+  value = module.java_grpc_app.instance_address
 }
