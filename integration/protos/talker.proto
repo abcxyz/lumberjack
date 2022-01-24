@@ -28,7 +28,7 @@ service Talker {
   // request/response.
   rpc Whisper(WhisperRequest) returns (WhisperResponse);
   // Say bye with something OK to audit log in request,
-  // but the response is empty.
+  // but we don't care the response at all.
   rpc Bye(ByeRequest) returns (ByeResponse);
 
   // TODO(#81): Add streaming API as well.
@@ -58,4 +58,6 @@ message ByeRequest {
   string message = 2;
 }
 
-message ByeResponse {}
+message ByeResponse {
+  string message = 1;
+}

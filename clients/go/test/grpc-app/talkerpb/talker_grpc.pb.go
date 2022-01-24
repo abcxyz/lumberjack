@@ -24,8 +24,8 @@ type TalkerClient interface {
 	// Whisper with something sensitive (shouldn't be audit logged) in
 	// request/response.
 	Whisper(ctx context.Context, in *WhisperRequest, opts ...grpc.CallOption) (*WhisperResponse, error)
-	// Say byte with something OK to audit log in request,
-	// but the response is empty.
+	// Say bye with something OK to audit log in request,
+	// but we don't care the response at all.
 	Bye(ctx context.Context, in *ByeRequest, opts ...grpc.CallOption) (*ByeResponse, error)
 }
 
@@ -73,8 +73,8 @@ type TalkerServer interface {
 	// Whisper with something sensitive (shouldn't be audit logged) in
 	// request/response.
 	Whisper(context.Context, *WhisperRequest) (*WhisperResponse, error)
-	// Say byte with something OK to audit log in request,
-	// but the response is empty.
+	// Say bye with something OK to audit log in request,
+	// but we don't care the response at all.
 	Bye(context.Context, *ByeRequest) (*ByeResponse, error)
 	mustEmbedUnimplementedTalkerServer()
 }
