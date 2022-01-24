@@ -3,7 +3,7 @@ Protos and server/client are largely based on the examples found in the grpc-jav
 Build:
 
 ```
-mvn verify
+mvn clean package
 ```
 
 Run the server (fill out app project and server url below):
