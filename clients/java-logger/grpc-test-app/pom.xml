@@ -159,7 +159,7 @@
           <archive>
             <manifest>
               <addClasspath>true</addClasspath>
-              <mainClass>abcxyz.helloworld.HelloWorldServerTls</mainClass>
+              <mainClass>abcxyz.lumberjack.test.talker.TalkerService</mainClass>
             </manifest>
           </archive>
         </configuration>
@@ -191,7 +191,7 @@
             <configuration>
               <includeStdTypes>true</includeStdTypes>
               <inputDirectories>
-                <include>src/main/proto</include>
+                <include>${lumberjack.basedir}/integration/protos</include>
               </inputDirectories>
               <optimizeCodegen>false</optimizeCodegen>
               <outputTargets>
