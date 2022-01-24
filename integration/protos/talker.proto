@@ -27,7 +27,7 @@ service Talker {
   // Whisper with something sensitive (shouldn't be audit logged) in
   // request/response.
   rpc Whisper(WhisperRequest) returns (WhisperResponse);
-  // Say byte with something OK to audit log in request,
+  // Say bye with something OK to audit log in request,
   // but the response is empty.
   rpc Bye(ByeRequest) returns (ByeResponse);
 
