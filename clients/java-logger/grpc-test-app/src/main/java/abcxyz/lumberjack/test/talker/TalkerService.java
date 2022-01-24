@@ -31,14 +31,14 @@ package abcxyz.lumberjack.test.talker;
  * limitations under the License.
  */
 
-import com.abcxyz.lumberjack.test.talker.TalkerGrpc;
-import com.abcxyz.lumberjack.test.talker.HelloResponse;
-import com.abcxyz.lumberjack.test.talker.HelloRequest;
-import com.abcxyz.lumberjack.test.talker.WhisperResponse;
-import com.abcxyz.lumberjack.test.talker.WhisperRequest;
 import com.abcxyz.lumberjack.auditlogclient.AuditLoggingServerInterceptor;
 import com.abcxyz.lumberjack.auditlogclient.AuditLogs;
 import com.abcxyz.lumberjack.auditlogclient.modules.AuditLoggingModule;
+import com.abcxyz.lumberjack.test.talker.HelloRequest;
+import com.abcxyz.lumberjack.test.talker.HelloResponse;
+import com.abcxyz.lumberjack.test.talker.TalkerGrpc;
+import com.abcxyz.lumberjack.test.talker.WhisperRequest;
+import com.abcxyz.lumberjack.test.talker.WhisperResponse;
 import com.google.cloud.audit.AuditLog;
 import com.google.inject.Guice;
 import com.google.inject.Injector;
@@ -98,17 +98,16 @@ public class TalkerService {
     AuditLoggingServerInterceptor interceptor =
         injector.getInstance(AuditLoggingServerInterceptor.class);
 
-    final TalkerService server =
-        new TalkerService(Integer.parseInt(System.getenv("PORT")));
+    final TalkerService server = new TalkerService(Integer.parseInt(System.getenv("PORT")));
     server.start(interceptor);
     server.blockUntilShutdown();
   }
 
   private static class TalkerImpl extends TalkerGrpc.TalkerImplBase {
-
     @Override
     public void hello(HelloRequest req, StreamObserver<HelloResponse> responseObserver) {
-      HelloResponse reply = HelloResponse.newBuilder().setMessage("Hello " + req.getMessage()).build();
+      HelloResponse reply =
+          HelloResponse.newBuilder().setMessage("Hello " + req.getMessage()).build();
 
       AuditLog.Builder auditLogBuilder = AuditLogs.getBuilderFromContext();
       auditLogBuilder.setResourceName("MyResource");
@@ -120,7 +119,8 @@ public class TalkerService {
 
     @Override
     public void whisper(WhisperRequest req, StreamObserver<WhisperResponse> responseObserver) {
-      WhisperResponse reply = WhisperResponse.newBuilder().setMessage("I'll keep that secret!").build();
+      WhisperResponse reply =
+          WhisperResponse.newBuilder().setMessage("I'll keep that secret!").build();
 
       logger.info("replying");
       responseObserver.onNext(reply);
