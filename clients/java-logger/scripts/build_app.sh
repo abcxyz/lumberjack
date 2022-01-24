@@ -15,5 +15,30 @@
 
 set -eEuo pipefail
 
-ROOT=$(dirname "$0")
-/bin/bash ${ROOT}/build_app.sh ${ROOT}/shell_app.dockerfile
+DOCKER_FILE=$1
+
+if [ -z "${DOCKER_FILE:-}" ]; then
+  echo "✋ Missing argument (docker file)!" >&2
+  exit 1
+fi
+
+if [ -z "${REPO:-}" ]; then
+  echo "✋ Missing REPO!" >&2
+  exit 1
+fi
+
+if [ -z "${APP_NAME:-}" ]; then
+  echo "✋ Missing APP_NAME!" >&2
+  exit 1
+fi
+
+if [ -z "${TAG:-}" ]; then
+  echo "✋ Missing TAG!" >&2
+  exit 1
+fi
+
+ROOT="$(cd "$(dirname "$0")/.." &>/dev/null; pwd -P)"
+IMAGE_NAME=${REPO}/${APP_NAME}:${TAG}
+
+docker build -f ${DOCKER_FILE} -t ${IMAGE_NAME} ${ROOT}/../..
+docker push ${IMAGE_NAME}
