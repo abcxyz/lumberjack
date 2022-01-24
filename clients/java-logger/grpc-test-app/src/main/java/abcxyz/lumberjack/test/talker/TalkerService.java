@@ -34,6 +34,8 @@ package abcxyz.lumberjack.test.talker;
 import com.abcxyz.lumberjack.test.talker.TalkerGrpc;
 import com.abcxyz.lumberjack.test.talker.HelloResponse;
 import com.abcxyz.lumberjack.test.talker.HelloRequest;
+import com.abcxyz.lumberjack.test.talker.WhisperResponse;
+import com.abcxyz.lumberjack.test.talker.WhisperRequest;
 import com.abcxyz.lumberjack.auditlogclient.AuditLoggingServerInterceptor;
 import com.abcxyz.lumberjack.auditlogclient.AuditLogs;
 import com.abcxyz.lumberjack.auditlogclient.modules.AuditLoggingModule;
@@ -110,6 +112,15 @@ public class TalkerService {
 
       AuditLog.Builder auditLogBuilder = AuditLogs.getBuilderFromContext();
       auditLogBuilder.setResourceName("MyResource");
+
+      logger.info("replying");
+      responseObserver.onNext(reply);
+      responseObserver.onCompleted();
+    }
+
+    @Override
+    public void whisper(WhisperRequest req, StreamObserver<WhisperResponse> responseObserver) {
+      WhisperResponse reply = WhisperResponse.newBuilder().setMessage("I'll keep that secret!").build();
 
       logger.info("replying");
       responseObserver.onNext(reply);

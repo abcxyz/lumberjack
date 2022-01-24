@@ -34,6 +34,8 @@ package abcxyz.lumberjack.test.talker;
 import com.abcxyz.lumberjack.test.talker.TalkerGrpc;
 import com.abcxyz.lumberjack.test.talker.HelloResponse;
 import com.abcxyz.lumberjack.test.talker.HelloRequest;
+import com.abcxyz.lumberjack.test.talker.WhisperResponse;
+import com.abcxyz.lumberjack.test.talker.WhisperRequest;
 import com.google.auth.oauth2.AccessToken;
 import com.google.auth.oauth2.GoogleCredentials;
 import io.grpc.ManagedChannel;
@@ -67,6 +69,20 @@ public class TalkerClient {
     HelloResponse response;
     try {
       response = blockingStub.hello(request);
+    } catch (StatusRuntimeException e) {
+      logger.log(Level.WARNING, "RPC failed: {0}", e.getStatus());
+      throw e;
+    }
+    logger.info("Greeting: " + response.getMessage());
+  }
+
+  /** Whisper secrets to server. */
+  public void whisper(String secret) {
+    logger.info("Will try to whisper " + secret + " ...");
+    WhisperRequest request = WhisperRequest.newBuilder().setMessage(secret).build();
+    WhisperResponse response;
+    try {
+      response = blockingStub.whisper(request);
     } catch (StatusRuntimeException e) {
       logger.log(Level.WARNING, "RPC failed: {0}", e.getStatus());
       throw e;
@@ -112,6 +128,7 @@ public class TalkerClient {
       try {
         TalkerClient client = new TalkerClient(channel, credentials);
         client.greet(host);
+        client.whisper("This is a secret! Don't audit log this string");
       } finally {
         channel.shutdownNow().awaitTermination(5, TimeUnit.SECONDS);
       }
