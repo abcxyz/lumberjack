@@ -272,7 +272,6 @@ func TestUnaryInterceptor(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			defer c.Stop()
 			i.Client = c
 
 			fromRawJWT := &security.FromRawJWT{
@@ -290,6 +289,10 @@ func TestUnaryInterceptor(t *testing.T) {
 
 			if diff := cmp.Diff(tc.wantLogReq, r.gotReq, protocmp.Transform()); diff != "" {
 				t.Errorf("UnaryInterceptor(...) got diff in automatically emitted LogReq (-want, +got): %v", diff)
+			}
+
+			if err := c.Stop(); err != nil {
+				t.Fatal(err)
 			}
 		})
 	}

@@ -67,7 +67,7 @@ func (j *FromRawJWT) RequestPrincipal(ctx context.Context) (string, error) {
 	}
 
 	// Retrieve the principal from claims.
-	principal := claims["email"].(string)
+	principal := claims[emailKey].(string)
 	if principal == "" {
 		return "", fmt.Errorf("nil principal under claims %q", emailKey)
 	}

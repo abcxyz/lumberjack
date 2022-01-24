@@ -40,7 +40,7 @@ type Interceptor struct {
 	Rules           []*alpb.AuditRule
 }
 
-// UnaryInterceptor is a unary interceptor that automatically emits application audit logs.
+// UnaryInterceptor is a gRPC unary interceptor that automatically emits application audit logs.
 func (i *Interceptor) UnaryInterceptor(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error) {
 	fullMethodName := info.FullMethod
 	mostRelevantRule := mostRelevantRule(fullMethodName, i.Rules)
@@ -90,7 +90,7 @@ func (i *Interceptor) UnaryInterceptor(ctx context.Context, req interface{}, inf
 	//   - fill the field `Payload.ResourceName`
 	handlerResp, handlerErr := handler(ctx, req)
 
-	// Autofill `Payload.Status` and `Payload.Response`.
+	// Autofill `Payload.Status`.
 	status, _ := status.FromError(handlerErr)
 	logReq.Payload.Status.Code = int32(status.Code())
 	logReq.Payload.Status.Message = status.Message()
@@ -106,8 +106,7 @@ func (i *Interceptor) UnaryInterceptor(ctx context.Context, req interface{}, inf
 
 	// Set log type.
 	logReq.Type = alpb.AuditLogRequest_UNSPECIFIED
-	t, ok := alpb.AuditLogRequest_LogType_value[mostRelevantRule.LogType]
-	if ok {
+	if t, ok := alpb.AuditLogRequest_LogType_value[mostRelevantRule.LogType]; ok {
 		logReq.Type = alpb.AuditLogRequest_LogType(t)
 	}
 
@@ -125,13 +124,10 @@ type auditLogReqKey struct{}
 // LogReqInCtx returns the AuditLogRequest stored in the context.
 // If the AuditLogRequest doesn't exist, we return an empty one.
 func LogReqInCtx(ctx context.Context) *alpb.AuditLogRequest {
-	r, ok := ctx.Value(auditLogReqKey{}).(*alpb.AuditLogRequest)
-	if ok {
+	if r, ok := ctx.Value(auditLogReqKey{}).(*alpb.AuditLogRequest); ok {
 		return r
 	}
-	return &alpb.AuditLogRequest{
-		Payload: &calpb.AuditLog{},
-	}
+	return &alpb.AuditLogRequest{Payload: &calpb.AuditLog{}}
 }
 
 // toProtoStruct converts v, which must marshal into a JSON object,
