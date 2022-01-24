@@ -27,5 +27,5 @@ gcloud run deploy $APP_NAME \
 In another terminal, send requests from the client:
 ```
 export SERVICE_URL=$(gcloud run services describe ${APP_NAME} --platform managed --region us-west1 --format 'value(status.url)')
-mvn exec:java -Dexec.mainClass=HelloWorldClientTls -Dexec.args="${SERVICE_URL} 443 $(gcloud auth print-identity-token)"
+mvn exec:java -Dexec.mainClass=TalkerClient -Dexec.args="${SERVICE_URL} 443 $(gcloud auth print-identity-token)"
 ```
