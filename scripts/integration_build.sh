@@ -37,8 +37,8 @@ if [[ $GCLOUD_ACCOUNT == $CI_SERVICE_ACCOUNT ]]; then
 else
   ID_TOKEN=$(gcloud auth print-identity-token)
 fi
-# Override the default filters that exclude service accounts during integration tests.
-ENV_VARS='env_vars={"AUDIT_CLIENT_CONDITION_REGEX_PRINCIPAL_INCLUDE":".iam.gserviceaccount.com$"}'
+# Override the default filters to include all principals.
+ENV_VARS='env_vars={"AUDIT_CLIENT_CONDITION_REGEX_PRINCIPAL_INCLUDE":".*"}'
 
 terraform -chdir=${TF_CI_WITH_SERVER_DIR} init
 terraform -chdir=${TF_CI_WITH_SERVER_DIR} apply -auto-approve \
