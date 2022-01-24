@@ -42,6 +42,12 @@ type Interceptor struct {
 
 // UnaryInterceptor is a unary interceptor that automatically emits application audit logs.
 func (i *Interceptor) UnaryInterceptor(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error) {
+	fullMethodName := info.FullMethod
+	mostRelevantRule := mostRelevantRule(fullMethodName, i.Rules)
+	if mostRelevantRule == nil {
+		return handler(ctx, req)
+	}
+
 	logReq := &alpb.AuditLogRequest{
 		Payload: &calpb.AuditLog{
 			AuthenticationInfo: &calpb.AuthenticationInfo{},
@@ -50,12 +56,12 @@ func (i *Interceptor) UnaryInterceptor(ctx context.Context, req interface{}, inf
 	}
 
 	// Autofill `Payload.ServiceName` and `Payload.MethodName`.
-	s := strings.Split(info.FullMethod, "/")
+	s := strings.Split(fullMethodName, "/")
 	if len(s) < 3 || len(s[0]) != 0 {
 		return nil, fmt.Errorf("info.FullMethod should have format /$SERVICE_NAME/$METHOD_NAME")
 	}
 	logReq.Payload.ServiceName = s[1]
-	logReq.Payload.MethodName = info.FullMethod
+	logReq.Payload.MethodName = fullMethodName
 
 	// Autofill `Payload.AuthenticationInfo.PrincipalEmail`.
 	principal, err := i.SecurityContext.RequestPrincipal(ctx)
@@ -64,12 +70,15 @@ func (i *Interceptor) UnaryInterceptor(ctx context.Context, req interface{}, inf
 	}
 	logReq.Payload.AuthenticationInfo.PrincipalEmail = principal
 
-	// Autofill `Payload.Request` and `Payload.MethodName`
-	reqStruct, err := toProtoStruct(req)
-	if err != nil {
-		return nil, fmt.Errorf("failed converting req %+v into a Google struct proto: %w", req, err)
+	// Autofill `Payload.Request`.
+	d := mostRelevantRule.Directive
+	if d == alpb.AuditRuleDirectiveRequestAndResponse || d == alpb.AuditRuleDirectiveRequestOnly {
+		reqStruct, err := toProtoStruct(req)
+		if err != nil {
+			return nil, fmt.Errorf("failed converting req %+v into a Google struct proto: %w", req, err)
+		}
+		logReq.Payload.Request = reqStruct
 	}
-	logReq.Payload.Request = reqStruct
 
 	// Store our log req in the context to make it accessible
 	// to the handler source code.
@@ -87,11 +96,20 @@ func (i *Interceptor) UnaryInterceptor(ctx context.Context, req interface{}, inf
 	logReq.Payload.Status.Message = status.Message()
 
 	// Autofill `Payload.Response`.
-	respStruct, err := toProtoStruct(handlerResp)
-	if err != nil {
-		return nil, fmt.Errorf("failed converting resp %+v into a Google struct proto: %w", handlerResp, err)
+	if d == alpb.AuditRuleDirectiveRequestAndResponse {
+		respStruct, err := toProtoStruct(handlerResp)
+		if err != nil {
+			return nil, fmt.Errorf("failed converting resp %+v into a Google struct proto: %w", handlerResp, err)
+		}
+		logReq.Payload.Response = respStruct
 	}
-	logReq.Payload.Response = respStruct
+
+	// Set log type.
+	logReq.Type = alpb.AuditLogRequest_UNSPECIFIED
+	t, ok := alpb.AuditLogRequest_LogType_value[mostRelevantRule.LogType]
+	if ok {
+		logReq.Type = alpb.AuditLogRequest_LogType(t)
+	}
 
 	// Emits the log in best-effort logging mode.
 	err = i.Log(ctx, logReq)

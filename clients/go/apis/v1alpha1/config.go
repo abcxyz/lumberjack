@@ -202,27 +202,30 @@ type AuditRule struct {
 
 // Validate validates the audit rule.
 func (r *AuditRule) Validate() error {
+	// todo: add tests
 	if r.Selector == "" {
 		return fmt.Errorf("audit rule selector is empty")
 	}
-	if r.Directive != "" {
-		switch r.Directive {
-		case AuditRuleDirectiveDefault:
-		case AuditRuleDirectiveRequestOnly:
-		case AuditRuleDirectiveRequestAndResponse:
-		default:
-			return fmt.Errorf("unexpected rule.Directive %q want one of [%q, %q, %q]",
-				r.Directive, AuditRuleDirectiveDefault, AuditRuleDirectiveRequestOnly, AuditRuleDirectiveRequestAndResponse)
-		}
+	if r.Directive == "" {
+		return fmt.Errorf("audit rule directive is empty")
 	}
-	if r.LogType != "" {
-		switch r.LogType {
-		case AuditLogRequest_ADMIN_ACTIVITY.String():
-		case AuditLogRequest_DATA_ACCESS.String():
-		default:
-			return fmt.Errorf("unexpected rule.LogType %q want one of [%q, %q]",
-				r.LogType, AuditLogRequest_ADMIN_ACTIVITY.String(), AuditLogRequest_DATA_ACCESS.String())
-		}
+	if r.LogType == "" {
+		return fmt.Errorf("audit rule log type is empty")
+	}
+	switch r.Directive {
+	case AuditRuleDirectiveDefault:
+	case AuditRuleDirectiveRequestOnly:
+	case AuditRuleDirectiveRequestAndResponse:
+	default:
+		return fmt.Errorf("unexpected rule.Directive %q want one of [%q, %q, %q]",
+			r.Directive, AuditRuleDirectiveDefault, AuditRuleDirectiveRequestOnly, AuditRuleDirectiveRequestAndResponse)
+	}
+	switch r.LogType {
+	case AuditLogRequest_ADMIN_ACTIVITY.String():
+	case AuditLogRequest_DATA_ACCESS.String():
+	default:
+		return fmt.Errorf("unexpected rule.LogType %q want one of [%q, %q]",
+			r.LogType, AuditLogRequest_ADMIN_ACTIVITY.String(), AuditLogRequest_DATA_ACCESS.String())
 	}
 	return nil
 }

@@ -59,6 +59,7 @@ func TestUnaryInterceptor(t *testing.T) {
 	tests := []struct {
 		name          string
 		ctx           context.Context
+		auditRules    []*alpb.AuditRule
 		req           interface{}
 		info          *grpc.UnaryServerInfo
 		handler       grpc.UnaryHandler
@@ -70,6 +71,11 @@ func TestUnaryInterceptor(t *testing.T) {
 			ctx: metadata.NewIncomingContext(context.Background(), metadata.New(map[string]string{
 				"authorization": jwt,
 			})),
+			auditRules: []*alpb.AuditRule{{
+				Selector:  "/ExampleService/ExampleMethod",
+				Directive: alpb.AuditRuleDirectiveRequestAndResponse,
+				LogType:   "ADMIN_ACTIVITY",
+			}},
 			info: &grpc.UnaryServerInfo{
 				FullMethod: "/ExampleService/ExampleMethod",
 			},
@@ -78,6 +84,7 @@ func TestUnaryInterceptor(t *testing.T) {
 				return nil, nil
 			},
 			wantLogReq: &alpb.AuditLogRequest{
+				Type: alpb.AuditLogRequest_ADMIN_ACTIVITY,
 				Payload: &calpb.AuditLog{
 					ServiceName:  "ExampleService",
 					MethodName:   "/ExampleService/ExampleMethod",
@@ -92,10 +99,15 @@ func TestUnaryInterceptor(t *testing.T) {
 			},
 		},
 		{
-			name: "interceptor_autofills__and_emits_log_on_failed_rpc",
+			name: "interceptor_autofills_failed_rpc",
 			ctx: metadata.NewIncomingContext(context.Background(), metadata.New(map[string]string{
 				"authorization": jwt,
 			})),
+			auditRules: []*alpb.AuditRule{{
+				Selector:  "*",
+				Directive: alpb.AuditRuleDirectiveRequestAndResponse,
+				LogType:   "DATA_ACCESS",
+			}},
 			info: &grpc.UnaryServerInfo{
 				FullMethod: "/ExampleService/ExampleMethod",
 			},
@@ -104,6 +116,7 @@ func TestUnaryInterceptor(t *testing.T) {
 				return nil, grpcstatus.Error(codes.Internal, "fake error")
 			},
 			wantLogReq: &alpb.AuditLogRequest{
+				Type: alpb.AuditLogRequest_DATA_ACCESS,
 				Payload: &calpb.AuditLog{
 					ServiceName:  "ExampleService",
 					MethodName:   "/ExampleService/ExampleMethod",
@@ -122,10 +135,79 @@ func TestUnaryInterceptor(t *testing.T) {
 			wantErrSubstr: "fake error",
 		},
 		{
-			name: "err_from_malformed_method_info",
+			name: "default_audit_rule_directive_omits_req_and_resp",
 			ctx: metadata.NewIncomingContext(context.Background(), metadata.New(map[string]string{
 				"authorization": jwt,
 			})),
+			auditRules: []*alpb.AuditRule{{
+				Selector:  "/ExampleService/ExampleMethod",
+				Directive: alpb.AuditRuleDirectiveDefault,
+			}},
+			info: &grpc.UnaryServerInfo{
+				FullMethod: "/ExampleService/ExampleMethod",
+			},
+			handler: func(ctx context.Context, req interface{}) (interface{}, error) {
+				LogReqInCtx(ctx).Payload.ResourceName = "ExampleResourceName"
+				return nil, nil
+			},
+			wantLogReq: &alpb.AuditLogRequest{
+				Payload: &calpb.AuditLog{
+					ServiceName:  "ExampleService",
+					MethodName:   "/ExampleService/ExampleMethod",
+					ResourceName: "ExampleResourceName",
+					AuthenticationInfo: &calpb.AuthenticationInfo{
+						PrincipalEmail: "user@example.com",
+					},
+					Status: &protostatus.Status{},
+				},
+			},
+		},
+		{
+			name: "audit_rule_directive_omits_resp",
+			ctx: metadata.NewIncomingContext(context.Background(), metadata.New(map[string]string{
+				"authorization": jwt,
+			})),
+			auditRules: []*alpb.AuditRule{{
+				Selector:  "/ExampleService/ExampleMethod",
+				Directive: alpb.AuditRuleDirectiveRequestOnly,
+			}},
+			info: &grpc.UnaryServerInfo{
+				FullMethod: "/ExampleService/ExampleMethod",
+			},
+			handler: func(ctx context.Context, req interface{}) (interface{}, error) {
+				LogReqInCtx(ctx).Payload.ResourceName = "ExampleResourceName"
+				return nil, nil
+			},
+			wantLogReq: &alpb.AuditLogRequest{
+				Payload: &calpb.AuditLog{
+					ServiceName:  "ExampleService",
+					MethodName:   "/ExampleService/ExampleMethod",
+					ResourceName: "ExampleResourceName",
+					AuthenticationInfo: &calpb.AuthenticationInfo{
+						PrincipalEmail: "user@example.com",
+					},
+					Request: &structpb.Struct{},
+					Status:  &protostatus.Status{},
+				},
+			},
+		},
+		{
+			name: "audit_rule_is_innapplicable",
+			auditRules: []*alpb.AuditRule{{
+				Selector: "/ExampleService/Inapplicable",
+			}},
+			info: &grpc.UnaryServerInfo{
+				FullMethod: "/ExampleService/ExampleMethod",
+			},
+			handler: func(ctx context.Context, req interface{}) (interface{}, error) {
+				return nil, nil
+			},
+		},
+		{
+			name: "err_from_malformed_method_info",
+			auditRules: []*alpb.AuditRule{{
+				Selector: "*",
+			}},
 			info: &grpc.UnaryServerInfo{
 				FullMethod: "bananas",
 			},
@@ -136,6 +218,9 @@ func TestUnaryInterceptor(t *testing.T) {
 			ctx: metadata.NewIncomingContext(context.Background(), metadata.New(map[string]string{
 				"authorization": "bananas",
 			})),
+			auditRules: []*alpb.AuditRule{{
+				Selector: "*",
+			}},
 			info: &grpc.UnaryServerInfo{
 				FullMethod: "/ExampleService/ExampleMethod",
 			},
@@ -146,6 +231,10 @@ func TestUnaryInterceptor(t *testing.T) {
 			ctx: metadata.NewIncomingContext(context.Background(), metadata.New(map[string]string{
 				"authorization": jwt,
 			})),
+			auditRules: []*alpb.AuditRule{{
+				Selector:  "*",
+				Directive: alpb.AuditRuleDirectiveRequestAndResponse,
+			}},
 			info: &grpc.UnaryServerInfo{
 				FullMethod: "/ExampleService/ExampleMethod",
 			},
@@ -158,7 +247,7 @@ func TestUnaryInterceptor(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
-			i := &Interceptor{}
+			i := &Interceptor{Rules: tc.auditRules}
 
 			r := &fakeServer{}
 			s := grpc.NewServer()
