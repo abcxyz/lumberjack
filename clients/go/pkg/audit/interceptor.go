@@ -72,7 +72,7 @@ func (i *Interceptor) UnaryInterceptor(ctx context.Context, req interface{}, inf
 	principal, err := i.SecurityContext.RequestPrincipal(ctx)
 	if err != nil {
 		zlogger.Warn("audit interceptor failed to get request principal; this is likely caused a misconfiguration of audit client (security_context)",
-			zap.Any("context", ctx), zap.Any("security_context", i.SecurityContext), zap.Error(err))
+			zap.Any("security_context", i.SecurityContext), zap.Error(err))
 		return handler(ctx, req)
 	}
 	logReq.Payload.AuthenticationInfo = &calpb.AuthenticationInfo{PrincipalEmail: principal}
