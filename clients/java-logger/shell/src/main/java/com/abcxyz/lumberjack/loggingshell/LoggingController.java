@@ -20,8 +20,13 @@ import com.abcxyz.lumberjack.auditlogclient.LoggingClient;
 import com.abcxyz.lumberjack.auditlogclient.processor.LogProcessingException;
 import com.abcxyz.lumberjack.v1alpha1.AuditLogRequest;
 import com.abcxyz.lumberjack.v1alpha1.AuditLogRequest.LogType;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.cloud.audit.AuditLog;
 import com.google.cloud.audit.AuthenticationInfo;
+import com.google.protobuf.Struct;
+import com.google.protobuf.Value;
+import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
@@ -38,7 +43,16 @@ import org.springframework.web.bind.annotation.RestController;
 public class LoggingController {
   static final String TRACE_ID_PARAMETER_KEY = "trace_id";
   private static final String SERVICE_NAME = "java-shell-app";
+  private static final String METHOD_NAME = "abcxyz.LoggingShellApplication.GetLoggingShell";
+  private static final String RESOURCE_NAME = "projects/LoggingShell";
+  private static final String METADATA_FIELD_NAME = "data";
+  private static final Map<String, String> METADATA_MAP =
+      Map.of(
+          "fieldA", "valueA",
+          "fieldB", "valueB",
+          "fieldC", "valueC");
 
+  private final ObjectMapper objectMapper;
   private final LoggingClient loggingClient;
 
   @GetMapping
@@ -46,12 +60,22 @@ public class LoggingController {
   void loggingShell(
       @RequestParam(value = TRACE_ID_PARAMETER_KEY) String traceId,
       @RequestAttribute(TokenInterceptor.INTERCEPTOR_USER_EMAIL_KEY) String userEmail)
-      throws LogProcessingException {
+      throws LogProcessingException, JsonProcessingException {
     AuditLogRequest record =
         AuditLogRequest.newBuilder()
             .setPayload(
                 AuditLog.newBuilder()
                     .setServiceName(SERVICE_NAME)
+                    .setMethodName(METHOD_NAME)
+                    .setResourceName(RESOURCE_NAME)
+                    .setMetadata(
+                        Struct.newBuilder()
+                            .putFields(
+                                METADATA_FIELD_NAME,
+                                Value.newBuilder()
+                                    .setStringValue(objectMapper.writeValueAsString(METADATA_MAP))
+                                    .build())
+                            .build())
                     .setAuthenticationInfo(
                         AuthenticationInfo.newBuilder().setPrincipalEmail(userEmail).build()))
             .setType(LogType.DATA_ACCESS)

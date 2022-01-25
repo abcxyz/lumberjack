@@ -31,10 +31,19 @@ public class TokenInterceptor implements HandlerInterceptor {
   static final String AUTHORIZATION_HEADER_NAME = "Authorization";
   static final String JWT_EMAIL_FIELD_KEY = "email";
   static final String INTERCEPTOR_USER_EMAIL_KEY = "user_email";
+  private static final String IAP_USER_EMAIL_HEADER = "X-Goog-Authenticated-User-Email";
 
   @Override
   public boolean preHandle(
       HttpServletRequest request, @Nonnull HttpServletResponse response, @Nonnull Object handler) {
+    // Check if user email available via IAP.
+    String iapUserEmail = request.getHeader(IAP_USER_EMAIL_HEADER);
+    if (iapUserEmail != null && !iapUserEmail.isBlank()) {
+      request.setAttribute(INTERCEPTOR_USER_EMAIL_KEY, iapUserEmail);
+      return true;
+    }
+
+    // If user's email not available via IAP, parse the JWT to obtain the user email.
     String bearerAccessToken = parseBearerAccessToken(request.getHeader(AUTHORIZATION_HEADER_NAME));
     Jwt<?, Claims> jwt = Jwts.parserBuilder().build().parseClaimsJwt(bearerAccessToken);
     Claims claims = jwt.getBody();
