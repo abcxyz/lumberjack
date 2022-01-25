@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"regexp"
 
+	"go.uber.org/zap"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -47,7 +48,7 @@ func (i *Interceptor) UnaryInterceptor(ctx context.Context, req interface{}, inf
 	zlogger := zlogger.FromContext(ctx)
 	mostRelevantRule := mostRelevantRule(info.FullMethod, i.Rules)
 	if mostRelevantRule == nil {
-		zlogger.Infow("no audit rule matching method name", "audit rules", i.Rules, "method name", info.FullMethod)
+		zlogger.Debug("no audit rule matching the method name", zap.String("method_name", info.FullMethod), zap.Any("audit_rules", i.Rules))
 		return handler(ctx, req)
 	}
 
@@ -63,14 +64,15 @@ func (i *Interceptor) UnaryInterceptor(ctx context.Context, req interface{}, inf
 	logReq.Payload.MethodName = info.FullMethod
 	serviceName, err := serviceName(info.FullMethod)
 	if err != nil {
-		return nil, status.Errorf(codes.FailedPrecondition, "unary interceptor: %v", err)
+		return nil, status.Errorf(codes.FailedPrecondition, "audit interceptor: %v", err)
 	}
 	logReq.Payload.ServiceName = serviceName
 
 	// Autofill `Payload.AuthenticationInfo.PrincipalEmail`.
 	principal, err := i.SecurityContext.RequestPrincipal(ctx)
 	if err != nil {
-		zlogger.Warnw("unary interceptor failed getting principal from ctx", "ctx", ctx, "security context", i.SecurityContext, "error", err)
+		zlogger.Warn("audit interceptor failed to get request principal; this is likely caused a misconfiguration of audit client (security_context)",
+			zap.Any("context", ctx), zap.Any("security_context", i.SecurityContext), zap.Error(err))
 		return handler(ctx, req)
 	}
 	logReq.Payload.AuthenticationInfo = &calpb.AuthenticationInfo{PrincipalEmail: principal}
@@ -79,7 +81,7 @@ func (i *Interceptor) UnaryInterceptor(ctx context.Context, req interface{}, inf
 	d := mostRelevantRule.Directive
 	if d == alpb.AuditRuleDirectiveRequestAndResponse || d == alpb.AuditRuleDirectiveRequestOnly {
 		if reqStruct, err := toProtoStruct(req); err != nil {
-			return nil, status.Errorf(codes.Internal, "unary interceptor failed converting req into a Google struct proto: %v", err)
+			return nil, status.Errorf(codes.Internal, "audit interceptor failed converting req into a Google struct proto: %v", err)
 		} else {
 			logReq.Payload.Request = reqStruct
 		}
@@ -102,7 +104,7 @@ func (i *Interceptor) UnaryInterceptor(ctx context.Context, req interface{}, inf
 	// Autofill `Payload.Response`.
 	if d == alpb.AuditRuleDirectiveRequestAndResponse {
 		if respStruct, err := toProtoStruct(handlerResp); err != nil {
-			return nil, status.Errorf(codes.Internal, "unary interceptor failed converting resp into a Google struct proto: %v", err)
+			return nil, status.Errorf(codes.Internal, "audit interceptor failed converting resp into a Google struct proto: %v", err)
 		} else {
 			logReq.Payload.Response = respStruct
 		}
@@ -110,11 +112,13 @@ func (i *Interceptor) UnaryInterceptor(ctx context.Context, req interface{}, inf
 
 	// Emits the log in best-effort logging mode.
 	if err := i.Log(ctx, logReq); err != nil {
-		return nil, status.Errorf(codes.Internal, "unary interceptor failed to emit log: %v", err)
+		return nil, status.Errorf(codes.Internal, "audit interceptor failed to emit log: %v", err)
 	}
 
 	return handlerResp, handlerErr
 }
+
+var serviceNameRegexp = regexp.MustCompile("^/{1,2}(.*?)/")
 
 // serviceName extracts the name of a service from the string `info.FullMethod`.
 // In `info.FullMethod`, the service name is preceded by one or two slashes, and
@@ -122,8 +126,7 @@ func (i *Interceptor) UnaryInterceptor(ctx context.Context, req interface{}, inf
 //   - /$SERVICE_NAME/foo"
 //   - //$SERVICE_NAME/foo/bar
 func serviceName(methodName string) (string, error) {
-	re := regexp.MustCompile("^/{1,2}(.*?)/")
-	groups := re.FindStringSubmatch(methodName)
+	groups := serviceNameRegexp.FindStringSubmatch(methodName)
 	if len(groups) < 2 || groups[1] == "" {
 		return "", fmt.Errorf("failed capturing non-nil service name with regexp %q from %q", re.String(), methodName)
 	}
