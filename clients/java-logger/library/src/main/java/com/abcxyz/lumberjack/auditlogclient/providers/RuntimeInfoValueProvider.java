@@ -1,10 +1,10 @@
 package com.abcxyz.lumberjack.auditlogclient.providers;
 
-import com.abcxyz.lumberjack.auditlogclient.utils.AppEngineManager;
-import com.abcxyz.lumberjack.auditlogclient.utils.CloudFunctionManager;
-import com.abcxyz.lumberjack.auditlogclient.utils.CloudRunManager;
-import com.abcxyz.lumberjack.auditlogclient.utils.ComputeEngineManager;
-import com.abcxyz.lumberjack.auditlogclient.utils.KubernetesManager;
+import com.abcxyz.lumberjack.auditlogclient.utils.runtimeInfo.AppEngineManager;
+import com.abcxyz.lumberjack.auditlogclient.utils.runtimeInfo.CloudFunctionManager;
+import com.abcxyz.lumberjack.auditlogclient.utils.runtimeInfo.CloudRunManager;
+import com.abcxyz.lumberjack.auditlogclient.utils.runtimeInfo.ComputeEngineManager;
+import com.abcxyz.lumberjack.auditlogclient.utils.runtimeInfo.KubernetesManager;
 import com.google.api.MonitoredResource;
 import com.google.inject.Inject;
 import com.google.inject.Provider;
@@ -14,7 +14,6 @@ import com.google.protobuf.Value;
 import com.google.protobuf.util.JsonFormat;
 import java.io.IOException;
 import javax.annotation.Nullable;
-
 
 public class RuntimeInfoValueProvider implements Provider<Value> {
 

@@ -1,10 +1,8 @@
-package com.abcxyz.lumberjack.auditlogclient.Utils;
+package com.abcxyz.lumberjack.auditlogclient.utils.runtimeInfo;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
-import com.abcxyz.lumberjack.auditlogclient.utils.AppEngineManager;
-import com.abcxyz.lumberjack.auditlogclient.utils.RuntimeInfoUtils;
 import com.google.api.MonitoredResource;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -16,16 +14,16 @@ import org.mockito.junit.jupiter.MockitoExtension;
 public class AppEngineManagerTests {
 
   @Mock
-  RuntimeInfoUtils runtimeInfoUtils;
+  RuntimeInfoCommonUtils runtimeInfoCommonUtils;
 
   @Test
   void WithCorrectEnvironmentVariablesIsAppEngineReturnsTrue() {
     AppEngineManager appEngineManager = new AppEngineManager("TestService", "TestVersion",
-        "TestInstance", "TestRuntime", runtimeInfoUtils);
-    Mockito.doReturn(false).when(runtimeInfoUtils).isNullOrBlank("TestService");
-    Mockito.doReturn(false).when(runtimeInfoUtils).isNullOrBlank("TestVersion");
-    Mockito.doReturn(false).when(runtimeInfoUtils).isNullOrBlank("TestInstance");
-    Mockito.doReturn(false).when(runtimeInfoUtils).isNullOrBlank("TestRuntime");
+        "TestInstance", "TestRuntime", runtimeInfoCommonUtils);
+    Mockito.doReturn(false).when(runtimeInfoCommonUtils).isNullOrBlank("TestService");
+    Mockito.doReturn(false).when(runtimeInfoCommonUtils).isNullOrBlank("TestVersion");
+    Mockito.doReturn(false).when(runtimeInfoCommonUtils).isNullOrBlank("TestInstance");
+    Mockito.doReturn(false).when(runtimeInfoCommonUtils).isNullOrBlank("TestRuntime");
     Boolean isAppEngine = appEngineManager.isAppEngine();
     assertThat(isAppEngine).isTrue();
   }
@@ -33,8 +31,8 @@ public class AppEngineManagerTests {
   @Test
   void WithEmptyEnvironmentVariablesIsAppEngineReturnsFalse() {
     AppEngineManager appEngineManager = new AppEngineManager("TestService", "TestVersion",
-        "", "TestRuntime", runtimeInfoUtils);
-    Mockito.doReturn(true).when(runtimeInfoUtils).isNullOrBlank("");
+        "", "TestRuntime", runtimeInfoCommonUtils);
+    Mockito.doReturn(true).when(runtimeInfoCommonUtils).isNullOrBlank("");
     Boolean isAppEngine = appEngineManager.isAppEngine();
     assertThat(isAppEngine).isFalse();
   }
@@ -42,8 +40,8 @@ public class AppEngineManagerTests {
   @Test
   void WithNullEnvironmentVariablesIsAppEngineReturnsFalse() {
     AppEngineManager appEngineManager = new AppEngineManager("TestService", "TestVersion",
-        null, "TestRuntime", runtimeInfoUtils);
-    Mockito.doReturn(true).when(runtimeInfoUtils).isNullOrBlank(null);
+        null, "TestRuntime", runtimeInfoCommonUtils);
+    Mockito.doReturn(true).when(runtimeInfoCommonUtils).isNullOrBlank(null);
     Boolean isAppEngine = appEngineManager.isAppEngine();
     assertThat(isAppEngine).isFalse();
   }
@@ -51,9 +49,9 @@ public class AppEngineManagerTests {
   @Test
   void detectAppEngineResourceReturnsValidResource() {
     AppEngineManager appEngineManager = new AppEngineManager("TestService", "TestVersion",
-        "TestInstance", "TestRuntime", runtimeInfoUtils);
-    Mockito.doReturn("testProject").when(runtimeInfoUtils).getProjectId();
-    Mockito.doReturn("testZone").when(runtimeInfoUtils).getZone();
+        "TestInstance", "TestRuntime", runtimeInfoCommonUtils);
+    Mockito.doReturn("testProject").when(runtimeInfoCommonUtils).getProjectId();
+    Mockito.doReturn("testZone").when(runtimeInfoCommonUtils).getZone();
     MonitoredResource mr = appEngineManager.detectAppEngineResource();
     assertThat(mr.containsLabels("project_id")).isTrue();
     assertThat(mr.containsLabels("runtime")).isTrue();
@@ -62,8 +60,9 @@ public class AppEngineManagerTests {
   @Test
   void detectCloudRunResourceThrowsExceptionOnInValidResource() {
     AppEngineManager appEngineManager = new AppEngineManager(null, "TestVersion",
-        "TestInstance", "TestRuntime", runtimeInfoUtils);
-    Mockito.doThrow(new IllegalArgumentException("IllegalArgumentException")).when(runtimeInfoUtils)
+        "TestInstance", "TestRuntime", runtimeInfoCommonUtils);
+    Mockito.doThrow(new IllegalArgumentException("IllegalArgumentException")).when(
+            runtimeInfoCommonUtils)
         .getProjectId();
     assertThrows(IllegalArgumentException.class, () -> appEngineManager.detectAppEngineResource());
   }

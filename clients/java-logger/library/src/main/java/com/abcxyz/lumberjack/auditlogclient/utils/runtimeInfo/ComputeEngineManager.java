@@ -1,4 +1,4 @@
-package com.abcxyz.lumberjack.auditlogclient.utils;
+package com.abcxyz.lumberjack.auditlogclient.utils.runtimeInfo;
 
 import com.google.api.MonitoredResource;
 import com.google.inject.Inject;
@@ -8,20 +8,24 @@ import java.net.URLConnection;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * ComputeEngineManager provides functionality for getting run time info for processes running on
+ * GCE.
+ */
 public class ComputeEngineManager {
 
   private static final String metadataUrl = "http://metadata.google.internal";
 
   @Inject
-  private RuntimeInfoUtils runtimeInfoUtils ;
+  private RuntimeInfoCommonUtils runtimeInfoCommonUtils;
 
   public MonitoredResource detectGCEResource() {
     return MonitoredResource.newBuilder()
         .setType("gce_instance")
-        .putLabels("project_id", runtimeInfoUtils.getProjectId())
-        .putLabels("instance_id", runtimeInfoUtils.getInstanceId())
-        .putLabels("instance_name", runtimeInfoUtils.getInstanceName())
-        .putLabels("zone", runtimeInfoUtils.getZone())
+        .putLabels("project_id", runtimeInfoCommonUtils.getProjectId())
+        .putLabels("instance_id", runtimeInfoCommonUtils.getInstanceId())
+        .putLabels("instance_name", runtimeInfoCommonUtils.getInstanceName())
+        .putLabels("zone", runtimeInfoCommonUtils.getZone())
         .build();
   }
 

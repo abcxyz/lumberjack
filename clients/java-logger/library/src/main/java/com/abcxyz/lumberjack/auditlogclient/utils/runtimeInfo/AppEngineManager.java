@@ -1,37 +1,39 @@
-package com.abcxyz.lumberjack.auditlogclient.utils;
+package com.abcxyz.lumberjack.auditlogclient.utils.runtimeInfo;
 
 import com.google.api.MonitoredResource;
 import com.google.inject.Inject;
 import com.google.inject.name.Named;
 
-
+/**
+ * AppEngineManager provides functionality for getting run time info for processes running on App
+ * engine.
+ */
 public class AppEngineManager {
 
   private final String service, version, instance, runtime;
-  private final RuntimeInfoUtils runtimeInfoUtils;
+  private final RuntimeInfoCommonUtils runtimeInfoCommonUtils;
 
   @Inject
   public AppEngineManager(@Named("GAE_SERVICE") final String service,
       @Named("GAE_VERSION") final String version, @Named("GAE_INSTANCE") final String instance,
       @Named("GAE_RUNTIME") final String runtime,
-      RuntimeInfoUtils runtimeInfoUtils) {
+      RuntimeInfoCommonUtils runtimeInfoCommonUtils) {
     this.service = service;
     this.version = version;
     this.instance = instance;
     this.runtime = runtime;
-    this.runtimeInfoUtils = runtimeInfoUtils;
+    this.runtimeInfoCommonUtils = runtimeInfoCommonUtils;
   }
-
 
   public MonitoredResource detectAppEngineResource() {
     return MonitoredResource.newBuilder()
         .setType("gae_app")
-        .putLabels("project_id", runtimeInfoUtils.getProjectId())
+        .putLabels("project_id", runtimeInfoCommonUtils.getProjectId())
         .putLabels("module_id", service)
         .putLabels("version_id", version)
         .putLabels("instance_id", instance)
         .putLabels("runtime", runtime)
-        .putLabels("zone", runtimeInfoUtils.getZone())
+        .putLabels("zone", runtimeInfoCommonUtils.getZone())
         .build();
   }
 
@@ -40,9 +42,9 @@ public class AppEngineManager {
    * https://cloud.google.com/appengine/docs/standard/java11/runtime#environment_variables
    */
   public boolean isAppEngine() {
-    return !runtimeInfoUtils.isNullOrBlank(instance)
-        && !runtimeInfoUtils.isNullOrBlank(service)
-        && !runtimeInfoUtils.isNullOrBlank(version)
-        && !runtimeInfoUtils.isNullOrBlank(runtime);
+    return !runtimeInfoCommonUtils.isNullOrBlank(instance)
+        && !runtimeInfoCommonUtils.isNullOrBlank(service)
+        && !runtimeInfoCommonUtils.isNullOrBlank(version)
+        && !runtimeInfoCommonUtils.isNullOrBlank(runtime);
   }
 }

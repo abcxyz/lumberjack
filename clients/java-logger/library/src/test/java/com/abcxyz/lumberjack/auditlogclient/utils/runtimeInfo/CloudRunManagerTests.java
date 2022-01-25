@@ -1,10 +1,8 @@
-package com.abcxyz.lumberjack.auditlogclient.Utils;
+package com.abcxyz.lumberjack.auditlogclient.utils.runtimeInfo;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
-import com.abcxyz.lumberjack.auditlogclient.utils.CloudRunManager;
-import com.abcxyz.lumberjack.auditlogclient.utils.RuntimeInfoUtils;
 import com.google.api.MonitoredResource;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -16,15 +14,15 @@ import org.mockito.junit.jupiter.MockitoExtension;
 public class CloudRunManagerTests {
 
   @Mock
-  RuntimeInfoUtils runtimeInfoUtils;
+  RuntimeInfoCommonUtils runtimeInfoCommonUtils;
 
   @Test
   void WithCorrectEnvironmentVariablesCloudRunReturnsTrue() {
     CloudRunManager cloudRunManager = new CloudRunManager("TestConfig", "TestService",
-        "TestRevision", runtimeInfoUtils);
-    Mockito.doReturn(false).when(runtimeInfoUtils).isNullOrBlank("TestConfig");
-    Mockito.doReturn(false).when(runtimeInfoUtils).isNullOrBlank("TestService");
-    Mockito.doReturn(false).when(runtimeInfoUtils).isNullOrBlank("TestRevision");
+        "TestRevision", runtimeInfoCommonUtils);
+    Mockito.doReturn(false).when(runtimeInfoCommonUtils).isNullOrBlank("TestConfig");
+    Mockito.doReturn(false).when(runtimeInfoCommonUtils).isNullOrBlank("TestService");
+    Mockito.doReturn(false).when(runtimeInfoCommonUtils).isNullOrBlank("TestRevision");
     Boolean isCloudRun = cloudRunManager.isCloudRun();
     assertThat(isCloudRun).isTrue();
   }
@@ -32,8 +30,8 @@ public class CloudRunManagerTests {
   @Test
   void WithEmptyEnvironmentVariablesCloudRunReturnsFalse() {
     CloudRunManager cloudRunManager = new CloudRunManager("", "TestService", "TestRevision",
-        runtimeInfoUtils);
-    Mockito.doReturn(true).when(runtimeInfoUtils).isNullOrBlank("");
+        runtimeInfoCommonUtils);
+    Mockito.doReturn(true).when(runtimeInfoCommonUtils).isNullOrBlank("");
     Boolean isCloudRun = cloudRunManager.isCloudRun();
     assertThat(isCloudRun).isFalse();
   }
@@ -41,8 +39,8 @@ public class CloudRunManagerTests {
   @Test
   void WithNullEnvironmentVariablesCloudRunReturnsFalse() {
     CloudRunManager cloudRunManager = new CloudRunManager(null, "TestService", "TestRevision",
-        runtimeInfoUtils);
-    Mockito.doReturn(true).when(runtimeInfoUtils).isNullOrBlank(null);
+        runtimeInfoCommonUtils);
+    Mockito.doReturn(true).when(runtimeInfoCommonUtils).isNullOrBlank(null);
     Boolean isCloudRun = cloudRunManager.isCloudRun();
     assertThat(isCloudRun).isFalse();
   }
@@ -50,9 +48,9 @@ public class CloudRunManagerTests {
   @Test
   void detectCloudRunResourceReturnsValidResource() {
     CloudRunManager cloudRunManager = new CloudRunManager("TestConfiguration", "TestService",
-        "TestRevision", runtimeInfoUtils);
-    Mockito.doReturn("testProject").when(runtimeInfoUtils).getProjectId();
-    Mockito.doReturn("testRegion").when(runtimeInfoUtils).getRegion();
+        "TestRevision", runtimeInfoCommonUtils);
+    Mockito.doReturn("testProject").when(runtimeInfoCommonUtils).getProjectId();
+    Mockito.doReturn("testRegion").when(runtimeInfoCommonUtils).getRegion();
     MonitoredResource mr = cloudRunManager.detectCloudRunResource();
     assertThat(mr.containsLabels("location")).isTrue();
     assertThat(mr.containsLabels("service_name")).isTrue();
@@ -61,8 +59,9 @@ public class CloudRunManagerTests {
   @Test
   void detectCloudRunResourceThrowsExceptionOnInValidResource() {
     CloudRunManager cloudRunManager = new CloudRunManager("TestConfiguration", "TestService",
-        "TestRevision", runtimeInfoUtils);
-    Mockito.doThrow(new IllegalArgumentException("IllegalArgumentException")).when(runtimeInfoUtils)
+        "TestRevision", runtimeInfoCommonUtils);
+    Mockito.doThrow(new IllegalArgumentException("IllegalArgumentException")).when(
+            runtimeInfoCommonUtils)
         .getProjectId();
     assertThrows(IllegalArgumentException.class, () -> cloudRunManager.detectCloudRunResource());
   }

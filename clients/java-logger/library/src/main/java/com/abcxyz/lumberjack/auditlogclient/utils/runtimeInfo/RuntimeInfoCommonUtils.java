@@ -1,4 +1,4 @@
-package com.abcxyz.lumberjack.auditlogclient.utils;
+package com.abcxyz.lumberjack.auditlogclient.utils.runtimeInfo;
 
 import com.google.cloud.MetadataConfig;
 import java.io.IOException;
@@ -6,7 +6,10 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 
-public class RuntimeInfoUtils {
+/**
+ * common utilities for runtime info processor
+ */
+public class RuntimeInfoCommonUtils {
 
   public String getRegion() {
     String zone = getZone();

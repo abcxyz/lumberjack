@@ -3,11 +3,11 @@ package com.abcxyz.lumberjack.auditlogclient.providers;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
-import com.abcxyz.lumberjack.auditlogclient.utils.AppEngineManager;
-import com.abcxyz.lumberjack.auditlogclient.utils.CloudFunctionManager;
-import com.abcxyz.lumberjack.auditlogclient.utils.CloudRunManager;
-import com.abcxyz.lumberjack.auditlogclient.utils.ComputeEngineManager;
-import com.abcxyz.lumberjack.auditlogclient.utils.KubernetesManager;
+import com.abcxyz.lumberjack.auditlogclient.utils.runtimeInfo.AppEngineManager;
+import com.abcxyz.lumberjack.auditlogclient.utils.runtimeInfo.CloudFunctionManager;
+import com.abcxyz.lumberjack.auditlogclient.utils.runtimeInfo.CloudRunManager;
+import com.abcxyz.lumberjack.auditlogclient.utils.runtimeInfo.ComputeEngineManager;
+import com.abcxyz.lumberjack.auditlogclient.utils.runtimeInfo.KubernetesManager;
 import com.google.api.MonitoredResource;
 import com.google.inject.ProvisionException;
 import com.google.protobuf.Value;
