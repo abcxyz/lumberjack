@@ -110,7 +110,7 @@ public class TalkerService {
           HelloResponse.newBuilder().setMessage("Hello " + req.getMessage()).build();
 
       AuditLog.Builder auditLogBuilder = AuditLogs.getBuilderFromContext();
-      auditLogBuilder.setResourceName("MyResource");
+      auditLogBuilder.setResourceName(req.getTarget());
 
       logger.info("replying");
       responseObserver.onNext(reply);
@@ -121,6 +121,9 @@ public class TalkerService {
     public void whisper(WhisperRequest req, StreamObserver<WhisperResponse> responseObserver) {
       WhisperResponse reply =
           WhisperResponse.newBuilder().setMessage("I'll keep that secret!").build();
+
+      AuditLog.Builder auditLogBuilder = AuditLogs.getBuilderFromContext();
+      auditLogBuilder.setResourceName(req.getTarget());
 
       logger.info("replying");
       responseObserver.onNext(reply);
