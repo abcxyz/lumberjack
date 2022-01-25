@@ -30,7 +30,9 @@ import com.google.cloud.logging.LoggingOptions;
 import com.google.inject.AbstractModule;
 import com.google.inject.Inject;
 import com.google.inject.Provides;
+import java.io.FileInputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.util.List;
 
 /**
@@ -38,13 +40,21 @@ import java.util.List;
  * have all required dependencies to build audit log clients.
  */
 public class AuditLoggingModule extends AbstractModule {
+  private static final String DEFAULT_CONFIG_LOCATION = "application.yml";
+  private static final String CONFIG_ENV_KEY = "AUDIT_LOGGING_CONFIGURATION";
   @Provides
   public AuditLoggingConfiguration auditLoggingConfiguration() {
     try {
       ObjectMapper mapper = new ObjectMapper(new YAMLFactory());
-      return mapper.readValue(
-          this.getClass().getClassLoader().getResourceAsStream("application.yml"),
-          AuditLoggingConfiguration.class);
+      InputStream inputStream;
+      if (System.getenv().containsKey(CONFIG_ENV_KEY)) {
+        // Read in file passed in environment variable
+        inputStream = new FileInputStream(System.getenv().get(CONFIG_ENV_KEY));
+      } else {
+        // Get the config from the default location
+        inputStream = this.getClass().getClassLoader().getResourceAsStream(DEFAULT_CONFIG_LOCATION);
+      }
+      return mapper.readValue(inputStream, AuditLoggingConfiguration.class);
     } catch (IOException e) {
       throw new RuntimeException(e);
     }
