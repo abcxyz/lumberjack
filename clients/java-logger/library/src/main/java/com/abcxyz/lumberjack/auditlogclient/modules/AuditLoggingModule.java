@@ -42,6 +42,7 @@ import java.util.List;
 public class AuditLoggingModule extends AbstractModule {
   private static final String DEFAULT_CONFIG_LOCATION = "application.yml";
   private static final String CONFIG_ENV_KEY = "AUDIT_LOGGING_CONFIGURATION";
+
   @Provides
   public AuditLoggingConfiguration auditLoggingConfiguration() {
     try {
