@@ -39,8 +39,8 @@ import java.util.List;
  * have all required dependencies to build audit log clients.
  */
 public class AuditLoggingModule extends AbstractModule {
-  private static final String DEFAULT_CONFIG_LOCATION = "application.yml";
-  private static final String CONFIG_ENV_KEY = "AUDIT_LOGGING_CONFIGURATION";
+  private static final String DEFAULT_CONFIG_LOCATION = "audit_logging.yml";
+  private static final String CONFIG_ENV_KEY = "AUDIT_CLIENT_CONFIG_PATH";
 
   @Provides
   public AuditLoggingConfiguration auditLoggingConfiguration() {
