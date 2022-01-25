@@ -30,7 +30,6 @@ import com.google.cloud.logging.LoggingOptions;
 import com.google.inject.AbstractModule;
 import com.google.inject.Inject;
 import com.google.inject.Provides;
-import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.List;
@@ -45,17 +44,17 @@ public class AuditLoggingModule extends AbstractModule {
 
   @Provides
   public AuditLoggingConfiguration auditLoggingConfiguration() {
+
     try {
-      ObjectMapper mapper = new ObjectMapper(new YAMLFactory());
-      InputStream inputStream;
-      if (System.getenv().containsKey(CONFIG_ENV_KEY)) {
-        // Read in file passed in environment variable
-        inputStream = new FileInputStream(System.getenv().get(CONFIG_ENV_KEY));
-      } else {
-        // Get the config from the default location
-        inputStream = this.getClass().getClassLoader().getResourceAsStream(DEFAULT_CONFIG_LOCATION);
+      String fileLocation =
+          System.getenv().containsKey(CONFIG_ENV_KEY)
+              ? System.getenv().get(CONFIG_ENV_KEY)
+              : DEFAULT_CONFIG_LOCATION;
+
+      try (InputStream input = getClass().getClassLoader().getResourceAsStream(fileLocation)) {
+        ObjectMapper mapper = new ObjectMapper(new YAMLFactory());
+        return mapper.readValue(input, AuditLoggingConfiguration.class);
       }
-      return mapper.readValue(inputStream, AuditLoggingConfiguration.class);
     } catch (IOException e) {
       throw new RuntimeException(e);
     }
