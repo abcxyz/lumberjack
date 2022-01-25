@@ -42,7 +42,6 @@ func main() {
 	if err != nil {
 		log.Fatalf("failed to setup audit interceptor: %v", err)
 	}
-	defer c.Stop()
 	s := grpc.NewServer(opt)
 	talkerpb.RegisterTalkerServer(s, &server{})
 	// Register the reflection service makes it easier for some clients.
@@ -50,6 +49,9 @@ func main() {
 	log.Printf("server listening at %v", lis.Addr())
 	if err := s.Serve(lis); err != nil {
 		log.Fatalf("failed to serve: %v", err)
+	}
+	if err := c.Stop(); err != nil {
+		log.Fatalf("failed to stop audit client: %v", err)
 	}
 }
 
