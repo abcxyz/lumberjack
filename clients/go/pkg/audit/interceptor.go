@@ -128,7 +128,7 @@ var serviceNameRegexp = regexp.MustCompile("^/{1,2}(.*?)/")
 func serviceName(methodName string) (string, error) {
 	groups := serviceNameRegexp.FindStringSubmatch(methodName)
 	if len(groups) < 2 || groups[1] == "" {
-		return "", fmt.Errorf("failed capturing non-nil service name with regexp %q from %q", re.String(), methodName)
+		return "", fmt.Errorf("failed capturing non-nil service name with regexp %q from %q", serviceNameRegexp.String(), methodName)
 	}
 	return groups[1], nil
 }

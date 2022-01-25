@@ -196,7 +196,7 @@ func TestUnaryInterceptor(t *testing.T) {
 			handler: func(ctx context.Context, req interface{}) (interface{}, error) {
 				return nil, nil
 			},
-			wantErrSubstr: `unary interceptor: failed capturing non-nil service name with regexp "^/{1,2}(.*?)/" from "bananas"`,
+			wantErrSubstr: `audit interceptor: failed capturing non-nil service name with regexp "^/{1,2}(.*?)/" from "bananas"`,
 		},
 		{
 			name: "unable_to_extract_principal",
@@ -231,7 +231,7 @@ func TestUnaryInterceptor(t *testing.T) {
 				return nil, nil
 			},
 			req:           "bananas",
-			wantErrSubstr: "unary interceptor failed converting req into a Google struct proto",
+			wantErrSubstr: "audit interceptor failed converting req into a Google struct proto",
 		},
 	}
 	for _, tc := range tests {
