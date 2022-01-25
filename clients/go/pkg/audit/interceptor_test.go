@@ -46,7 +46,7 @@ func (s *fakeServer) ProcessLog(_ context.Context, logReq *alpb.AuditLogRequest)
 }
 
 func TestUnaryInterceptor(t *testing.T) {
-	// t.Parallel()
+	t.Parallel()
 
 	jwt := "Bearer " + testutil.JWTFromClaims(t, map[string]interface{}{
 		"email": "user@example.com",
@@ -111,19 +111,6 @@ func TestUnaryInterceptor(t *testing.T) {
 				logReq, _ := LogReqFromCtx(ctx)
 				logReq.Payload.ResourceName = "ExampleResourceName"
 				return nil, grpcstatus.Error(codes.Internal, "fake error")
-			},
-			wantLogReq: &alpb.AuditLogRequest{
-				Type: alpb.AuditLogRequest_DATA_ACCESS,
-				Payload: &calpb.AuditLog{
-					ServiceName:  "ExampleService",
-					MethodName:   "/ExampleService/ExampleMethod",
-					ResourceName: "ExampleResourceName",
-					AuthenticationInfo: &calpb.AuthenticationInfo{
-						PrincipalEmail: "user@example.com",
-					},
-					Request:  &structpb.Struct{},
-					Response: &structpb.Struct{},
-				},
 			},
 			wantErrSubstr: "fake error",
 		},
@@ -259,7 +246,7 @@ func TestUnaryInterceptor(t *testing.T) {
 	for _, tc := range tests {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
-			// t.Parallel()
+			t.Parallel()
 
 			i := &Interceptor{Rules: tc.auditRules}
 

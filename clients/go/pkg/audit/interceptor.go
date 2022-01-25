@@ -92,8 +92,8 @@ func (i *Interceptor) UnaryInterceptor(ctx context.Context, req interface{}, inf
 	//   - overwrite a log req field we set previously
 	//   - fill the field `Payload.ResourceName`
 	handlerResp, handlerErr := handler(ctx, req)
-	if handler != nil {
-		// TODO(#96): Consider emitting an audit log when the RPC call fails
+	if handlerErr != nil {
+		// TODO(#96): Consider emitting an audit log when the RPC call fails.
 		return handlerResp, handlerErr
 	}
 
