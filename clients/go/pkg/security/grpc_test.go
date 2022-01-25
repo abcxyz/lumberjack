@@ -22,7 +22,7 @@ import (
 
 	"github.com/abcxyz/lumberjack/clients/go/apis/v1alpha1"
 	"github.com/abcxyz/lumberjack/clients/go/pkg/errutil"
-	"github.com/golang-jwt/jwt"
+	"github.com/abcxyz/lumberjack/clients/go/pkg/testutil"
 	"google.golang.org/grpc/metadata"
 )
 
@@ -39,7 +39,7 @@ func TestFromRawJWT_RequestPrincipal(t *testing.T) {
 		{
 			name: "valid_jwt",
 			ctx: metadata.NewIncomingContext(context.Background(), metadata.New(map[string]string{
-				"authorization": "Bearer " + jwtFromClaims(t, map[string]interface{}{
+				"authorization": "Bearer " + testutil.JWTFromClaims(t, map[string]interface{}{
 					"email": "user@example.com",
 				}),
 			})),
@@ -52,7 +52,7 @@ func TestFromRawJWT_RequestPrincipal(t *testing.T) {
 		{
 			name: "error_from_missing_jwt_email_claim",
 			ctx: metadata.NewIncomingContext(context.Background(), metadata.New(map[string]string{
-				"authorization": "Bearer " + jwtFromClaims(t, map[string]interface{}{}),
+				"authorization": "Bearer " + testutil.JWTFromClaims(t, map[string]interface{}{}),
 			})),
 			fromRawJWT: &v1alpha1.FromRawJWT{
 				Key:    "authorization",
@@ -63,7 +63,7 @@ func TestFromRawJWT_RequestPrincipal(t *testing.T) {
 		{
 			name: "error_from_slice_as_jwt_email_claim",
 			ctx: metadata.NewIncomingContext(context.Background(), metadata.New(map[string]string{
-				"authorization": "Bearer " + jwtFromClaims(t, map[string]interface{}{
+				"authorization": "Bearer " + testutil.JWTFromClaims(t, map[string]interface{}{
 					"email": []string{"foo", "bar"},
 				}),
 			})),
@@ -81,7 +81,7 @@ func TestFromRawJWT_RequestPrincipal(t *testing.T) {
 		{
 			name: "error_from_nil_receiver_field",
 			ctx: metadata.NewIncomingContext(context.Background(), metadata.New(map[string]string{
-				"authorization": "Bearer " + jwtFromClaims(t, map[string]interface{}{
+				"authorization": "Bearer " + testutil.JWTFromClaims(t, map[string]interface{}{
 					"email": "user@example.com",
 				}),
 			})),
@@ -159,15 +159,4 @@ func TestFromRawJWT_RequestPrincipal(t *testing.T) {
 			}
 		})
 	}
-}
-
-func jwtFromClaims(t *testing.T, claims map[string]interface{}) string {
-	jwtMapClaims := jwt.MapClaims{}
-	jwtMapClaims = claims
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwtMapClaims)
-	signedToken, err := token.SignedString([]byte("secureSecretText"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	return signedToken
 }

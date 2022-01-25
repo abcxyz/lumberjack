@@ -24,6 +24,7 @@ import (
 	"github.com/abcxyz/lumberjack/clients/go/pkg/errutil"
 	"github.com/abcxyz/lumberjack/clients/go/pkg/remote"
 	"github.com/abcxyz/lumberjack/clients/go/pkg/security"
+	"github.com/abcxyz/lumberjack/clients/go/pkg/testutil"
 	"github.com/google/go-cmp/cmp"
 	calpb "google.golang.org/genproto/googleapis/cloud/audit"
 	protostatus "google.golang.org/genproto/googleapis/rpc/status"
@@ -48,12 +49,9 @@ func (s *fakeServer) ProcessLog(_ context.Context, logReq *alpb.AuditLogRequest)
 func TestUnaryInterceptor(t *testing.T) {
 	t.Parallel()
 
-	// Test JWT:
-	// {
-	// 	 "name": "user",
-	// 	 "email": "user@example.com"
-	// }
-	jwt := "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6InVzZXIiLCJpYXQiOjE1MTYyMzkwMjIsImVtYWlsIjoidXNlckBleGFtcGxlLmNvbSJ9.PXl-SJniWHMVLNYb77HmVFFqWTlu28xf9fou2GaT0Jc"
+	jwt := "Bearer " + testutil.JWTFromClaims(t, map[string]interface{}{
+		"email": "user@example.com",
+	})
 
 	tests := []struct {
 		name          string
