@@ -21,11 +21,9 @@ import (
 	"regexp"
 
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/structpb"
 
 	calpb "google.golang.org/genproto/googleapis/cloud/audit"
-	protostatus "google.golang.org/genproto/googleapis/rpc/status"
 
 	alpb "github.com/abcxyz/lumberjack/clients/go/apis/v1alpha1"
 	"github.com/abcxyz/lumberjack/clients/go/pkg/security"
@@ -41,43 +39,48 @@ type Interceptor struct {
 }
 
 // UnaryInterceptor is a gRPC unary interceptor that automatically emits application audit logs.
+// TODO(#95): add support for fail-close/best-effort logging.
 func (i *Interceptor) UnaryInterceptor(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error) {
-	fullMethodName := info.FullMethod
-	mostRelevantRule := mostRelevantRule(fullMethodName, i.Rules)
+	zlogger := zlogger.FromContext(ctx)
+	mostRelevantRule := mostRelevantRule(info.FullMethod, i.Rules)
 	if mostRelevantRule == nil {
+		zlogger.Infow("no audit rule matching method name", "audit rules", i.Rules, "method name", info.FullMethod)
 		return handler(ctx, req)
 	}
 
-	logReq := &alpb.AuditLogRequest{
-		Payload: &calpb.AuditLog{
-			AuthenticationInfo: &calpb.AuthenticationInfo{},
-			Status:             &protostatus.Status{},
-		},
+	logReq := &alpb.AuditLogRequest{Payload: &calpb.AuditLog{}}
+
+	// Set log type.
+	logReq.Type = alpb.AuditLogRequest_UNSPECIFIED
+	if t, ok := alpb.AuditLogRequest_LogType_value[mostRelevantRule.LogType]; ok {
+		logReq.Type = alpb.AuditLogRequest_LogType(t)
 	}
 
 	// Autofill `Payload.ServiceName` and `Payload.MethodName`.
-	logReq.Payload.MethodName = fullMethodName
-	serviceName, err := serviceName(fullMethodName)
+	logReq.Payload.MethodName = info.FullMethod
+	serviceName, err := serviceName(info.FullMethod)
 	if err != nil {
-		return nil, err
+		zlogger.Warnw("unary interceptor failed extract service name", "error", err)
+		return handler(ctx, req)
 	}
 	logReq.Payload.ServiceName = serviceName
 
 	// Autofill `Payload.AuthenticationInfo.PrincipalEmail`.
 	principal, err := i.SecurityContext.RequestPrincipal(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("failed getting principal from ctx in %T: %w", i.SecurityContext, err)
+		zlogger.Warnw("unary interceptor failed getting principal from ctx", "ctx", ctx, "security context", i.SecurityContext, "error", err)
+		return handler(ctx, req)
 	}
-	logReq.Payload.AuthenticationInfo.PrincipalEmail = principal
+	logReq.Payload.AuthenticationInfo = &calpb.AuthenticationInfo{PrincipalEmail: principal}
 
 	// Autofill `Payload.Request`.
 	d := mostRelevantRule.Directive
 	if d == alpb.AuditRuleDirectiveRequestAndResponse || d == alpb.AuditRuleDirectiveRequestOnly {
-		reqStruct, err := toProtoStruct(req)
-		if err != nil {
-			return nil, fmt.Errorf("failed converting req into a Google struct proto: %w", err)
+		if reqStruct, err := toProtoStruct(req); err != nil {
+			zlogger.Warnw("unary interceptor failed converting req into a Google struct proto", "error", err)
+		} else {
+			logReq.Payload.Request = reqStruct
 		}
-		logReq.Payload.Request = reqStruct
 	}
 
 	// Store our log req in the context to make it accessible
@@ -89,30 +92,23 @@ func (i *Interceptor) UnaryInterceptor(ctx context.Context, req interface{}, inf
 	//   - overwrite a log req field we set previously
 	//   - fill the field `Payload.ResourceName`
 	handlerResp, handlerErr := handler(ctx, req)
-
-	// Autofill `Payload.Status`.
-	status, _ := status.FromError(handlerErr)
-	logReq.Payload.Status.Code = int32(status.Code())
-	logReq.Payload.Status.Message = status.Message()
+	if handler != nil {
+		// TODO(#96): Consider emitting an audit log when the RPC call fails
+		return handlerResp, handlerErr
+	}
 
 	// Autofill `Payload.Response`.
 	if d == alpb.AuditRuleDirectiveRequestAndResponse {
-		respStruct, err := toProtoStruct(handlerResp)
-		if err != nil {
-			return nil, fmt.Errorf("failed converting resp into a Google struct proto: %w", err)
+		if respStruct, err := toProtoStruct(handlerResp); err != nil {
+			zlogger.Warnw("unary interceptor failed converting resp into a Google struct proto", "error", err)
+		} else {
+			logReq.Payload.Response = respStruct
 		}
-		logReq.Payload.Response = respStruct
-	}
-
-	// Set log type.
-	logReq.Type = alpb.AuditLogRequest_UNSPECIFIED
-	if t, ok := alpb.AuditLogRequest_LogType_value[mostRelevantRule.LogType]; ok {
-		logReq.Type = alpb.AuditLogRequest_LogType(t)
 	}
 
 	// Emits the log in best-effort logging mode.
 	if err := i.Log(ctx, logReq); err != nil {
-		zlogger.FromContext(ctx).Warnw("unary interceptor failed to emit log", "error", err)
+		zlogger.Warnw("unary interceptor failed to emit log", "error", err)
 	}
 
 	return handlerResp, handlerErr
@@ -123,24 +119,24 @@ func (i *Interceptor) UnaryInterceptor(ctx context.Context, req interface{}, inf
 // followed by one slash. For example:
 //   - /$SERVICE_NAME/foo"
 //   - //$SERVICE_NAME/foo/bar
-func serviceName(fullMethodName string) (string, error) {
-	re := "^/{1,2}(.*)/"
-	groups := regexp.MustCompile(re).FindStringSubmatch(fullMethodName)
+func serviceName(methodName string) (string, error) {
+	re := regexp.MustCompile("^/{1,2}(.*)/")
+	groups := re.FindStringSubmatch(methodName)
 	if len(groups) < 2 || groups[1] == "" {
-		return "", fmt.Errorf("failed capturing non-nil service name with regexp %q from %q", re, fullMethodName)
+		return "", fmt.Errorf("failed capturing non-nil service name with regexp %q from %q", re.String(), methodName)
 	}
 	return groups[1], nil
 }
 
 type auditLogReqKey struct{}
 
-// LogReqInCtx returns the AuditLogRequest stored in the context.
+// LogReqFromCtx returns the AuditLogRequest stored in the context.
 // If the AuditLogRequest doesn't exist, we return an empty one.
-func LogReqInCtx(ctx context.Context) *alpb.AuditLogRequest {
+func LogReqFromCtx(ctx context.Context) (*alpb.AuditLogRequest, bool) {
 	if r, ok := ctx.Value(auditLogReqKey{}).(*alpb.AuditLogRequest); ok {
-		return r
+		return r, true
 	}
-	return &alpb.AuditLogRequest{Payload: &calpb.AuditLog{}}
+	return &alpb.AuditLogRequest{Payload: &calpb.AuditLog{}}, false
 }
 
 // toProtoStruct converts v, which must marshal into a JSON object,

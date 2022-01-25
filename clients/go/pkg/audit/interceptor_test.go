@@ -27,7 +27,6 @@ import (
 	"github.com/abcxyz/lumberjack/clients/go/pkg/testutil"
 	"github.com/google/go-cmp/cmp"
 	calpb "google.golang.org/genproto/googleapis/cloud/audit"
-	protostatus "google.golang.org/genproto/googleapis/rpc/status"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
@@ -47,7 +46,7 @@ func (s *fakeServer) ProcessLog(_ context.Context, logReq *alpb.AuditLogRequest)
 }
 
 func TestUnaryInterceptor(t *testing.T) {
-	t.Parallel()
+	// t.Parallel()
 
 	jwt := "Bearer " + testutil.JWTFromClaims(t, map[string]interface{}{
 		"email": "user@example.com",
@@ -77,7 +76,8 @@ func TestUnaryInterceptor(t *testing.T) {
 				FullMethod: "/ExampleService/ExampleMethod",
 			},
 			handler: func(ctx context.Context, req interface{}) (interface{}, error) {
-				LogReqInCtx(ctx).Payload.ResourceName = "ExampleResourceName"
+				logReq, _ := LogReqFromCtx(ctx)
+				logReq.Payload.ResourceName = "ExampleResourceName"
 				return nil, nil
 			},
 			wantLogReq: &alpb.AuditLogRequest{
@@ -91,7 +91,6 @@ func TestUnaryInterceptor(t *testing.T) {
 					},
 					Request:  &structpb.Struct{},
 					Response: &structpb.Struct{},
-					Status:   &protostatus.Status{},
 				},
 			},
 		},
@@ -109,7 +108,8 @@ func TestUnaryInterceptor(t *testing.T) {
 				FullMethod: "/ExampleService/ExampleMethod",
 			},
 			handler: func(ctx context.Context, req interface{}) (interface{}, error) {
-				LogReqInCtx(ctx).Payload.ResourceName = "ExampleResourceName"
+				logReq, _ := LogReqFromCtx(ctx)
+				logReq.Payload.ResourceName = "ExampleResourceName"
 				return nil, grpcstatus.Error(codes.Internal, "fake error")
 			},
 			wantLogReq: &alpb.AuditLogRequest{
@@ -123,10 +123,6 @@ func TestUnaryInterceptor(t *testing.T) {
 					},
 					Request:  &structpb.Struct{},
 					Response: &structpb.Struct{},
-					Status: &protostatus.Status{
-						Code:    int32(codes.Internal),
-						Message: "fake error",
-					},
 				},
 			},
 			wantErrSubstr: "fake error",
@@ -144,7 +140,8 @@ func TestUnaryInterceptor(t *testing.T) {
 				FullMethod: "/ExampleService/ExampleMethod",
 			},
 			handler: func(ctx context.Context, req interface{}) (interface{}, error) {
-				LogReqInCtx(ctx).Payload.ResourceName = "ExampleResourceName"
+				logReq, _ := LogReqFromCtx(ctx)
+				logReq.Payload.ResourceName = "ExampleResourceName"
 				return nil, nil
 			},
 			wantLogReq: &alpb.AuditLogRequest{
@@ -155,7 +152,6 @@ func TestUnaryInterceptor(t *testing.T) {
 					AuthenticationInfo: &calpb.AuthenticationInfo{
 						PrincipalEmail: "user@example.com",
 					},
-					Status: &protostatus.Status{},
 				},
 			},
 		},
@@ -172,7 +168,8 @@ func TestUnaryInterceptor(t *testing.T) {
 				FullMethod: "/ExampleService/ExampleMethod",
 			},
 			handler: func(ctx context.Context, req interface{}) (interface{}, error) {
-				LogReqInCtx(ctx).Payload.ResourceName = "ExampleResourceName"
+				logReq, _ := LogReqFromCtx(ctx)
+				logReq.Payload.ResourceName = "ExampleResourceName"
 				return nil, nil
 			},
 			wantLogReq: &alpb.AuditLogRequest{
@@ -184,12 +181,12 @@ func TestUnaryInterceptor(t *testing.T) {
 						PrincipalEmail: "user@example.com",
 					},
 					Request: &structpb.Struct{},
-					Status:  &protostatus.Status{},
 				},
 			},
 		},
 		{
-			name: "audit_rule_is_innapplicable",
+			name: "audit_rule_is_inapplicable",
+			ctx:  context.Background(),
 			auditRules: []*alpb.AuditRule{{
 				Selector: "/ExampleService/Inapplicable",
 			}},
@@ -201,17 +198,20 @@ func TestUnaryInterceptor(t *testing.T) {
 			},
 		},
 		{
-			name: "err_from_malformed_method_info",
+			name: "malformed_method_info",
+			ctx:  context.Background(),
 			auditRules: []*alpb.AuditRule{{
 				Selector: "*",
 			}},
 			info: &grpc.UnaryServerInfo{
 				FullMethod: "bananas",
 			},
-			wantErrSubstr: `failed capturing non-nil service name with regexp "^/{1,2}(.*)/" from "bananas"`,
+			handler: func(ctx context.Context, req interface{}) (interface{}, error) {
+				return nil, nil
+			},
 		},
 		{
-			name: "err_extracting_principal",
+			name: "unable_to_extract_principal",
 			ctx: metadata.NewIncomingContext(context.Background(), metadata.New(map[string]string{
 				"authorization": "bananas",
 			})),
@@ -221,10 +221,12 @@ func TestUnaryInterceptor(t *testing.T) {
 			info: &grpc.UnaryServerInfo{
 				FullMethod: "/ExampleService/ExampleMethod",
 			},
-			wantErrSubstr: "failed getting principal from ctx in *security.FromRawJWT",
+			handler: func(ctx context.Context, req interface{}) (interface{}, error) {
+				return nil, nil
+			},
 		},
 		{
-			name: "err_converting_req_to_proto_struct",
+			name: "unable_to_convert_req_to_proto_struct",
 			ctx: metadata.NewIncomingContext(context.Background(), metadata.New(map[string]string{
 				"authorization": jwt,
 			})),
@@ -235,14 +237,29 @@ func TestUnaryInterceptor(t *testing.T) {
 			info: &grpc.UnaryServerInfo{
 				FullMethod: "/ExampleService/ExampleMethod",
 			},
-			req:           "bananas",
-			wantErrSubstr: "failed converting req into a Google struct proto",
+			handler: func(ctx context.Context, req interface{}) (interface{}, error) {
+				logReq, _ := LogReqFromCtx(ctx)
+				logReq.Payload.ResourceName = "ExampleResourceName"
+				return nil, nil
+			},
+			req: "bananas",
+			wantLogReq: &alpb.AuditLogRequest{
+				Payload: &calpb.AuditLog{
+					ServiceName:  "ExampleService",
+					MethodName:   "/ExampleService/ExampleMethod",
+					ResourceName: "ExampleResourceName",
+					AuthenticationInfo: &calpb.AuthenticationInfo{
+						PrincipalEmail: "user@example.com",
+					},
+					Response: &structpb.Struct{},
+				},
+			},
 		},
 	}
 	for _, tc := range tests {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
-			t.Parallel()
+			// t.Parallel()
 
 			i := &Interceptor{Rules: tc.auditRules}
 
