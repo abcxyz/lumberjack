@@ -16,4 +16,4 @@
 set -eEuo pipefail
 
 ROOT=$(dirname "$0")
-/bin/bash ${ROOT}/build_app.sh ${ROOT}/shell_app.dockerfile
+/bin/bash ${ROOT}/build_app.sh ${ROOT}/server_app.dockerfile

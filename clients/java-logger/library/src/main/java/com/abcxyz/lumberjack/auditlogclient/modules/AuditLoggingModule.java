@@ -31,6 +31,7 @@ import com.google.inject.AbstractModule;
 import com.google.inject.Inject;
 import com.google.inject.Provides;
 import java.io.IOException;
+import java.io.InputStream;
 import java.util.List;
 
 /**
@@ -38,13 +39,22 @@ import java.util.List;
  * have all required dependencies to build audit log clients.
  */
 public class AuditLoggingModule extends AbstractModule {
+  private static final String DEFAULT_CONFIG_LOCATION = "audit_logging.yml";
+  private static final String CONFIG_ENV_KEY = "AUDIT_CLIENT_CONFIG_PATH";
+
   @Provides
   public AuditLoggingConfiguration auditLoggingConfiguration() {
+
     try {
-      ObjectMapper mapper = new ObjectMapper(new YAMLFactory());
-      return mapper.readValue(
-          this.getClass().getClassLoader().getResourceAsStream("application.yml"),
-          AuditLoggingConfiguration.class);
+      String fileLocation =
+          System.getenv().containsKey(CONFIG_ENV_KEY)
+              ? System.getenv().get(CONFIG_ENV_KEY)
+              : DEFAULT_CONFIG_LOCATION;
+
+      try (InputStream input = getClass().getClassLoader().getResourceAsStream(fileLocation)) {
+        ObjectMapper mapper = new ObjectMapper(new YAMLFactory());
+        return mapper.readValue(input, AuditLoggingConfiguration.class);
+      }
     } catch (IOException e) {
       throw new RuntimeException(e);
     }
