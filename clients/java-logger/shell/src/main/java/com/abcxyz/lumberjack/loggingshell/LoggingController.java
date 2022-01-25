@@ -67,7 +67,7 @@ public class LoggingController {
   private final Map<String, String> peopleInfo = new HashMap<>();
 
   private final Random random = new Random();
-  private final ObjectMapper objectMapper;)
+  private final ObjectMapper objectMapper;
   private final LoggingClient loggingClient;
 
   @GetMapping("/people/{id}")
