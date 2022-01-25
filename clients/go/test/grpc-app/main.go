@@ -60,24 +60,27 @@ type server struct {
 }
 
 func (s *server) Hello(ctx context.Context, req *talkerpb.HelloRequest) (*talkerpb.HelloResponse, error) {
-	logReq, _ := audit.LogReqFromCtx(ctx)
-	logReq.Payload.ResourceName = req.Target
+	if logReq, ok := audit.LogReqFromCtx(ctx); ok {
+		logReq.Payload.ResourceName = req.Target
+	}
 	return &talkerpb.HelloResponse{
 		Message: fmt.Sprintf("Hi, I'm %s!", req.Target),
 	}, nil
 }
 
 func (s *server) Whisper(ctx context.Context, req *talkerpb.WhisperRequest) (*talkerpb.WhisperResponse, error) {
-	logReq, _ := audit.LogReqFromCtx(ctx)
-	logReq.Payload.ResourceName = req.Target
+	if logReq, ok := audit.LogReqFromCtx(ctx); ok {
+		logReq.Payload.ResourceName = req.Target
+	}
 	return &talkerpb.WhisperResponse{
 		Message: fmt.Sprintf("Shush, I'm %s.", req.Target),
 	}, nil
 }
 
 func (s *server) Bye(ctx context.Context, req *talkerpb.ByeRequest) (*talkerpb.ByeResponse, error) {
-	logReq, _ := audit.LogReqFromCtx(ctx)
-	logReq.Payload.ResourceName = req.Target
+	if logReq, ok := audit.LogReqFromCtx(ctx); ok {
+		logReq.Payload.ResourceName = req.Target
+	}
 	return &talkerpb.ByeResponse{
 		Message: "Bye!",
 	}, nil
