@@ -122,7 +122,7 @@ func (i *Interceptor) UnaryInterceptor(ctx context.Context, req interface{}, inf
 //   - /$SERVICE_NAME/foo"
 //   - //$SERVICE_NAME/foo/bar
 func serviceName(methodName string) (string, error) {
-	re := regexp.MustCompile("^/{1,2}(.*)/")
+	re := regexp.MustCompile("^/{1,2}(.*?)/")
 	groups := re.FindStringSubmatch(methodName)
 	if len(groups) < 2 || groups[1] == "" {
 		return "", fmt.Errorf("failed capturing non-nil service name with regexp %q from %q", re.String(), methodName)

@@ -196,7 +196,7 @@ func TestUnaryInterceptor(t *testing.T) {
 			handler: func(ctx context.Context, req interface{}) (interface{}, error) {
 				return nil, nil
 			},
-			wantErrSubstr: `unary interceptor: failed capturing non-nil service name with regexp "^/{1,2}(.*)/" from "bananas"`,
+			wantErrSubstr: `unary interceptor: failed capturing non-nil service name with regexp "^/{1,2}(.*?)/" from "bananas"`,
 		},
 		{
 			name: "unable_to_extract_principal",
@@ -308,6 +308,11 @@ func TestServiceName(t *testing.T) {
 		{
 			name:           "service_name_with_two_leading_slash",
 			fullMethodName: "//foo/bar",
+			want:           "foo",
+		},
+		{
+			name:           "service_name_from_string_with_many_elements",
+			fullMethodName: "/foo/bar/baz",
 			want:           "foo",
 		},
 		{
