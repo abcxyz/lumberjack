@@ -21,6 +21,8 @@ import (
 	"regexp"
 
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/structpb"
 
 	calpb "google.golang.org/genproto/googleapis/cloud/audit"
@@ -39,6 +41,7 @@ type Interceptor struct {
 }
 
 // UnaryInterceptor is a gRPC unary interceptor that automatically emits application audit logs.
+// The interceptor is currently implemented in fail-close mode.
 // TODO(#95): add support for fail-close/best-effort logging.
 func (i *Interceptor) UnaryInterceptor(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error) {
 	zlogger := zlogger.FromContext(ctx)
@@ -60,8 +63,7 @@ func (i *Interceptor) UnaryInterceptor(ctx context.Context, req interface{}, inf
 	logReq.Payload.MethodName = info.FullMethod
 	serviceName, err := serviceName(info.FullMethod)
 	if err != nil {
-		zlogger.Warnw("unary interceptor failed extract service name", "error", err)
-		return handler(ctx, req)
+		return nil, status.Errorf(codes.FailedPrecondition, "unary interceptor: %v", err)
 	}
 	logReq.Payload.ServiceName = serviceName
 
@@ -77,7 +79,7 @@ func (i *Interceptor) UnaryInterceptor(ctx context.Context, req interface{}, inf
 	d := mostRelevantRule.Directive
 	if d == alpb.AuditRuleDirectiveRequestAndResponse || d == alpb.AuditRuleDirectiveRequestOnly {
 		if reqStruct, err := toProtoStruct(req); err != nil {
-			zlogger.Warnw("unary interceptor failed converting req into a Google struct proto", "error", err)
+			return nil, status.Errorf(codes.Internal, "unary interceptor failed converting req into a Google struct proto: %v", err)
 		} else {
 			logReq.Payload.Request = reqStruct
 		}
@@ -100,7 +102,7 @@ func (i *Interceptor) UnaryInterceptor(ctx context.Context, req interface{}, inf
 	// Autofill `Payload.Response`.
 	if d == alpb.AuditRuleDirectiveRequestAndResponse {
 		if respStruct, err := toProtoStruct(handlerResp); err != nil {
-			zlogger.Warnw("unary interceptor failed converting resp into a Google struct proto", "error", err)
+			return nil, status.Errorf(codes.Internal, "unary interceptor failed converting resp into a Google struct proto: %v", err)
 		} else {
 			logReq.Payload.Response = respStruct
 		}
@@ -108,7 +110,7 @@ func (i *Interceptor) UnaryInterceptor(ctx context.Context, req interface{}, inf
 
 	// Emits the log in best-effort logging mode.
 	if err := i.Log(ctx, logReq); err != nil {
-		zlogger.Warnw("unary interceptor failed to emit log", "error", err)
+		return nil, status.Errorf(codes.Internal, "unary interceptor failed to emit log: %v", err)
 	}
 
 	return handlerResp, handlerErr
