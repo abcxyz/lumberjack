@@ -20,6 +20,10 @@ import (
 	"net"
 	"testing"
 
+	alpb "github.com/abcxyz/lumberjack/clients/go/apis/v1alpha1"
+	"github.com/abcxyz/lumberjack/clients/go/pkg/errutil"
+	"github.com/abcxyz/lumberjack/clients/go/pkg/remote"
+	"github.com/abcxyz/lumberjack/clients/go/pkg/security"
 	"github.com/google/go-cmp/cmp"
 	calpb "google.golang.org/genproto/googleapis/cloud/audit"
 	protostatus "google.golang.org/genproto/googleapis/rpc/status"
@@ -29,11 +33,6 @@ import (
 	grpcstatus "google.golang.org/grpc/status"
 	"google.golang.org/protobuf/testing/protocmp"
 	"google.golang.org/protobuf/types/known/structpb"
-
-	alpb "github.com/abcxyz/lumberjack/clients/go/apis/v1alpha1"
-	"github.com/abcxyz/lumberjack/clients/go/pkg/errutil"
-	"github.com/abcxyz/lumberjack/clients/go/pkg/remote"
-	"github.com/abcxyz/lumberjack/clients/go/pkg/security"
 )
 
 type fakeServer struct {
@@ -211,7 +210,7 @@ func TestUnaryInterceptor(t *testing.T) {
 			info: &grpc.UnaryServerInfo{
 				FullMethod: "bananas",
 			},
-			wantErrSubstr: "info.FullMethod should have format /$SERVICE_NAME/$METHOD_NAME",
+			wantErrSubstr: `failed capturing non-nil service name with regexp "^/{1,2}(.*)/" from "bananas"`,
 		},
 		{
 			name: "err_extracting_principal",
@@ -239,7 +238,7 @@ func TestUnaryInterceptor(t *testing.T) {
 				FullMethod: "/ExampleService/ExampleMethod",
 			},
 			req:           "bananas",
-			wantErrSubstr: "failed converting req bananas into a Google struct proto",
+			wantErrSubstr: "failed converting req into a Google struct proto",
 		},
 	}
 	for _, tc := range tests {
@@ -251,7 +250,8 @@ func TestUnaryInterceptor(t *testing.T) {
 
 			r := &fakeServer{}
 			s := grpc.NewServer()
-			defer s.Stop()
+			t.Cleanup(s.Stop)
+
 			alpb.RegisterAuditLogAgentServer(s, r)
 			lis, err := net.Listen("tcp", "localhost:0")
 			if err != nil {
@@ -293,6 +293,58 @@ func TestUnaryInterceptor(t *testing.T) {
 
 			if err := c.Stop(); err != nil {
 				t.Fatal(err)
+			}
+		})
+	}
+}
+
+func TestServiceName(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name           string
+		fullMethodName string
+		want           string
+		wantErrSubstr  string
+	}{
+		{
+			name:           "service_name_with_one_leading_slash",
+			fullMethodName: "/foo/bar",
+			want:           "foo",
+		},
+		{
+			name:           "service_name_with_two_leading_slash",
+			fullMethodName: "//foo/bar",
+			want:           "foo",
+		},
+		{
+			name:           "error_due_to_nil_service_name",
+			fullMethodName: "///bar",
+			wantErrSubstr:  "failed capturing non-nil service name",
+		},
+		{
+			name:           "error_due_to_missing_leading_slash",
+			fullMethodName: "bar/foo",
+			wantErrSubstr:  "failed capturing non-nil service name",
+		},
+		{
+			name:           "error_due_to_empty_fullMethodName",
+			fullMethodName: "",
+			wantErrSubstr:  "failed capturing non-nil service name",
+		},
+	}
+	for _, tc := range tests {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			got, gotErr := serviceName(tc.fullMethodName)
+			if diff := errutil.DiffSubstring(gotErr, tc.wantErrSubstr); diff != "" {
+				t.Errorf("serviceName(%v) got unexpected error substring: %v", tc.fullMethodName, diff)
+			}
+
+			if got != tc.want {
+				t.Errorf("serviceName(%v) = %v, want %v", tc.fullMethodName, got, tc.want)
 			}
 		})
 	}

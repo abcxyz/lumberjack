@@ -43,6 +43,7 @@ type FromRawJWT struct {
 }
 
 // RequestPrincipal extracts the JWT principal from the grpcmetadata in the context.
+// This method does not verify the JWT.
 func (j *FromRawJWT) RequestPrincipal(ctx context.Context) (string, error) {
 	md, ok := grpcmetadata.FromIncomingContext(ctx)
 	if !ok {
@@ -50,12 +51,23 @@ func (j *FromRawJWT) RequestPrincipal(ctx context.Context) (string, error) {
 	}
 
 	// Extract the JWT.
-	var idToken string
-	if auths := md[j.FromRawJWT.Key]; len(auths) > 0 {
-		idToken = auths[0][len(j.FromRawJWT.Prefix):] // trim prefix
+	if j == nil || j.FromRawJWT == nil {
+		return "", fmt.Errorf(`expecting non-nil receiver field "j.FromRawJwt"`)
 	}
+	vals, ok := md[j.FromRawJWT.Key]
+	if !ok {
+		return "", fmt.Errorf("failed extracting the JWT due missing key %q in grpc metadata %+v", j.FromRawJWT.Key, md)
+	}
+	if len(vals) != 1 {
+		return "", fmt.Errorf("expecting exaclty one value (a JWT) under key %q in grpc metadata %+v", j.FromRawJWT.Key, md)
+	}
+	jwtRaw := vals[0]
+	if len(j.FromRawJWT.Prefix) > len(jwtRaw) {
+		return "", fmt.Errorf("JWT prefix %q is longer than raw JWT %q", j.FromRawJWT.Prefix, jwtRaw)
+	}
+	idToken := jwtRaw[len(j.FromRawJWT.Prefix):] // trim prefix
 	if idToken == "" {
-		return "", fmt.Errorf("nil JWT under the key %q in grpc metadata %+v", j.FromRawJWT.Key, md)
+		return "", fmt.Errorf("nil JWT ID token under the key %q in grpc metadata %+v", j.FromRawJWT.Key, md)
 	}
 
 	// Parse the JWT into claims.
@@ -67,7 +79,14 @@ func (j *FromRawJWT) RequestPrincipal(ctx context.Context) (string, error) {
 	}
 
 	// Retrieve the principal from claims.
-	principal := claims[emailKey].(string)
+	principalRaw, ok := claims[emailKey]
+	if !ok {
+		return "", fmt.Errorf("jwt claims are missing the email key %q", emailKey)
+	}
+	principal, ok := principalRaw.(string)
+	if !ok {
+		return "", fmt.Errorf("expecting string in jwt claims %q, got %T", emailKey, principalRaw)
+	}
 	if principal == "" {
 		return "", fmt.Errorf("nil principal under claims %q", emailKey)
 	}

@@ -22,18 +22,12 @@ import (
 
 	"github.com/abcxyz/lumberjack/clients/go/apis/v1alpha1"
 	"github.com/abcxyz/lumberjack/clients/go/pkg/errutil"
+	"github.com/golang-jwt/jwt"
 	"google.golang.org/grpc/metadata"
 )
 
 func TestFromRawJWT_RequestPrincipal(t *testing.T) {
 	t.Parallel()
-
-	// Test JWT:
-	// {
-	// 	 "name": "user",
-	// 	 "email": "user@example.com"
-	// }
-	jwt := "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6InVzZXIiLCJpYXQiOjE1MTYyMzkwMjIsImVtYWlsIjoidXNlckBleGFtcGxlLmNvbSJ9.PXl-SJniWHMVLNYb77HmVFFqWTlu28xf9fou2GaT0Jc"
 
 	tests := []struct {
 		name          string
@@ -45,7 +39,9 @@ func TestFromRawJWT_RequestPrincipal(t *testing.T) {
 		{
 			name: "valid_jwt",
 			ctx: metadata.NewIncomingContext(context.Background(), metadata.New(map[string]string{
-				"authorization": jwt,
+				"authorization": "Bearer " + jwtFromClaims(t, map[string]interface{}{
+					"email": "user@example.com",
+				}),
 			})),
 			fromRawJWT: &v1alpha1.FromRawJWT{
 				Key:    "authorization",
@@ -54,21 +50,89 @@ func TestFromRawJWT_RequestPrincipal(t *testing.T) {
 			want: "user@example.com",
 		},
 		{
-			name:          "missing_grpc_metadata",
-			ctx:           context.Background(),
-			wantErrSubstr: "gRPC metadata in incoming context is missing",
-		},
-		{
-			name: "nil_jwt",
-			ctx:  metadata.NewIncomingContext(context.Background(), metadata.New(nil)),
+			name: "error_from_missing_jwt_email_claim",
+			ctx: metadata.NewIncomingContext(context.Background(), metadata.New(map[string]string{
+				"authorization": "Bearer " + jwtFromClaims(t, map[string]interface{}{}),
+			})),
 			fromRawJWT: &v1alpha1.FromRawJWT{
 				Key:    "authorization",
 				Prefix: "Bearer ",
 			},
-			wantErrSubstr: `nil JWT under the key "authorization" in grpc metadata`,
+			wantErrSubstr: `jwt claims are missing the email key "email"`,
 		},
 		{
-			name: "unparsable_jwt",
+			name: "error_from_slice_as_jwt_email_claim",
+			ctx: metadata.NewIncomingContext(context.Background(), metadata.New(map[string]string{
+				"authorization": "Bearer " + jwtFromClaims(t, map[string]interface{}{
+					"email": []string{"foo", "bar"},
+				}),
+			})),
+			fromRawJWT: &v1alpha1.FromRawJWT{
+				Key:    "authorization",
+				Prefix: "Bearer ",
+			},
+			wantErrSubstr: `expecting string in jwt claims "email", got []interface {}`,
+		},
+		{
+			name:          "error_from_missing_grpc_metadata",
+			ctx:           context.Background(),
+			wantErrSubstr: "gRPC metadata in incoming context is missing",
+		},
+		{
+			name: "error_from_nil_receiver_field",
+			ctx: metadata.NewIncomingContext(context.Background(), metadata.New(map[string]string{
+				"authorization": "Bearer " + jwtFromClaims(t, map[string]interface{}{
+					"email": "user@example.com",
+				}),
+			})),
+			wantErrSubstr: `expecting non-nil receiver field "j.FromRawJwt"`,
+		},
+		{
+			name: "error_from_inexistent_jwt_key",
+			ctx:  metadata.NewIncomingContext(context.Background(), metadata.New(map[string]string{})),
+			fromRawJWT: &v1alpha1.FromRawJWT{
+				Key:    "authorization",
+				Prefix: "Bearer ",
+			},
+			wantErrSubstr: `failed extracting the JWT due missing key "authorization" in grpc metadata`,
+		},
+
+		{
+			name: "error_from_slice_length_two_in_jwt_key",
+			ctx: metadata.NewIncomingContext(context.Background(), metadata.MD{
+				"authorization": []string{"foo", "bar"},
+			}),
+			fromRawJWT: &v1alpha1.FromRawJWT{
+				Key:    "authorization",
+				Prefix: "Bearer ",
+			},
+			wantErrSubstr: `expecting exaclty one value (a JWT) under key "authorization" in grpc metadata`,
+		},
+
+		{
+			name: "error_from_prefix_longer_than_jwt",
+			ctx: metadata.NewIncomingContext(context.Background(), metadata.New(map[string]string{
+				"authorization": "short",
+			})),
+			fromRawJWT: &v1alpha1.FromRawJWT{
+				Key:    "authorization",
+				Prefix: "loooooong",
+			},
+			wantErrSubstr: `JWT prefix "loooooong" is longer than raw JWT "short"`,
+		},
+		{
+			name: "error_from_empty_string_as_jwt",
+			ctx: metadata.NewIncomingContext(context.Background(), metadata.New(map[string]string{
+				"authorization": "",
+			})),
+			fromRawJWT: &v1alpha1.FromRawJWT{
+				Key:    "authorization",
+				Prefix: "",
+			},
+			wantErrSubstr: `nil JWT ID token under the key "authorization" in grpc metadata`,
+		},
+		{
+			name: "error_from_unparsable_jwt",
 			ctx: metadata.NewIncomingContext(context.Background(), metadata.New(map[string]string{
 				"authorization": "bananas",
 			})),
@@ -95,4 +159,15 @@ func TestFromRawJWT_RequestPrincipal(t *testing.T) {
 			}
 		})
 	}
+}
+
+func jwtFromClaims(t *testing.T, claims map[string]interface{}) string {
+	jwtMapClaims := jwt.MapClaims{}
+	jwtMapClaims = claims
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwtMapClaims)
+	signedToken, err := token.SignedString([]byte("secureSecretText"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	return signedToken
 }

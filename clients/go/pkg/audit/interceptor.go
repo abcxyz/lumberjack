@@ -18,7 +18,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"strings"
+	"regexp"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/status"
@@ -56,12 +56,12 @@ func (i *Interceptor) UnaryInterceptor(ctx context.Context, req interface{}, inf
 	}
 
 	// Autofill `Payload.ServiceName` and `Payload.MethodName`.
-	s := strings.Split(fullMethodName, "/")
-	if len(s) < 3 || len(s[0]) != 0 {
-		return nil, fmt.Errorf("info.FullMethod should have format /$SERVICE_NAME/$METHOD_NAME")
-	}
-	logReq.Payload.ServiceName = s[1]
 	logReq.Payload.MethodName = fullMethodName
+	serviceName, err := serviceName(fullMethodName)
+	if err != nil {
+		return nil, err
+	}
+	logReq.Payload.ServiceName = serviceName
 
 	// Autofill `Payload.AuthenticationInfo.PrincipalEmail`.
 	principal, err := i.SecurityContext.RequestPrincipal(ctx)
@@ -75,7 +75,7 @@ func (i *Interceptor) UnaryInterceptor(ctx context.Context, req interface{}, inf
 	if d == alpb.AuditRuleDirectiveRequestAndResponse || d == alpb.AuditRuleDirectiveRequestOnly {
 		reqStruct, err := toProtoStruct(req)
 		if err != nil {
-			return nil, fmt.Errorf("failed converting req %+v into a Google struct proto: %w", req, err)
+			return nil, fmt.Errorf("failed converting req into a Google struct proto: %w", err)
 		}
 		logReq.Payload.Request = reqStruct
 	}
@@ -99,7 +99,7 @@ func (i *Interceptor) UnaryInterceptor(ctx context.Context, req interface{}, inf
 	if d == alpb.AuditRuleDirectiveRequestAndResponse {
 		respStruct, err := toProtoStruct(handlerResp)
 		if err != nil {
-			return nil, fmt.Errorf("failed converting resp %+v into a Google struct proto: %w", handlerResp, err)
+			return nil, fmt.Errorf("failed converting resp into a Google struct proto: %w", err)
 		}
 		logReq.Payload.Response = respStruct
 	}
@@ -111,12 +111,25 @@ func (i *Interceptor) UnaryInterceptor(ctx context.Context, req interface{}, inf
 	}
 
 	// Emits the log in best-effort logging mode.
-	err = i.Log(ctx, logReq)
-	if err != nil {
-		zlogger.FromContext(ctx).Warnf("unary interceptor failed to emit log req %+v: %w", err)
+	if err := i.Log(ctx, logReq); err != nil {
+		zlogger.FromContext(ctx).Warnw("unary interceptor failed to emit log", "error", err)
 	}
 
 	return handlerResp, handlerErr
+}
+
+// serviceName extracts the name of a service from the string `info.FullMethod`.
+// In `info.FullMethod`, the service name is preceded by one or two slashes, and
+// followed by one slash. For example:
+//   - /$SERVICE_NAME/foo"
+//   - //$SERVICE_NAME/foo/bar
+func serviceName(fullMethodName string) (string, error) {
+	re := "^/{1,2}(.*)/"
+	groups := regexp.MustCompile(re).FindStringSubmatch(fullMethodName)
+	if len(groups) < 2 || groups[1] == "" {
+		return "", fmt.Errorf("failed capturing non-nil service name with regexp %q from %q", re, fullMethodName)
+	}
+	return groups[1], nil
 }
 
 type auditLogReqKey struct{}
