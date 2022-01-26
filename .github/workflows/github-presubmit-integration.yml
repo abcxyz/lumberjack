@@ -56,6 +56,7 @@ jobs:
           # TODO: enable using wif once gcs tf provider functional.
           workload_identity_provider: 'projects/638387980668/locations/global/workloadIdentityPools/gh-pool/providers/gh-provider'
           service_account: 'gh-access-sa@lumberjack-dev-infra.iam.gserviceaccount.com'
+          token_format: 'access_token' # needed for workaround
           #project_id: lumberjack-dev-infra
           #credentials_json: ${{ secrets.SERVICE_ACCOUNT }}
 
