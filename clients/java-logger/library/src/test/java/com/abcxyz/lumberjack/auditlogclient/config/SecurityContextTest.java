@@ -133,6 +133,25 @@ public class SecurityContextTest {
   }
 
   @Test
+  public void getsPrincipalFromJwt_NullPrefix() throws Exception {
+    List<JwtSpecification> specifications = new ArrayList<>();
+    String key = "jwt-key";
+    specifications.add(new JwtSpecification(key, null, null));
+    specifications.add(new JwtSpecification("not-found-key", "not-found", null));
+    SecurityContext securityContext = new SecurityContext(specifications);
+
+    Metadata headers = new Metadata();
+    Metadata.Key jwtKey = Metadata.Key.of(key, Metadata.ASCII_STRING_MARSHALLER);
+    headers.put(jwtKey, ENCODED_Jwt);
+    Metadata.Key otherKey = Metadata.Key.of("other-key", Metadata.ASCII_STRING_MARSHALLER);
+    headers.put(otherKey, "irrelevant");
+
+    Optional<String> returnVal = securityContext.getPrincipal(headers);
+    assertThat(returnVal.isPresent()).isTrue();
+    assertThat(returnVal.get()).isEqualTo("me@example.com");
+  }
+
+  @Test
   public void getsPrincipalFromJwt_CaseInsensitive() throws Exception {
     List<JwtSpecification> specifications = new ArrayList<>();
     String key = "jwt-key";
