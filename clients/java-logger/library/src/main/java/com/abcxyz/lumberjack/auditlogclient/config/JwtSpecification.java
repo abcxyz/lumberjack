@@ -54,7 +54,7 @@ public class JwtSpecification implements SecuritySpecification {
     }
     Metadata.Key<String> metadataKey = Metadata.Key.of(key, Metadata.ASCII_STRING_MARSHALLER);
     String idToken = headers.get(metadataKey);
-    if (idToken.toLowerCase().startsWith(prefix.toLowerCase())) {
+    if (prefix != null && idToken.toLowerCase().startsWith(prefix.toLowerCase())) {
       idToken = idToken.substring(prefix.length());
     }
     try {
