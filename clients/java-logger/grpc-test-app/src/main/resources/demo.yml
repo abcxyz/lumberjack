@@ -1,0 +1,13 @@
+version: v1alpha1
+backend:
+  address: audit-logging-l72cl3eaiq-uc.a.run.app:443
+security_context:
+  from_raw_jwt:
+    key: x-goog-iap-jwt-assertion
+rules:
+- selector: "/abcxyz.test.Talker/Hello"
+  directive: AUDIT_REQUEST_AND_RESPONSE
+- selector: "/abcxyz.test.Talker/Whisper"
+  directive: AUDIT
+- selector: "/abcxyz.test.Talker/Bye"
+  directive: AUDIT_REQUEST_ONLY

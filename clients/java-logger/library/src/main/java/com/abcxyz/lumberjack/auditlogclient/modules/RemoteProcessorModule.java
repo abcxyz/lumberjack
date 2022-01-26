@@ -32,6 +32,7 @@ import io.grpc.auth.MoreCallCredentials;
 import java.io.IOException;
 import java.util.Collections;
 import java.util.List;
+import javax.annotation.Nullable;
 
 public class RemoteProcessorModule extends AbstractModule {
   @Provides
