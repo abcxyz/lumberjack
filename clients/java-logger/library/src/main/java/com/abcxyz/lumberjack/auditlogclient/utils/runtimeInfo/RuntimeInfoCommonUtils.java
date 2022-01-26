@@ -15,6 +15,10 @@ public class RuntimeInfoCommonUtils {
     return cutOff > 0 ? zone.substring(0, cutOff) : zone;
   }
 
+  public boolean hasClusterName() {
+    return !isNullOrBlank(MetadataConfig.getClusterName());
+  }
+
   public String getClusterName() {
     return MetadataConfig.getClusterName();
   }
