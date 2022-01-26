@@ -17,7 +17,7 @@ func TestConfig(t *testing.T) {
 		cfg        string
 		wantConfig Config
 	}{{
-		name: "full config",
+		name: "full_config",
 		cfg: `version: v1alpha1
 backend:
   address: service:80
@@ -62,7 +62,7 @@ rules:
 			}},
 		},
 	}, {
-		name: "minimal config",
+		name: "minimal_config",
 		cfg: `version: v1alpha1
 security_context:
   from_raw_jwt: {}
@@ -119,10 +119,14 @@ func TestValidate(t *testing.T) {
 			Condition: &Condition{
 				Regex: &RegexCondition{},
 			},
-			Rules: []*AuditRule{{Selector: "*"}},
+			Rules: []*AuditRule{{
+				Selector:  "*",
+				Directive: "AUDIT_REQUEST_ONLY",
+				LogType:   "DATA_ACCESS",
+			}},
 		},
 	}, {
-		name: "invalid version",
+		name: "invalid_version",
 		cfg: &Config{
 			Version: "random",
 			SecurityContext: &SecurityContext{
@@ -135,7 +139,7 @@ func TestValidate(t *testing.T) {
 		},
 		wantErr: `unexpected Version "random" want "v1alpha1"`,
 	}, {
-		name: "missing rule selector",
+		name: "missing_rule_selector",
 		cfg: &Config{
 			Version: "v1alpha1",
 			SecurityContext: &SecurityContext{
@@ -148,7 +152,7 @@ func TestValidate(t *testing.T) {
 		},
 		wantErr: "audit rule selector is empty",
 	}, {
-		name: "invalid rule directive",
+		name: "invalid_rule_directive",
 		cfg: &Config{
 			Version: "v1alpha1",
 			SecurityContext: &SecurityContext{
@@ -160,11 +164,12 @@ func TestValidate(t *testing.T) {
 			Rules: []*AuditRule{{
 				Selector:  "*",
 				Directive: "random",
+				LogType:   "DATA_ACCESS",
 			}},
 		},
 		wantErr: `unexpected rule.Directive "random" want one of ["AUDIT", "AUDIT_REQUEST_ONLY"`,
 	}, {
-		name: "invalid rule log type",
+		name: "invalid_rule_log_type",
 		cfg: &Config{
 			Version: "v1alpha1",
 			SecurityContext: &SecurityContext{
@@ -174,13 +179,14 @@ func TestValidate(t *testing.T) {
 				Regex: &RegexCondition{},
 			},
 			Rules: []*AuditRule{{
-				Selector: "*",
-				LogType:  "random",
+				Selector:  "*",
+				Directive: "AUDIT_REQUEST_ONLY",
+				LogType:   "random",
 			}},
 		},
 		wantErr: `unexpected rule.LogType "random" want one of ["ADMIN_ACTIVITY", "DATA_ACCESS"]`,
 	}, {
-		name: "combination of errors",
+		name: "combination_of_errors",
 		cfg: &Config{
 			Version: "random",
 			Rules:   []*AuditRule{{}},
