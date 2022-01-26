@@ -20,7 +20,11 @@ public class RuntimeInfoCommonUtils {
   }
 
   public String getClusterName() {
-    return MetadataConfig.getClusterName();
+    String clusterName = MetadataConfig.getClusterName();
+    if (clusterName == null) {
+      throw new IllegalArgumentException("ClusterName returned null from metadata.");
+    }
+    return clusterName;
   }
 
   public String getZone() {
