@@ -38,7 +38,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("failed to listen: %v", err)
 	}
-	opt, c, err := auditopt.WithInterceptorFromConfigFile("/secrets/config/auditconfig.yaml")
+	opt, c, err := auditopt.WithInterceptorFromConfigFile(auditopt.DefaultConfigFilePath)
 	if err != nil {
 		log.Fatalf("failed to setup audit interceptor: %v", err)
 	}

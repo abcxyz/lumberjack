@@ -40,7 +40,7 @@ import (
 	alpb "github.com/abcxyz/lumberjack/clients/go/apis/v1alpha1"
 )
 
-const defaultConfigFilePath = "/etc/auditlogging/config.yaml"
+const DefaultConfigFilePath = "/etc/auditlogging/config.yaml"
 
 // MustFromConfigFile specifies a config file to configure the
 // audit client. `path` is required, and if the config file is
@@ -68,7 +68,7 @@ func FromConfigFile(path string) audit.Option {
 	return func(c *audit.Client) error {
 		v := viper.New()
 		if path == "" {
-			path = defaultConfigFilePath
+			path = DefaultConfigFilePath
 		}
 		// We don't return an error if the file is not found because we
 		// still use env vars and defaults to setup the client.

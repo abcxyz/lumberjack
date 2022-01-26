@@ -4,7 +4,7 @@ condition:
     principal_include:
     principal_exclude:
 backend:
-  address: audit-logging-72hwgfphma-uc.a.run.app:443
+  address:
   insecure_enabled: false
   impersonate_account:
 security_context:
@@ -16,6 +16,6 @@ rules:
 - selector: "/abcxyz.test.Talker/Hello"
   directive: AUDIT_REQUEST_AND_RESPONSE
 - selector: "/abcxyz.test.Talker/Whisper"
-  directive: AUDIT_REQUEST_ONLY
-- selector: "/abcxyz.test.Talker/Bye"
   directive: AUDIT
+- selector: "/abcxyz.test.Talker/Bye"
+  directive: AUDIT_REQUEST_ONLY
