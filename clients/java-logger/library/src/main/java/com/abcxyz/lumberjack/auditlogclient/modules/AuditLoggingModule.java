@@ -44,7 +44,8 @@ public class AuditLoggingModule extends AbstractModule {
   private static final String CONFIG_ENV_KEY = "AUDIT_CLIENT_CONFIG_PATH";
 
   @Provides
-  public AuditLoggingConfiguration auditLoggingConfiguration(@Named("AuditClientConfigName") String configName) {
+  public AuditLoggingConfiguration auditLoggingConfiguration(
+      @Named("AuditClientConfigName") String configName) {
     try {
       try (InputStream input = getClass().getClassLoader().getResourceAsStream(configName)) {
         ObjectMapper mapper = new ObjectMapper(new YAMLFactory());
@@ -58,16 +59,16 @@ public class AuditLoggingModule extends AbstractModule {
   @Provides
   @Named("AuditClientConfigName")
   public String configName() {
-    return System.getenv().containsKey(CONFIG_ENV_KEY) ?
-            System.getenv().get(CONFIG_ENV_KEY) :
-            DEFAULT_CONFIG_LOCATION;
+    return System.getenv().containsKey(CONFIG_ENV_KEY)
+        ? System.getenv().get(CONFIG_ENV_KEY)
+        : DEFAULT_CONFIG_LOCATION;
   }
 
   @Provides
   public BackendContext backendContext(AuditLoggingConfiguration auditLoggingConfiguration) {
-    return auditLoggingConfiguration.getBackend() == null ?
-        new BackendContext() :
-        auditLoggingConfiguration.getBackend();
+    return auditLoggingConfiguration.getBackend() == null
+        ? new BackendContext()
+        : auditLoggingConfiguration.getBackend();
   }
 
   @Provides

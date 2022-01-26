@@ -42,9 +42,7 @@ public class AuditLoggingConfiguration {
   private SecurityContext securityContext;
 
   public Filters getFilters() {
-    return conditions == null ?
-        new Filters() :
-        conditions.getFilters();
+    return conditions == null ? new Filters() : conditions.getFilters();
   }
 
   @Data
