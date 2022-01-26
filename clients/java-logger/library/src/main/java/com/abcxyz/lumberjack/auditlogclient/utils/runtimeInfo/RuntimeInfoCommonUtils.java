@@ -6,9 +6,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 
-/**
- * common utilities for runtime info processor
- */
+/** common utilities for runtime info processor */
 public class RuntimeInfoCommonUtils {
 
   public String getRegion() {
@@ -18,11 +16,7 @@ public class RuntimeInfoCommonUtils {
   }
 
   public String getClusterName() {
-    String clusterName = MetadataConfig.getClusterName();
-    if (clusterName == null) {
-      throw new IllegalArgumentException("ClusterName returned null from metadata.");
-    }
-    return clusterName;
+    return MetadataConfig.getClusterName();
   }
 
   public String getZone() {

@@ -16,8 +16,7 @@ public class ComputeEngineManager {
 
   private static final String metadataUrl = "http://metadata.google.internal";
 
-  @Inject
-  private RuntimeInfoCommonUtils runtimeInfoCommonUtils;
+  @Inject private RuntimeInfoCommonUtils runtimeInfoCommonUtils;
 
   public MonitoredResource detectGCEResource() {
     return MonitoredResource.newBuilder()
@@ -34,7 +33,6 @@ public class ComputeEngineManager {
     URLConnection connection = url.openConnection();
     Map<String, List<String>> map = connection.getHeaderFields();
     List<String> metadataFlavor = map.get("Metadata-Flavor");
-    return metadataFlavor.contains("Google");
+    return metadataFlavor != null && metadataFlavor.contains("Google");
   }
-
 }
