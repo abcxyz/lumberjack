@@ -52,6 +52,8 @@ public class LoggingController {
             .setPayload(
                 AuditLog.newBuilder()
                     .setServiceName(SERVICE_NAME)
+                    .setResourceName(traceId)
+                    .setMethodName("loggingShell")
                     .setAuthenticationInfo(
                         AuthenticationInfo.newBuilder().setPrincipalEmail(userEmail).build()))
             .setType(LogType.DATA_ACCESS)
