@@ -50,8 +50,12 @@ public class LoggingClientTests {
   void successfulClientCreate() {
     LoggingClient loggingClient = loggingClientBuilder.withDefaultProcessors().build();
     assertThat(loggingClient.getValidators().size()).isEqualTo(1);
-    assertThat(loggingClient.getMutators().size()).isEqualTo(1);
+    assertThat(loggingClient.getMutators().size()).isEqualTo(2);
     assertThat(loggingClient.getBackends().size()).isEqualTo(1);
+
+    // We want filtering to occur before other mutators
+    assertThat(loggingClient.getMutators().get(0).equals(filteringProcessor));
+    assertThat(loggingClient.getMutators().get(1).equals(runtimeInfoProcessor));
   }
 
   @Test
