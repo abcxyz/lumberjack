@@ -36,9 +36,17 @@ jobs:
         with:
           reports: './clients/java-logger/library/target/site/jacoco/jacoco.xml;./clients/java-logger/shell/target/site/jacoco/jacoco.xml'
           targetdir: 'coveragereport'
-          reporttypes: 'HtmlInline;Cobertura;Badges'
-      - name: Upload coverage report artifact
-        uses: actions/upload-artifact@v2.2.3
+          reporttypes: 'Html;Cobertura'
+      - name: Code Coverage Summary Report
+        uses: irongut/CodeCoverageSummary@v1.0.2
         with:
-          name: CoverageReport
-          path: coveragereport
+          filename: coveragereport/Cobertura.xml
+          badge: true
+          format: 'markdown'
+          output: 'both'
+      - name: Add Coverage PR Comment
+        uses: marocchino/sticky-pull-request-comment@v2
+        if: github.event_name == 'pull_request'
+        with:
+          recreate: true
+          path: code-coverage-results.md
