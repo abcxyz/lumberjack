@@ -24,15 +24,6 @@ jobs:
         with:
           java-version: '11'
           distribution: 'temurin'
-      - name: Download Maven
-        run: |
-          curl -sL https://dlcdn.apache.org/maven/maven-3/3.8.4/binaries/apache-maven-3.8.4-bin.zip -o maven.zip
-          apt-get update
-          apt-get -y install unzip
-          unzip -d /usr/share maven.zip
-          rm maven.zip
-          ln -s /usr/share/apache-maven-3.8.4/bin/mvn /usr/bin/mvn
-          echo "M2_HOME=/usr/share/apache-maven-3.8.4" | tee -a /etc/environment
       - name: Run Coverage
         working-directory: ./clients/java-logger
         run: mvn test
