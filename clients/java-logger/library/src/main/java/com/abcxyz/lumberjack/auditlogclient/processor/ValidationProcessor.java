@@ -16,6 +16,8 @@
 
 package com.abcxyz.lumberjack.auditlogclient.processor;
 
+import static com.google.api.client.util.Preconditions.checkArgument;
+
 import com.abcxyz.lumberjack.auditlogclient.processor.LogProcessor.LogValidator;
 import com.abcxyz.lumberjack.v1alpha1.AuditLogRequest;
 import com.google.inject.Inject;
@@ -28,13 +30,23 @@ public class ValidationProcessor implements LogValidator {
   /** Validates the given {@link AuditLogRequest} */
   @Override
   public AuditLogRequest process(AuditLogRequest auditLogRequest) throws IllegalArgumentException {
-
-    if (auditLogRequest == null) {
-      throw new IllegalArgumentException("Input auditLogRequest is null");
-    }
-    if (!auditLogRequest.hasPayload()) {
-      throw new IllegalArgumentException("Input auditLogRequest does not have payload");
-    }
+    checkArgument(auditLogRequest != null, "Input auditLogRequest is null");
+    checkArgument(auditLogRequest.hasPayload(), "Input auditLogRequest does not have payload");
+    checkArgument(
+        auditLogRequest.getPayload().hasAuthenticationInfo(),
+        "Input auditLogRequest does not have authentication info");
+    checkArgument(
+        auditLogRequest.getPayload().getResourceName() != null
+            && !auditLogRequest.getPayload().getResourceName().isBlank(),
+        "Input auditLogRequest does not have resource name");
+    checkArgument(
+        auditLogRequest.getPayload().getServiceName() != null
+            && !auditLogRequest.getPayload().getServiceName().isBlank(),
+        "Input auditLogRequest does not have service name");
+    checkArgument(
+        auditLogRequest.getPayload().getMethodName() != null
+            && !auditLogRequest.getPayload().getMethodName().isBlank(),
+        "Input auditLogRequest does not have method name");
     return auditLogRequest;
   }
 }
