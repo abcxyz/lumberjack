@@ -1,30 +1,153 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<project xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-    xmlns="http://maven.apache.org/POM/4.0.0"
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
     xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+
   <artifactId>audit-client-library</artifactId>
+  <groupId>com.abcxyz.lumberjack</groupId>
+  <version>0.0.1</version>
+
+  <dependencyManagement>
+    <dependencies>
+      <dependency>
+        <groupId>com.google.cloud</groupId>
+        <artifactId>libraries-bom</artifactId>
+        <version>23.0.0</version>
+        <type>pom</type>
+        <scope>import</scope>
+      </dependency>
+    </dependencies>
+  </dependencyManagement>
+
+  <properties>
+    <maven.compiler.source>11</maven.compiler.source>
+    <maven.compiler.target>11</maven.compiler.target>
+    <java.version>11</java.version>
+    <lumberjack.basedir>../../..</lumberjack.basedir>
+    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+  </properties>
+
+  <dependencies>
+    <dependency>
+      <groupId>com.fasterxml.jackson.core</groupId>
+      <artifactId>jackson-databind</artifactId>
+      <version>2.12.5</version>
+    </dependency>
+    <dependency>
+      <groupId>com.fasterxml.jackson.dataformat</groupId>
+      <artifactId>jackson-dataformat-yaml</artifactId>
+      <version>2.8.3</version>
+    </dependency>
+    <dependency>
+      <groupId>org.projectlombok</groupId>
+      <artifactId>lombok</artifactId>
+      <version>1.18.20</version>
+      <scope>provided</scope>
+    </dependency>
+    <dependency>
+      <groupId>com.google.protobuf</groupId>
+      <artifactId>protobuf-java</artifactId>
+      <version>3.17.3</version>
+    </dependency>
+    <dependency>
+      <groupId>com.google.api.grpc</groupId>
+      <artifactId>proto-google-common-protos</artifactId>
+      <version>2.5.0</version>
+    </dependency>
+    <dependency>
+      <groupId>com.google.cloud</groupId>
+      <artifactId>google-cloud-core</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>com.google.cloud</groupId>
+      <artifactId>google-cloud-logging</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.yaml</groupId>
+      <artifactId>snakeyaml</artifactId>
+      <version>1.29</version>
+    </dependency>
+    <dependency>
+      <groupId>org.junit.jupiter</groupId>
+      <artifactId>junit-jupiter-api</artifactId>
+      <version>5.7.2</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.mockito</groupId>
+      <artifactId>mockito-junit-jupiter</artifactId>
+      <version>3.9.0</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.slf4j</groupId>
+      <artifactId>slf4j-api</artifactId>
+      <version>1.7.32</version>
+    </dependency>
+    <dependency>
+      <groupId>org.assertj</groupId>
+      <artifactId>assertj-core</artifactId>
+      <version>3.21.0</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.junit.vintage</groupId>
+      <artifactId>junit-vintage-engine</artifactId>
+      <version>5.8.1</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>io.grpc</groupId>
+      <artifactId>grpc-testing</artifactId>
+      <version>1.41.0</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>com.auth0</groupId>
+      <artifactId>java-jwt</artifactId>
+      <version>3.18.2</version>
+      <scope>compile</scope>
+    </dependency>
+    <dependency>
+      <groupId>com.google.inject</groupId>
+      <artifactId>guice</artifactId>
+      <version>5.0.1</version>
+    </dependency>
+    <dependency>
+      <groupId>com.google.guava</groupId>
+      <artifactId>guava</artifactId>
+      <version>31.0.1-jre</version>
+    </dependency>
+  </dependencies>
 
   <build>
     <pluginManagement>
       <plugins>
         <plugin>
-          <artifactId>maven-surefire-plugin</artifactId>
           <groupId>org.apache.maven.plugins</groupId>
+          <artifactId>maven-surefire-plugin</artifactId>
           <version>3.0.0-M5</version>
         </plugin>
       </plugins>
     </pluginManagement>
     <plugins>
       <plugin>
+        <groupId>com.github.os72</groupId>
         <artifactId>protoc-jar-maven-plugin</artifactId>
+        <version>3.11.4</version>
         <executions>
           <execution>
+            <phase>generate-sources</phase>
+            <goals>
+              <goal>run</goal>
+            </goals>
             <configuration>
+              <includeStdTypes>true</includeStdTypes>
               <includeDirectories>
                 <include>${lumberjack.basedir}</include>
                 <include>${lumberjack.basedir}/third_party/googleapis</include>
               </includeDirectories>
-              <includeStdTypes>true</includeStdTypes>
               <inputDirectories>
                 <include>${lumberjack.basedir}/protos/v1alpha1</include>
               </inputDirectories>
@@ -34,20 +157,14 @@
                   <type>java</type>
                 </outputTarget>
                 <outputTarget>
+                  <type>grpc-java</type>
                   <pluginArtifact>io.grpc:protoc-gen-grpc-java:1.41.0
                   </pluginArtifact>
-                  <type>grpc-java</type>
                 </outputTarget>
               </outputTargets>
             </configuration>
-            <goals>
-              <goal>run</goal>
-            </goals>
-            <phase>generate-sources</phase>
           </execution>
         </executions>
-        <groupId>com.github.os72</groupId>
-        <version>3.11.4</version>
       </plugin>
       <plugin>
         <artifactId>jacoco-maven-plugin</artifactId>
@@ -75,121 +192,4 @@
       </plugin>
     </plugins>
   </build>
-  <dependencies>
-    <dependency>
-      <artifactId>jackson-databind</artifactId>
-      <groupId>com.fasterxml.jackson.core</groupId>
-      <version>2.12.5</version>
-    </dependency>
-    <dependency>
-      <artifactId>jackson-dataformat-yaml</artifactId>
-      <groupId>com.fasterxml.jackson.dataformat</groupId>
-      <version>2.8.3</version>
-    </dependency>
-    <dependency>
-      <artifactId>lombok</artifactId>
-      <groupId>org.projectlombok</groupId>
-      <scope>provided</scope>
-      <version>1.18.20</version>
-    </dependency>
-    <dependency>
-      <artifactId>protobuf-java</artifactId>
-      <groupId>com.google.protobuf</groupId>
-      <version>3.17.3</version>
-    </dependency>
-    <dependency>
-      <artifactId>proto-google-common-protos</artifactId>
-      <groupId>com.google.api.grpc</groupId>
-      <version>2.5.0</version>
-    </dependency>
-    <dependency>
-      <artifactId>google-cloud-core</artifactId>
-      <groupId>com.google.cloud</groupId>
-    </dependency>
-    <dependency>
-      <artifactId>google-cloud-logging</artifactId>
-      <groupId>com.google.cloud</groupId>
-    </dependency>
-    <dependency>
-      <artifactId>snakeyaml</artifactId>
-      <groupId>org.yaml</groupId>
-      <version>1.29</version>
-    </dependency>
-    <dependency>
-      <artifactId>junit-jupiter-api</artifactId>
-      <groupId>org.junit.jupiter</groupId>
-      <scope>test</scope>
-      <version>5.7.2</version>
-    </dependency>
-    <dependency>
-      <artifactId>mockito-junit-jupiter</artifactId>
-      <groupId>org.mockito</groupId>
-      <scope>test</scope>
-      <version>3.9.0</version>
-    </dependency>
-    <dependency>
-      <artifactId>slf4j-api</artifactId>
-      <groupId>org.slf4j</groupId>
-      <version>1.7.32</version>
-    </dependency>
-    <dependency>
-      <artifactId>assertj-core</artifactId>
-      <groupId>org.assertj</groupId>
-      <scope>test</scope>
-      <version>3.21.0</version>
-    </dependency>
-    <dependency>
-      <artifactId>junit-vintage-engine</artifactId>
-      <groupId>org.junit.vintage</groupId>
-      <scope>test</scope>
-      <version>5.8.1</version>
-    </dependency>
-    <dependency>
-      <artifactId>grpc-testing</artifactId>
-      <groupId>io.grpc</groupId>
-      <scope>test</scope>
-      <version>1.41.0</version>
-    </dependency>
-    <dependency>
-      <artifactId>java-jwt</artifactId>
-      <groupId>com.auth0</groupId>
-      <scope>compile</scope>
-      <version>3.18.2</version>
-    </dependency>
-    <dependency>
-      <artifactId>guice</artifactId>
-      <groupId>com.google.inject</groupId>
-      <version>5.0.1</version>
-    </dependency>
-    <dependency>
-      <artifactId>guava</artifactId>
-      <groupId>com.google.guava</groupId>
-      <version>31.0.1-jre</version>
-    </dependency>
-  </dependencies>
-  <dependencyManagement>
-    <dependencies>
-      <dependency>
-        <artifactId>libraries-bom</artifactId>
-        <groupId>com.google.cloud</groupId>
-        <scope>import</scope>
-        <type>pom</type>
-        <version>23.0.0</version>
-      </dependency>
-    </dependencies>
-  </dependencyManagement>
-
-  <groupId>com.abcxyz.lumberjack</groupId>
-
-  <modelVersion>4.0.0</modelVersion>
-
-  <properties>
-    <java.version>11</java.version>
-    <lumberjack.basedir>../../..</lumberjack.basedir>
-    <maven.compiler.source>11</maven.compiler.source>
-    <maven.compiler.target>11</maven.compiler.target>
-    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-  </properties>
-
-  <version>0.0.1</version>
 </project>
