@@ -50,9 +50,10 @@ public class LoggingClientBuilder {
    */
   public LoggingClientBuilder withDefaultProcessors() {
     return withValidationProcessor()
+        .withFilteringProcessor()
         .withRuntimeInfoProcessor()
-        .withRemoteProcessor()
-        .withFilteringProcessor();
+        .withRemoteProcessor();
+
   }
 
   /** Provides a {@link LoggingClientBuilder} with {@link CloudLoggingProcessor}. */
