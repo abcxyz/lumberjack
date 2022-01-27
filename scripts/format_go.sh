@@ -16,11 +16,11 @@
 cd "$(dirname "$0")/.."
 
 # gofmt
-gofmt -s -d -l .
+gofmt -s -d -w .
  
 # goimports
 go install golang.org/x/tools/cmd/goimports@latest
-goimports -l .
+goimports -w .
 
 # go mod tidy
 for i in $(find . -name go.mod); do
