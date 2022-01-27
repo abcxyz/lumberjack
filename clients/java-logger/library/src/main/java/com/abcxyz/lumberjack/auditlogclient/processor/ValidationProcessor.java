@@ -47,7 +47,6 @@ public class ValidationProcessor implements LogValidator {
         auditLogRequest.getPayload().getMethodName() != null
             && !auditLogRequest.getPayload().getMethodName().isBlank(),
         "Input auditLogRequest does not have method name");
-    // timestamp?
     return auditLogRequest;
   }
 }
