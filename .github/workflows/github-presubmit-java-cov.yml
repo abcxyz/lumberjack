@@ -38,9 +38,9 @@ jobs:
           targetdir: 'coveragereport'
           reporttypes: 'Html;Cobertura'
       - name: Code Coverage Summary Report
-        uses: irongut/CodeCoverageSummary@v1.0.2
+        uses: irongut/CodeCoverageSummary@v1.2.0
         with:
-          filename: coveragereport/Cobertura.xml
+          filename: 'coveragereport/Cobertura.xml'
           badge: true
           format: 'markdown'
           output: 'both'
