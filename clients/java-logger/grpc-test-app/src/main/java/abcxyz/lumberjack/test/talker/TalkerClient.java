@@ -1,4 +1,4 @@
-package abcxyz.helloworld;
+package abcxyz.lumberjack.test.talker;
 
 /*
  * Copyright 2021 Lumberjack authors (see AUTHORS file)
@@ -31,9 +31,11 @@ package abcxyz.helloworld;
  * limitations under the License.
  */
 
-import abcxyz.helloworld.generated.GreeterGrpc;
-import abcxyz.helloworld.generated.HelloReply;
-import abcxyz.helloworld.generated.HelloRequest;
+import com.abcxyz.lumberjack.test.talker.HelloRequest;
+import com.abcxyz.lumberjack.test.talker.HelloResponse;
+import com.abcxyz.lumberjack.test.talker.TalkerGrpc;
+import com.abcxyz.lumberjack.test.talker.WhisperRequest;
+import com.abcxyz.lumberjack.test.talker.WhisperResponse;
 import com.google.auth.oauth2.AccessToken;
 import com.google.auth.oauth2.GoogleCredentials;
 import io.grpc.ManagedChannel;
@@ -42,31 +44,52 @@ import io.grpc.StatusRuntimeException;
 import io.grpc.auth.MoreCallCredentials;
 import java.io.IOException;
 import java.util.Calendar;
+import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-/** A simple client that requests a greeting from the {@link HelloWorldServerTls} with TLS. */
-public class HelloWorldClientTls {
-  private static final Logger logger = Logger.getLogger(HelloWorldClientTls.class.getName());
+/** A simple client that requests a greeting from the {@link TalkerService} with TLS. */
+public class TalkerClient {
+  private static final Logger logger = Logger.getLogger(TalkerClient.class.getName());
 
-  private final GreeterGrpc.GreeterBlockingStub blockingStub;
+  private final TalkerGrpc.TalkerBlockingStub blockingStub;
 
-  /** Construct client for accessing {@link HelloWorldServerTls} using the existing channel. */
-  public HelloWorldClientTls(ManagedChannel channel, GoogleCredentials credentials)
-      throws IOException {
+  /** Construct client for accessing {@link TalkerService} using the existing channel. */
+  public TalkerClient(ManagedChannel channel, GoogleCredentials credentials) throws IOException {
     blockingStub =
-        GreeterGrpc.newBlockingStub(channel)
+        TalkerGrpc.newBlockingStub(channel)
             .withCallCredentials(MoreCallCredentials.from(credentials));
   }
 
   /** Say hello to server. */
-  public void greet(String name) {
+  public void greet(String name, UUID target) {
     logger.info("Will try to greet " + name + " ...");
-    HelloRequest request = HelloRequest.newBuilder().setName(name).build();
-    HelloReply response;
+    HelloRequest request = HelloRequest.newBuilder()
+        .setMessage(name)
+        .setTarget(target.toString())
+        .build();
+    HelloResponse response;
     try {
-      response = blockingStub.sayHello(request);
+      response = blockingStub.hello(request);
+    } catch (StatusRuntimeException e) {
+      logger.log(Level.WARNING, "RPC failed: {0}", e.getStatus());
+      throw e;
+    }
+    logger.info("Greeting: " + response.getMessage());
+  }
+
+  /** Whisper secrets to server. */
+  public void whisper(String secret, UUID target) {
+    logger.info("Will try to whisper " + secret + " ...");
+    WhisperRequest request = WhisperRequest
+        .newBuilder()
+        .setMessage(secret)
+        .setTarget(target.toString())
+        .build();
+    WhisperResponse response;
+    try {
+      response = blockingStub.whisper(request);
     } catch (StatusRuntimeException e) {
       logger.log(Level.WARNING, "RPC failed: {0}", e.getStatus());
       throw e;
@@ -110,8 +133,10 @@ public class HelloWorldClientTls {
       ManagedChannel channel = ManagedChannelBuilder.forAddress(host, port).build();
 
       try {
-        HelloWorldClientTls client = new HelloWorldClientTls(channel, credentials);
-        client.greet(host);
+        TalkerClient client = new TalkerClient(channel, credentials);
+        UUID target = UUID.randomUUID();
+        client.greet(host, target);
+        client.whisper("This is a secret! Don't audit log this string", target);
       } finally {
         channel.shutdownNow().awaitTermination(5, TimeUnit.SECONDS);
       }

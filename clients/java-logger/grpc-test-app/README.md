@@ -1,6 +1,6 @@
 Protos and server/client are largely based on the examples found in the grpc-java repo. https://github.com/grpc/grpc-java
 
-Build:
+Build (from java-logger/ directory):
 
 ```
 mvn clean package
@@ -14,7 +14,7 @@ export APP_NAME=java-grpc-test-app-$USER
 export TAG=init
 export SERVER_URL=
 
-./build_server.sh
+./scripts/build_server.sh
 
 gcloud run deploy $APP_NAME \
 --image=us-docker.pkg.dev/$APP_PROJECT/images/$APP_NAME:init \
@@ -27,5 +27,5 @@ gcloud run deploy $APP_NAME \
 In another terminal, send requests from the client:
 ```
 export SERVICE_URL=$(gcloud run services describe ${APP_NAME} --platform managed --region us-west1 --format 'value(status.url)')
-mvn exec:java -Dexec.mainClass=HelloWorldClientTls -Dexec.args="${SERVICE_URL} 443 $(gcloud auth print-identity-token)"
+java -cp grpc-test-app/target/grpc-test-app-0.0.1.jar abcxyz.lumberjack.test.talker.TalkerClient ${SERVICE_URL} 443 $(gcloud auth print-identity-token)
 ```

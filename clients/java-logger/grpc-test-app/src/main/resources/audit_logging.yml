@@ -1,0 +1,8 @@
+version: v1alpha1
+security_context:
+  from_raw_jwt:
+rules:
+- selector: "abcxyz.test.Talker/Hello"
+  directive: AUDIT_REQUEST_AND_RESPONSE
+- selector: "abcxyz.test.Talker/Whisper"
+  directive: AUDIT
