@@ -6,15 +6,17 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 
-/**
- * common utilities for runtime info processor
- */
+/** common utilities for runtime info processor */
 public class RuntimeInfoCommonUtils {
 
   public String getRegion() {
     String zone = getZone();
     int cutOff = zone.lastIndexOf("-");
     return cutOff > 0 ? zone.substring(0, cutOff) : zone;
+  }
+
+  public boolean hasClusterName() {
+    return !isNullOrBlank(MetadataConfig.getClusterName());
   }
 
   public String getClusterName() {
