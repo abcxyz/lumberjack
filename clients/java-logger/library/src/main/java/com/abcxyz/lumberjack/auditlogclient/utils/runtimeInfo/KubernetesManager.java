@@ -6,8 +6,7 @@ import com.google.inject.name.Named;
 import java.io.IOException;
 
 /**
- * KubernetesManager provides functionality for getting run time info for processes running on
- * GKE.
+ * KubernetesManager provides functionality for getting run time info for processes running on GKE.
  */
 public class KubernetesManager {
 
@@ -16,7 +15,8 @@ public class KubernetesManager {
   private final RuntimeInfoCommonUtils runtimeInfoCommonUtils;
 
   @Inject
-  public KubernetesManager(@Named("HOSTNAME") final String hostname,
+  public KubernetesManager(
+      @Named("HOSTNAME") final String hostname,
       @Named("CONTAINER_NAME") final String containerName,
       RuntimeInfoCommonUtils runtimeInfoCommonUtils) {
     this.hostname = hostname;
@@ -37,9 +37,6 @@ public class KubernetesManager {
   }
 
   public boolean isKubernetesEngine() {
-    String clusterName = runtimeInfoCommonUtils.getClusterName();
-    return clusterName != null && !clusterName.isBlank();
+    return runtimeInfoCommonUtils.hasClusterName();
   }
-
-
 }
