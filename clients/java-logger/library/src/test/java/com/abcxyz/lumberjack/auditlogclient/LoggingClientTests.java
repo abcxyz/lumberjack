@@ -50,7 +50,7 @@ public class LoggingClientTests {
   void successfulClientCreate() {
     LoggingClient loggingClient = loggingClientBuilder.withDefaultProcessors().build();
     assertThat(loggingClient.getValidators().size()).isEqualTo(1);
-    assertThat(loggingClient.getMutators().size()).isEqualTo(1);
+    assertThat(loggingClient.getMutators().size()).isEqualTo(2);
     assertThat(loggingClient.getBackends().size()).isEqualTo(1);
   }
 
