@@ -1,105 +1,129 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<project xmlns="http://maven.apache.org/POM/4.0.0"
-    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+<project xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xmlns="http://maven.apache.org/POM/4.0.0"
     xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
-  <modelVersion>4.0.0</modelVersion>
-  <parent>
-    <groupId>org.springframework.boot</groupId>
-    <artifactId>spring-boot-starter-parent</artifactId>
-    <version>2.5.5</version>
-    <relativePath/>
-  </parent>
   <artifactId>audit-client-shell</artifactId>
-  <groupId>com.abcxyz.lumberjack</groupId>
-  <version>0.0.1</version>
-  <properties>
-    <java.version>11</java.version>
-    <lumberjack.basedir>../../..</lumberjack.basedir>
-  </properties>
-  <dependencies>
-    <dependency>
-      <groupId>org.springframework.boot</groupId>
-      <artifactId>spring-boot-starter-web</artifactId>
-    </dependency>
-    <dependency>
-      <groupId>org.springframework.boot</groupId>
-      <artifactId>spring-boot-starter-test</artifactId>
-      <scope>test</scope>
-    </dependency>
-    <dependency>
-      <groupId>io.jsonwebtoken</groupId>
-      <artifactId>jjwt-api</artifactId>
-      <version>0.11.2</version>
-    </dependency>
-    <dependency>
-      <groupId>io.jsonwebtoken</groupId>
-      <artifactId>jjwt-impl</artifactId>
-      <version>0.11.2</version>
-      <scope>runtime</scope>
-    </dependency>
-    <dependency>
-      <groupId>io.jsonwebtoken</groupId>
-      <artifactId>jjwt-jackson</artifactId>
-      <version>0.11.2</version>
-      <scope>runtime</scope>
-    </dependency>
-    <dependency>
-      <groupId>org.projectlombok</groupId>
-      <artifactId>lombok</artifactId>
-      <version>1.18.20</version>
-      <scope>provided</scope>
-    </dependency>
-    <dependency>
-      <groupId>${project.groupId}</groupId>
-      <artifactId>audit-client-library</artifactId>
-      <version>${project.version}</version>
-    </dependency>
-    <dependency>
-      <groupId>org.yaml</groupId>
-      <artifactId>snakeyaml</artifactId>
-      <version>1.29</version>
-    </dependency>
-  </dependencies>
-
   <build>
     <pluginManagement>
       <plugins>
         <plugin>
-          <groupId>org.apache.maven.plugins</groupId>
           <artifactId>maven-surefire-plugin</artifactId>
+          <groupId>org.apache.maven.plugins</groupId>
           <version>3.0.0-M5</version>
         </plugin>
       </plugins>
     </pluginManagement>
     <plugins>
       <plugin>
-        <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-maven-plugin</artifactId>
+        <groupId>org.springframework.boot</groupId>
       </plugin>
       <plugin>
-        <groupId>com.github.os72</groupId>
         <artifactId>protoc-jar-maven-plugin</artifactId>
-        <version>3.11.4</version>
         <executions>
           <execution>
-            <phase>generate-sources</phase>
-            <goals>
-              <goal>run</goal>
-            </goals>
             <configuration>
-              <includeStdTypes>true</includeStdTypes>
               <includeDirectories>
                 <include>${lumberjack.basedir}</include>
                 <include>${lumberjack.basedir}/third_party/googleapis</include>
               </includeDirectories>
+              <includeStdTypes>true</includeStdTypes>
               <inputDirectories>
                 <include>${lumberjack.basedir}/protos/v1alpha1</include>
               </inputDirectories>
               <optimizeCodegen>false</optimizeCodegen>
             </configuration>
+            <goals>
+              <goal>run</goal>
+            </goals>
+            <phase>generate-sources</phase>
           </execution>
         </executions>
+        <groupId>com.github.os72</groupId>
+        <version>3.11.4</version>
+      </plugin>
+      <plugin>
+        <artifactId>jacoco-maven-plugin</artifactId>
+        <configuration>
+          <excludes>
+            <exclude>com/abcxyz/lumberjack/v1alpha1/*</exclude>
+          </excludes>
+        </configuration>
+        <executions>
+          <execution>
+            <goals>
+              <goal>prepare-agent</goal>
+            </goals>
+          </execution>
+          <execution>
+            <goals>
+              <goal>report</goal>
+            </goals>
+            <id>generate-code-coverage-report</id>
+            <phase>test</phase>
+          </execution>
+        </executions>
+        <groupId>org.jacoco</groupId>
+        <version>0.8.7</version>
       </plugin>
     </plugins>
   </build>
+  <dependencies>
+    <dependency>
+      <artifactId>spring-boot-starter-web</artifactId>
+      <groupId>org.springframework.boot</groupId>
+    </dependency>
+    <dependency>
+      <artifactId>spring-boot-starter-test</artifactId>
+      <groupId>org.springframework.boot</groupId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <artifactId>jjwt-api</artifactId>
+      <groupId>io.jsonwebtoken</groupId>
+      <version>0.11.2</version>
+    </dependency>
+    <dependency>
+      <artifactId>jjwt-impl</artifactId>
+      <groupId>io.jsonwebtoken</groupId>
+      <scope>runtime</scope>
+      <version>0.11.2</version>
+    </dependency>
+    <dependency>
+      <artifactId>jjwt-jackson</artifactId>
+      <groupId>io.jsonwebtoken</groupId>
+      <scope>runtime</scope>
+      <version>0.11.2</version>
+    </dependency>
+    <dependency>
+      <artifactId>lombok</artifactId>
+      <groupId>org.projectlombok</groupId>
+      <scope>provided</scope>
+      <version>1.18.20</version>
+    </dependency>
+    <dependency>
+      <artifactId>audit-client-library</artifactId>
+      <groupId>${project.groupId}</groupId>
+      <version>${project.version}</version>
+    </dependency>
+    <dependency>
+      <artifactId>snakeyaml</artifactId>
+      <groupId>org.yaml</groupId>
+      <version>1.29</version>
+    </dependency>
+  </dependencies>
+  <groupId>com.abcxyz.lumberjack</groupId>
+  <modelVersion>4.0.0</modelVersion>
+  <parent>
+    <artifactId>spring-boot-starter-parent</artifactId>
+    <groupId>org.springframework.boot</groupId>
+    <relativePath/>
+    <version>2.5.5</version>
+  </parent>
+  <properties>
+    <java.version>11</java.version>
+    <lumberjack.basedir>../../..</lumberjack.basedir>
+  </properties>
+
+  <version>0.0.1</version>
 </project>
