@@ -21,9 +21,25 @@ import lombok.Data;
 
 @Data
 public class Filters {
+  static final String PRINCIPAL_INCLUDE_ENV_KEY = "AUDIT_CLIENT_CONDITION_REGEX_PRINCIPAL_INCLUDE";
+  static final String PRINCIPAL_EXCLUDE_ENV_KEY = "AUDIT_CLIENT_CONDITION_REGEX_PRINCIPAL_EXCLUDE";
+
   @JsonProperty("principal_include")
   private String includes;
 
   @JsonProperty("principal_exclude")
   private String excludes;
+
+  public String getIncludes() {
+    return getEnvOrDefault(PRINCIPAL_INCLUDE_ENV_KEY, includes);
+  }
+
+  public String getExcludes() {
+    return getEnvOrDefault(PRINCIPAL_EXCLUDE_ENV_KEY, excludes);
+  }
+
+  /** TODO: there are other classes that use similar functionality, could create a shared util. */
+  String getEnvOrDefault(String envKey, String defaultValue) {
+    return System.getenv().getOrDefault(envKey, defaultValue);
+  }
 }
