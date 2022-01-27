@@ -37,11 +37,10 @@ jobs:
         working-directory: ./clients/java-logger
         run: mvn test
       - name: Add coverage to PR
-        working-directory: ./clients/java-logger
         id: jacoco
         uses: madrapps/jacoco-report@v1.2
         with:
-          paths: './library/target/site/jacoco/jacoco.xml'
+          paths: './clients/java-logger/library/target/site/jacoco/jacoco.xml'
           token: ${{ secrets.GITHUB_TOKEN }}
           min-coverage-overall: 40
           min-coverage-changed-files: 60
