@@ -44,9 +44,75 @@ public class ValidationProcessorTests {
             .setPayload(
                 AuditLog.newBuilder()
                     .setAuthenticationInfo(
-                        AuthenticationInfo.newBuilder().setPrincipalEmail("foo").build()))
+                        AuthenticationInfo.newBuilder().setPrincipalEmail("foo").build())
+                    .setResourceName("bar")
+                    .setServiceName("hello")
+                    .setMethodName("world"))
             .setType(LogType.DATA_ACCESS)
             .build();
     assertDoesNotThrow(() -> validationProcessor.process(record));
+  }
+
+  @Test
+  void exceptionWhenValueIsMissing_Auth() {
+    ValidationProcessor validationProcessor = new ValidationProcessor();
+    AuditLogRequest record =
+        AuditLogRequest.newBuilder()
+            .setPayload(
+                AuditLog.newBuilder()
+                    .setResourceName("bar")
+                    .setServiceName("hello")
+                    .setMethodName("world"))
+            .setType(LogType.DATA_ACCESS)
+            .build();
+    assertThrows(IllegalArgumentException.class, () -> validationProcessor.process(record));
+  }
+
+  @Test
+  void exceptionWhenValueIsMissing_Resource() {
+    ValidationProcessor validationProcessor = new ValidationProcessor();
+    AuditLogRequest record =
+        AuditLogRequest.newBuilder()
+            .setPayload(
+                AuditLog.newBuilder()
+                    .setAuthenticationInfo(
+                        AuthenticationInfo.newBuilder().setPrincipalEmail("foo").build())
+                    .setServiceName("hello")
+                    .setMethodName("world"))
+            .setType(LogType.DATA_ACCESS)
+            .build();
+    assertThrows(IllegalArgumentException.class, () -> validationProcessor.process(record));
+  }
+
+  @Test
+  void exceptionWhenValueIsMissing_Service() {
+    ValidationProcessor validationProcessor = new ValidationProcessor();
+    AuditLogRequest record =
+        AuditLogRequest.newBuilder()
+            .setPayload(
+                AuditLog.newBuilder()
+                    .setAuthenticationInfo(
+                        AuthenticationInfo.newBuilder().setPrincipalEmail("foo").build())
+                    .setResourceName("bar")
+                    .setMethodName("world"))
+            .setType(LogType.DATA_ACCESS)
+            .build();
+    assertThrows(IllegalArgumentException.class, () -> validationProcessor.process(record));
+  }
+
+  @Test
+  void exceptionWhenValueIsMissing_Method() {
+    ValidationProcessor validationProcessor = new ValidationProcessor();
+    AuditLogRequest record =
+        AuditLogRequest.newBuilder()
+            .setPayload(
+                AuditLog.newBuilder()
+                    .setAuthenticationInfo(
+                        AuthenticationInfo.newBuilder().setPrincipalEmail("foo").build())
+                    .setResourceName("bar")
+                    .setServiceName("hello"))
+            .setType(LogType.DATA_ACCESS)
+            .build();
+    assertThrows(IllegalArgumentException.class, () -> validationProcessor.process(record));
   }
 }
