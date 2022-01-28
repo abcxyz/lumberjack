@@ -79,6 +79,7 @@ func (j *FromRawJWT) RequestPrincipal(ctx context.Context) (string, error) {
 	return principal, nil
 }
 
+// findJWT looks for a JWT from the gRPC metadata that matches the rules.
 func (j *FromRawJWT) findJWT(md grpcmetadata.MD) (string, error) {
 	for _, fj := range j.FromRawJWT {
 		// Keys in grpc metadata are all lowercases.
@@ -94,5 +95,5 @@ func (j *FromRawJWT) findJWT(md grpcmetadata.MD) (string, error) {
 		return idToken, nil
 	}
 
-	return "", fmt.Errorf("no JWT found matching rules")
+	return "", fmt.Errorf("no JWT found matching rules: %#v", j.FromRawJWT)
 }

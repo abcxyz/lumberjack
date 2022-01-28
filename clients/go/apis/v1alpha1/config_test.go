@@ -227,7 +227,7 @@ func TestSetDefault(t *testing.T) {
 		cfg: &Config{
 			Version: "v1alpha1",
 			SecurityContext: &SecurityContext{
-				FromRawJWT: []*FromRawJWT{},
+				FromRawJWT: []*FromRawJWT{{}, {Key: "x-jwt-assertion"}},
 			},
 			Condition: &Condition{Regex: &RegexCondition{PrincipalExclude: ".gserviceaccount.com$"}},
 		},
@@ -237,6 +237,8 @@ func TestSetDefault(t *testing.T) {
 				FromRawJWT: []*FromRawJWT{{
 					Key:    "authorization",
 					Prefix: "Bearer ",
+				}, {
+					Key: "x-jwt-assertion",
 				}},
 			},
 			Condition: &Condition{Regex: &RegexCondition{PrincipalExclude: ".gserviceaccount.com$"}},

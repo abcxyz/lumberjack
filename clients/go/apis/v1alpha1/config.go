@@ -157,7 +157,7 @@ type SecurityContext struct {
 
 // Validate validates the security context.
 func (sc *SecurityContext) Validate() error {
-	if sc.FromRawJWT == nil {
+	if len(sc.FromRawJWT) == 0 {
 		return fmt.Errorf("one and only one SecurityContext option must be specified")
 	}
 	return nil
@@ -165,11 +165,6 @@ func (sc *SecurityContext) Validate() error {
 
 // SetDefault sets default for the security context.
 func (sc *SecurityContext) SetDefault() {
-	// If FromRawJWT is set but it's empty,
-	// then we create a default one.
-	if sc.FromRawJWT != nil && len(sc.FromRawJWT) == 0 {
-		sc.FromRawJWT = append(sc.FromRawJWT, &FromRawJWT{})
-	}
 	for _, j := range sc.FromRawJWT {
 		j.SetDefault()
 	}
