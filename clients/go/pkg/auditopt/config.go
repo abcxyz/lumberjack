@@ -27,16 +27,16 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
-	"strings"
+	"io/ioutil"
 
 	"github.com/abcxyz/lumberjack/clients/go/pkg/audit"
 	"github.com/abcxyz/lumberjack/clients/go/pkg/filtering"
 	"github.com/abcxyz/lumberjack/clients/go/pkg/remote"
 	"github.com/abcxyz/lumberjack/clients/go/pkg/security"
-	"github.com/spf13/viper"
+	"github.com/sethvargo/go-envconfig"
 	"google.golang.org/grpc"
+	"gopkg.in/yaml.v2"
 
-	"github.com/abcxyz/lumberjack/clients/go/apis/v1alpha1"
 	alpb "github.com/abcxyz/lumberjack/clients/go/apis/v1alpha1"
 )
 
@@ -47,13 +47,15 @@ const defaultConfigFilePath = "/etc/auditlogging/config.yaml"
 // missing, we return an error.
 func MustFromConfigFile(path string) audit.Option {
 	return func(c *audit.Client) error {
-		v := viper.New()
-		v.SetConfigFile(path)
-		if err := v.ReadInConfig(); err != nil {
+		fc, err := ioutil.ReadFile(path)
+		if err != nil {
 			return err
 		}
-		cfg, err := configFromViper(v)
-		if err != nil {
+		cfg := &alpb.Config{}
+		if err := yaml.Unmarshal(fc, cfg); err != nil {
+			return err
+		}
+		if err := loadEnvAndValidateCfg(cfg); err != nil {
 			return err
 		}
 		return clientFromConfig(c, cfg)
@@ -66,18 +68,20 @@ func MustFromConfigFile(path string) audit.Option {
 // using env vars and default values to configure the client.
 func FromConfigFile(path string) audit.Option {
 	return func(c *audit.Client) error {
-		v := viper.New()
 		if path == "" {
 			path = defaultConfigFilePath
 		}
-		// We don't return an error if the file is not found because we
-		// still use env vars and defaults to setup the client.
-		v.SetConfigFile(path)
-		if err := v.ReadInConfig(); err != nil && !errors.Is(err, fs.ErrNotExist) {
+		fc, err := ioutil.ReadFile(path)
+		if err != nil && !errors.Is(err, fs.ErrNotExist) {
+			// We don't return an error if the file is not found because we
+			// still use env vars and defaults to setup the client.
 			return err
 		}
-		cfg, err := configFromViper(v)
-		if err != nil {
+		cfg := &alpb.Config{}
+		if err := yaml.Unmarshal(fc, cfg); err != nil {
+			return err
+		}
+		if err := loadEnvAndValidateCfg(cfg); err != nil {
 			return err
 		}
 		return clientFromConfig(c, cfg)
@@ -97,19 +101,20 @@ func FromConfigFile(path string) audit.Option {
 // defer c.Stop()
 // s := grpc.NewServer(opt)
 // ```
-// TODO(noamrabbani): add streaming interceptor.
+// TODO(#109): add streaming interceptor.
 func WithInterceptorFromConfigFile(path string) (grpc.ServerOption, *audit.Client, error) {
-	// Load config file and env vars into our config struct.
-	v := viper.New()
-	v.SetConfigFile(path)
-	if err := v.ReadInConfig(); err != nil {
-		return nil, nil, err
-	}
-	cfg, err := configFromViper(v)
+	fc, err := ioutil.ReadFile(path)
 	if err != nil {
 		return nil, nil, err
 	}
+	cfg := &alpb.Config{}
+	if err := yaml.Unmarshal(fc, cfg); err != nil {
+		return nil, nil, err
+	}
 	if err := cfg.ValidateSecurityContext(); err != nil {
+		return nil, nil, err
+	}
+	if err := loadEnvAndValidateCfg(cfg); err != nil {
 		return nil, nil, err
 	}
 
@@ -197,49 +202,16 @@ func backendFromConfig(cfg *alpb.Config) (audit.Option, error) {
 	return audit.WithBackend(b), nil
 }
 
-func configFromViper(v *viper.Viper) (*alpb.Config, error) {
-	v = bindEnvVars(v)
-
-	cfg := &alpb.Config{}
-	if err := v.Unmarshal(cfg); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal viper into config struct: %w", err)
+func loadEnvAndValidateCfg(cfg *alpb.Config) error {
+	l := envconfig.PrefixLookuper("AUDIT_CLIENT_", envconfig.OsLookuper())
+	if err := envconfig.ProcessWith(context.Background(), cfg, l); err != nil {
+		return err
 	}
 
 	cfg.SetDefault()
 	if err := cfg.Validate(); err != nil {
-		return nil, fmt.Errorf("failed validating config %+v: %w", cfg, err)
+		return fmt.Errorf("failed validating config %+v: %w", cfg, err)
 	}
 
-	return cfg, nil
-}
-
-// bindEnvVars associates env vars with Viper config variables. This
-// allows the user to overwrite a config file value or a default value
-// by setting an env var. Note that:
-//   - Env vars are prefixed with "AUDIT_CLIENT_".
-//   - Only leaf config variables can be overwritten with env vars.
-//   - Env vars cannot overwrite list config variables, such as `rules`.
-//   - Nested config variables are set from env vars by replacing
-//     the "." delimiter with "_". E.g. the config variable "backend.address"
-//     is set with the env var "AUDIT_CLIENT_BACKEND_ADDRESS".
-func bindEnvVars(v *viper.Viper) *viper.Viper {
-	v.SetEnvPrefix("AUDIT_CLIENT")
-	v.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
-	v.AllowEmptyEnv(true)
-	for _, lk := range v1alpha1.LeafKeys() {
-		// We don't use v.AutomaticEnv() because it fails to bind env vars
-		// when they are inexistent in the config and when they don't have
-		// an explicit default value.
-		mustBindEnv(v, lk)
-	}
-	return v
-}
-
-func mustBindEnv(v *viper.Viper, env string) {
-	// BindEnv only returns an error when the input _slice_ to the variadic
-	// input is empty. Since this function signature requires a string value,
-	// we can ignore the error.
-	if err := v.BindEnv(env); err != nil {
-		panic(fmt.Errorf("failed to bind env %q: %w", env, err))
-	}
+	return nil
 }
