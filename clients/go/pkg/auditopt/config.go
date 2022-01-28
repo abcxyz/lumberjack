@@ -111,8 +111,6 @@ func WithInterceptorFromConfigFile(path string) (grpc.ServerOption, *audit.Clien
 	if err := yaml.Unmarshal(fc, cfg); err != nil {
 		return nil, nil, err
 	}
-	// We call ValidateSecurityContext() before setAndValidate()
-	// because setAndValidate() initializes
 	if err := cfg.ValidateSecurityContext(); err != nil {
 		return nil, nil, err
 	}
