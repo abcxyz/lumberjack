@@ -55,7 +55,7 @@ func MustFromConfigFile(path string) audit.Option {
 		if err := yaml.Unmarshal(fc, cfg); err != nil {
 			return err
 		}
-		if err := loadEnvAndValidateCfg(cfg); err != nil {
+		if err := setAndValidate(cfg); err != nil {
 			return err
 		}
 		return clientFromConfig(c, cfg)
@@ -81,7 +81,7 @@ func FromConfigFile(path string) audit.Option {
 		if err := yaml.Unmarshal(fc, cfg); err != nil {
 			return err
 		}
-		if err := loadEnvAndValidateCfg(cfg); err != nil {
+		if err := setAndValidate(cfg); err != nil {
 			return err
 		}
 		return clientFromConfig(c, cfg)
@@ -114,7 +114,7 @@ func WithInterceptorFromConfigFile(path string) (grpc.ServerOption, *audit.Clien
 	if err := cfg.ValidateSecurityContext(); err != nil {
 		return nil, nil, err
 	}
-	if err := loadEnvAndValidateCfg(cfg); err != nil {
+	if err := setAndValidate(cfg); err != nil {
 		return nil, nil, err
 	}
 
@@ -202,7 +202,9 @@ func backendFromConfig(cfg *alpb.Config) (audit.Option, error) {
 	return audit.WithBackend(b), nil
 }
 
-func loadEnvAndValidateCfg(cfg *alpb.Config) error {
+// setAndValidate sets cfg values from env vars and defaults. Additionally,
+// we validate the cfg values.
+func setAndValidate(cfg *alpb.Config) error {
 	l := envconfig.PrefixLookuper("AUDIT_CLIENT_", envconfig.OsLookuper())
 	if err := envconfig.ProcessWith(context.Background(), cfg, l); err != nil {
 		return err

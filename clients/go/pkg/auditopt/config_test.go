@@ -329,7 +329,7 @@ backend:
 	}
 }
 
-func TestPopulateConfig(t *testing.T) {
+func TestSetAndValidate(t *testing.T) {
 	t.Parallel()
 	cases := []struct {
 		name          string
@@ -466,15 +466,15 @@ security_context:
 			if err := yaml.Unmarshal(fc, cfg); err != nil {
 				t.Fatal(err)
 			}
-			if err := loadEnvAndValidateCfg(cfg); err != nil {
+			if err := setAndValidate(cfg); err != nil {
 				t.Fatal(err)
 			}
 
 			if diff := errutil.DiffSubstring(err, tc.wantErrSubstr); diff != "" {
-				t.Errorf("populateConfig() got unexpected error substring: %v", diff)
+				t.Errorf("setAndValidate() got unexpected error substring: %v", diff)
 			}
 			if diff := cmp.Diff(tc.wantCfg, cfg); diff != "" {
-				t.Errorf("unexpected diff in populateConfig() (-want,+got):\n%s", diff)
+				t.Errorf("unexpected diff in setAndValidate() (-want,+got):\n%s", diff)
 			}
 		})
 	}
