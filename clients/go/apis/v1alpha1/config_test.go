@@ -6,7 +6,7 @@ import (
 
 	"github.com/abcxyz/lumberjack/clients/go/pkg/errutil"
 	"github.com/google/go-cmp/cmp"
-	"github.com/spf13/viper"
+	"gopkg.in/yaml.v2"
 )
 
 func TestConfig(t *testing.T) {
@@ -15,7 +15,7 @@ func TestConfig(t *testing.T) {
 	cases := []struct {
 		name       string
 		cfg        string
-		wantConfig Config
+		wantConfig *Config
 	}{{
 		name: "full_config",
 		cfg: `version: v1alpha1
@@ -35,7 +35,7 @@ rules:
 - selector: com.example.*
   directive: AUDIT
   log_type: ADMIN_ACTIVITY`,
-		wantConfig: Config{
+		wantConfig: &Config{
 			Version: "v1alpha1",
 			Backend: &Backend{
 				Address:            "service:80",
@@ -65,16 +65,18 @@ rules:
 		name: "minimal_config",
 		cfg: `version: v1alpha1
 security_context:
-  from_raw_jwt: {}
+  from_raw_jwt:
+  - {}
 rules:
 - selector: com.example.*
   directive: AUDIT`,
-		wantConfig: Config{
+		wantConfig: &Config{
 			Version: "v1alpha1",
 			Rules: []*AuditRule{{
 				Selector:  "com.example.*",
 				Directive: "AUDIT",
 			}},
+			SecurityContext: &SecurityContext{FromRawJWT: []*FromRawJWT{{}}},
 		},
 	}}
 
@@ -83,15 +85,10 @@ rules:
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
-			v := viper.New()
-			v.SetConfigType("yaml")
-			if err := v.ReadConfig(bytes.NewBufferString(tc.cfg)); err != nil {
-				t.Fatalf("failed to load config: %v", err)
-			}
-
-			var gotConfig Config
-			if err := v.Unmarshal(&gotConfig); err != nil {
-				t.Fatalf("failed to unmarshal config: %v", err)
+			content := bytes.NewBufferString(tc.cfg).Bytes()
+			gotConfig := &Config{}
+			if err := yaml.Unmarshal(content, gotConfig); err != nil {
+				t.Fatal(err)
 			}
 
 			if diff := cmp.Diff(tc.wantConfig, gotConfig); diff != "" {

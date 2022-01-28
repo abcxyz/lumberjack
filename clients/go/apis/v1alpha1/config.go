@@ -6,33 +6,6 @@ import (
 	"go.uber.org/multierr"
 )
 
-//TODO(#64): when we migrate to koanf, we no longer need leafKeys
-var leafKeys = []string{
-	"backend.address",
-	"backend.impersonate_account",
-	"backend.insecure_enabled",
-	"condition.regex.principal_exclude",
-	"condition.regex.principal_include",
-	"version",
-}
-
-// LeafKeys returns a copy of the leaf config vars. Leaf config vars
-// are the only config vars that can be overwritten with env vars.
-// The "." delimeter represents a nested field. E.g., the config var
-// "condition.regex.principal_include" is represented in a YAML config
-// file as:
-// ```
-// condition:
-//  regex:
-//    principal_include: test@google.com
-// ```
-//
-// It's also represented as the following env var:
-// `AUDIT_CLIENT_CONDITION_REGEX_PRINCIPAL_INCLUDE`.
-func LeafKeys() []string {
-	return append([]string(nil), leafKeys...)
-}
-
 const (
 	// Version of the API and config.
 	Version = "v1alpha1"
@@ -45,19 +18,19 @@ const (
 
 // Config is the full audit client config.
 type Config struct {
-	Version string `mapstructure:"version,omitempty" json:"version,omitempty"`
+	Version string `yaml:"version,omitempty" env:"VERSION,overwrite"`
 
 	// If a remote backend is omitted, we audit log to stdout.
-	Backend *Backend `mapstructure:"backend,omitempty" json:"backend,omitempty"`
+	Backend *Backend `yaml:"backend,omitempty"`
 
 	// If condition is omitted, the default is to discard logs where
 	// the principal is an IAM service account.
-	Condition *Condition `mapstructure:"condition,omitempty" json:"condition,omitempty"`
+	Condition *Condition `yaml:"condition,omitempty"`
 
 	// At the moment, we must require security context.
-	SecurityContext *SecurityContext `mapstructure:"security_context,omitempty" json:"security_context,omitempty"`
+	SecurityContext *SecurityContext `yaml:"security_context,omitempty"`
 
-	Rules []*AuditRule `mapstructure:"rules,omitempty" json:"rules,omitempty"`
+	Rules []*AuditRule `yaml:"rules,omitempty"`
 }
 
 // Validate checks if the config is valid.
@@ -109,9 +82,9 @@ func (cfg *Config) SetDefault() {
 
 // Backend is the remote backend service to send audit logs.
 type Backend struct {
-	Address            string `mapstructure:"address,omitempty" json:"address,omitempty"`
-	InsecureEnabled    bool   `mapstructure:"insecure_enabled,omitempty" json:"insecure_enabled,omitempty"`
-	ImpersonateAccount string `mapstructure:"impersonate_account,omitempty" json:"impersonate_account,omitempty"`
+	Address            string `yaml:"address,omitempty" env:"BACKEND_ADDRESS,overwrite"`
+	InsecureEnabled    bool   `yaml:"insecure_enabled,omitempty" env:"BACKEND_INSECURE_ENABLED,overwrite"`
+	ImpersonateAccount string `yaml:"impersonate_account,omitempty" env:"BACKEND_IMPERSONATE_ACCOUNT,overwrite"`
 }
 
 // Validate validates the backend.
@@ -124,7 +97,7 @@ func (b *Backend) Validate() error {
 
 // Condition is the condition to match to collect audit logs.
 type Condition struct {
-	Regex *RegexCondition `mapstructure:"regex,omitempty" json:"regex,omitempty"`
+	Regex *RegexCondition `yaml:"regex,omitempty"`
 }
 
 // SetDefault sets default for the condition.
@@ -137,8 +110,8 @@ func (c *Condition) SetDefault() {
 
 // RegexCondition matches condition with regular expression.
 type RegexCondition struct {
-	PrincipalExclude string `mapstructure:"principal_exclude,omitempty" json:"principal_exclude,omitempty"`
-	PrincipalInclude string `mapstructure:"principal_include,omitempty" json:"principal_include,omitempty"`
+	PrincipalExclude string `yaml:"principal_exclude,omitempty" env:"CONDITION_REGEX_PRINCIPAL_EXCLUDE,overwrite"`
+	PrincipalInclude string `yaml:"principal_include,omitempty" env:"CONDITION_REGEX_PRINCIPAL_INCLUDE,overwrite"`
 }
 
 // SetDefault sets default for the regex condition.
@@ -152,7 +125,7 @@ func (rc *RegexCondition) SetDefault() {
 // SecurityContext provides instructive info for where to retrieve
 // the security context, e.g. authentication info.
 type SecurityContext struct {
-	FromRawJWT []*FromRawJWT `mapstructure:"from_raw_jwt,omitempty" json:"from_raw_jwt,omitempty"`
+	FromRawJWT []*FromRawJWT `yaml:"from_raw_jwt,omitempty"`
 }
 
 // Validate validates the security context.
@@ -173,9 +146,9 @@ func (sc *SecurityContext) SetDefault() {
 // FromRawJWT provides info for how to retrieve security context from
 // a raw JWT.
 type FromRawJWT struct {
-	Key    string `mapstructure:"key,omitempty" json:"key,omitempty"`
-	Prefix string `mapstructure:"prefix,omitempty" json:"prefix,omitempty"`
-	JWKs   *JWKs  `mapstructure:"jwks,omitempty" json:"jwks,omitempty"`
+	Key    string `yaml:"key,omitempty"`
+	Prefix string `yaml:"prefix,omitempty"`
+	JWKs   *JWKs  `yaml:"jwks,omitempty"`
 }
 
 // SetDefault sets default for the JWT security context.
@@ -188,14 +161,14 @@ func (j *FromRawJWT) SetDefault() {
 
 // JWKs provides JWKs to validate a JWT.
 type JWKs struct {
-	Endpoint string `mapstructure:"endpoint,omitempty" json:"endpoint,omitempty"`
+	Endpoint string `yaml:"endpoint,omitempty"`
 }
 
 // AuditRule is an audit rule to instruct how to audit selected paths/methods.
 type AuditRule struct {
-	Selector  string `mapstructure:"selector,omitempty" json:"selector,omitempty"`
-	Directive string `mapstructure:"directive,omitempty" json:"directive,omitempty"`
-	LogType   string `mapstructure:"log_type,omitempty" json:"log_type,omitempty"`
+	Selector  string `yaml:"selector,omitempty"`
+	Directive string `yaml:"directive,omitempty"`
+	LogType   string `yaml:"log_type,omitempty"`
 }
 
 // Validate validates the audit rule.
