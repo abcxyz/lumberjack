@@ -111,6 +111,8 @@ func WithInterceptorFromConfigFile(path string) (grpc.ServerOption, *audit.Clien
 	if err := yaml.Unmarshal(fc, cfg); err != nil {
 		return nil, nil, err
 	}
+	// We call ValidateSecurityContext() before setAndValidate()
+	// because setAndValidate() initializes
 	if err := cfg.ValidateSecurityContext(); err != nil {
 		return nil, nil, err
 	}
@@ -205,6 +207,15 @@ func backendFromConfig(cfg *alpb.Config) (audit.Option, error) {
 // setAndValidate sets cfg values from env vars and defaults. Additionally,
 // we validate the cfg values.
 func setAndValidate(cfg *alpb.Config) error {
+	// TODO(#123): envconfig.ProcessWith(...) traverses the cfg struct by creating
+	// creating non-nil values for pointers to the nested fields. For example,
+	// after a traversal, the value of `cfg.security_context.from_raw_jwt.key`
+	// will be the empty string "" even if `cfg.security_context` was previously
+	// unset and that `cfg.security_context.from_raw_jwt.key` cannot be set by env
+	// vars. As a result, logic relying on nil values in `cfg` will be problematic.
+	// For example, validating that `cfg.security_context` is set should be done
+	// before calling `envconfig.ProcessWith(...)` because `envconfig.ProcessWith(...)`
+	// sets the value of `cfg.security_context` to a non-nil value `from_raw_jwt`.
 	l := envconfig.PrefixLookuper("AUDIT_CLIENT_", envconfig.OsLookuper())
 	if err := envconfig.ProcessWith(context.Background(), cfg, l); err != nil {
 		return err
