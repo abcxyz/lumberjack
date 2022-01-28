@@ -72,9 +72,9 @@ func FromConfigFile(path string) audit.Option {
 			path = defaultConfigFilePath
 		}
 		fc, err := ioutil.ReadFile(path)
+		// We ignore ErrNotExist when reading the file because we
+		// still use env vars and defaults to setup the client.
 		if err != nil && !errors.Is(err, fs.ErrNotExist) {
-			// We don't return an error if the file is not found because we
-			// still use env vars and defaults to setup the client.
 			return err
 		}
 		cfg := &alpb.Config{}
