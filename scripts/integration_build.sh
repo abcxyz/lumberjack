@@ -26,7 +26,7 @@ JAVA_GRPC_BUILD_COMMAND=${ROOT}/clients/java-logger/scripts/build_server.sh
 # Hardcode these values.
 # Re-applying the CI env in each CI run might cause unexpected changes being applied to the CI env.
 SHELL_APP_PROJECT_ID=github-ci-app-0
-BACKEND_PROJECT_ID=github-ci-server
+export BACKEND_PROJECT_ID=github-ci-server
 BIGQUERY_DATASET_ID=audit_logs
 
 CI_SERVICE_ACCOUNT=gh-access-sa@lumberjack-dev-infra.iam.gserviceaccount.com
@@ -63,7 +63,7 @@ trap clean_up EXIT
 
 export HTTP_ENDPOINTS=$(terraform -chdir=${TF_CI_WITH_SERVER_DIR} output -json instance_addresses)
 # TODO(b/203448874): Use updated (finalized) log name.
-BIGQUERY_DATASET_QUERY=${BIGQUERY_DATASET_ID}.auditlog_gcloudsolutions_dev_data_access
+export BIGQUERY_DATASET_QUERY=${BIGQUERY_DATASET_ID}.auditlog_gcloudsolutions_dev_data_access
 
 cd ${ROOT}/integration
 go test github.com/abcxyz/lumberjack/integration/httptestrunner \
