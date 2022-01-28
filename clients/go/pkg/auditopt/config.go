@@ -40,7 +40,7 @@ import (
 	alpb "github.com/abcxyz/lumberjack/clients/go/apis/v1alpha1"
 )
 
-const defaultConfigFilePath = "/etc/auditlogging/config.yaml"
+const DefaultConfigFilePath = "/etc/auditlogging/config.yaml"
 
 // MustFromConfigFile specifies a config file to configure the
 // audit client. `path` is required, and if the config file is
@@ -69,7 +69,7 @@ func MustFromConfigFile(path string) audit.Option {
 func FromConfigFile(path string) audit.Option {
 	return func(c *audit.Client) error {
 		if path == "" {
-			path = defaultConfigFilePath
+			path = DefaultConfigFilePath
 		}
 		fc, err := ioutil.ReadFile(path)
 		// We ignore ErrNotExist when reading the file because we

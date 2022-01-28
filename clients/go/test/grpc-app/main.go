@@ -23,6 +23,8 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
 
+	"github.com/abcxyz/lumberjack/clients/go/pkg/audit"
+	"github.com/abcxyz/lumberjack/clients/go/pkg/auditopt"
 	"github.com/abcxyz/lumberjack/clients/go/test/grpc-app/talkerpb"
 )
 
@@ -36,13 +38,20 @@ func main() {
 	if err != nil {
 		log.Fatalf("failed to listen: %v", err)
 	}
-	s := grpc.NewServer()
+	opt, c, err := auditopt.WithInterceptorFromConfigFile(auditopt.DefaultConfigFilePath)
+	if err != nil {
+		log.Fatalf("failed to setup audit interceptor: %v", err)
+	}
+	s := grpc.NewServer(opt)
 	talkerpb.RegisterTalkerServer(s, &server{})
 	// Register the reflection service makes it easier for some clients.
 	reflection.Register(s)
 	log.Printf("server listening at %v", lis.Addr())
 	if err := s.Serve(lis); err != nil {
 		log.Fatalf("failed to serve: %v", err)
+	}
+	if err := c.Stop(); err != nil {
+		log.Fatalf("failed to stop audit client: %v", err)
 	}
 }
 
@@ -51,18 +60,27 @@ type server struct {
 }
 
 func (s *server) Hello(ctx context.Context, req *talkerpb.HelloRequest) (*talkerpb.HelloResponse, error) {
+	if logReq, ok := audit.LogReqFromCtx(ctx); ok {
+		logReq.Payload.ResourceName = req.Target
+	}
 	return &talkerpb.HelloResponse{
 		Message: fmt.Sprintf("Hi, I'm %s!", req.Target),
 	}, nil
 }
 
 func (s *server) Whisper(ctx context.Context, req *talkerpb.WhisperRequest) (*talkerpb.WhisperResponse, error) {
+	if logReq, ok := audit.LogReqFromCtx(ctx); ok {
+		logReq.Payload.ResourceName = req.Target
+	}
 	return &talkerpb.WhisperResponse{
 		Message: fmt.Sprintf("Shush, I'm %s.", req.Target),
 	}, nil
 }
 
 func (s *server) Bye(ctx context.Context, req *talkerpb.ByeRequest) (*talkerpb.ByeResponse, error) {
+	if logReq, ok := audit.LogReqFromCtx(ctx); ok {
+		logReq.Payload.ResourceName = req.Target
+	}
 	return &talkerpb.ByeResponse{
 		Message: "Bye!",
 	}, nil
