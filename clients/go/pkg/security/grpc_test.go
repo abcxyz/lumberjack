@@ -32,7 +32,7 @@ func TestFromRawJWT_RequestPrincipal(t *testing.T) {
 	tests := []struct {
 		name          string
 		ctx           context.Context
-		fromRawJWT    *v1alpha1.FromRawJWT
+		fromRawJWT    []*v1alpha1.FromRawJWT
 		want          string
 		wantErrSubstr string
 	}{
@@ -43,10 +43,10 @@ func TestFromRawJWT_RequestPrincipal(t *testing.T) {
 					"email": "user@example.com",
 				}),
 			})),
-			fromRawJWT: &v1alpha1.FromRawJWT{
+			fromRawJWT: []*v1alpha1.FromRawJWT{{
 				Key:    "authorization",
 				Prefix: "Bearer ",
-			},
+			}},
 			want: "user@example.com",
 		},
 		{
@@ -54,10 +54,10 @@ func TestFromRawJWT_RequestPrincipal(t *testing.T) {
 			ctx: metadata.NewIncomingContext(context.Background(), metadata.New(map[string]string{
 				"authorization": "Bearer " + testutil.JWTFromClaims(t, map[string]interface{}{}),
 			})),
-			fromRawJWT: &v1alpha1.FromRawJWT{
+			fromRawJWT: []*v1alpha1.FromRawJWT{{
 				Key:    "authorization",
 				Prefix: "Bearer ",
-			},
+			}},
 			wantErrSubstr: `jwt claims are missing the email key "email"`,
 		},
 		{
@@ -67,10 +67,10 @@ func TestFromRawJWT_RequestPrincipal(t *testing.T) {
 					"email": []string{"foo", "bar"},
 				}),
 			})),
-			fromRawJWT: &v1alpha1.FromRawJWT{
+			fromRawJWT: []*v1alpha1.FromRawJWT{{
 				Key:    "authorization",
 				Prefix: "Bearer ",
-			},
+			}},
 			wantErrSubstr: `expecting string in jwt claims "email", got []interface {}`,
 		},
 		{
@@ -79,67 +79,45 @@ func TestFromRawJWT_RequestPrincipal(t *testing.T) {
 			wantErrSubstr: "gRPC metadata in incoming context is missing",
 		},
 		{
-			name: "error_from_nil_receiver_field",
-			ctx: metadata.NewIncomingContext(context.Background(), metadata.New(map[string]string{
-				"authorization": "Bearer " + testutil.JWTFromClaims(t, map[string]interface{}{
-					"email": "user@example.com",
-				}),
-			})),
-			wantErrSubstr: `expecting non-nil receiver field "j.FromRawJwt"`,
-		},
-		{
 			name: "error_from_inexistent_jwt_key",
 			ctx:  metadata.NewIncomingContext(context.Background(), metadata.New(map[string]string{})),
-			fromRawJWT: &v1alpha1.FromRawJWT{
+			fromRawJWT: []*v1alpha1.FromRawJWT{{
 				Key:    "authorization",
 				Prefix: "Bearer ",
-			},
-			wantErrSubstr: `failed extracting the JWT due missing key "authorization" in grpc metadata`,
+			}},
+			wantErrSubstr: `no JWT found matching rules`,
 		},
-
-		{
-			name: "error_from_slice_length_two_in_jwt_key",
-			ctx: metadata.NewIncomingContext(context.Background(), metadata.MD{
-				"authorization": []string{"foo", "bar"},
-			}),
-			fromRawJWT: &v1alpha1.FromRawJWT{
-				Key:    "authorization",
-				Prefix: "Bearer ",
-			},
-			wantErrSubstr: `expecting exaclty one value (a JWT) under key "authorization" in grpc metadata`,
-		},
-
 		{
 			name: "error_from_prefix_longer_than_jwt",
 			ctx: metadata.NewIncomingContext(context.Background(), metadata.New(map[string]string{
 				"authorization": "short",
 			})),
-			fromRawJWT: &v1alpha1.FromRawJWT{
+			fromRawJWT: []*v1alpha1.FromRawJWT{{
 				Key:    "authorization",
 				Prefix: "loooooong",
-			},
-			wantErrSubstr: `JWT prefix "loooooong" is longer than raw JWT "short"`,
+			}},
+			wantErrSubstr: `no JWT found matching rules`,
 		},
 		{
 			name: "error_from_empty_string_as_jwt",
 			ctx: metadata.NewIncomingContext(context.Background(), metadata.New(map[string]string{
 				"authorization": "",
 			})),
-			fromRawJWT: &v1alpha1.FromRawJWT{
+			fromRawJWT: []*v1alpha1.FromRawJWT{{
 				Key:    "authorization",
 				Prefix: "",
-			},
-			wantErrSubstr: `nil JWT ID token under the key "authorization" in grpc metadata`,
+			}},
+			wantErrSubstr: `unable to parse JWT: token contains an invalid number of segments`,
 		},
 		{
 			name: "error_from_unparsable_jwt",
 			ctx: metadata.NewIncomingContext(context.Background(), metadata.New(map[string]string{
 				"authorization": "bananas",
 			})),
-			fromRawJWT: &v1alpha1.FromRawJWT{
+			fromRawJWT: []*v1alpha1.FromRawJWT{{
 				Key:    "authorization",
 				Prefix: "",
-			},
+			}},
 			wantErrSubstr: "unable to parse JWT",
 		},
 	}

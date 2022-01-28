@@ -27,7 +27,7 @@ condition:
     principal_include: "@example.com$"
 security_context:
   from_raw_jwt:
-    key: x-auth
+  - key: x-auth
     prefix: bar
     jwks:
       endpoint: example.com/jwks
@@ -47,13 +47,13 @@ rules:
 				},
 			},
 			SecurityContext: &SecurityContext{
-				FromRawJWT: &FromRawJWT{
+				FromRawJWT: []*FromRawJWT{{
 					Key:    "x-auth",
 					Prefix: "bar",
 					JWKs: &JWKs{
 						Endpoint: "example.com/jwks",
 					},
-				},
+				}},
 			},
 			Rules: []*AuditRule{{
 				Selector:  "com.example.*",
@@ -113,7 +113,7 @@ func TestValidate(t *testing.T) {
 		cfg: &Config{
 			Version: "v1alpha1",
 			SecurityContext: &SecurityContext{
-				FromRawJWT: &FromRawJWT{},
+				FromRawJWT: []*FromRawJWT{},
 			},
 			Backend: &Backend{Address: "foo"},
 			Condition: &Condition{
@@ -130,7 +130,7 @@ func TestValidate(t *testing.T) {
 		cfg: &Config{
 			Version: "random",
 			SecurityContext: &SecurityContext{
-				FromRawJWT: &FromRawJWT{},
+				FromRawJWT: []*FromRawJWT{},
 			},
 			Condition: &Condition{
 				Regex: &RegexCondition{},
@@ -143,7 +143,7 @@ func TestValidate(t *testing.T) {
 		cfg: &Config{
 			Version: "v1alpha1",
 			SecurityContext: &SecurityContext{
-				FromRawJWT: &FromRawJWT{},
+				FromRawJWT: []*FromRawJWT{},
 			},
 			Condition: &Condition{
 				Regex: &RegexCondition{},
@@ -156,7 +156,7 @@ func TestValidate(t *testing.T) {
 		cfg: &Config{
 			Version: "v1alpha1",
 			SecurityContext: &SecurityContext{
-				FromRawJWT: &FromRawJWT{},
+				FromRawJWT: []*FromRawJWT{},
 			},
 			Condition: &Condition{
 				Regex: &RegexCondition{},
@@ -173,7 +173,7 @@ func TestValidate(t *testing.T) {
 		cfg: &Config{
 			Version: "v1alpha1",
 			SecurityContext: &SecurityContext{
-				FromRawJWT: &FromRawJWT{},
+				FromRawJWT: []*FromRawJWT{},
 			},
 			Condition: &Condition{
 				Regex: &RegexCondition{},
@@ -227,17 +227,17 @@ func TestSetDefault(t *testing.T) {
 		cfg: &Config{
 			Version: "v1alpha1",
 			SecurityContext: &SecurityContext{
-				FromRawJWT: &FromRawJWT{},
+				FromRawJWT: []*FromRawJWT{},
 			},
 			Condition: &Condition{Regex: &RegexCondition{PrincipalExclude: ".gserviceaccount.com$"}},
 		},
 		wantCfg: &Config{
 			Version: "v1alpha1",
 			SecurityContext: &SecurityContext{
-				FromRawJWT: &FromRawJWT{
+				FromRawJWT: []*FromRawJWT{{
 					Key:    "authorization",
 					Prefix: "Bearer ",
-				},
+				}},
 			},
 			Condition: &Condition{Regex: &RegexCondition{PrincipalExclude: ".gserviceaccount.com$"}},
 		},

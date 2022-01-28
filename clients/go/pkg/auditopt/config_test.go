@@ -381,14 +381,14 @@ backend:
   insecure_enabled: true
 security_context:
   from_raw_jwt:
-    key: ""
+  - key: ""
     prefix: ""
 `,
 			wantCfg: &v1alpha1.Config{
 				Version:         "v1alpha1",
 				Backend:         &v1alpha1.Backend{Address: "foo:443", InsecureEnabled: true},
 				Condition:       &v1alpha1.Condition{Regex: &v1alpha1.RegexCondition{PrincipalExclude: ".gserviceaccount.com$"}},
-				SecurityContext: &v1alpha1.SecurityContext{FromRawJWT: &v1alpha1.FromRawJWT{Key: "authorization", Prefix: "Bearer "}},
+				SecurityContext: &v1alpha1.SecurityContext{FromRawJWT: []*v1alpha1.FromRawJWT{{Key: "authorization", Prefix: "Bearer "}}},
 			},
 		},
 		{
@@ -400,14 +400,14 @@ backend:
   insecure_enabled: true
 security_context:
   from_raw_jwt:
-    key: x-jwt-assertion
+  - key: x-jwt-assertion
     prefix: somePrefix
 `,
 			wantCfg: &v1alpha1.Config{
 				Version:         "v1alpha1",
 				Backend:         &v1alpha1.Backend{Address: "foo:443", InsecureEnabled: true},
 				Condition:       &v1alpha1.Condition{Regex: &v1alpha1.RegexCondition{PrincipalExclude: ".gserviceaccount.com$"}},
-				SecurityContext: &v1alpha1.SecurityContext{FromRawJWT: &v1alpha1.FromRawJWT{Key: "x-jwt-assertion", Prefix: "somePrefix"}},
+				SecurityContext: &v1alpha1.SecurityContext{FromRawJWT: []*v1alpha1.FromRawJWT{{Key: "x-jwt-assertion", Prefix: "somePrefix"}}},
 			},
 		},
 		{
@@ -419,14 +419,14 @@ backend:
   insecure_enabled: true
 security_context:
   from_raw_jwt:
-    key: x-jwt-assertion
+  - key: x-jwt-assertion
     prefix:
 `,
 			wantCfg: &v1alpha1.Config{
 				Version:         "v1alpha1",
 				Backend:         &v1alpha1.Backend{Address: "foo:443", InsecureEnabled: true},
 				Condition:       &v1alpha1.Condition{Regex: &v1alpha1.RegexCondition{PrincipalExclude: ".gserviceaccount.com$"}},
-				SecurityContext: &v1alpha1.SecurityContext{FromRawJWT: &v1alpha1.FromRawJWT{Key: "x-jwt-assertion", Prefix: ""}},
+				SecurityContext: &v1alpha1.SecurityContext{FromRawJWT: []*v1alpha1.FromRawJWT{{Key: "x-jwt-assertion", Prefix: ""}}},
 			},
 		},
 		{
@@ -438,13 +438,13 @@ backend:
   insecure_enabled: true
 security_context:
   from_raw_jwt:
-    key: x-jwt-assertion
+  - key: x-jwt-assertion
 `,
 			wantCfg: &v1alpha1.Config{
 				Version:         "v1alpha1",
 				Backend:         &v1alpha1.Backend{Address: "foo:443", InsecureEnabled: true},
 				Condition:       &v1alpha1.Condition{Regex: &v1alpha1.RegexCondition{PrincipalExclude: ".gserviceaccount.com$"}},
-				SecurityContext: &v1alpha1.SecurityContext{FromRawJWT: &v1alpha1.FromRawJWT{Key: "x-jwt-assertion", Prefix: ""}},
+				SecurityContext: &v1alpha1.SecurityContext{FromRawJWT: []*v1alpha1.FromRawJWT{{Key: "x-jwt-assertion", Prefix: ""}}},
 			},
 		},
 	}

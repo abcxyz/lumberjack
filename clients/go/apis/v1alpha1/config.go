@@ -13,8 +13,6 @@ var leafKeys = []string{
 	"backend.insecure_enabled",
 	"condition.regex.principal_exclude",
 	"condition.regex.principal_include",
-	"security_context.from_raw_jwt.key",
-	"security_context.from_raw_jwt.prefix",
 	"version",
 }
 
@@ -154,7 +152,7 @@ func (rc *RegexCondition) SetDefault() {
 // SecurityContext provides instructive info for where to retrieve
 // the security context, e.g. authentication info.
 type SecurityContext struct {
-	FromRawJWT *FromRawJWT `mapstructure:"from_raw_jwt,omitempty" json:"from_raw_jwt,omitempty"`
+	FromRawJWT []*FromRawJWT `mapstructure:"from_raw_jwt,omitempty" json:"from_raw_jwt,omitempty"`
 }
 
 // Validate validates the security context.
@@ -167,8 +165,13 @@ func (sc *SecurityContext) Validate() error {
 
 // SetDefault sets default for the security context.
 func (sc *SecurityContext) SetDefault() {
-	if sc.FromRawJWT != nil {
-		sc.FromRawJWT.SetDefault()
+	// If FromRawJWT is set but it's empty,
+	// then we create a default one.
+	if sc.FromRawJWT != nil && len(sc.FromRawJWT) == 0 {
+		sc.FromRawJWT = append(sc.FromRawJWT, &FromRawJWT{})
+	}
+	for _, j := range sc.FromRawJWT {
+		j.SetDefault()
 	}
 }
 

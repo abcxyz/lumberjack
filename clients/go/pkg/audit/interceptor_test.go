@@ -268,10 +268,10 @@ func TestUnaryInterceptor(t *testing.T) {
 			i.Client = c
 
 			fromRawJWT := &security.FromRawJWT{
-				FromRawJWT: &alpb.FromRawJWT{
+				FromRawJWT: []*alpb.FromRawJWT{{
 					Key:    "authorization",
 					Prefix: "Bearer ",
-				},
+				}},
 			}
 			i.SecurityContext = fromRawJWT
 
