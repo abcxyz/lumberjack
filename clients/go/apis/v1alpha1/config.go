@@ -125,12 +125,12 @@ func (rc *RegexCondition) SetDefault() {
 // SecurityContext provides instructive info for where to retrieve
 // the security context, e.g. authentication info.
 type SecurityContext struct {
-	FromRawJWT *FromRawJWT `yaml:"from_raw_jwt,omitempty"`
+	FromRawJWT []*FromRawJWT `yaml:"from_raw_jwt,omitempty"`
 }
 
 // Validate validates the security context.
 func (sc *SecurityContext) Validate() error {
-	if sc.FromRawJWT == nil {
+	if len(sc.FromRawJWT) == 0 {
 		return fmt.Errorf("one and only one SecurityContext option must be specified")
 	}
 	return nil
@@ -138,8 +138,8 @@ func (sc *SecurityContext) Validate() error {
 
 // SetDefault sets default for the security context.
 func (sc *SecurityContext) SetDefault() {
-	if sc.FromRawJWT != nil {
-		sc.FromRawJWT.SetDefault()
+	for _, j := range sc.FromRawJWT {
+		j.SetDefault()
 	}
 }
 

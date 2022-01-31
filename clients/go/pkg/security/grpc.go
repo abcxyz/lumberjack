@@ -19,6 +19,7 @@ package security
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/golang-jwt/jwt"
 	grpcmetadata "google.golang.org/grpc/metadata"
@@ -39,7 +40,7 @@ type GRPCContext interface {
 // FromRawJWT contains the information needed to retrieve
 // the principal from a raw JWT.
 type FromRawJWT struct {
-	FromRawJWT *v1alpha1.FromRawJWT
+	FromRawJWT []*v1alpha1.FromRawJWT
 }
 
 // RequestPrincipal extracts the JWT principal from the grpcmetadata in the context.
@@ -50,31 +51,15 @@ func (j *FromRawJWT) RequestPrincipal(ctx context.Context) (string, error) {
 		return "", fmt.Errorf("gRPC metadata in incoming context is missing")
 	}
 
-	// Extract the JWT.
-	if j == nil || j.FromRawJWT == nil {
-		return "", fmt.Errorf(`expecting non-nil receiver field "j.FromRawJwt"`)
-	}
-	vals, ok := md[j.FromRawJWT.Key]
-	if !ok {
-		return "", fmt.Errorf("failed extracting the JWT due missing key %q in grpc metadata %+v", j.FromRawJWT.Key, md)
-	}
-	if len(vals) != 1 {
-		return "", fmt.Errorf("expecting exaclty one value (a JWT) under key %q in grpc metadata %+v", j.FromRawJWT.Key, md)
-	}
-	jwtRaw := vals[0]
-	if len(j.FromRawJWT.Prefix) > len(jwtRaw) {
-		return "", fmt.Errorf("JWT prefix %q is longer than raw JWT %q", j.FromRawJWT.Prefix, jwtRaw)
-	}
-	idToken := jwtRaw[len(j.FromRawJWT.Prefix):] // trim prefix
-	if idToken == "" {
-		return "", fmt.Errorf("nil JWT ID token under the key %q in grpc metadata %+v", j.FromRawJWT.Key, md)
+	idToken, err := j.findJWT(md)
+	if err != nil {
+		return "", err
 	}
 
 	// Parse the JWT into claims.
 	p := &jwt.Parser{}
 	claims := jwt.MapClaims{}
-	_, _, err := p.ParseUnverified(idToken, claims)
-	if err != nil {
+	if _, _, err := p.ParseUnverified(idToken, claims); err != nil {
 		return "", fmt.Errorf("unable to parse JWT: %w", err)
 	}
 
@@ -92,4 +77,23 @@ func (j *FromRawJWT) RequestPrincipal(ctx context.Context) (string, error) {
 	}
 
 	return principal, nil
+}
+
+// findJWT looks for a JWT from the gRPC metadata that matches the rules.
+func (j *FromRawJWT) findJWT(md grpcmetadata.MD) (string, error) {
+	for _, fj := range j.FromRawJWT {
+		// Keys in grpc metadata are all lowercases.
+		vals, ok := md[strings.ToLower(fj.Key)]
+		if !ok {
+			continue
+		}
+		jwtRaw := vals[0]
+		if !strings.HasPrefix(jwtRaw, fj.Prefix) {
+			continue
+		}
+		idToken := jwtRaw[len(fj.Prefix):]
+		return idToken, nil
+	}
+
+	return "", fmt.Errorf("no JWT found matching rules: %#v", j.FromRawJWT)
 }

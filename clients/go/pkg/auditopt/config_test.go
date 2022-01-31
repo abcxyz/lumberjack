@@ -345,30 +345,14 @@ backend:
   address: foo:443
   insecure_enabled: true
 security_context:
-  from_raw_jwt: {}
-`,
-			wantCfg: &v1alpha1.Config{
-				Version:         "v1alpha1",
-				Backend:         &v1alpha1.Backend{Address: "foo:443", InsecureEnabled: true},
-				Condition:       &v1alpha1.Condition{Regex: &v1alpha1.RegexCondition{PrincipalExclude: ".gserviceaccount.com$"}},
-				SecurityContext: &v1alpha1.SecurityContext{FromRawJWT: &v1alpha1.FromRawJWT{Key: "authorization", Prefix: "Bearer ", JWKs: &v1alpha1.JWKs{}}},
-			},
-		},
-		{
-			name: "raw_jwt_with_default_value_due_to_null",
-			fileContent: `
-version: v1alpha1
-backend:
-  address: foo:443
-  insecure_enabled: true
-security_context:
   from_raw_jwt:
+  - {}
 `,
 			wantCfg: &v1alpha1.Config{
 				Version:         "v1alpha1",
 				Backend:         &v1alpha1.Backend{Address: "foo:443", InsecureEnabled: true},
 				Condition:       &v1alpha1.Condition{Regex: &v1alpha1.RegexCondition{PrincipalExclude: ".gserviceaccount.com$"}},
-				SecurityContext: &v1alpha1.SecurityContext{FromRawJWT: &v1alpha1.FromRawJWT{Key: "authorization", Prefix: "Bearer ", JWKs: &v1alpha1.JWKs{}}},
+				SecurityContext: &v1alpha1.SecurityContext{FromRawJWT: []*v1alpha1.FromRawJWT{{Key: "authorization", Prefix: "Bearer "}}},
 			},
 		},
 		{
@@ -380,14 +364,14 @@ backend:
   insecure_enabled: true
 security_context:
   from_raw_jwt:
-    key: ""
+  - key: ""
     prefix: ""
 `,
 			wantCfg: &v1alpha1.Config{
 				Version:         "v1alpha1",
 				Backend:         &v1alpha1.Backend{Address: "foo:443", InsecureEnabled: true},
 				Condition:       &v1alpha1.Condition{Regex: &v1alpha1.RegexCondition{PrincipalExclude: ".gserviceaccount.com$"}},
-				SecurityContext: &v1alpha1.SecurityContext{FromRawJWT: &v1alpha1.FromRawJWT{Key: "authorization", Prefix: "Bearer ", JWKs: &v1alpha1.JWKs{}}},
+				SecurityContext: &v1alpha1.SecurityContext{FromRawJWT: []*v1alpha1.FromRawJWT{{Key: "authorization", Prefix: "Bearer "}}},
 			},
 		},
 		{
@@ -399,14 +383,14 @@ backend:
   insecure_enabled: true
 security_context:
   from_raw_jwt:
-    key: x-jwt-assertion
+  - key: x-jwt-assertion
     prefix: somePrefix
 `,
 			wantCfg: &v1alpha1.Config{
 				Version:         "v1alpha1",
 				Backend:         &v1alpha1.Backend{Address: "foo:443", InsecureEnabled: true},
 				Condition:       &v1alpha1.Condition{Regex: &v1alpha1.RegexCondition{PrincipalExclude: ".gserviceaccount.com$"}},
-				SecurityContext: &v1alpha1.SecurityContext{FromRawJWT: &v1alpha1.FromRawJWT{Key: "x-jwt-assertion", Prefix: "somePrefix", JWKs: &v1alpha1.JWKs{}}},
+				SecurityContext: &v1alpha1.SecurityContext{FromRawJWT: []*v1alpha1.FromRawJWT{{Key: "x-jwt-assertion", Prefix: "somePrefix"}}},
 			},
 		},
 		{
@@ -418,14 +402,14 @@ backend:
   insecure_enabled: true
 security_context:
   from_raw_jwt:
-    key: x-jwt-assertion
+  - key: x-jwt-assertion
     prefix:
 `,
 			wantCfg: &v1alpha1.Config{
 				Version:         "v1alpha1",
 				Backend:         &v1alpha1.Backend{Address: "foo:443", InsecureEnabled: true},
 				Condition:       &v1alpha1.Condition{Regex: &v1alpha1.RegexCondition{PrincipalExclude: ".gserviceaccount.com$"}},
-				SecurityContext: &v1alpha1.SecurityContext{FromRawJWT: &v1alpha1.FromRawJWT{Key: "x-jwt-assertion", Prefix: "", JWKs: &v1alpha1.JWKs{}}},
+				SecurityContext: &v1alpha1.SecurityContext{FromRawJWT: []*v1alpha1.FromRawJWT{{Key: "x-jwt-assertion", Prefix: ""}}},
 			},
 		},
 		{
@@ -437,13 +421,13 @@ backend:
   insecure_enabled: true
 security_context:
   from_raw_jwt:
-    key: x-jwt-assertion
+  - key: x-jwt-assertion
 `,
 			wantCfg: &v1alpha1.Config{
 				Version:         "v1alpha1",
 				Backend:         &v1alpha1.Backend{Address: "foo:443", InsecureEnabled: true},
 				Condition:       &v1alpha1.Condition{Regex: &v1alpha1.RegexCondition{PrincipalExclude: ".gserviceaccount.com$"}},
-				SecurityContext: &v1alpha1.SecurityContext{FromRawJWT: &v1alpha1.FromRawJWT{Key: "x-jwt-assertion", Prefix: "", JWKs: &v1alpha1.JWKs{}}},
+				SecurityContext: &v1alpha1.SecurityContext{FromRawJWT: []*v1alpha1.FromRawJWT{{Key: "x-jwt-assertion", Prefix: ""}}},
 			},
 		},
 	}
@@ -496,7 +480,7 @@ backend:
   insecure_enabled: true
 security_context:
   from_raw_jwt:
-    key: "authorization"
+  - key: "authorization"
     prefix: "Bearer "
 rules:
   - selector: "*"
@@ -537,7 +521,8 @@ backend:
   address:
   insecure_enabled: true
 security_context:
-  from_raw_jwt: {}
+  from_raw_jwt:
+  - {}
 rules:
   - selector: "*"
 `,
@@ -551,7 +536,8 @@ backend:
   address: foo:443
   insecure_enabled: true
 security_context:
-  from_raw_jwt: {}
+  from_raw_jwt:
+  - {}
 rules:
   - selector: "*"
     log_type: bananas
