@@ -13,7 +13,7 @@
 // limitations under the License.
 
 // Tests HTTP endpoints provided and verifies logs make it to the BigQuery DB.
-package main
+package testrunner
 
 import (
 	"context"
@@ -21,12 +21,11 @@ import (
 	"flag"
 	"fmt"
 	"log"
-	"net/http"
 	"os"
 	"testing"
 
-	"github.com/google/uuid"
-	"github.com/sethvargo/go-retry"
+	"github.com/abcxyz/lumberjack/integration/testrunner/httprunner"
+	"github.com/abcxyz/lumberjack/integration/testrunner/utils"
 	"google.golang.org/api/idtoken"
 )
 
@@ -34,7 +33,7 @@ var (
 	idTokenPtr      = flag.String("id-token", "", `Identity token, can be obtained with "gcloud auth print-identity-token", can be omitted if service account key is provided.`)
 	projectIDPtr    = flag.String("project-id", "", "Cloud project ID of which the Database will be queried.")
 	datasetQueryPtr = flag.String("dataset-query", "", "BigQuery dataset query string to get the audit logs.")
-	cfg             *Config
+	cfg             *utils.Config
 )
 
 func TestMain(m *testing.M) {
@@ -47,20 +46,22 @@ func TestMain(m *testing.M) {
 	}
 
 	var err error
-	if cfg, err = NewConfig(context.Background()); err != nil {
+	if cfg, err = utils.NewConfig(context.Background()); err != nil {
 		log.Fatal(err)
 	}
 
 	os.Exit(m.Run())
 }
 
-func TestEndpoints(t *testing.T) {
+func TestHttpEndpoints(t *testing.T) {
 	t.Parallel()
 	testsData := cfg.HttpEndpoints
 	var tests []string
 	if err := json.Unmarshal([]byte(testsData), &tests); err != nil {
 		t.Fatalf("Unable to parse HTTP endpoints: %v.", err)
 	}
+
+
 
 	for i, test := range tests {
 		test := test
@@ -69,74 +70,15 @@ func TestEndpoints(t *testing.T) {
 			if test == "" {
 				t.Fatalf("URL for test with index %v not found.", i)
 			}
+
+			idToken, err := resolveIDToken(test)
+			if err != nil {
+				t.Fatalf("Resolving ID Token failed: %v.", err)
+			}
+
 			ctx := context.Background()
-			testEndpoint(t, ctx, test)
+			httprunner.TestHttpEndpoint(t, ctx, test, idToken, *projectIDPtr, *datasetQueryPtr, cfg)
 		})
-	}
-}
-
-func testEndpoint(t *testing.T, ctx context.Context, endpointURL string) {
-	u := uuid.New()
-	t.Logf("Generated UUID: %s.", u.String())
-
-	idToken, err := resolveIDToken(endpointURL)
-	if err != nil {
-		t.Fatalf("Resolving ID Token failed: %v.", err)
-	}
-
-	b, err := retry.NewExponential(cfg.AuditLogRequestWait)
-	if err != nil {
-		t.Fatalf("Retry logic setup failed: %v.", err)
-	}
-
-	if err = retry.Do(ctx, retry.WithMaxRetries(cfg.MaxAuditLogRequestTries, b), func(ctx context.Context) error {
-		resp, err := makeAuditLogRequest(u, endpointURL, cfg.AuditLogRequestTimeout, idToken)
-		if err != nil {
-			t.Logf("Audit log request failed: %v.", err)
-		}
-
-		if resp.StatusCode == http.StatusOK {
-			// Audit log request succeeded, exit the retry logic with success.
-			return nil
-		}
-
-		t.Logf("Audit log failed with status: %v.", resp.Status)
-		return retry.RetryableError(fmt.Errorf("Audit logging failed, retrying."))
-	}); err != nil {
-		t.Fatalf("Retry failed: %v.", err)
-	}
-
-	bqClient, bqQuery, err := makeClientAndQuery(ctx, u, *projectIDPtr, *datasetQueryPtr)
-	if err != nil {
-		t.Fatalf("BigQuery request failed: %v.", err)
-	}
-
-	defer func() {
-		if err := bqClient.Close(); err != nil {
-			t.Logf("Failed to close the BQ client: %v.", err)
-		}
-	}()
-
-	b, err = retry.NewExponential(cfg.LogRoutingWait)
-	if err != nil {
-		t.Fatalf("Retry logic setup failed: %v.", err)
-	}
-
-	if err = retry.Do(ctx, retry.WithMaxRetries(cfg.MaxDBQueryTries, b), func(ctx context.Context) error {
-		found, err := queryIfAuditLogExists(ctx, bqQuery)
-		if found {
-			// Early exit retry if queried log already found.
-			return nil
-		}
-
-		t.Log("Matching entry not found, retrying...")
-
-		if err != nil {
-			t.Logf("Query error: %v.", err)
-		}
-		return retry.RetryableError(fmt.Errorf("audit log not found"))
-	}); err != nil {
-		t.Errorf("Retry failed: %v.", err)
 	}
 }
 

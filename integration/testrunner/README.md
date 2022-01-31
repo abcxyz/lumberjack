@@ -28,7 +28,7 @@ run locally for dev/testing purposes as well.
 #### Running:
 
 From the `integration` directory,
-run `go test github.com/abcxyz/lumberjack/integration/httptestrunner -id-token=$(gcloud auth print-identity-token) -project-id=${PROJECT_ID} -dataset-query=${DATASET_QUERY}`
+run `go test github.com/abcxyz/lumberjack/integration/testrunner -id-token=$(gcloud auth print-identity-token) -project-id=${PROJECT_ID} -dataset-query=${DATASET_QUERY}`
 .
 
 If a service account key exists that is pointed to via the environment

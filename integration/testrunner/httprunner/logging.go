@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package main
+package httprunner
 
 import (
 	"fmt"
@@ -22,7 +22,7 @@ import (
 	"github.com/google/uuid"
 )
 
-func makeAuditLogRequest(u uuid.UUID, endpointUrl string, requestTimeout time.Duration, authToken string) (*http.Response, error) {
+func MakeAuditLogRequest(u uuid.UUID, endpointUrl string, requestTimeout time.Duration, authToken string) (*http.Response, error) {
 	req, err := http.NewRequest(http.MethodGet, endpointUrl, nil)
 	if err != nil {
 		return nil, err

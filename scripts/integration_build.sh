@@ -66,7 +66,7 @@ export HTTP_ENDPOINTS=$(terraform -chdir=${TF_CI_WITH_SERVER_DIR} output -json i
 BIGQUERY_DATASET_QUERY=${BIGQUERY_DATASET_ID}.auditlog_gcloudsolutions_dev_data_access
 
 cd ${ROOT}/integration
-go test github.com/abcxyz/lumberjack/integration/httptestrunner \
+go test github.com/abcxyz/lumberjack/integration/testrunner\
   -id-token=${ID_TOKEN} \
   -project-id=${BACKEND_PROJECT_ID} \
   -dataset-query=${BIGQUERY_DATASET_QUERY}
