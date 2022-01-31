@@ -12,18 +12,17 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package main
+package utils
 
 import (
 	"context"
-	"fmt"
 
 	"cloud.google.com/go/bigquery"
 	"github.com/google/uuid"
 )
 
 // queryIfAuditLogExists queries the DB and checks if audit log contained in the query exists or not.
-func queryIfAuditLogExists(ctx context.Context, query *bigquery.Query) (bool, error) {
+func QueryIfAuditLogExists(ctx context.Context, query *bigquery.Query) (bool, error) {
 	job, err := query.Run(ctx)
 	if err != nil {
 		return false, err
@@ -49,14 +48,12 @@ func queryIfAuditLogExists(ctx context.Context, query *bigquery.Query) (bool, er
 	return row[0] == int64(1), nil
 }
 
-// makeClientAndQuery prepares the BQ client and query for verifying that the audit log made it to the BQ DB.
-func makeClientAndQuery(ctx context.Context, u uuid.UUID, projectID string, datasetQuery string) (*bigquery.Client, *bigquery.Query, error) {
-	bqClient, err := bigquery.NewClient(ctx, projectID)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	bqQuery := bqClient.Query(fmt.Sprintf("SELECT count(*) FROM (SELECT * FROM %s.%s WHERE labels.trace_id=? LIMIT 1)", projectID, datasetQuery))
+func MakeQuery(bqClient bigquery.Client, u uuid.UUID, queryString string) *bigquery.Query {
+	bqQuery := bqClient.Query(queryString)
 	bqQuery.Parameters = []bigquery.QueryParameter{{Value: u.String()}}
-	return bqClient, bqQuery, nil
+	return bqQuery
+}
+
+func MakeClient(ctx context.Context, projectID string) (*bigquery.Client, error) {
+	return bigquery.NewClient(ctx, projectID)
 }
