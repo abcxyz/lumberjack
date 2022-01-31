@@ -51,7 +51,7 @@ trap clean_up EXIT
 export HTTP_ENDPOINTS=$(terraform -chdir=${TF_CI_DIR} output -json instance_addresses)
 
 cd ${ROOT}/integration
-go test github.com/abcxyz/lumberjack/integration/httptestrunner \
+go test github.com/abcxyz/lumberjack/integration/testrunner \
   -id-token=$(gcloud auth print-identity-token) \
   -project-id=${BACKEND_PROJECT_ID} \
   -dataset-query=${BIGQUERY_DATASET_QUERY}
