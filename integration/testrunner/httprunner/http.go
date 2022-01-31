@@ -26,7 +26,7 @@ import (
 	"github.com/sethvargo/go-retry"
 )
 
-func TestHttpEndpoint(t *testing.T, ctx context.Context, endpointURL string,
+func TestHttpEndpoint(t testing.TB, ctx context.Context, endpointURL string,
 	idToken string, projectID string, datasetQuery string, cfg *utils.Config) {
 	u := uuid.New()
 	t.Logf("Generated UUID: %s.", u.String())
