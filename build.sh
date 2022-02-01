@@ -17,10 +17,6 @@
 # Fail on any error.
 set -eEuo pipefail
 
-# Issue currently with Mac OS X 12.0.1 that requires setting MallocNanoZone
-# b/206135512
-export MallocNanoZone=0
-
 # Run all Go tests.
 # Go test only works from a Go module.
 (cd clients/go && go test -shuffle=on -count=1 -race -timeout=10m -coverprofile=coverage.out ./...)
