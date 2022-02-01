@@ -24,6 +24,7 @@ import (
 	"os"
 	"testing"
 
+	"github.com/abcxyz/lumberjack/integration/testrunner/grpcrunner"
 	"github.com/abcxyz/lumberjack/integration/testrunner/httprunner"
 	"github.com/abcxyz/lumberjack/integration/testrunner/utils"
 	"google.golang.org/api/idtoken"
@@ -53,15 +54,13 @@ func TestMain(m *testing.M) {
 	os.Exit(m.Run())
 }
 
-func TestHttpEndpoints(t *testing.T) {
+func TestHTTPEndpoints(t *testing.T) {
 	t.Parallel()
 	testsData := cfg.HttpEndpoints
 	var tests []string
 	if err := json.Unmarshal([]byte(testsData), &tests); err != nil {
 		t.Fatalf("Unable to parse HTTP endpoints: %v.", err)
 	}
-
-
 
 	for i, test := range tests {
 		test := test
@@ -77,13 +76,40 @@ func TestHttpEndpoints(t *testing.T) {
 			}
 
 			ctx := context.Background()
-			httprunner.TestHttpEndpoint(t, ctx, test, idToken, *projectIDPtr, *datasetQueryPtr, cfg)
+			httprunner.TestHTTPEndpoint(t, ctx, test, idToken, *projectIDPtr, *datasetQueryPtr, cfg)
 		})
 	}
 }
 
+func TestGRPCEndpoints(t *testing.T) {
+	t.Parallel()
+	testsData := cfg.GrpcEndpoints
+	var tests []string
+	if err := json.Unmarshal([]byte(testsData), &tests); err != nil {
+		t.Fatalf("Unable to parse HTTP endpoints: %v.", err)
+	}
+
+	for i, test := range tests {
+		test := test
+		t.Run(test, func(t *testing.T) {
+			t.Parallel()
+			if test == "" {
+				t.Fatalf("URL for test with index %v not found.", i)
+			}
+
+			idToken, err := resolveIDToken(test)
+			if err != nil {
+				t.Fatalf("Resolving ID Token failed: %v.", err)
+			}
+
+			ctx := context.Background()
+			grpcrunner.TestGRPCEndpoint(t, ctx, test, idToken, *projectIDPtr, *datasetQueryPtr, cfg)
+		})
+	}
+
+}
+
 // resolveIDToken Resolves the ID token passed via the "id-token" flag if provided,
-// otherwise looks for the ID token from the provided service account, if any.
 func resolveIDToken(endpointURL string) (string, error) {
 	if *idTokenPtr != "" {
 		// ID token was provided via command line flag.
