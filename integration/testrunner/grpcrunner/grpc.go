@@ -33,8 +33,8 @@ import (
 )
 
 func TestGRPCEndpoint(t testing.TB, ctx context.Context, endpointURL string,
-		idToken string, projectID string, datasetQuery string, cfg *utils.Config) {
-	conn := createConnection(endpointURL, idToken);
+	idToken string, projectID string, datasetQuery string, cfg *utils.Config) {
+	conn := createConnection(endpointURL, idToken)
 	defer conn.Close()
 	c := talkerpb.NewTalkerClient(conn)
 	u := uuid.New()

@@ -110,6 +110,7 @@ func TestGRPCEndpoints(t *testing.T) {
 }
 
 // resolveIDToken Resolves the ID token passed via the "id-token" flag if provided,
+// otherwise looks for the ID token from the provided service account, if any.
 func resolveIDToken(endpointURL string) (string, error) {
 	if *idTokenPtr != "" {
 		// ID token was provided via command line flag.
