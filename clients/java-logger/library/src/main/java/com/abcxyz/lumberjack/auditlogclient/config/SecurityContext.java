@@ -30,16 +30,11 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 @NoArgsConstructor
 public class SecurityContext {
-  static final JwtSpecification DEFAULT_SPEC =
-      new JwtSpecification("Authorization", "Bearer ", null);
-
   @JsonProperty("from_raw_jwt")
   List<JwtSpecification> jwtSpecifications;
 
   List<JwtSpecification> getJwtSpecifications() {
-    return jwtSpecifications == null || jwtSpecifications.isEmpty()
-        ? List.of(DEFAULT_SPEC)
-        : jwtSpecifications;
+    return jwtSpecifications == null || jwtSpecifications.isEmpty() ? List.of() : jwtSpecifications;
   }
 
   /** This is intended to be extended as we add more ways to specify security contexts. */

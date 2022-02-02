@@ -15,16 +15,7 @@ class FilteringProcessorModuleTest {
   @Test
   public void providedFilteringProcessorExcludesServiceAccountsByDefault() {
     FilteringProcessor filteringProcessor = injector().getInstance(FilteringProcessor.class);
-    assertThat(filteringProcessor.getExcludePatterns().size()).isEqualTo(1);
-    assertThat(
-            filteringProcessor
-                .getExcludePatterns()
-                .get(0)
-                .matcher("abc@project.iam.gserviceaccount.com")
-                .matches())
-        .isTrue();
-    assertThat(filteringProcessor.getExcludePatterns().get(0).matcher("foo@bar.com").matches())
-        .isFalse();
+    assertThat(filteringProcessor.getExcludePatterns()).isEmpty();
   }
 
   @Test
