@@ -57,29 +57,29 @@ func TestMustFromConfigFile(t *testing.T) {
 		wantErrSubstr string
 	}{
 		{
-			name: "use_default_when_principal_exclude_unset",
-			// In YAML, empty keys are unset. For details, see:
-			// https://stackoverflow.com/a/64462925
-			fileContent: `
-version: v1alpha1
-condition:
-  regex:
-    principal_exclude: # unset
-backend:
-  address: %s
-  insecure_enabled: true
-`,
-			// By default, we ignore log requests that have an IAM service account
-			// as a principal.
-			req: testutil.ReqBuilder().WithPrincipal("abc@project.iam.gserviceaccount.com").Build(),
-		},
-		{
-			name: "overwrite_default_when_principal_exclude_set",
+			name: "principal_exclude_set",
 			fileContent: `
 version: v1alpha1
 condition:
   regex:
     principal_exclude: user@example.com$
+security_context:
+  from_raw_jwt:
+  - key: authorization
+backend:
+  address: %s
+  insecure_enabled: true
+`,
+			req:     testutil.ReqBuilder().WithPrincipal("abc@project.iam.gserviceaccount.com").Build(),
+			wantReq: testutil.ReqBuilder().WithPrincipal("abc@project.iam.gserviceaccount.com").Build(),
+		},
+		{
+			name: "condition_not_set_log_all",
+			fileContent: `
+version: v1alpha1
+security_context:
+  from_raw_jwt:
+  - key: authorization
 backend:
   address: %s
   insecure_enabled: true
@@ -100,6 +100,9 @@ condition:
 backend:
   address: %s
   insecure_enabled: true
+security_context:
+  from_raw_jwt:
+  - key: authorization
 `,
 			req:     testutil.ReqBuilder().WithPrincipal("abc@project.iam.gserviceaccount.com").Build(),
 			wantReq: testutil.ReqBuilder().WithPrincipal("abc@project.iam.gserviceaccount.com").Build(),
@@ -115,6 +118,9 @@ condition:
 backend:
   address: %s
   insecure_enabled: true
+security_context:
+  from_raw_jwt:
+  - key: authorization
 `,
 			req:     testutil.ReqBuilder().WithPrincipal("abc@project.iam.gserviceaccount.com").Build(),
 			wantReq: testutil.ReqBuilder().WithPrincipal("abc@project.iam.gserviceaccount.com").Build(),
@@ -130,6 +136,9 @@ condition:
 backend:
   address: %s
   insecure_enabled: true
+security_context:
+  from_raw_jwt:
+  - key: authorization
 `,
 			req: testutil.ReqBuilder().WithPrincipal("abc@project.iam.gserviceaccount.com").Build(),
 		},
@@ -160,6 +169,9 @@ condition:
 backend:
   address: %s
   insecure_enabled: true
+security_context:
+  from_raw_jwt:
+  - key: authorization
 `,
 			wantErrSubstr: `unexpected Version "v2" want "v1alpha1"`,
 		},
@@ -273,7 +285,8 @@ backend:
 				"AUDIT_CLIENT_BACKEND_INSECURE_ENABLED":    "true",
 				"AUDIT_CLIENT_BACKEND_IMPERSONATE_ACCOUNT": "example@test.iam.gserviceaccount.com",
 			},
-			req: testutil.ReqBuilder().WithPrincipal("abc@project.iam.gserviceaccount.com").Build(),
+			req:     testutil.ReqBuilder().WithPrincipal("abc@project.iam.gserviceaccount.com").Build(),
+			wantReq: testutil.ReqBuilder().WithPrincipal("abc@project.iam.gserviceaccount.com").Build(),
 		},
 		{
 			name:          "invalid_config_file_should_error",
@@ -346,32 +359,13 @@ backend:
   insecure_enabled: true
 security_context:
   from_raw_jwt:
-  - {}
+  - key: authorization
 `,
 			wantCfg: &v1alpha1.Config{
 				Version:         "v1alpha1",
 				Backend:         &v1alpha1.Backend{Address: "foo:443", InsecureEnabled: true},
-				Condition:       &v1alpha1.Condition{Regex: &v1alpha1.RegexCondition{PrincipalExclude: ".gserviceaccount.com$"}},
-				SecurityContext: &v1alpha1.SecurityContext{FromRawJWT: []*v1alpha1.FromRawJWT{{Key: "authorization", Prefix: "Bearer "}}},
-			},
-		},
-		{
-			name: "raw_jwt_with_default_value_due_to_empty_string",
-			fileContent: `
-version: v1alpha1
-backend:
-  address: foo:443
-  insecure_enabled: true
-security_context:
-  from_raw_jwt:
-  - key: ""
-    prefix: ""
-`,
-			wantCfg: &v1alpha1.Config{
-				Version:         "v1alpha1",
-				Backend:         &v1alpha1.Backend{Address: "foo:443", InsecureEnabled: true},
-				Condition:       &v1alpha1.Condition{Regex: &v1alpha1.RegexCondition{PrincipalExclude: ".gserviceaccount.com$"}},
-				SecurityContext: &v1alpha1.SecurityContext{FromRawJWT: []*v1alpha1.FromRawJWT{{Key: "authorization", Prefix: "Bearer "}}},
+				Condition:       &v1alpha1.Condition{Regex: &v1alpha1.RegexCondition{PrincipalExclude: ""}},
+				SecurityContext: &v1alpha1.SecurityContext{FromRawJWT: []*v1alpha1.FromRawJWT{{Key: "authorization"}}},
 			},
 		},
 		{
@@ -389,7 +383,7 @@ security_context:
 			wantCfg: &v1alpha1.Config{
 				Version:         "v1alpha1",
 				Backend:         &v1alpha1.Backend{Address: "foo:443", InsecureEnabled: true},
-				Condition:       &v1alpha1.Condition{Regex: &v1alpha1.RegexCondition{PrincipalExclude: ".gserviceaccount.com$"}},
+				Condition:       &v1alpha1.Condition{Regex: &v1alpha1.RegexCondition{PrincipalExclude: ""}},
 				SecurityContext: &v1alpha1.SecurityContext{FromRawJWT: []*v1alpha1.FromRawJWT{{Key: "x-jwt-assertion", Prefix: "somePrefix"}}},
 			},
 		},
@@ -408,12 +402,12 @@ security_context:
 			wantCfg: &v1alpha1.Config{
 				Version:         "v1alpha1",
 				Backend:         &v1alpha1.Backend{Address: "foo:443", InsecureEnabled: true},
-				Condition:       &v1alpha1.Condition{Regex: &v1alpha1.RegexCondition{PrincipalExclude: ".gserviceaccount.com$"}},
-				SecurityContext: &v1alpha1.SecurityContext{FromRawJWT: []*v1alpha1.FromRawJWT{{Key: "x-jwt-assertion", Prefix: ""}}},
+				Condition:       &v1alpha1.Condition{Regex: &v1alpha1.RegexCondition{PrincipalExclude: ""}},
+				SecurityContext: &v1alpha1.SecurityContext{FromRawJWT: []*v1alpha1.FromRawJWT{{Key: "x-jwt-assertion"}}},
 			},
 		},
 		{
-			name: "raw_jwt_with_user-defined_values_partially_set_again",
+			name: "raw_jwt_with_user_defined_values_partially_set_again",
 			fileContent: `
 version: v1alpha1
 backend:
@@ -426,8 +420,8 @@ security_context:
 			wantCfg: &v1alpha1.Config{
 				Version:         "v1alpha1",
 				Backend:         &v1alpha1.Backend{Address: "foo:443", InsecureEnabled: true},
-				Condition:       &v1alpha1.Condition{Regex: &v1alpha1.RegexCondition{PrincipalExclude: ".gserviceaccount.com$"}},
-				SecurityContext: &v1alpha1.SecurityContext{FromRawJWT: []*v1alpha1.FromRawJWT{{Key: "x-jwt-assertion", Prefix: ""}}},
+				Condition:       &v1alpha1.Condition{Regex: &v1alpha1.RegexCondition{PrincipalExclude: ""}},
+				SecurityContext: &v1alpha1.SecurityContext{FromRawJWT: []*v1alpha1.FromRawJWT{{Key: "x-jwt-assertion"}}},
 			},
 		},
 	}
@@ -514,6 +508,21 @@ rules:
 			wantErrSubstr: "SecurityContext is nil",
 		},
 		{
+			name: "invalid_config_due_missing_jwt_key",
+			fileContent: `
+version: v1alpha1
+backend:
+  address: foo:443
+  insecure_enabled: true
+security_context:
+  from_raw_jwt:
+  - {}
+rules:
+  - selector: "*"
+`,
+			wantErrSubstr: "FromRawJWT[0]: key must be specified",
+		},
+		{
 			name: "invalid_config_because_backend_address_is_nil",
 			fileContent: `
 version: v1alpha1
@@ -522,7 +531,7 @@ backend:
   insecure_enabled: true
 security_context:
   from_raw_jwt:
-  - {}
+  - key: authorization
 rules:
   - selector: "*"
 `,
@@ -537,7 +546,7 @@ backend:
   insecure_enabled: true
 security_context:
   from_raw_jwt:
-  - {}
+  - key: authorization
 rules:
   - selector: "*"
     log_type: bananas
