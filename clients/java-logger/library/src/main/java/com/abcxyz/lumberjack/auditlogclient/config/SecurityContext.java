@@ -20,6 +20,7 @@ import com.abcxyz.lumberjack.auditlogclient.exceptions.AuthorizationException;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import io.grpc.Metadata;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import lombok.AllArgsConstructor;
@@ -30,15 +31,12 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 @NoArgsConstructor
 public class SecurityContext {
-  static final JwtSpecification DEFAULT_SPEC =
-      new JwtSpecification("Authorization", "Bearer ", null);
-
   @JsonProperty("from_raw_jwt")
   List<JwtSpecification> jwtSpecifications;
 
   List<JwtSpecification> getJwtSpecifications() {
     return jwtSpecifications == null || jwtSpecifications.isEmpty()
-        ? List.of(DEFAULT_SPEC)
+        ? Collections.emptyList()
         : jwtSpecifications;
   }
 
