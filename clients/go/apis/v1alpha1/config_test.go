@@ -110,7 +110,9 @@ func TestValidate(t *testing.T) {
 		cfg: &Config{
 			Version: "v1alpha1",
 			SecurityContext: &SecurityContext{
-				FromRawJWT: []*FromRawJWT{},
+				FromRawJWT: []*FromRawJWT{{
+					Key: "authorization",
+				}},
 			},
 			Backend: &Backend{Address: "foo"},
 			Condition: &Condition{
@@ -213,35 +215,13 @@ func TestSetDefault(t *testing.T) {
 		cfg     *Config
 		wantCfg *Config
 	}{{
-		name: "default version",
+		name: "default_version",
 		cfg:  &Config{},
 		wantCfg: &Config{
-			Version:   "v1alpha1",
-			Condition: &Condition{Regex: &RegexCondition{PrincipalExclude: ".gserviceaccount.com$"}},
+			Version: "v1alpha1",
 		},
 	}, {
-		name: "default security context",
-		cfg: &Config{
-			Version: "v1alpha1",
-			SecurityContext: &SecurityContext{
-				FromRawJWT: []*FromRawJWT{{}, {Key: "x-jwt-assertion"}},
-			},
-			Condition: &Condition{Regex: &RegexCondition{PrincipalExclude: ".gserviceaccount.com$"}},
-		},
-		wantCfg: &Config{
-			Version: "v1alpha1",
-			SecurityContext: &SecurityContext{
-				FromRawJWT: []*FromRawJWT{{
-					Key:    "authorization",
-					Prefix: "Bearer ",
-				}, {
-					Key: "x-jwt-assertion",
-				}},
-			},
-			Condition: &Condition{Regex: &RegexCondition{PrincipalExclude: ".gserviceaccount.com$"}},
-		},
-	}, {
-		name: "default rule fields",
+		name: "default_rule_fields",
 		cfg: &Config{
 			Version: "v1alpha1",
 			Rules: []*AuditRule{{
@@ -255,23 +235,6 @@ func TestSetDefault(t *testing.T) {
 				Directive: "AUDIT",
 				LogType:   "DATA_ACCESS",
 			}},
-			Condition: &Condition{Regex: &RegexCondition{PrincipalExclude: ".gserviceaccount.com$"}},
-		},
-	}, {
-		name: "default regex condition",
-		cfg: &Config{
-			Version: "v1alpha1",
-			Condition: &Condition{
-				Regex: &RegexCondition{},
-			},
-		},
-		wantCfg: &Config{
-			Version: "v1alpha1",
-			Condition: &Condition{
-				Regex: &RegexCondition{
-					PrincipalExclude: ".gserviceaccount.com$",
-				},
-			},
 		},
 	}}
 
