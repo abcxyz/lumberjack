@@ -26,17 +26,19 @@ type Config struct {
 	Backend *Backend `yaml:"backend,omitempty"`
 
 	// Condition specifies the condition under which an incoming request should be
-	// audit logged. If the condition is nil, the default is to discard logs where
-	// the principal is an IAM service account (*.gserviceaccount.com).
+	// audit logged. If the condition is nil, the default is to audit log all requests.
 	Condition *Condition `yaml:"condition,omitempty"`
 
 	// SecurityContext specifies how to retrieve security context such as
-	// authentication info from the incoming requests. When using auto audit
-	// logging, this field must not be nil.
+	// authentication info from the incoming requests.
+	// This config is only used for auto audit logging, and it must not be nil.
+	// When auto audit logging is not used, setting this field has no effect.
 	SecurityContext *SecurityContext `yaml:"security_context,omitempty"`
 
 	// Rules specifies audit logging instructions per matching requests
 	// method/path. If the rules is nil or empty, no audit logs will be collected.
+	// This config is only used for auto audit logging.
+	// When auto audit logging is not used, setting this field has no effect.
 	Rules []*AuditRule `yaml:"rules,omitempty"`
 }
 
