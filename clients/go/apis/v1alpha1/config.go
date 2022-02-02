@@ -18,18 +18,27 @@ const (
 
 // Config is the full audit client config.
 type Config struct {
+	// Version is the version of the config.
 	Version string `yaml:"version,omitempty" env:"VERSION,overwrite"`
 
-	// If a remote backend is omitted, we audit log to stdout.
+	// Backend specifies what remote backend to send audit logs to.
+	// If a remote backend config is nil, audit logs will be written to stdout.
 	Backend *Backend `yaml:"backend,omitempty"`
 
-	// If condition is omitted, the default is to discard logs where
-	// the principal is an IAM service account.
+	// Condition specifies the condition under which an incoming request should be
+	// audit logged. If the condition is nil, the default is to audit log all requests.
 	Condition *Condition `yaml:"condition,omitempty"`
 
-	// At the moment, we must require security context.
+	// SecurityContext specifies how to retrieve security context such as
+	// authentication info from the incoming requests.
+	// This config is only used for auto audit logging, and it must not be nil.
+	// When auto audit logging is not used, setting this field has no effect.
 	SecurityContext *SecurityContext `yaml:"security_context,omitempty"`
 
+	// Rules specifies audit logging instructions per matching requests
+	// method/path. If the rules is nil or empty, no audit logs will be collected.
+	// This config is only used for auto audit logging.
+	// When auto audit logging is not used, setting this field has no effect.
 	Rules []*AuditRule `yaml:"rules,omitempty"`
 }
 
@@ -40,12 +49,21 @@ func (cfg *Config) Validate() error {
 	if cfg.Version != Version {
 		err = multierr.Append(err, fmt.Errorf("unexpected Version %q want %q", cfg.Version, Version))
 	}
-	// TODO(#74): Fall back to stdout logging if backend is nil.
+
 	if cfg.Backend == nil {
+		// TODO(#74): Fall back to stdout logging if backend is nil.
 		err = multierr.Append(err, fmt.Errorf("backend is nil"))
 	} else if serr := cfg.Backend.Validate(); serr != nil {
 		err = multierr.Append(err, serr)
 	}
+
+	// TODO(#123): Reenable this validation once we stop initiate nil structs.
+	// if cfg.SecurityContext != nil {
+	// 	if serr := cfg.SecurityContext.Validate(); serr != nil {
+	// 		err = multierr.Append(err, serr)
+	// 	}
+	// }
+
 	for _, r := range cfg.Rules {
 		if rerr := r.Validate(); rerr != nil {
 			err = multierr.Append(err, rerr)
@@ -68,22 +86,25 @@ func (cfg *Config) SetDefault() {
 	if cfg.Version == "" {
 		cfg.Version = Version
 	}
-	if cfg.Condition == nil {
-		cfg.Condition = &Condition{}
-	}
-	cfg.Condition.SetDefault()
-	if cfg.SecurityContext != nil {
-		cfg.SecurityContext.SetDefault()
-	}
+	// TODO: set defaults for SecurityContext and Condition
+	// once we have any such logic.
 	for _, r := range cfg.Rules {
 		r.SetDefault()
 	}
 }
 
-// Backend is the remote backend service to send audit logs.
+// Backend is the remote backend service to send audit logs to.
+// The backend must be a gRPC service that implements protos/v1alpha1/audit_log_agent.proto.
 type Backend struct {
-	Address            string `yaml:"address,omitempty" env:"BACKEND_ADDRESS,overwrite"`
-	InsecureEnabled    bool   `yaml:"insecure_enabled,omitempty" env:"BACKEND_INSECURE_ENABLED,overwrite"`
+	// Address is the remote backend address. It must be set.
+	Address string `yaml:"address,omitempty" env:"BACKEND_ADDRESS,overwrite"`
+
+	// InsecureEnabled indicates whehter to insecurely connects to the backend.
+	// This should be set to false for production usage.
+	InsecureEnabled bool `yaml:"insecure_enabled,omitempty" env:"BACKEND_INSECURE_ENABLED,overwrite"`
+
+	// ImpersonateAccount specifies which service account to impersonate to call the backend.
+	// If empty, there will be no impersonation.
 	ImpersonateAccount string `yaml:"impersonate_account,omitempty" env:"BACKEND_IMPERSONATE_ACCOUNT,overwrite"`
 }
 
@@ -95,36 +116,31 @@ func (b *Backend) Validate() error {
 	return nil
 }
 
-// Condition is the condition to match to collect audit logs.
+// Condition is the condition the condition under which an incoming request should be
+// audit logged. Only one condition can be used.
 type Condition struct {
+	// Regex specifies the regular experessions to match request principals.
 	Regex *RegexCondition `yaml:"regex,omitempty"`
 }
 
-// SetDefault sets default for the condition.
-func (c *Condition) SetDefault() {
-	if c.Regex == nil {
-		c.Regex = &RegexCondition{}
-	}
-	c.Regex.SetDefault()
-}
-
 // RegexCondition matches condition with regular expression.
+// If PrincipalInclude and PrincipalExclude are both empty, all requests will be audit logged.
+// When only PrincipalInclude is set, only the matching requests will be audit logged.
+// When only PrincipalExclude is set, only the non-matching requests will be audit logged.
+// When both PrincipalInclude and PrincipalExclude are both set, PrincipalInclude takes precedence.
+// If a request matches PrincipalInclude, it will be audit logged no matter whether it matches
+// PrincipalExclude.
 type RegexCondition struct {
-	PrincipalExclude string `yaml:"principal_exclude,omitempty" env:"CONDITION_REGEX_PRINCIPAL_EXCLUDE,overwrite"`
+	// PrincipalInclude specifies a regular expression to match request principals to be included in audit logging.
 	PrincipalInclude string `yaml:"principal_include,omitempty" env:"CONDITION_REGEX_PRINCIPAL_INCLUDE,overwrite"`
-}
-
-// SetDefault sets default for the regex condition.
-func (rc *RegexCondition) SetDefault() {
-	// By default, we exclude any service accounts from audit logging.
-	if rc.PrincipalInclude == "" && rc.PrincipalExclude == "" {
-		rc.PrincipalExclude = ".gserviceaccount.com$"
-	}
+	// PrincipalExclude specifies a regular expression to match request principals to be excluded from audit logging.
+	PrincipalExclude string `yaml:"principal_exclude,omitempty" env:"CONDITION_REGEX_PRINCIPAL_EXCLUDE,overwrite"`
 }
 
 // SecurityContext provides instructive info for where to retrieve
 // the security context, e.g. authentication info.
 type SecurityContext struct {
+	// FromRawJWT specifies where to look up the JWT.
 	FromRawJWT []*FromRawJWT `yaml:"from_raw_jwt,omitempty"`
 }
 
@@ -133,42 +149,62 @@ func (sc *SecurityContext) Validate() error {
 	if len(sc.FromRawJWT) == 0 {
 		return fmt.Errorf("one and only one SecurityContext option must be specified")
 	}
-	return nil
-}
 
-// SetDefault sets default for the security context.
-func (sc *SecurityContext) SetDefault() {
-	for _, j := range sc.FromRawJWT {
-		j.SetDefault()
+	var merr error
+	for i, j := range sc.FromRawJWT {
+		if err := j.Validate(); err != nil {
+			merr = multierr.Append(merr, fmt.Errorf("FromRawJWT[%d]: %v", i, err))
+		}
 	}
+	return merr
 }
 
 // FromRawJWT provides info for how to retrieve security context from
 // a raw JWT.
 type FromRawJWT struct {
-	Key    string `yaml:"key,omitempty"`
+	// Key is the metadata key whose value is a JWT.
+	Key string `yaml:"key,omitempty"`
+	// Prefix is the prefix to truncate the metadata value
+	// to retrieve the JWT.
 	Prefix string `yaml:"prefix,omitempty"`
-	JWKs   *JWKs  `yaml:"jwks,omitempty"`
+	// JWKs specifies the JWKs to validate the JWT.
+	// If JWTs is nil, the JWT won't be validated.
+	JWKs *JWKs `yaml:"jwks,omitempty"`
 }
 
-// SetDefault sets default for the JWT security context.
-func (j *FromRawJWT) SetDefault() {
-	if j.Key == "" && j.Prefix == "" {
-		j.Key = "authorization"
-		j.Prefix = "Bearer "
+// Validate validates the FromRawJWT
+func (j *FromRawJWT) Validate() error {
+	if j.Key == "" {
+		return fmt.Errorf("key must be specified")
 	}
+	return nil
 }
 
 // JWKs provides JWKs to validate a JWT.
 type JWKs struct {
+	// Endpoint is the endpoint to retrieve the JWKs to validate JWT.
 	Endpoint string `yaml:"endpoint,omitempty"`
 }
 
 // AuditRule is an audit rule to instruct how to audit selected paths/methods.
 type AuditRule struct {
-	Selector  string `yaml:"selector,omitempty"`
+	// Selector is a string to match request methods/paths.
+	// In gRPC, this is in the format of "/[service_name].[method_name]".
+	Selector string `yaml:"selector,omitempty"`
+
+	// Directive specifies what audit action to take for the matching requests.
+	// Allowed values are:
+	// "AUDIT" - write audit log without request/response.
+	// "AUDIT_REQUEST_ONLY" - write audit log with only request.
+	// "AUDIT_REQUEST_AND_RESPONSE" - write audit log with request and response.
 	Directive string `yaml:"directive,omitempty"`
-	LogType   string `yaml:"log_type,omitempty"`
+
+	// LogType specifies the audit log type for the matching requests.
+	// Allowed values are:
+	// "ADMIN_ACTIVITY" - the access is an admin operation
+	// "DATA_ACCESS" - the access is a data access
+	// If empty, the default value is "DATA_ACCESS".
+	LogType string `yaml:"log_type,omitempty"`
 }
 
 // Validate validates the audit rule.
