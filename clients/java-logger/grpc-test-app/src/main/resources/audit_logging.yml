@@ -1,6 +1,9 @@
 version: v1alpha1
 security_context:
   from_raw_jwt:
+  - key: "Authorization"
+    prefix: "Bearer "
+    jwks:
 rules:
 - selector: "abcxyz.test.Talker/Hello"
   directive: AUDIT_REQUEST_AND_RESPONSE
