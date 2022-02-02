@@ -48,13 +48,9 @@ public class SecurityContextTest {
   }
 
   @Test
-  public void getsJwtSpecifications_default() {
+  public void getsJwtSpecificationsDefaultIsEmpty() {
     SecurityContext securityContext = new SecurityContext();
-    assertThat(securityContext.getSecuritySpecifications().size()).isEqualTo(1);
-    JwtSpecification jwtSpecification = securityContext.getJwtSpecifications().get(0);
-    assertThat(jwtSpecification.getKey()).isEqualTo("Authorization");
-    assertThat(jwtSpecification.getPrefix()).isEqualTo("Bearer ");
-    assertThat(jwtSpecification.getJwksSpecification()).isNull();
+    assertThat(securityContext.getSecuritySpecifications()).isEmpty();
   }
 
   @Test
@@ -88,8 +84,7 @@ public class SecurityContextTest {
                 this.getClass().getClassLoader().getResourceAsStream("jwt_default.yml"),
                 AuditLoggingConfiguration.class)
             .getSecurityContext();
-    assertThat(securityContext.getJwtSpecifications())
-        .isEqualTo(List.of(SecurityContext.DEFAULT_SPEC));
+    assertThat(securityContext.getJwtSpecifications()).isEqualTo(List.of());
 
     securityContext =
         mapper
@@ -97,8 +92,7 @@ public class SecurityContextTest {
                 this.getClass().getClassLoader().getResourceAsStream("jwt_default_2.yml"),
                 AuditLoggingConfiguration.class)
             .getSecurityContext();
-    assertThat(securityContext.getJwtSpecifications())
-        .isEqualTo(List.of(SecurityContext.DEFAULT_SPEC));
+    assertThat(securityContext.getJwtSpecifications()).isEqualTo(List.of());
   }
 
   @Test
