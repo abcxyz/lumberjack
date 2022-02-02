@@ -22,7 +22,7 @@ type Config struct {
 	Version string `yaml:"version,omitempty" env:"VERSION,overwrite"`
 
 	// Backend specifies what remote backend to send audit logs to.
-	// If a remote backend config is nil, audit logs must be written to stdout.
+	// If a remote backend config is nil, audit logs will be written to stdout.
 	Backend *Backend `yaml:"backend,omitempty"`
 
 	// Condition specifies the condition under which an incoming request should be
