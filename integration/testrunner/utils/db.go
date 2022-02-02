@@ -79,7 +79,7 @@ func QueryIfAuditLogExistsWithRetries(t testing.TB, ctx context.Context, bqQuery
 		if err != nil {
 			t.Logf("Query error: %v.", err)
 		}
-		return retry.RetryableError(fmt.Errorf("audit log not found"))
+		return retry.RetryableError(fmt.Errorf("no matching audit log found in bigquery after timeout"))
 	}); err != nil {
 		t.Errorf("Retry failed: %v.", err)
 	}

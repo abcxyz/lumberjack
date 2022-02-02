@@ -56,7 +56,7 @@ func TestMain(m *testing.M) {
 
 func TestHTTPEndpoints(t *testing.T) {
 	t.Parallel()
-	testsData := cfg.HttpEndpoints
+	testsData := cfg.HTTPEndpoints
 	var tests []string
 	if err := json.Unmarshal([]byte(testsData), &tests); err != nil {
 		t.Fatalf("Unable to parse HTTP endpoints: %v.", err)
@@ -83,7 +83,7 @@ func TestHTTPEndpoints(t *testing.T) {
 
 func TestGRPCEndpoints(t *testing.T) {
 	t.Parallel()
-	testsData := cfg.GrpcEndpoints
+	testsData := cfg.GRPCEndpoints
 	var tests []string
 	if err := json.Unmarshal([]byte(testsData), &tests); err != nil {
 		t.Fatalf("Unable to parse HTTP endpoints: %v.", err)

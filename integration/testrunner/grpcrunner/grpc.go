@@ -18,7 +18,6 @@ import (
 	"context"
 	"crypto/x509"
 	"fmt"
-	"log"
 	"strings"
 	"testing"
 
@@ -34,7 +33,7 @@ import (
 
 func TestGRPCEndpoint(t testing.TB, ctx context.Context, endpointURL string,
 	idToken string, projectID string, datasetQuery string, cfg *utils.Config) {
-	conn := createConnection(endpointURL, idToken)
+	conn := createConnection(t, endpointURL, idToken)
 	defer conn.Close()
 	c := talkerpb.NewTalkerClient(conn)
 	u := uuid.New()
@@ -58,24 +57,33 @@ func TestGRPCEndpoint(t testing.TB, ctx context.Context, endpointURL string,
 	utils.QueryIfAuditLogExistsWithRetries(t, ctx, query, cfg)
 }
 
-func createConnection(addr string, idToken string) *grpc.ClientConn {
+// Server is in cloud run. Example: https://cloud.google.com/run/docs/triggering/grpc#request-auth
+// We are using token-based authentication to connect to the server, which will be passed through
+// a JWT to the server. There, the server will be able to decipher the JWT to find the calling user.
+func createConnection(t testing.TB, addr string, idToken string) *grpc.ClientConn {
 	rpcCreds := oauth.NewOauthAccess(&oauth2.Token{AccessToken: idToken})
 
 	pool, err := x509.SystemCertPool()
 	if err != nil {
-		log.Fatalf("failed to load system cert pool: %w", err)
+		t.Fatalf("failed to load system cert pool: %w", err)
 	}
 	creds := credentials.NewClientTLSFromCert(pool, "")
 
+	// The address is input in a way that causes an error within grpc.
+	// example input: https://my-example-server.a.run.app
+	// expected url format: my-example-server.a.run.app:443
 	addr = strings.TrimPrefix(addr, "https://")
 	addr = addr + ":443"
 	conn, err := grpc.Dial(addr, grpc.WithPerRPCCredentials(rpcCreds), grpc.WithTransportCredentials(creds))
 	if err != nil {
-		log.Fatalf("did not connect: %v", err)
+		t.Fatalf("did not connect: %v", err)
 	}
 	return conn
 }
 
+// This query is used to find the relevant audit log in BigQuery, which we assume will be added by the server.
+// We specifically look up the log using the UUID specified in the request as we know the server will add that
+// as the resource name, and provides us a unique key to find logs with.
 func makeQueryForGrpc(client bigquery.Client, u uuid.UUID, projectID string, datasetQuery string) *bigquery.Query {
 	queryString := fmt.Sprintf("SELECT count(*) FROM %s.%s WHERE jsonPayload.resource_name=? LIMIT 1", projectID, datasetQuery)
 	return utils.MakeQuery(client, u, queryString)
