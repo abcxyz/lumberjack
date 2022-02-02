@@ -39,7 +39,9 @@ public class SecurityContext {
 
   /** This is intended to be extended as we add more ways to specify security contexts. */
   public List<SecuritySpecification> getSecuritySpecifications() {
-    return new ArrayList<>(getJwtSpecifications());
+    List<SecuritySpecification> securitySpecifications = new ArrayList<>();
+    securitySpecifications.addAll(getJwtSpecifications());
+    return securitySpecifications;
   }
 
   /** Use all configured security specifications in order to try to determine the principal. */
