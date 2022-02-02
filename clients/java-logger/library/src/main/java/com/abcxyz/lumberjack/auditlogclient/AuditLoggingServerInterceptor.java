@@ -41,13 +41,13 @@ import io.grpc.ServerInterceptor;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
+import java.util.logging.Logger;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 
 /** This is intended to allow automatic audit logging for calls from a wrapped server. */
-@Slf4j
 @RequiredArgsConstructor(onConstructor = @__({@Inject}))
 public class AuditLoggingServerInterceptor<ReqT extends Message> implements ServerInterceptor {
+  private static final Logger log = Logger.getLogger(AuditLoggingServerInterceptor.class.getName());
   public static final Context.Key<AuditLog.Builder> AUDIT_LOG_CTX_KEY = Context.key("audit-log");
 
   /**
@@ -67,7 +67,7 @@ public class AuditLoggingServerInterceptor<ReqT extends Message> implements Serv
     String methodName = call.getMethodDescriptor().getFullMethodName();
     Optional<Selector> selectorOption = getRelevantSelector(methodName);
     if (selectorOption.isEmpty()) {
-      log.debug("No selector found for method {}", methodName);
+      log.info("No selector found for method {}" +  methodName);
       return next.startCall(call, headers);
     }
     Selector selector = selectorOption.get();
@@ -76,7 +76,7 @@ public class AuditLoggingServerInterceptor<ReqT extends Message> implements Serv
     try {
       principal = auditLoggingConfiguration.getSecurityContext().getPrincipal(headers);
     } catch (AuthorizationException e) {
-      log.debug("Exception while trying to determine principal..");
+      log.info("Exception while trying to determine principal..");
       next.startCall(call, headers);
     }
 
@@ -89,7 +89,7 @@ public class AuditLoggingServerInterceptor<ReqT extends Message> implements Serv
       logBuilder.setAuthenticationInfo(
           AuthenticationInfo.newBuilder().setPrincipalEmail(principal.get()).build());
     } else {
-      log.debug("Unable to determine principal for request.");
+      log.info("Unable to determine principal for request.");
       next.startCall(call, headers);
     }
 

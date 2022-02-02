@@ -36,6 +36,10 @@ import com.abcxyz.lumberjack.test.talker.HelloResponse;
 import com.abcxyz.lumberjack.test.talker.TalkerGrpc;
 import com.abcxyz.lumberjack.test.talker.WhisperRequest;
 import com.abcxyz.lumberjack.test.talker.WhisperResponse;
+import com.abcxyz.lumberjack.test.talker.FibonacciRequest;
+import com.abcxyz.lumberjack.test.talker.FibonacciResponse;
+import com.abcxyz.lumberjack.test.talker.AdditionRequest;
+import com.abcxyz.lumberjack.test.talker.AdditionResponse;
 import com.google.auth.oauth2.AccessToken;
 import com.google.auth.oauth2.GoogleCredentials;
 import io.grpc.ManagedChannel;
@@ -48,17 +52,22 @@ import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import io.grpc.stub.StreamObserver;
 
 /** A simple client that requests a greeting from the {@link TalkerService} with TLS. */
 public class TalkerClient {
   private static final Logger logger = Logger.getLogger(TalkerClient.class.getName());
 
   private final TalkerGrpc.TalkerBlockingStub blockingStub;
+  private final TalkerGrpc.TalkerServiceStub clientStub;
 
   /** Construct client for accessing {@link TalkerService} using the existing channel. */
   public TalkerClient(ManagedChannel channel, GoogleCredentials credentials) throws IOException {
     blockingStub =
         TalkerGrpc.newBlockingStub(channel)
+            .withCallCredentials(MoreCallCredentials.from(credentials));
+    clientStub =
+        TalkerGrpc.newStub(channel)
             .withCallCredentials(MoreCallCredentials.from(credentials));
   }
 
@@ -95,6 +104,37 @@ public class TalkerClient {
       throw e;
     }
     logger.info("Greeting: " + response.getMessage());
+  }
+
+  public void fibonacci(int places) {
+    FibonacciRequest request = FibonacciRequest
+        .newBuilder()
+        .setPlaces(places)
+        .build();
+
+    try {
+      logger.info("Fibonacci sequence for places " + places);
+      blockingStub.fibonacci(request)
+          .forEachRemaining(fibonacciResponse -> {
+            logger.info("Position: " + fibonacciResponse.getPosition() + " Value: " + fibonacciResponse.getValue());
+          });
+    } catch (StatusRuntimeException e) {
+      logger.log(Level.WARNING, "RPC failed: {0}", e.getStatus());
+      throw e;
+    }
+  }
+
+  public void addition(int max) {
+    StreamObserver<AdditionRequest> requestObserver = clientStub.addition(new ClientAdditionObserver());
+
+    for (int i = 0; i <= max; i++) {
+      logger.info("Adding: " + i);
+      AdditionRequest request =
+          AdditionRequest.newBuilder().setAddend(i).build();
+      requestObserver.onNext(request);
+    }
+
+    requestObserver.onCompleted();
   }
 
   /**
@@ -137,6 +177,8 @@ public class TalkerClient {
         UUID target = UUID.randomUUID();
         client.greet(host, target);
         client.whisper("This is a secret! Don't audit log this string", target);
+        client.fibonacci(5);
+        client.addition(10);
       } finally {
         channel.shutdownNow().awaitTermination(5, TimeUnit.SECONDS);
       }

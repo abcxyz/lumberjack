@@ -39,6 +39,10 @@ import com.abcxyz.lumberjack.test.talker.HelloResponse;
 import com.abcxyz.lumberjack.test.talker.TalkerGrpc;
 import com.abcxyz.lumberjack.test.talker.WhisperRequest;
 import com.abcxyz.lumberjack.test.talker.WhisperResponse;
+import com.abcxyz.lumberjack.test.talker.FibonacciRequest;
+import com.abcxyz.lumberjack.test.talker.FibonacciResponse;
+import com.abcxyz.lumberjack.test.talker.AdditionRequest;
+import com.abcxyz.lumberjack.test.talker.AdditionResponse;
 import com.google.cloud.audit.AuditLog;
 import com.google.inject.Guice;
 import com.google.inject.Injector;
@@ -46,6 +50,8 @@ import io.grpc.Server;
 import io.grpc.ServerBuilder;
 import io.grpc.stub.StreamObserver;
 import java.io.IOException;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.logging.Logger;
 import lombok.RequiredArgsConstructor;
 
@@ -128,6 +134,35 @@ public class TalkerService {
       logger.info("replying");
       responseObserver.onNext(reply);
       responseObserver.onCompleted();
+    }
+
+    @Override
+    public void fibonacci(FibonacciRequest request, StreamObserver<FibonacciResponse> responseObserver) {
+      for (int i = 0; i < request.getPlaces(); i++) {
+        int value = getFibonacciPosition(i);
+        FibonacciResponse response =
+            FibonacciResponse.newBuilder().setPosition(i+1).setValue(value).build();
+        AuditLog.Builder auditLogBuilder = AuditLogs.getBuilderFromContext();
+        auditLogBuilder.setResourceName(Integer.toString(request.getPlaces()));
+        responseObserver.onNext(response);
+      }
+      responseObserver.onCompleted();
+    }
+
+    private static final Map<Integer, Integer> fibonacciMemo = new HashMap<>();
+    private int getFibonacciPosition(int position) {
+      if (position == 0) return 0;
+      if (position == 1 || position == 2) return 1;
+      if (fibonacciMemo.containsKey(position)) return fibonacciMemo.get(position);
+
+      int value = getFibonacciPosition(position - 1) + getFibonacciPosition(position - 2);
+      fibonacciMemo.put(position, value);
+      return value;
+    }
+
+    @Override
+    public StreamObserver<AdditionRequest> addition(StreamObserver<AdditionResponse> responseObserver) {
+      return new ServerAdditionObserver(responseObserver);
     }
   }
 }
