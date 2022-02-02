@@ -13,7 +13,7 @@ class FilteringProcessorModuleTest {
   }
 
   @Test
-  public void providedFilteringProcessorExcludesServiceAccountsByDefault() {
+  public void providedFilteringProcessorDoesNotHaveExcludeFilterSetByDefault() {
     FilteringProcessor filteringProcessor = injector().getInstance(FilteringProcessor.class);
     assertThat(filteringProcessor.getExcludePatterns()).isEmpty();
   }

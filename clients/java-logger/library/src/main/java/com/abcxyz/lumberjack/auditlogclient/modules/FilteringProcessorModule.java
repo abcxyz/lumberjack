@@ -39,7 +39,7 @@ public class FilteringProcessorModule extends AbstractModule {
 
   private List<Pattern> excludePatterns(Filters filters) {
     if (filters == null || filters.getExcludes() == null || filters.getExcludes().isBlank()) {
-      return List.of();
+      return Collections.emptyList();
     }
     List<Pattern> excludePatternsFromString = new ArrayList<>();
     for (String regex : filters.getExcludes().split(",")) {
