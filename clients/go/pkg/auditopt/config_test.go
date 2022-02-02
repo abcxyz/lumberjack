@@ -74,6 +74,20 @@ backend:
 			wantReq: testutil.ReqBuilder().WithPrincipal("abc@project.iam.gserviceaccount.com").Build(),
 		},
 		{
+			name: "condition_not_set_log_all",
+			fileContent: `
+version: v1alpha1
+security_context:
+  from_raw_jwt:
+  - key: authorization
+backend:
+  address: %s
+  insecure_enabled: true
+`,
+			req:     testutil.ReqBuilder().WithPrincipal("abc@project.iam.gserviceaccount.com").Build(),
+			wantReq: testutil.ReqBuilder().WithPrincipal("abc@project.iam.gserviceaccount.com").Build(),
+		},
+		{
 			name: "env_var_overwrites_config_file",
 			envs: map[string]string{
 				"AUDIT_CLIENT_CONDITION_REGEX_PRINCIPAL_EXCLUDE": "user@example.com",
