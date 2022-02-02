@@ -61,8 +61,6 @@ func TestHttpEndpoints(t *testing.T) {
 		t.Fatalf("Unable to parse HTTP endpoints: %v.", err)
 	}
 
-
-
 	for i, test := range tests {
 		test := test
 		t.Run(test, func(t *testing.T) {
