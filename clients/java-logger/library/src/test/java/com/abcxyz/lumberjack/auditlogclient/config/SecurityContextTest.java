@@ -84,7 +84,7 @@ public class SecurityContextTest {
                 this.getClass().getClassLoader().getResourceAsStream("jwt_default.yml"),
                 AuditLoggingConfiguration.class)
             .getSecurityContext();
-    assertThat(securityContext.getJwtSpecifications()).isEqualTo(List.of());
+    assertThat(securityContext.getJwtSpecifications()).isEmpty();
 
     securityContext =
         mapper
@@ -92,7 +92,7 @@ public class SecurityContextTest {
                 this.getClass().getClassLoader().getResourceAsStream("jwt_default_2.yml"),
                 AuditLoggingConfiguration.class)
             .getSecurityContext();
-    assertThat(securityContext.getJwtSpecifications()).isEqualTo(List.of());
+    assertThat(securityContext.getJwtSpecifications()).isEmpty();
   }
 
   @Test
