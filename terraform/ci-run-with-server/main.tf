@@ -85,5 +85,5 @@ output "instance_addresses" {
 }
 
 output "grpc_address" {
-  value = module.java_grpc_app.instance_address
+  value = [module.java_grpc_app.instance_address]
 }
