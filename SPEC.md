@@ -29,7 +29,7 @@ backend:
   address: audit-logging.example.com:443
 condition:
   regex:
-    exclude: ".*\.iam\.gserviceaccount\.com$"
+    exclude: ".*\\.iam\\.gserviceaccount\\.com$"
 ```
 
 Config the client to audit log all requests and write the logs to the same audit
@@ -60,7 +60,7 @@ backend:
   address: audit-logging.example.com:443
 condition:
   regex:
-    exclude: ".*\.iam\.gserviceaccount\.com$"
+    exclude: ".*\\.iam\\.gserviceaccount\\.com$"
 security_context:
   from_raw_jwt:
   - key: authorization
@@ -80,7 +80,7 @@ backend:
   address: audit-logging.example.com:443
 condition:
   regex:
-    exclude: ".*\.iam\.gserviceaccount\.com$"
+    exclude: ".*\\.iam\\.gserviceaccount\\.com$"
 security_context:
   from_raw_jwt:
   - key: authorization
@@ -99,7 +99,7 @@ backend:
   address: audit-logging.example.com:443
 condition:
   regex:
-    exclude: ".*\.iam\.gserviceaccount\.com$"
+    exclude: ".*\\.iam\\.gserviceaccount\\.com$"
 security_context:
   from_raw_jwt:
   - key: authorization
