@@ -1,7 +1,9 @@
 package abcxyz.lumberjack.test.talker;
 
+import com.abcxyz.lumberjack.auditlogclient.AuditLogs;
 import com.abcxyz.lumberjack.test.talker.AdditionRequest;
 import com.abcxyz.lumberjack.test.talker.AdditionResponse;
+import com.google.cloud.audit.AuditLog;
 import io.grpc.stub.StreamObserver;
 
 public class ServerAdditionObserver implements StreamObserver<AdditionRequest>{
@@ -26,6 +28,8 @@ public class ServerAdditionObserver implements StreamObserver<AdditionRequest>{
   public void onCompleted() {
     AdditionResponse response =
         AdditionResponse.newBuilder().setSum(sum).build();
+    AuditLog.Builder auditLogBuilder = AuditLogs.getBuilderFromContext();
+    auditLogBuilder.setResourceName("Placeholder");
     responseStream.onNext(response);
     responseStream.onCompleted();
   }

@@ -25,9 +25,13 @@ import com.google.cloud.audit.AuditLog;
 import com.google.cloud.audit.AuthenticationInfo;
 import com.google.inject.Inject;
 import com.google.protobuf.InvalidProtocolBufferException;
+import com.google.protobuf.ListValue;
 import com.google.protobuf.Message;
 import com.google.protobuf.MessageOrBuilder;
+import com.google.protobuf.StringValue;
 import com.google.protobuf.Struct;
+import com.google.protobuf.TextFormat;
+import com.google.protobuf.Value;
 import com.google.protobuf.util.JsonFormat;
 import io.grpc.Context;
 import io.grpc.Contexts;
@@ -38,11 +42,14 @@ import io.grpc.ServerCall;
 import io.grpc.ServerCall.Listener;
 import io.grpc.ServerCallHandler;
 import io.grpc.ServerInterceptor;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.logging.Logger;
 import lombok.RequiredArgsConstructor;
+import org.checkerframework.checker.signature.qual.FieldDescriptor;
 
 /** This is intended to allow automatic audit logging for calls from a wrapped server. */
 @RequiredArgsConstructor(onConstructor = @__({@Inject}))
@@ -124,14 +131,17 @@ public class AuditLoggingServerInterceptor<ReqT extends Message> implements Serv
             headers,
             next);
 
+    // If the client is streaming, we will get multiple requests.
+    List<ReqT> requests = new ArrayList<>();
     return new ForwardingServerCallListener.SimpleForwardingServerCallListener<ReqT>(delegate) {
       @Override
       public void onMessage(ReqT message) {
         if (selector.getDirective().shouldLogRequest()) {
-          Struct struct = messageToStruct(message);
-          logBuilder.setRequest(struct);
+          requests.add(message);
+          logBuilder.setRequest(requests.size() > 1 ?
+              messagesToStruct(requests)
+              : messageToStruct(message));
         }
-
         super.onMessage(message);
       }
     };
@@ -157,6 +167,18 @@ public class AuditLoggingServerInterceptor<ReqT extends Message> implements Serv
     } else {
       throw new IllegalArgumentException("Not a Protobuf Message: " + message.toString());
     }
+  }
+
+  <ReqT> Struct messagesToStruct(List<ReqT> messages) {
+    List<String> messageStrings = new ArrayList<>();
+    for (ReqT message : messages) {
+      messageStrings.add(message.toString());
+    }
+    Struct.Builder structBuilder = Struct.newBuilder();
+    String formattedList = messageStrings.toString().replace("\n", "");
+
+    structBuilder.putFields("request_list", Value.newBuilder().setStringValue(formattedList).build());
+    return structBuilder.build();
   }
 
   Optional<Selector> getRelevantSelector(String methodIdentifier) {

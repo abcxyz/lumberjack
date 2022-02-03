@@ -18,7 +18,7 @@ package abcxyz.test;
 option go_package = "github.com/abcxyz/lumberjack/clients/go/test/grpc-app/talkerpb;talkerpb";
 option java_multiple_files = true;
 option java_outer_classname = "TalkerProto";
-option java_package = "com.abcxyz.lumberjack.test.talker";
+option java_package = "com.abcxyz.lumberjack.test.talker.somethingelse";
 
 // A gRPC service definition used for lumberjack integration test.
 service Talker {
