@@ -62,6 +62,7 @@ clean_up() {
 trap clean_up EXIT
 
 export HTTP_ENDPOINTS=$(terraform -chdir=${TF_CI_WITH_SERVER_DIR} output -json instance_addresses)
+export GRPC_ENDPOINTS=$(terraform -chdir=${TF_CI_WITH_SERVER_DIR} output -json grpc_address)
 # TODO(b/203448874): Use updated (finalized) log name.
 BIGQUERY_DATASET_QUERY=${BIGQUERY_DATASET_ID}.auditlog_gcloudsolutions_dev_data_access
 
@@ -70,13 +71,3 @@ go test github.com/abcxyz/lumberjack/integration/testrunner\
   -id-token=${ID_TOKEN} \
   -project-id=${BACKEND_PROJECT_ID} \
   -dataset-query=${BIGQUERY_DATASET_QUERY}
-
-export HELLO_ENDPOINT=$(terraform -chdir=${TF_CI_WITH_SERVER_DIR} output -json grpc_address)
-echo "ID: ${ID_TOKEN}"
-cd ${ROOT}/clients/java-logger/
-
-# Build the module
-mvn clean package
-# Run the client
-java -cp grpc-test-app/target/grpc-test-app-0.0.1.jar abcxyz.lumberjack.test.talker.TalkerClient ${HELLO_ENDPOINT} 443 ${ID_TOKEN}
-# TODO: validate that the audit logs end up in the correct spot. May be able to re-use httptestrunner

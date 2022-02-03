@@ -16,9 +16,12 @@ package utils
 
 import (
 	"context"
+	"fmt"
+	"testing"
 
 	"cloud.google.com/go/bigquery"
 	"github.com/google/uuid"
+	"github.com/sethvargo/go-retry"
 )
 
 // queryIfAuditLogExists queries the DB and checks if audit log contained in the query exists or not.
@@ -56,4 +59,28 @@ func MakeQuery(bqClient bigquery.Client, u uuid.UUID, queryString string) *bigqu
 
 func MakeClient(ctx context.Context, projectID string) (*bigquery.Client, error) {
 	return bigquery.NewClient(ctx, projectID)
+}
+
+func QueryIfAuditLogExistsWithRetries(t testing.TB, ctx context.Context, bqQuery *bigquery.Query, cfg *Config) {
+	b, err := retry.NewExponential(cfg.LogRoutingWait)
+	if err != nil {
+		t.Fatalf("Retry logic setup failed: %v.", err)
+	}
+
+	if err = retry.Do(ctx, retry.WithMaxRetries(cfg.MaxDBQueryTries, b), func(ctx context.Context) error {
+		found, err := QueryIfAuditLogExists(ctx, bqQuery)
+		if found {
+			// Early exit retry if queried log already found.
+			return nil
+		}
+
+		t.Log("Matching entry not found, retrying...")
+
+		if err != nil {
+			t.Logf("Query error: %v.", err)
+		}
+		return retry.RetryableError(fmt.Errorf("no matching audit log found in bigquery after timeout"))
+	}); err != nil {
+		t.Errorf("Retry failed: %v.", err)
+	}
 }

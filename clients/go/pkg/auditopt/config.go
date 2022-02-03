@@ -153,7 +153,9 @@ func clientFromConfig(c *audit.Client, cfg *alpb.Config) error {
 	if err != nil {
 		return err
 	}
-	opts = append(opts, withPrincipalFilter)
+	if withPrincipalFilter != nil {
+		opts = append(opts, withPrincipalFilter)
+	}
 
 	withBackend, err := backendFromConfig(cfg)
 	if err != nil {
@@ -170,6 +172,9 @@ func clientFromConfig(c *audit.Client, cfg *alpb.Config) error {
 }
 
 func principalFilterFromConfig(cfg *alpb.Config) (audit.Option, error) {
+	if cfg.Condition == nil || cfg.Condition.Regex == nil {
+		return nil, nil
+	}
 	var opts []filtering.Option
 	// Nil `PrincipalInclude` and `PrincipalExclude` is fine because
 	// calling `filtering.WithIncludes("")` is a noop.
