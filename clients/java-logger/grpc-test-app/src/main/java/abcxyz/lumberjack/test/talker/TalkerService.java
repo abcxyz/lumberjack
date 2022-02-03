@@ -147,7 +147,7 @@ public class TalkerService {
     public void fibonacci(
         FibonacciRequest request, StreamObserver<FibonacciResponse> responseObserver) {
       for (int i = 0; i < request.getPlaces(); i++) {
-        int value = getFibonacciPosition(i);
+        int value = getFibonacciValueForPosition(i);
         FibonacciResponse response =
             FibonacciResponse.newBuilder().setPosition(i + 1).setValue(value).build();
         AuditLog.Builder auditLogBuilder = AuditLogs.getBuilderFromContext();
@@ -157,12 +157,12 @@ public class TalkerService {
       responseObserver.onCompleted();
     }
 
-    private int getFibonacciPosition(int position) {
+    private int getFibonacciValueForPosition(int position) {
       if (position == 0) return 0;
       if (position == 1 || position == 2) return 1;
       if (fibonacciMemo.containsKey(position)) return fibonacciMemo.get(position);
 
-      int value = getFibonacciPosition(position - 1) + getFibonacciPosition(position - 2);
+      int value = getFibonacciValueForPosition(position - 1) + getFibonacciValueForPosition(position - 2);
       fibonacciMemo.put(position, value);
       return value;
     }

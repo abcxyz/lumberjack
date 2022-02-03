@@ -35,7 +35,7 @@ public class ServerAdditionObserver implements StreamObserver<AdditionRequest> {
 
   @Override
   public void onNext(AdditionRequest request) {
-    sum = sum + request.getAddend();
+    sum += request.getAddend();
   }
 
   @Override

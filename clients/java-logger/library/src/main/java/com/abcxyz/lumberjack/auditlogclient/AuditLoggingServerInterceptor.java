@@ -44,13 +44,13 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.logging.Logger;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.java.Log;
 
 /** This is intended to allow automatic audit logging for calls from a wrapped server. */
 @RequiredArgsConstructor(onConstructor = @__({@Inject}))
+@Log
 public class AuditLoggingServerInterceptor<ReqT extends Message> implements ServerInterceptor {
-  private static final Logger log = Logger.getLogger(AuditLoggingServerInterceptor.class.getName());
   public static final Context.Key<AuditLog.Builder> AUDIT_LOG_CTX_KEY = Context.key("audit-log");
 
   /**
