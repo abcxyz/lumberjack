@@ -29,7 +29,7 @@ backend:
   address: audit-logging.example.com:443
 condition:
   regex:
-    exclude: ".iam.gserviceaccount.com$"
+    exclude: ".*\.iam\.gserviceaccount\.com$"
 ```
 
 Config the client to audit log all requests and write the logs to the same audit
@@ -45,6 +45,8 @@ backend:
 ### Auto audit logging in gRPC examples
 
 Blocks `security_context` and `rules` are only used in auto audit logging setup.
+Setting these fields *don't* automatically enable auto audit logging. Code
+change is still required (TODO: link examples).
 
 Config the client to
 
@@ -58,7 +60,7 @@ backend:
   address: audit-logging.example.com:443
 condition:
   regex:
-    exclude: ".iam.gserviceaccount.com$"
+    exclude: ".*\.iam\.gserviceaccount\.com$"
 security_context:
   from_raw_jwt:
   - key: authorization
@@ -78,7 +80,7 @@ backend:
   address: audit-logging.example.com:443
 condition:
   regex:
-    exclude: ".iam.gserviceaccount.com$"
+    exclude: ".*\.iam\.gserviceaccount\.com$"
 security_context:
   from_raw_jwt:
   - key: authorization
@@ -97,7 +99,7 @@ backend:
   address: audit-logging.example.com:443
 condition:
   regex:
-    exclude: ".iam.gserviceaccount.com$"
+    exclude: ".*\.iam\.gserviceaccount\.com$"
 security_context:
   from_raw_jwt:
   - key: authorization
