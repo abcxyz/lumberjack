@@ -18,8 +18,10 @@ in `yaml` format.
 
 ### Explicit audit logging examples
 
-Config the client to send audit logs - whose request principal is not a IAM
-service account - to an audit logging server at `audit-logging.example.com:443`
+Config the client to send audit logs
+
+-   whose request principal is not a IAM service account
+-   to an audit logging server at `audit-logging.example.com:443`
 
 ```yaml
 version: v1alpha1
@@ -44,9 +46,11 @@ backend:
 
 Blocks `security_context` and `rules` are only used in auto audit logging setup.
 
-Config the client to - look up authentication info (request principal) from a
-JWT without validation (assuming application code already handles it) - and
-enable audit logging for all gRPC method
+Config the client to
+
+-   look up authentication info (request principal) from a JWT without
+    validation (assuming application code already handles it)
+-   and enable audit logging for all gRPC method
 
 ```yaml
 version: v1alpha1
@@ -63,9 +67,10 @@ rules:
 - selector: *
 ```
 
-Config the client to - look up authentication info from *multiple* JWT
-locations - and enable audit logging *only* for gRPC method
-`/com.example.Foo/Bar`
+Config the client to
+
+-   look up authentication info from *multiple* JWT locations
+-   and enable audit logging *only* for gRPC method `/com.example.Foo/Bar`
 
 ```yaml
 version: v1alpha1
