@@ -25,12 +25,9 @@ import com.google.cloud.audit.AuditLog;
 import com.google.cloud.audit.AuthenticationInfo;
 import com.google.inject.Inject;
 import com.google.protobuf.InvalidProtocolBufferException;
-import com.google.protobuf.ListValue;
 import com.google.protobuf.Message;
 import com.google.protobuf.MessageOrBuilder;
-import com.google.protobuf.StringValue;
 import com.google.protobuf.Struct;
-import com.google.protobuf.TextFormat;
 import com.google.protobuf.Value;
 import com.google.protobuf.util.JsonFormat;
 import io.grpc.Context;
@@ -49,7 +46,6 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.logging.Logger;
 import lombok.RequiredArgsConstructor;
-import org.checkerframework.checker.signature.qual.FieldDescriptor;
 
 /** This is intended to allow automatic audit logging for calls from a wrapped server. */
 @RequiredArgsConstructor(onConstructor = @__({@Inject}))
@@ -74,7 +70,7 @@ public class AuditLoggingServerInterceptor<ReqT extends Message> implements Serv
     String methodName = call.getMethodDescriptor().getFullMethodName();
     Optional<Selector> selectorOption = getRelevantSelector(methodName);
     if (selectorOption.isEmpty()) {
-      log.info("No selector found for method {}" +  methodName);
+      log.info("No selector found for method {}" + methodName);
       return next.startCall(call, headers);
     }
     Selector selector = selectorOption.get();
@@ -138,9 +134,8 @@ public class AuditLoggingServerInterceptor<ReqT extends Message> implements Serv
       public void onMessage(ReqT message) {
         if (selector.getDirective().shouldLogRequest()) {
           requests.add(message);
-          logBuilder.setRequest(requests.size() > 1 ?
-              messagesToStruct(requests)
-              : messageToStruct(message));
+          logBuilder.setRequest(
+              requests.size() > 1 ? messagesToStruct(requests) : messageToStruct(message));
         }
         super.onMessage(message);
       }
@@ -169,6 +164,13 @@ public class AuditLoggingServerInterceptor<ReqT extends Message> implements Serv
     }
   }
 
+  /**
+   * Converts a list of proto messages to a human-readable string, and then puts that string into a
+   * struct for use when audit logging.
+   *
+   * <p>TODO: this may not be the most optimal if we want to consume and do processing later on this
+   * information. consider changing to a format that would be more conducive to later consumption
+   */
   <ReqT> Struct messagesToStruct(List<ReqT> messages) {
     List<String> messageStrings = new ArrayList<>();
     for (ReqT message : messages) {
@@ -177,7 +179,8 @@ public class AuditLoggingServerInterceptor<ReqT extends Message> implements Serv
     Struct.Builder structBuilder = Struct.newBuilder();
     String formattedList = messageStrings.toString().replace("\n", "");
 
-    structBuilder.putFields("request_list", Value.newBuilder().setStringValue(formattedList).build());
+    structBuilder.putFields(
+        "request_list", Value.newBuilder().setStringValue(formattedList).build());
     return structBuilder.build();
   }
 
