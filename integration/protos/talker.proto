@@ -33,6 +33,9 @@ service Talker {
 
   rpc Fibonacci(FibonacciRequest) returns (stream FibonacciResponse);
   rpc Addition(stream AdditionRequest) returns (AdditionResponse);
+
+  // TODO(#81): Add bi-directional streaming API as well.
+  // Something like "Conversation".
 }
 
 message HelloRequest {
