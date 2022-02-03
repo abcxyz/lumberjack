@@ -34,15 +34,15 @@ package abcxyz.lumberjack.test.talker;
 import com.abcxyz.lumberjack.auditlogclient.AuditLoggingServerInterceptor;
 import com.abcxyz.lumberjack.auditlogclient.AuditLogs;
 import com.abcxyz.lumberjack.auditlogclient.modules.AuditLoggingModule;
+import com.abcxyz.lumberjack.test.talker.AdditionRequest;
+import com.abcxyz.lumberjack.test.talker.AdditionResponse;
+import com.abcxyz.lumberjack.test.talker.FibonacciRequest;
+import com.abcxyz.lumberjack.test.talker.FibonacciResponse;
 import com.abcxyz.lumberjack.test.talker.HelloRequest;
 import com.abcxyz.lumberjack.test.talker.HelloResponse;
 import com.abcxyz.lumberjack.test.talker.TalkerGrpc;
 import com.abcxyz.lumberjack.test.talker.WhisperRequest;
 import com.abcxyz.lumberjack.test.talker.WhisperResponse;
-import com.abcxyz.lumberjack.test.talker.FibonacciRequest;
-import com.abcxyz.lumberjack.test.talker.FibonacciResponse;
-import com.abcxyz.lumberjack.test.talker.AdditionRequest;
-import com.abcxyz.lumberjack.test.talker.AdditionResponse;
 import com.google.cloud.audit.AuditLog;
 import com.google.inject.Guice;
 import com.google.inject.Injector;
@@ -137,11 +137,12 @@ public class TalkerService {
     }
 
     @Override
-    public void fibonacci(FibonacciRequest request, StreamObserver<FibonacciResponse> responseObserver) {
+    public void fibonacci(
+        FibonacciRequest request, StreamObserver<FibonacciResponse> responseObserver) {
       for (int i = 0; i < request.getPlaces(); i++) {
         int value = getFibonacciPosition(i);
         FibonacciResponse response =
-            FibonacciResponse.newBuilder().setPosition(i+1).setValue(value).build();
+            FibonacciResponse.newBuilder().setPosition(i + 1).setValue(value).build();
         AuditLog.Builder auditLogBuilder = AuditLogs.getBuilderFromContext();
         auditLogBuilder.setResourceName(Integer.toString(request.getPlaces()));
         responseObserver.onNext(response);
@@ -150,6 +151,7 @@ public class TalkerService {
     }
 
     private static final Map<Integer, Integer> fibonacciMemo = new HashMap<>();
+
     private int getFibonacciPosition(int position) {
       if (position == 0) return 0;
       if (position == 1 || position == 2) return 1;
@@ -161,7 +163,8 @@ public class TalkerService {
     }
 
     @Override
-    public StreamObserver<AdditionRequest> addition(StreamObserver<AdditionResponse> responseObserver) {
+    public StreamObserver<AdditionRequest> addition(
+        StreamObserver<AdditionResponse> responseObserver) {
       return new ServerAdditionObserver(responseObserver);
     }
   }

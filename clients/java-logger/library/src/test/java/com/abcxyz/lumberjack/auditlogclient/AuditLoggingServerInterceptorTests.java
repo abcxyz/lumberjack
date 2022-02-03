@@ -84,8 +84,11 @@ public class AuditLoggingServerInterceptorTests {
 
     Struct.Builder structBuilder = Struct.newBuilder();
     structBuilder.putFields(
-        "request_list", Value.newBuilder().setStringValue(
-            "[service_name: \"test-service\"method_name: \"test-method\", service_name: \"test-service-2\"method_name: \"test-method-2\"]")
+        "request_list",
+        Value.newBuilder()
+            .setStringValue(
+                "[service_name: \"test-service\"method_name: \"test-method\", service_name:"
+                    + " \"test-service-2\"method_name: \"test-method-2\"]")
             .build());
     assertThat(actual).isEqualTo(structBuilder.build());
   }

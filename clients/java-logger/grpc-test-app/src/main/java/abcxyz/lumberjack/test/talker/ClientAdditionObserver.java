@@ -1,8 +1,8 @@
 package abcxyz.lumberjack.test.talker;
 
-import java.util.logging.Logger;
 import com.abcxyz.lumberjack.test.talker.AdditionResponse;
 import io.grpc.stub.StreamObserver;
+import java.util.logging.Logger;
 
 public class ClientAdditionObserver implements StreamObserver<AdditionResponse> {
   private static final Logger logger = Logger.getLogger(TalkerClient.class.getName());

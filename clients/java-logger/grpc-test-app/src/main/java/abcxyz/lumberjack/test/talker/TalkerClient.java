@@ -32,25 +32,25 @@ package abcxyz.lumberjack.test.talker;
  */
 
 import com.abcxyz.lumberjack.test.talker.AdditionRequest;
+import com.abcxyz.lumberjack.test.talker.FibonacciRequest;
 import com.abcxyz.lumberjack.test.talker.HelloRequest;
 import com.abcxyz.lumberjack.test.talker.HelloResponse;
 import com.abcxyz.lumberjack.test.talker.TalkerGrpc;
 import com.abcxyz.lumberjack.test.talker.WhisperRequest;
 import com.abcxyz.lumberjack.test.talker.WhisperResponse;
-import com.abcxyz.lumberjack.test.talker.FibonacciRequest;
 import com.google.auth.oauth2.AccessToken;
 import com.google.auth.oauth2.GoogleCredentials;
 import io.grpc.ManagedChannel;
 import io.grpc.ManagedChannelBuilder;
 import io.grpc.StatusRuntimeException;
 import io.grpc.auth.MoreCallCredentials;
+import io.grpc.stub.StreamObserver;
 import java.io.IOException;
 import java.util.Calendar;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import io.grpc.stub.StreamObserver;
 
 /** A simple client that requests a greeting from the {@link TalkerService} with TLS. */
 public class TalkerClient {
@@ -65,17 +65,14 @@ public class TalkerClient {
         TalkerGrpc.newBlockingStub(channel)
             .withCallCredentials(MoreCallCredentials.from(credentials));
     clientStub =
-        TalkerGrpc.newStub(channel)
-            .withCallCredentials(MoreCallCredentials.from(credentials));
+        TalkerGrpc.newStub(channel).withCallCredentials(MoreCallCredentials.from(credentials));
   }
 
   /** Say hello to server. */
   public void greet(String name, UUID target) {
     logger.info("Will try to greet " + name + " ...");
-    HelloRequest request = HelloRequest.newBuilder()
-        .setMessage(name)
-        .setTarget(target.toString())
-        .build();
+    HelloRequest request =
+        HelloRequest.newBuilder().setMessage(name).setTarget(target.toString()).build();
     HelloResponse response;
     try {
       response = blockingStub.hello(request);
@@ -89,11 +86,8 @@ public class TalkerClient {
   /** Whisper secrets to server. */
   public void whisper(String secret, UUID target) {
     logger.info("Will try to whisper " + secret + " ...");
-    WhisperRequest request = WhisperRequest
-        .newBuilder()
-        .setMessage(secret)
-        .setTarget(target.toString())
-        .build();
+    WhisperRequest request =
+        WhisperRequest.newBuilder().setMessage(secret).setTarget(target.toString()).build();
     WhisperResponse response;
     try {
       response = blockingStub.whisper(request);
@@ -105,17 +99,20 @@ public class TalkerClient {
   }
 
   public void fibonacci(int places) {
-    FibonacciRequest request = FibonacciRequest
-        .newBuilder()
-        .setPlaces(places)
-        .build();
+    FibonacciRequest request = FibonacciRequest.newBuilder().setPlaces(places).build();
 
     try {
       logger.info("Fibonacci sequence for places " + places);
-      blockingStub.fibonacci(request)
-          .forEachRemaining(fibonacciResponse -> {
-            logger.info("Position: " + fibonacciResponse.getPosition() + " Value: " + fibonacciResponse.getValue());
-          });
+      blockingStub
+          .fibonacci(request)
+          .forEachRemaining(
+              fibonacciResponse -> {
+                logger.info(
+                    "Position: "
+                        + fibonacciResponse.getPosition()
+                        + " Value: "
+                        + fibonacciResponse.getValue());
+              });
     } catch (StatusRuntimeException e) {
       logger.log(Level.WARNING, "RPC failed: {0}", e.getStatus());
       throw e;
@@ -123,12 +120,12 @@ public class TalkerClient {
   }
 
   public void addition(int max) {
-    StreamObserver<AdditionRequest> requestObserver = clientStub.addition(new ClientAdditionObserver());
+    StreamObserver<AdditionRequest> requestObserver =
+        clientStub.addition(new ClientAdditionObserver());
 
     for (int i = 1; i <= max; i++) {
       logger.info("Adding: " + i);
-      AdditionRequest request =
-          AdditionRequest.newBuilder().setAddend(i).build();
+      AdditionRequest request = AdditionRequest.newBuilder().setAddend(i).build();
       requestObserver.onNext(request);
     }
 
