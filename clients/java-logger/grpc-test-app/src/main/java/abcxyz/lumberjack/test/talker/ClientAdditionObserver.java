@@ -4,6 +4,9 @@ import com.abcxyz.lumberjack.test.talker.AdditionResponse;
 import io.grpc.stub.StreamObserver;
 import java.util.logging.Logger;
 
+/**
+ * Client-side handler for client streaming.
+ */
 public class ClientAdditionObserver implements StreamObserver<AdditionResponse> {
   private static final Logger logger = Logger.getLogger(TalkerClient.class.getName());
 

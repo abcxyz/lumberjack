@@ -94,6 +94,19 @@ public class AuditLoggingServerInterceptorTests {
   }
 
   @Test
+  public void convertsMessagesToStruct_Empty() {
+    Struct actual = interceptor.messagesToStruct(Collections.emptyList());
+
+    Struct.Builder structBuilder = Struct.newBuilder();
+    structBuilder.putFields(
+        "request_list",
+        Value.newBuilder()
+            .setStringValue("[]")
+            .build());
+    assertThat(actual).isEqualTo(structBuilder.build());
+  }
+
+  @Test
   public void getsRelevantSelector() {
     List<Selector> selectors = new ArrayList<>();
     Selector selector1 = new Selector("*", null, null);

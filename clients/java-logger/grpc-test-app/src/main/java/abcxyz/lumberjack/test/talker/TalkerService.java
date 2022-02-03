@@ -59,6 +59,7 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class TalkerService {
   private static final Logger logger = Logger.getLogger(TalkerService.class.getName());
+  private static final Map<Integer, Integer> fibonacciMemo = new HashMap<>();
 
   private Server server;
 
@@ -136,6 +137,12 @@ public class TalkerService {
       responseObserver.onCompleted();
     }
 
+    /**
+     * This is a test API for server streaming. The client sends a request with how many places of
+     * fibonacci numbers it wants, and then the server streams each number in order.
+     *
+     * example: 3 places -> 0, 1, 1
+     */
     @Override
     public void fibonacci(
         FibonacciRequest request, StreamObserver<FibonacciResponse> responseObserver) {
@@ -150,8 +157,6 @@ public class TalkerService {
       responseObserver.onCompleted();
     }
 
-    private static final Map<Integer, Integer> fibonacciMemo = new HashMap<>();
-
     private int getFibonacciPosition(int position) {
       if (position == 0) return 0;
       if (position == 1 || position == 2) return 1;
@@ -162,6 +167,11 @@ public class TalkerService {
       return value;
     }
 
+    /**
+     * This is a test API for client streaming. The client opens a stream and can send any
+     * number of numbers. The server adds up all those numbers, and when the stream is closed,
+     * replies with the final sum of all the numbers.
+     */
     @Override
     public StreamObserver<AdditionRequest> addition(
         StreamObserver<AdditionResponse> responseObserver) {
