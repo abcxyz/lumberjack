@@ -26,7 +26,7 @@ import (
 	"github.com/sethvargo/go-retry"
 )
 
-func TestHttpEndpoint(t testing.TB, ctx context.Context, endpointURL string,
+func TestHTTPEndpoint(t testing.TB, ctx context.Context, endpointURL string,
 	idToken string, projectID string, datasetQuery string, cfg *utils.Config) {
 	u := uuid.New()
 	t.Logf("Generated UUID: %s.", u.String())
@@ -64,31 +64,11 @@ func TestHttpEndpoint(t testing.TB, ctx context.Context, endpointURL string,
 		}
 	}()
 
-	b, err = retry.NewExponential(cfg.LogRoutingWait)
-	if err != nil {
-		t.Fatalf("Retry logic setup failed: %v.", err)
-	}
-
-	bqQuery := makeQueryForHttp(*bqClient, u, projectID, datasetQuery)
-	if err = retry.Do(ctx, retry.WithMaxRetries(cfg.MaxDBQueryTries, b), func(ctx context.Context) error {
-		found, err := utils.QueryIfAuditLogExists(ctx, bqQuery)
-		if found {
-			// Early exit retry if queried log already found.
-			return nil
-		}
-
-		t.Log("Matching entry not found, retrying...")
-
-		if err != nil {
-			t.Logf("Query error: %v.", err)
-		}
-		return retry.RetryableError(fmt.Errorf("audit log not found"))
-	}); err != nil {
-		t.Errorf("Retry failed: %v.", err)
-	}
+	bqQuery := makeQueryForHTTP(*bqClient, u, projectID, datasetQuery)
+	utils.QueryIfAuditLogExistsWithRetries(t, ctx, bqQuery, cfg)
 }
 
-func makeQueryForHttp(client bigquery.Client, u uuid.UUID, projectID string, datasetQuery string) *bigquery.Query {
+func makeQueryForHTTP(client bigquery.Client, u uuid.UUID, projectID string, datasetQuery string) *bigquery.Query {
 	queryString := fmt.Sprintf("SELECT count(*) FROM (SELECT * FROM %s.%s WHERE labels.trace_id=? LIMIT 1)", projectID, datasetQuery)
 	return utils.MakeQuery(client, u, queryString)
 }
