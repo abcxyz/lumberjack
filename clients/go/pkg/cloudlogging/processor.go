@@ -126,6 +126,7 @@ func (p *Processor) Process(ctx context.Context, logReq *alpb.AuditLogRequest) e
 	logEntry := logging.Entry{
 		Payload: logReq.Payload,
 		Labels:  logReq.Labels,
+		Operation: logReq.Operation,
 	}
 
 	bestEffort := p.bestEffort
