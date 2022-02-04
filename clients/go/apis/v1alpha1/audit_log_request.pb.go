@@ -23,13 +23,14 @@
 package v1alpha1
 
 import (
+	reflect "reflect"
+	sync "sync"
+
 	audit "google.golang.org/genproto/googleapis/cloud/audit"
 	v2 "google.golang.org/genproto/googleapis/logging/v2"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	descriptorpb "google.golang.org/protobuf/types/descriptorpb"
-	reflect "reflect"
-	sync "sync"
 )
 
 const (
