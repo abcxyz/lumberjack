@@ -18,6 +18,7 @@ syntax = "proto3";
 package proto;
 
 import "google/cloud/audit/audit_log.proto";
+import "google/logging/v2/log_entry.proto";
 import "google/protobuf/descriptor.proto";
 
 option go_package = "github.com/abcxyz/lumberjack/clients/go/apis/v1alpha1";
@@ -52,6 +53,9 @@ message AuditLogRequest {
 
   // The Cloud audit log payload.
   google.cloud.audit.AuditLog payload = 2;
+
+  // Standard object used for correlating logs across streams
+  google.logging.v2.LogEntryOperation operation = 5;
 
   // LogMode specifies the logging mode for the individual log request.
   enum LogMode {
