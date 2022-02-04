@@ -19,7 +19,6 @@ package proto;
 
 import "google/cloud/audit/audit_log.proto";
 import "google/logging/v2/log_entry.proto";
-
 import "google/protobuf/descriptor.proto";
 
 option go_package = "github.com/abcxyz/lumberjack/clients/go/apis/v1alpha1";
