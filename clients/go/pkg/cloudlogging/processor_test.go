@@ -26,6 +26,7 @@ import (
 	"google.golang.org/api/option"
 	"google.golang.org/genproto/googleapis/cloud/audit"
 	logpb "google.golang.org/genproto/googleapis/logging/v2"
+
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -83,11 +84,13 @@ func TestProcessor_Process(t *testing.T) {
 				Type:    alpb.AuditLogRequest_DATA_ACCESS,
 				Payload: &audit.AuditLog{ServiceName: "test-service"},
 				Labels:  map[string]string{"test-key": "test-value"},
+				Operation: &logpb.LogEntryOperation{Id: "test-id", Producer: "test-producer"},
 			},
 			wantLogReq: &alpb.AuditLogRequest{
 				Type:    alpb.AuditLogRequest_DATA_ACCESS,
 				Payload: &audit.AuditLog{ServiceName: "test-service"},
 				Labels:  map[string]string{"test-key": "test-value"},
+				Operation: &logpb.LogEntryOperation{Id: "test-id", Producer: "test-producer"},
 			},
 		},
 		{
