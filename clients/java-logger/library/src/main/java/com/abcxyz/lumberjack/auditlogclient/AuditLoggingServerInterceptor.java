@@ -24,6 +24,7 @@ import com.abcxyz.lumberjack.v1alpha1.AuditLogRequest;
 import com.google.cloud.audit.AuditLog;
 import com.google.cloud.audit.AuthenticationInfo;
 import com.google.inject.Inject;
+import com.google.logging.v2.LogEntryOperation;
 import com.google.protobuf.InvalidProtocolBufferException;
 import com.google.protobuf.Message;
 import com.google.protobuf.MessageOrBuilder;
@@ -48,6 +49,7 @@ import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicBoolean;
 import lombok.Data;
+import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.java.Log;
 
@@ -103,6 +105,11 @@ public class AuditLoggingServerInterceptor<ReqT extends Message> implements Serv
       log.info("Unable to determine principal for request.");
       next.startCall(call, headers);
     }
+    LogEntryOperation logEntryOperation =
+        LogEntryOperation.newBuilder()
+            .setId(UUID.randomUUID().toString())
+            .setProducer(fullMethodName)
+            .build();
 
     // Add the builder into the context, this makes it available to the server code.
     Context ctx = Context.current().withValue(AUDIT_LOG_CTX_KEY, logBuilder);
@@ -117,7 +124,7 @@ public class AuditLoggingServerInterceptor<ReqT extends Message> implements Serv
               @Override
               public void sendMessage(RespT message) {
                 requestResponseHolder.setLatestResponse(message);
-                auditLog(selector, requestResponseHolder.getLatestRequest(), message, logBuilder);
+                auditLog(selector, requestResponseHolder.getLatestRequest(), message, logBuilder, logEntryOperation);
                 super.sendMessage(message);
               }
             },
@@ -145,10 +152,10 @@ public class AuditLoggingServerInterceptor<ReqT extends Message> implements Serv
             // so we need to check for null.
             if (unloggedRequest != null) {
               auditLog(
-                  selector, unloggedRequest, requestResponseHolder.getLatestResponse(), logBuilder);
+                  selector, unloggedRequest, requestResponseHolder.getLatestResponse(), logBuilder, logEntryOperation);
             }
           }
-          auditLog(selector, message, requestResponseHolder.getLatestResponse(), logBuilder);
+          auditLog(selector, message, requestResponseHolder.getLatestResponse(), logBuilder, logEntryOperation);
         } else {
           unloggedRequests.add(message);
         }
@@ -158,7 +165,7 @@ public class AuditLoggingServerInterceptor<ReqT extends Message> implements Serv
   }
 
   private <ReqT, RespT> void auditLog(
-      Selector selector, ReqT request, RespT response, AuditLog.Builder logBuilder) {
+      Selector selector, ReqT request, RespT response, AuditLog.Builder logBuilder, LogEntryOperation logEntryOperation) {
     if (selector.getDirective().shouldLogResponse() && response != null) {
       logBuilder.setResponse(messageToStruct(response));
     }
@@ -169,6 +176,7 @@ public class AuditLoggingServerInterceptor<ReqT extends Message> implements Serv
     AuditLogRequest.Builder builder = AuditLogRequest.newBuilder();
     builder.setPayload(logBuilder.build());
     builder.setType(selector.getLogType());
+    builder.setOperation(logEntryOperation);
 
     try {
       log.info("Audit logging...");
