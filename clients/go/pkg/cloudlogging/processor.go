@@ -124,8 +124,8 @@ func (p *Processor) Process(ctx context.Context, logReq *alpb.AuditLogRequest) e
 		logger = p.loggerByLogType[alpb.AuditLogRequest_UNSPECIFIED]
 	}
 	logEntry := logging.Entry{
-		Payload: logReq.Payload,
-		Labels:  logReq.Labels,
+		Payload:   logReq.Payload,
+		Labels:    logReq.Labels,
 		Operation: logReq.Operation,
 	}
 
