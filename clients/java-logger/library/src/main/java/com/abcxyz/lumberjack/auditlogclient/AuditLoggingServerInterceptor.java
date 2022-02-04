@@ -44,6 +44,10 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Queue;
+import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.atomic.AtomicBoolean;
+import lombok.Data;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.java.Log;
 
@@ -52,6 +56,7 @@ import lombok.extern.java.Log;
 @Log
 public class AuditLoggingServerInterceptor<ReqT extends Message> implements ServerInterceptor {
   public static final Context.Key<AuditLog.Builder> AUDIT_LOG_CTX_KEY = Context.key("audit-log");
+  public static final String UNSPECIFIED_RESORCE = "UNSPECIFIED_RESOURCE_NAME";
 
   /**
    * Keeps track of the relevant selectors for specific methods. As the selectors that are relevant
@@ -86,6 +91,9 @@ public class AuditLoggingServerInterceptor<ReqT extends Message> implements Serv
     AuditLog.Builder logBuilder = AuditLog.newBuilder();
     String fullMethodName = call.getMethodDescriptor().getFullMethodName();
     logBuilder.setMethodName(fullMethodName);
+    logBuilder.setResourceName(
+        UNSPECIFIED_RESORCE); // if the client has multiple streaming uploads before there is a
+    // response,
     logBuilder.setServiceName(fullMethodName.split("/")[0]);
 
     if (principal.isPresent()) {
@@ -96,50 +104,78 @@ public class AuditLoggingServerInterceptor<ReqT extends Message> implements Serv
       next.startCall(call, headers);
     }
 
+    // Add the builder into the context, this makes it available to the server code.
     Context ctx = Context.current().withValue(AUDIT_LOG_CTX_KEY, logBuilder);
 
-    // Add the builder into the context, this makes it available to the server code.
+    // This is a way to keep track of the last request or response received for use in audit
+    // logging.
+    final RequestResponseHolder<ReqT, RespT> requestResponseHolder = new RequestResponseHolder();
     ServerCall.Listener<ReqT> delegate =
         Contexts.interceptCall(
             ctx,
             new SimpleForwardingServerCall<ReqT, RespT>(call) {
               @Override
               public void sendMessage(RespT message) {
-                if (selector.getDirective().shouldLogResponse()) {
-                  Struct struct = messageToStruct(message);
-                  logBuilder.setResponse(struct);
-                }
-
-                AuditLogRequest.Builder builder = AuditLogRequest.newBuilder();
-                builder.setPayload(logBuilder.build());
-                builder.setType(selector.getLogType());
-
-                try {
-                  log.info("Audit log: " + builder.build().toString());
-                  client.log(builder.build());
-                } catch (LogProcessingException e) {
-                  throw new RuntimeException(e);
-                }
-
+                requestResponseHolder.setLatestResponse(message);
+                auditLog(selector, requestResponseHolder.getLatestRequest(), message, logBuilder);
                 super.sendMessage(message);
               }
             },
             headers,
             next);
 
-    // If the client is streaming, we will get multiple requests.
-    List<ReqT> requests = new ArrayList<>();
+    // isFirstRequest is a thread-safe boolean. If the client is streaming, we will get multiple
+    // requests, and if we don't skip the first one, we'll have one extraneous log missing info
+    // because there hasn't been a response yet. This extraneous log would also exist
+    // for unary calls (single request/response). We store this request in the unloggedRequests
+    // queue, so that in the case where we have additional requests come in before a response,
+    // the first log is not lost. In the case where we get many requests before any response (e.g.
+    // in a client streaming case) then we log these without response info.
+    AtomicBoolean isFirstRequest = new AtomicBoolean(true);
+    Queue<ReqT> unloggedRequests = new ConcurrentLinkedQueue<>();
     return new ForwardingServerCallListener.SimpleForwardingServerCallListener<ReqT>(delegate) {
       @Override
       public void onMessage(ReqT message) {
-        if (selector.getDirective().shouldLogRequest()) {
-          requests.add(message);
-          logBuilder.setRequest(
-              requests.size() > 1 ? messagesToStruct(requests) : messageToStruct(message));
+        boolean first = isFirstRequest.getAndSet(false);
+        requestResponseHolder.setLatestRequest(message);
+        if (!first) {
+          if (!unloggedRequests.isEmpty()) {
+            ReqT unloggedRequest = unloggedRequests.poll();
+            // between the isEmpty() and the poll, another thread could have grabbed it,
+            // so we need to check for null.
+            if (unloggedRequest != null) {
+              auditLog(
+                  selector, unloggedRequest, requestResponseHolder.getLatestResponse(), logBuilder);
+            }
+          }
+          auditLog(selector, message, requestResponseHolder.getLatestResponse(), logBuilder);
+        } else {
+          unloggedRequests.add(message);
         }
         super.onMessage(message);
       }
     };
+  }
+
+  private <ReqT, RespT> void auditLog(
+      Selector selector, ReqT request, RespT response, AuditLog.Builder logBuilder) {
+    if (selector.getDirective().shouldLogResponse() && response != null) {
+      logBuilder.setResponse(messageToStruct(response));
+    }
+    if (selector.getDirective().shouldLogRequest() && request != null) {
+      logBuilder.setRequest(messageToStruct(request));
+    }
+
+    AuditLogRequest.Builder builder = AuditLogRequest.newBuilder();
+    builder.setPayload(logBuilder.build());
+    builder.setType(selector.getLogType());
+
+    try {
+      log.info("Audit logging...");
+      client.log(builder.build());
+    } catch (LogProcessingException e) {
+      throw new RuntimeException(e);
+    }
   }
 
   /**
@@ -194,5 +230,15 @@ public class AuditLoggingServerInterceptor<ReqT extends Message> implements Serv
     // thread-safe way to update memo
     memo.putIfAbsent(methodIdentifier, mostApplicableSelector);
     return mostApplicableSelector;
+  }
+
+  /**
+   * Used to hold the latest request and response. This uses no locks, synchronization, etc., and is
+   * only intended to provide best-effort functionality.
+   */
+  @Data
+  private class RequestResponseHolder<ReqT, RespT> {
+    private ReqT latestRequest = null;
+    private RespT latestResponse = null;
   }
 }
