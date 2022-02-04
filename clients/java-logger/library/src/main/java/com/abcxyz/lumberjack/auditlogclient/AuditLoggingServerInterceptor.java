@@ -24,6 +24,7 @@ import com.abcxyz.lumberjack.v1alpha1.AuditLogRequest;
 import com.google.cloud.audit.AuditLog;
 import com.google.cloud.audit.AuthenticationInfo;
 import com.google.inject.Inject;
+import com.google.logging.v2.LogEntryOperation;
 import com.google.protobuf.InvalidProtocolBufferException;
 import com.google.protobuf.Message;
 import com.google.protobuf.MessageOrBuilder;
@@ -41,6 +42,7 @@ import io.grpc.ServerInterceptor;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
+import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
@@ -92,6 +94,11 @@ public class AuditLoggingServerInterceptor<ReqT extends Message> implements Serv
       log.debug("Unable to determine principal for request.");
       next.startCall(call, headers);
     }
+    LogEntryOperation logEntryOperation =
+        LogEntryOperation.newBuilder()
+            .setId(UUID.randomUUID().toString())
+            .setProducer(fullMethodName)
+            .build();
 
     Context ctx = Context.current().withValue(AUDIT_LOG_CTX_KEY, logBuilder);
 
@@ -110,6 +117,7 @@ public class AuditLoggingServerInterceptor<ReqT extends Message> implements Serv
                 AuditLogRequest.Builder builder = AuditLogRequest.newBuilder();
                 builder.setPayload(logBuilder.build());
                 builder.setType(selector.getLogType());
+                builder.setOperation(logEntryOperation);
 
                 try {
                   log.info("Audit log: " + builder.build().toString());
