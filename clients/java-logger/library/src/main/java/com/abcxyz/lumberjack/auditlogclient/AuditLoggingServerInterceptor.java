@@ -56,7 +56,7 @@ import lombok.extern.java.Log;
 @Log
 public class AuditLoggingServerInterceptor<ReqT extends Message> implements ServerInterceptor {
   public static final Context.Key<AuditLog.Builder> AUDIT_LOG_CTX_KEY = Context.key("audit-log");
-  public static final String UNSPECIFIED_RESORCE = "UNSPECIFIED_RESOURCE_NAME";
+  public static final String UNSPECIFIED_RESORCE = "GRPC_STREAM_RESOURCE_NAME_PLACEHOLDER";
 
   /**
    * Keeps track of the relevant selectors for specific methods. As the selectors that are relevant
@@ -92,8 +92,8 @@ public class AuditLoggingServerInterceptor<ReqT extends Message> implements Serv
     String fullMethodName = call.getMethodDescriptor().getFullMethodName();
     logBuilder.setMethodName(fullMethodName);
     logBuilder.setResourceName(
-        UNSPECIFIED_RESORCE); // if the client has multiple streaming uploads before there is a
-    // response,
+        UNSPECIFIED_RESORCE);
+    // if the client has multiple streaming uploads before there is a response,
     logBuilder.setServiceName(fullMethodName.split("/")[0]);
 
     if (principal.isPresent()) {
