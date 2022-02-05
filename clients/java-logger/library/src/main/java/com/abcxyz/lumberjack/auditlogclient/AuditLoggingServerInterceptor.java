@@ -41,15 +41,14 @@ import io.grpc.ServerCall.Listener;
 import io.grpc.ServerCallHandler;
 import io.grpc.ServerInterceptor;
 import java.util.ArrayList;
+import java.util.Deque;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.Queue;
-import java.util.concurrent.ConcurrentLinkedQueue;
-import java.util.concurrent.atomic.AtomicBoolean;
-import lombok.Data;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentLinkedDeque;
+import lombok.Data;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.java.Log;
 
@@ -93,8 +92,7 @@ public class AuditLoggingServerInterceptor<ReqT extends Message> implements Serv
     AuditLog.Builder logBuilder = AuditLog.newBuilder();
     String fullMethodName = call.getMethodDescriptor().getFullMethodName();
     logBuilder.setMethodName(fullMethodName);
-    logBuilder.setResourceName(
-        UNSPECIFIED_RESORCE);
+    logBuilder.setResourceName(UNSPECIFIED_RESORCE);
     // if the client has multiple streaming uploads before there is a response,
     logBuilder.setServiceName(fullMethodName.split("/")[0]);
 
@@ -114,58 +112,55 @@ public class AuditLoggingServerInterceptor<ReqT extends Message> implements Serv
     // Add the builder into the context, this makes it available to the server code.
     Context ctx = Context.current().withValue(AUDIT_LOG_CTX_KEY, logBuilder);
 
-    // This is a way to keep track of the last request or response received for use in audit
-    // logging.
-    final RequestResponseHolder<ReqT, RespT> requestResponseHolder = new RequestResponseHolder();
+    // Deques allow for addition/removal at both ends. We use this to keep responses
+    // until it is time to log them.
+    Deque<ReqT> unloggedRequests = new ConcurrentLinkedDeque<>();
     ServerCall.Listener<ReqT> delegate =
         Contexts.interceptCall(
             ctx,
             new SimpleForwardingServerCall<ReqT, RespT>(call) {
               @Override
               public void sendMessage(RespT message) {
-                requestResponseHolder.setLatestResponse(message);
-                auditLog(selector, requestResponseHolder.getLatestRequest(), message, logBuilder, logEntryOperation);
+                // newest message. returns null if empty.
+                ReqT unloggedRequest = unloggedRequests.pollLast();
+
+                auditLog(selector, unloggedRequest, message, logBuilder, logEntryOperation);
                 super.sendMessage(message);
               }
             },
             headers,
             next);
 
-    // isFirstRequest is a thread-safe boolean. If the client is streaming, we will get multiple
-    // requests, and if we don't skip the first one, we'll have one extraneous log missing info
-    // because there hasn't been a response yet. This extraneous log would also exist
-    // for unary calls (single request/response). We store this request in the unloggedRequests
-    // queue, so that in the case where we have additional requests come in before a response,
-    // the first log is not lost. In the case where we get many requests before any response (e.g.
-    // in a client streaming case) then we log these without response info.
-    AtomicBoolean isFirstRequest = new AtomicBoolean(true);
-    Queue<ReqT> unloggedRequests = new ConcurrentLinkedQueue<>();
+    // we keep a running queue of unlogged requests. This is intended to only hold a single one, but
+    // it is possible for more than one request to end up in the queue. This allows us to associate
+    // a request with each without double logging responses. If the case occurs where multiple
+    // requests come in before a response occurs, we log all but the last request, then log the last
+    // request with the response. The timing is all best-effort, and no guarantees are made on
+    // ordering. It is also possible in the server streaming case (where multiple responses are
+    // returned for a single request) that only the first response will have an associated request.
     return new ForwardingServerCallListener.SimpleForwardingServerCallListener<ReqT>(delegate) {
       @Override
       public void onMessage(ReqT message) {
-        boolean first = isFirstRequest.getAndSet(false);
-        requestResponseHolder.setLatestRequest(message);
-        if (!first) {
-          if (!unloggedRequests.isEmpty()) {
-            ReqT unloggedRequest = unloggedRequests.poll();
-            // between the isEmpty() and the poll, another thread could have grabbed it,
-            // so we need to check for null.
-            if (unloggedRequest != null) {
-              auditLog(
-                  selector, unloggedRequest, requestResponseHolder.getLatestResponse(), logBuilder, logEntryOperation);
-            }
+        while (!unloggedRequests.isEmpty()) {
+          ReqT unloggedRequest = unloggedRequests.pollFirst(); // oldest message
+          // between the isEmpty() and the poll, another thread could have grabbed it,
+          // so we need to check for null.
+          if (unloggedRequest != null) {
+            auditLog(selector, unloggedRequest, null, logBuilder, logEntryOperation);
           }
-          auditLog(selector, message, requestResponseHolder.getLatestResponse(), logBuilder, logEntryOperation);
-        } else {
-          unloggedRequests.add(message);
         }
+        unloggedRequests.add(message);
         super.onMessage(message);
       }
     };
   }
 
   private <ReqT, RespT> void auditLog(
-      Selector selector, ReqT request, RespT response, AuditLog.Builder logBuilder, LogEntryOperation logEntryOperation) {
+      Selector selector,
+      ReqT request,
+      RespT response,
+      AuditLog.Builder logBuilder,
+      LogEntryOperation logEntryOperation) {
     if (selector.getDirective().shouldLogResponse() && response != null) {
       logBuilder.setResponse(messageToStruct(response));
     }
