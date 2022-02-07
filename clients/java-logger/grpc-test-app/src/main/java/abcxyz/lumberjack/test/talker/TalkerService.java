@@ -34,6 +34,10 @@ package abcxyz.lumberjack.test.talker;
 import com.abcxyz.lumberjack.auditlogclient.AuditLoggingServerInterceptor;
 import com.abcxyz.lumberjack.auditlogclient.AuditLogs;
 import com.abcxyz.lumberjack.auditlogclient.modules.AuditLoggingModule;
+import com.abcxyz.lumberjack.test.talker.AdditionRequest;
+import com.abcxyz.lumberjack.test.talker.AdditionResponse;
+import com.abcxyz.lumberjack.test.talker.FibonacciRequest;
+import com.abcxyz.lumberjack.test.talker.FibonacciResponse;
 import com.abcxyz.lumberjack.test.talker.HelloRequest;
 import com.abcxyz.lumberjack.test.talker.HelloResponse;
 import com.abcxyz.lumberjack.test.talker.TalkerGrpc;
@@ -46,6 +50,8 @@ import io.grpc.Server;
 import io.grpc.ServerBuilder;
 import io.grpc.stub.StreamObserver;
 import java.io.IOException;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.logging.Logger;
 import lombok.RequiredArgsConstructor;
 
@@ -53,6 +59,7 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class TalkerService {
   private static final Logger logger = Logger.getLogger(TalkerService.class.getName());
+  private static final Map<Integer, Integer> fibonacciMemo = new HashMap<>();
 
   private Server server;
 
@@ -128,6 +135,47 @@ public class TalkerService {
       logger.info("replying");
       responseObserver.onNext(reply);
       responseObserver.onCompleted();
+    }
+
+    /**
+     * This is a test API for server streaming. The client sends a request with how many places of
+     * fibonacci numbers it wants, and then the server streams each number in order.
+     *
+     * example: 3 places -> 0, 1, 1
+     */
+    @Override
+    public void fibonacci(
+        FibonacciRequest request, StreamObserver<FibonacciResponse> responseObserver) {
+      for (int i = 0; i < request.getPlaces(); i++) {
+        int value = getFibonacciValueForPosition(i);
+        FibonacciResponse response =
+            FibonacciResponse.newBuilder().setPosition(i + 1).setValue(value).build();
+        AuditLog.Builder auditLogBuilder = AuditLogs.getBuilderFromContext();
+        auditLogBuilder.setResourceName(Integer.toString(request.getPlaces()));
+        responseObserver.onNext(response);
+      }
+      responseObserver.onCompleted();
+    }
+
+    private int getFibonacciValueForPosition(int position) {
+      if (position == 0) return 0;
+      if (position == 1 || position == 2) return 1;
+      if (fibonacciMemo.containsKey(position)) return fibonacciMemo.get(position);
+
+      int value = getFibonacciValueForPosition(position - 1) + getFibonacciValueForPosition(position - 2);
+      fibonacciMemo.put(position, value);
+      return value;
+    }
+
+    /**
+     * This is a test API for client streaming. The client opens a stream and can send any
+     * number of numbers. The server adds up all those numbers, and when the stream is closed,
+     * replies with the final sum of all the numbers.
+     */
+    @Override
+    public StreamObserver<AdditionRequest> addition(
+        StreamObserver<AdditionResponse> responseObserver) {
+      return new ServerAdditionObserver(responseObserver);
     }
   }
 }

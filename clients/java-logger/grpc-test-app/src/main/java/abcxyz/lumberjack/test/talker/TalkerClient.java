@@ -31,6 +31,8 @@ package abcxyz.lumberjack.test.talker;
  * limitations under the License.
  */
 
+import com.abcxyz.lumberjack.test.talker.AdditionRequest;
+import com.abcxyz.lumberjack.test.talker.FibonacciRequest;
 import com.abcxyz.lumberjack.test.talker.HelloRequest;
 import com.abcxyz.lumberjack.test.talker.HelloResponse;
 import com.abcxyz.lumberjack.test.talker.TalkerGrpc;
@@ -42,6 +44,7 @@ import io.grpc.ManagedChannel;
 import io.grpc.ManagedChannelBuilder;
 import io.grpc.StatusRuntimeException;
 import io.grpc.auth.MoreCallCredentials;
+import io.grpc.stub.StreamObserver;
 import java.io.IOException;
 import java.util.Calendar;
 import java.util.UUID;
@@ -54,21 +57,22 @@ public class TalkerClient {
   private static final Logger logger = Logger.getLogger(TalkerClient.class.getName());
 
   private final TalkerGrpc.TalkerBlockingStub blockingStub;
+  private final TalkerGrpc.TalkerStub clientStub;
 
   /** Construct client for accessing {@link TalkerService} using the existing channel. */
   public TalkerClient(ManagedChannel channel, GoogleCredentials credentials) throws IOException {
     blockingStub =
         TalkerGrpc.newBlockingStub(channel)
             .withCallCredentials(MoreCallCredentials.from(credentials));
+    clientStub =
+        TalkerGrpc.newStub(channel).withCallCredentials(MoreCallCredentials.from(credentials));
   }
 
   /** Say hello to server. */
   public void greet(String name, UUID target) {
     logger.info("Will try to greet " + name + " ...");
-    HelloRequest request = HelloRequest.newBuilder()
-        .setMessage(name)
-        .setTarget(target.toString())
-        .build();
+    HelloRequest request =
+        HelloRequest.newBuilder().setMessage(name).setTarget(target.toString()).build();
     HelloResponse response;
     try {
       response = blockingStub.hello(request);
@@ -82,11 +86,8 @@ public class TalkerClient {
   /** Whisper secrets to server. */
   public void whisper(String secret, UUID target) {
     logger.info("Will try to whisper " + secret + " ...");
-    WhisperRequest request = WhisperRequest
-        .newBuilder()
-        .setMessage(secret)
-        .setTarget(target.toString())
-        .build();
+    WhisperRequest request =
+        WhisperRequest.newBuilder().setMessage(secret).setTarget(target.toString()).build();
     WhisperResponse response;
     try {
       response = blockingStub.whisper(request);
@@ -95,6 +96,40 @@ public class TalkerClient {
       throw e;
     }
     logger.info("Greeting: " + response.getMessage());
+  }
+
+  public void fibonacci(int places) {
+    FibonacciRequest request = FibonacciRequest.newBuilder().setPlaces(places).build();
+
+    try {
+      logger.info("Fibonacci sequence for places " + places);
+      blockingStub
+          .fibonacci(request)
+          .forEachRemaining(
+              fibonacciResponse -> {
+                logger.info(
+                    "Position: "
+                        + fibonacciResponse.getPosition()
+                        + " Value: "
+                        + fibonacciResponse.getValue());
+              });
+    } catch (StatusRuntimeException e) {
+      logger.log(Level.WARNING, "RPC failed: {0}", e.getStatus());
+      throw e;
+    }
+  }
+
+  public void addition(int max) {
+    StreamObserver<AdditionRequest> requestObserver =
+        clientStub.addition(new ClientAdditionObserver());
+
+    for (int i = 1; i <= max; i++) {
+      logger.info("Adding: " + i);
+      AdditionRequest request = AdditionRequest.newBuilder().setAddend(i).build();
+      requestObserver.onNext(request);
+    }
+
+    requestObserver.onCompleted();
   }
 
   /**
@@ -137,6 +172,10 @@ public class TalkerClient {
         UUID target = UUID.randomUUID();
         client.greet(host, target);
         client.whisper("This is a secret! Don't audit log this string", target);
+        client.fibonacci(5);
+        client.addition(3);
+        // Sleep and wait for response to addition. Blocking stub doesn't support client streaming.
+        TimeUnit.SECONDS.sleep(5);
       } finally {
         channel.shutdownNow().awaitTermination(5, TimeUnit.SECONDS);
       }
