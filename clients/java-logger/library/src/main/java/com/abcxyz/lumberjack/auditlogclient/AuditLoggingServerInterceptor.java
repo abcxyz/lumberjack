@@ -48,7 +48,6 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentLinkedDeque;
-import lombok.Data;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.java.Log;
 
@@ -233,15 +232,5 @@ public class AuditLoggingServerInterceptor<ReqT extends Message> implements Serv
     // thread-safe way to update memo
     memo.putIfAbsent(methodIdentifier, mostApplicableSelector);
     return mostApplicableSelector;
-  }
-
-  /**
-   * Used to hold the latest request and response. This uses no locks, synchronization, etc., and is
-   * only intended to provide best-effort functionality.
-   */
-  @Data
-  private class RequestResponseHolder<ReqT, RespT> {
-    private ReqT latestRequest = null;
-    private RespT latestResponse = null;
   }
 }
