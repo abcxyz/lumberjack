@@ -29,6 +29,7 @@ import com.google.protobuf.InvalidProtocolBufferException;
 import com.google.protobuf.Message;
 import com.google.protobuf.MessageOrBuilder;
 import com.google.protobuf.Struct;
+import com.google.protobuf.Value;
 import com.google.protobuf.util.JsonFormat;
 import io.grpc.Context;
 import io.grpc.Contexts;
@@ -39,18 +40,23 @@ import io.grpc.ServerCall;
 import io.grpc.ServerCall.Listener;
 import io.grpc.ServerCallHandler;
 import io.grpc.ServerInterceptor;
+import java.util.ArrayList;
+import java.util.Deque;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentLinkedDeque;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
+import lombok.extern.java.Log;
 
 /** This is intended to allow automatic audit logging for calls from a wrapped server. */
-@Slf4j
 @RequiredArgsConstructor(onConstructor = @__({@Inject}))
+@Log
 public class AuditLoggingServerInterceptor<ReqT extends Message> implements ServerInterceptor {
   public static final Context.Key<AuditLog.Builder> AUDIT_LOG_CTX_KEY = Context.key("audit-log");
+  public static final String UNSPECIFIED_RESORCE = "GRPC_STREAM_RESOURCE_NAME_PLACEHOLDER";
 
   /**
    * Keeps track of the relevant selectors for specific methods. As the selectors that are relevant
@@ -69,7 +75,7 @@ public class AuditLoggingServerInterceptor<ReqT extends Message> implements Serv
     String methodName = call.getMethodDescriptor().getFullMethodName();
     Optional<Selector> selectorOption = getRelevantSelector(methodName);
     if (selectorOption.isEmpty()) {
-      log.debug("No selector found for method {}", methodName);
+      log.info("No selector found for method {}" + methodName);
       return next.startCall(call, headers);
     }
     Selector selector = selectorOption.get();
@@ -78,20 +84,22 @@ public class AuditLoggingServerInterceptor<ReqT extends Message> implements Serv
     try {
       principal = auditLoggingConfiguration.getSecurityContext().getPrincipal(headers);
     } catch (AuthorizationException e) {
-      log.debug("Exception while trying to determine principal..");
+      log.info("Exception while trying to determine principal..");
       next.startCall(call, headers);
     }
 
     AuditLog.Builder logBuilder = AuditLog.newBuilder();
     String fullMethodName = call.getMethodDescriptor().getFullMethodName();
     logBuilder.setMethodName(fullMethodName);
+    logBuilder.setResourceName(UNSPECIFIED_RESORCE);
+    // if the client has multiple streaming uploads before there is a response,
     logBuilder.setServiceName(fullMethodName.split("/")[0]);
 
     if (principal.isPresent()) {
       logBuilder.setAuthenticationInfo(
           AuthenticationInfo.newBuilder().setPrincipalEmail(principal.get()).build());
     } else {
-      log.debug("Unable to determine principal for request.");
+      log.info("Unable to determine principal for request.");
       next.startCall(call, headers);
     }
     LogEntryOperation logEntryOperation =
@@ -100,49 +108,76 @@ public class AuditLoggingServerInterceptor<ReqT extends Message> implements Serv
             .setProducer(fullMethodName)
             .build();
 
+    // Add the builder into the context, this makes it available to the server code.
     Context ctx = Context.current().withValue(AUDIT_LOG_CTX_KEY, logBuilder);
 
-    // Add the builder into the context, this makes it available to the server code.
+    // Deques allow for addition/removal at both ends. We use this to keep responses
+    // until it is time to log them.
+    Deque<ReqT> unloggedRequests = new ConcurrentLinkedDeque<>();
     ServerCall.Listener<ReqT> delegate =
         Contexts.interceptCall(
             ctx,
             new SimpleForwardingServerCall<ReqT, RespT>(call) {
               @Override
               public void sendMessage(RespT message) {
-                if (selector.getDirective().shouldLogResponse()) {
-                  Struct struct = messageToStruct(message);
-                  logBuilder.setResponse(struct);
-                }
+                // newest message. returns null if empty.
+                ReqT unloggedRequest = unloggedRequests.pollLast();
 
-                AuditLogRequest.Builder builder = AuditLogRequest.newBuilder();
-                builder.setPayload(logBuilder.build());
-                builder.setType(selector.getLogType());
-                builder.setOperation(logEntryOperation);
-
-                try {
-                  log.info("Audit log: " + builder.build().toString());
-                  client.log(builder.build());
-                } catch (LogProcessingException e) {
-                  throw new RuntimeException(e);
-                }
-
+                auditLog(selector, unloggedRequest, message, logBuilder, logEntryOperation);
                 super.sendMessage(message);
               }
             },
             headers,
             next);
 
+    // we keep a running queue of unlogged requests. This is intended to only hold a single one, but
+    // it is possible for more than one request to end up in the queue. This allows us to associate
+    // a request with each without double logging responses. If the case occurs where multiple
+    // requests come in before a response occurs, we log all but the last request, then log the last
+    // request with the response. The timing is all best-effort, and no guarantees are made on
+    // ordering. It is also possible in the server streaming case (where multiple responses are
+    // returned for a single request) that only the first response will have an associated request.
     return new ForwardingServerCallListener.SimpleForwardingServerCallListener<ReqT>(delegate) {
       @Override
       public void onMessage(ReqT message) {
-        if (selector.getDirective().shouldLogRequest()) {
-          Struct struct = messageToStruct(message);
-          logBuilder.setRequest(struct);
+        while (!unloggedRequests.isEmpty()) {
+          ReqT unloggedRequest = unloggedRequests.pollFirst(); // oldest message
+          // between the isEmpty() and the poll, another thread could have grabbed it,
+          // so we need to check for null.
+          if (unloggedRequest != null) {
+            auditLog(selector, unloggedRequest, null, logBuilder, logEntryOperation);
+          }
         }
-
+        unloggedRequests.add(message);
         super.onMessage(message);
       }
     };
+  }
+
+  private <ReqT, RespT> void auditLog(
+      Selector selector,
+      ReqT request,
+      RespT response,
+      AuditLog.Builder logBuilder,
+      LogEntryOperation logEntryOperation) {
+    if (selector.getDirective().shouldLogResponse() && response != null) {
+      logBuilder.setResponse(messageToStruct(response));
+    }
+    if (selector.getDirective().shouldLogRequest() && request != null) {
+      logBuilder.setRequest(messageToStruct(request));
+    }
+
+    AuditLogRequest.Builder builder = AuditLogRequest.newBuilder();
+    builder.setPayload(logBuilder.build());
+    builder.setType(selector.getLogType());
+    builder.setOperation(logEntryOperation);
+
+    try {
+      log.info("Audit logging...");
+      client.log(builder.build());
+    } catch (LogProcessingException e) {
+      throw new RuntimeException(e);
+    }
   }
 
   /**
@@ -165,6 +200,26 @@ public class AuditLoggingServerInterceptor<ReqT extends Message> implements Serv
     } else {
       throw new IllegalArgumentException("Not a Protobuf Message: " + message.toString());
     }
+  }
+
+  /**
+   * Converts a list of proto messages to a human-readable string, and then puts that string into a
+   * struct for use when audit logging.
+   *
+   * <p>TODO: this may not be the most optimal if we want to consume and do processing later on this
+   * information. consider changing to a format that would be more conducive to later consumption
+   */
+  <ReqT> Struct messagesToStruct(List<ReqT> messages) {
+    List<String> messageStrings = new ArrayList<>();
+    for (ReqT message : messages) {
+      messageStrings.add(message.toString());
+    }
+    Struct.Builder structBuilder = Struct.newBuilder();
+    String formattedList = messageStrings.toString().replace("\n", "");
+
+    structBuilder.putFields(
+        "request_list", Value.newBuilder().setStringValue(formattedList).build());
+    return structBuilder.build();
   }
 
   Optional<Selector> getRelevantSelector(String methodIdentifier) {

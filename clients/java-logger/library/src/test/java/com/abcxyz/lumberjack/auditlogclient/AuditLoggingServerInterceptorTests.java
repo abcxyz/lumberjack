@@ -70,6 +70,43 @@ public class AuditLoggingServerInterceptorTests {
   }
 
   @Test
+  public void convertsMessagesToStruct() {
+    AuditLog.Builder builder = AuditLog.newBuilder();
+    builder.setServiceName("test-service");
+    builder.setMethodName("test-method");
+
+    AuditLog.Builder builder2 = AuditLog.newBuilder();
+    builder2.setServiceName("test-service-2");
+    builder2.setMethodName("test-method-2");
+
+    List<AuditLog> messages = List.of(builder.build(), builder2.build());
+    Struct actual = interceptor.messagesToStruct(messages);
+
+    Struct.Builder structBuilder = Struct.newBuilder();
+    structBuilder.putFields(
+        "request_list",
+        Value.newBuilder()
+            .setStringValue(
+                "[service_name: \"test-service\"method_name: \"test-method\", service_name:"
+                    + " \"test-service-2\"method_name: \"test-method-2\"]")
+            .build());
+    assertThat(actual).isEqualTo(structBuilder.build());
+  }
+
+  @Test
+  public void convertsMessagesToStruct_Empty() {
+    Struct actual = interceptor.messagesToStruct(Collections.emptyList());
+
+    Struct.Builder structBuilder = Struct.newBuilder();
+    structBuilder.putFields(
+        "request_list",
+        Value.newBuilder()
+            .setStringValue("[]")
+            .build());
+    assertThat(actual).isEqualTo(structBuilder.build());
+  }
+
+  @Test
   public void getsRelevantSelector() {
     List<Selector> selectors = new ArrayList<>();
     Selector selector1 = new Selector("*", null, null);

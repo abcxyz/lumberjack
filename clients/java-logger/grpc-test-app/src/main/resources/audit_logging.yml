@@ -5,7 +5,7 @@ security_context:
     prefix: "Bearer "
     jwks:
 rules:
-- selector: "abcxyz.test.Talker/Hello"
+- selector: "*"
   directive: AUDIT_REQUEST_AND_RESPONSE
 - selector: "abcxyz.test.Talker/Whisper"
   directive: AUDIT

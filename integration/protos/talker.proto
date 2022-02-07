@@ -31,7 +31,10 @@ service Talker {
   // but we don't care the response at all.
   rpc Bye(ByeRequest) returns (ByeResponse);
 
-  // TODO(#81): Add streaming API as well.
+  rpc Fibonacci(FibonacciRequest) returns (stream FibonacciResponse);
+  rpc Addition(stream AdditionRequest) returns (AdditionResponse);
+
+  // TODO(#81): Add bi-directional streaming API as well.
   // Something like "Conversation".
 }
 
@@ -60,4 +63,21 @@ message ByeRequest {
 
 message ByeResponse {
   string message = 1;
+}
+
+message FibonacciRequest {
+  uint32 places = 1;
+}
+
+message FibonacciResponse {
+  uint32 position = 1;
+  uint32 value = 2;
+}
+
+message AdditionRequest {
+  uint32 addend = 1;
+}
+
+message AdditionResponse {
+  uint64 sum = 1;
 }
