@@ -70,6 +70,7 @@ func TestGRPCEndpoint(t testing.TB, ctx context.Context, endpointURL string, idT
 
 	g.runHelloCheck()
 	g.runFibonacciCheck()
+	g.runAdditionCheck()
 }
 
 // End-to-end test for the fibonacci API, which is a test for server-side streaming.
@@ -104,6 +105,31 @@ func (g *GRPC) runHelloCheck() {
 	}
 	query := g.makeQueryForGRPCUnary(u)
 	utils.QueryIfAuditLogExistsWithRetries(g.t, g.ctx, query, g.cfg)
+}
+
+func (g *GRPC) runAdditionCheck() {
+	u := uuid.New()
+	stream, err := g.talkerClient.Addition(g.ctx)
+	if err != nil {
+		g.t.Fatalf("addition call failed: %v", err)
+	}
+	totalNumbers := 5
+	for i := 0; i < totalNumbers; i++ {
+		if err := stream.Send(&talkerpb.AdditionRequest{
+			Addend: uint32(i),
+			Target: u.String(),
+		}); err != nil {
+			g.t.Fatalf("sending value to addition failed: %v", err)
+		}
+	}
+	reply, err := stream.CloseAndRecv()
+	if err != nil {
+		g.t.Fatalf("failed getting result from addition: %v", err)
+	}
+	g.t.Logf("Value returned: %d", reply.Sum)
+
+	query := g.makeQueryForGRPCStream(u)
+	utils.QueryIfAuditLogsExistWithRetries(g.t, g.ctx, query, g.cfg, int64(totalNumbers))
 }
 
 // Server is in cloud run. Example: https://cloud.google.com/run/docs/triggering/grpc#request-auth
