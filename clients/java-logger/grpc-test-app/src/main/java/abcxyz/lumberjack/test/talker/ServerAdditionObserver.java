@@ -40,7 +40,6 @@ public class ServerAdditionObserver implements StreamObserver<AdditionRequest> {
     sum += request.getAddend();
   }
 
-
   @Override
   public void onError(Throwable t) {
     // no-op
