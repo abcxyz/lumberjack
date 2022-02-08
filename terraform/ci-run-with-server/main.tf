@@ -41,6 +41,11 @@ module "server_service" {
   server_image = "${local.repo}/server:${local.tag}"
   service_name = var.service_name
 
+  // Disable dedicated service account for audit logging server.
+  // Otherwise a new service account will be created per CI run
+  // and cause unnecessary resource waste.
+  disable_dedicated_sa = true
+
   depends_on = [
     null_resource.server_build,
   ]

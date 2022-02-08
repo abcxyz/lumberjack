@@ -15,13 +15,14 @@
  */
 
 resource "google_service_account" "server" {
+  count        = var.disable_dedicated_sa ? 0 : 1
   project      = var.project_id
   account_id   = "${var.service_name}-sa"
   display_name = "Audit Logging Server Service Account"
 }
 
 resource "google_project_iam_member" "server_roles" {
-  for_each = toset([
+  for_each = var.disable_dedicated_sa ? toset([]) : toset([
     "roles/cloudtrace.agent",
     "roles/logging.logWriter",
     "roles/monitoring.metricWriter",
@@ -30,7 +31,7 @@ resource "google_project_iam_member" "server_roles" {
 
   project = var.project_id
   role    = each.key
-  member  = "serviceAccount:${google_service_account.server.email}"
+  member  = "serviceAccount:${google_service_account.server[0].email}"
 }
 
 resource "google_cloud_run_service_iam_member" "audit_log_writer" {
@@ -57,7 +58,7 @@ resource "google_cloud_run_service" "server" {
 
   template {
     spec {
-      service_account_name = google_service_account.server.email
+      service_account_name = var.disable_dedicated_sa ? null : google_service_account.server[0].email
 
       containers {
         image = var.server_image

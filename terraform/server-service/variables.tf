@@ -42,6 +42,12 @@ variable "audit_log_writers" {
   description = "List of IAM entities that can invoke the audit log server. This should be of the form user:[email], serviceAccount:[email], or group:[email]."
 }
 
+variable "disable_dedicated_sa" {
+  type        = bool
+  default     = false
+  description = "Whether to create a dedicated service account to run the audit logging server."
+}
+
 resource "google_project_service" "resourcemanager" {
   project            = var.project_id
   service            = "cloudresourcemanager.googleapis.com"
