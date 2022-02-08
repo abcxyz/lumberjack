@@ -4,9 +4,5 @@ security_context:
     key: "authorization"
     prefix: "Bearer "
 rules:
-- selector: "/abcxyz.test.Talker/Hello"
+- selector: "*"
   directive: AUDIT_REQUEST_AND_RESPONSE
-- selector: "/abcxyz.test.Talker/Whisper"
-  directive: AUDIT
-- selector: "/abcxyz.test.Talker/Bye"
-  directive: AUDIT_REQUEST_ONLY

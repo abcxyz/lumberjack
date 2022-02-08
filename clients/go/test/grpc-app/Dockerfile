@@ -32,6 +32,7 @@ FROM scratch
 COPY --from=builder /tmp/etc-passwd /etc/passwd
 COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
 COPY --from=builder /go/bin/app /app
+COPY test/grpc-app/config.yaml /etc/auditlogging/config.yaml
 USER nobody
 
 # Run the web service on container startup.
