@@ -83,7 +83,9 @@ func TestGRPCEndpoint(t testing.TB, ctx context.Context, g *GRPC) {
 	}
 
 	g.runHelloCheck(t, ctx)
-	g.runFibonacciCheck(t, ctx)
+
+	// TODO(#): Reenable stream interception tests once Go adds stream handling.
+	// g.runFibonacciCheck(t, ctx)
 }
 
 // End-to-end test for the fibonacci API, which is a test for server-side streaming.
