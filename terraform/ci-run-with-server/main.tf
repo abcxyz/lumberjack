@@ -79,7 +79,7 @@ module "grpc_app" {
 
   build_command              = each.value
   project_id                 = var.app_project_id
-  service_name               = "grpc-${var.service_name}"
+  service_name               = "grpc-${var.service_name}-${each.key}"
   env_vars                   = merge(local.env_vars, var.env_vars)
   tag                        = var.tag
   use_random_tag             = var.use_random_tag
