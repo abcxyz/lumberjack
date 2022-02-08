@@ -84,6 +84,7 @@ func TestGRPCEndpoint(t testing.TB, ctx context.Context, g *GRPC) {
 
 	g.runHelloCheck(t, ctx)
 	g.runFibonacciCheck(t, ctx)
+	g.runAdditionCheck(t, ctx)
 }
 
 // End-to-end test for the fibonacci API, which is a test for server-side streaming.
@@ -107,6 +108,32 @@ func (g *GRPC) runFibonacciCheck(t testing.TB, ctx context.Context) {
 	}
 	query := g.makeQueryForGRPCStream(u)
 	utils.QueryIfAuditLogsExistWithRetries(t, ctx, query, g.Config, int64(places))
+}
+
+// End-to-end test for the addition API, which is a test for client-side streaming.
+func (g *GRPC) runAdditionCheck(t testing.TB, ctx context.Context) {
+	u := uuid.New()
+	stream, err := g.TalkerClient.Addition(ctx)
+	if err != nil {
+		t.Fatalf("addition call failed: %v", err)
+	}
+	totalNumbers := 5
+	for i := 0; i < totalNumbers; i++ {
+		if err := stream.Send(&talkerpb.AdditionRequest{
+			Addend: uint32(i),
+			Target: u.String(),
+		}); err != nil {
+			t.Fatalf("sending value to addition failed: %v", err)
+		}
+	}
+	reply, err := stream.CloseAndRecv()
+	if err != nil {
+		t.Fatalf("failed getting result from addition: %v", err)
+	}
+	t.Logf("Value returned: %d", reply.Sum)
+
+	query := g.makeQueryForGRPCStream(u)
+	utils.QueryIfAuditLogsExistWithRetries(t, ctx, query, g.Config, int64(totalNumbers))
 }
 
 // End-to-end test for the hello API, which is a test for unary requests.

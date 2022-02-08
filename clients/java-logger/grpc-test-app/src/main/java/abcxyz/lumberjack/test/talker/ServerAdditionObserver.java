@@ -35,8 +35,11 @@ public class ServerAdditionObserver implements StreamObserver<AdditionRequest> {
 
   @Override
   public void onNext(AdditionRequest request) {
+    AuditLog.Builder auditLogBuilder = AuditLogs.getBuilderFromContext();
+    auditLogBuilder.setResourceName(request.getTarget());
     sum += request.getAddend();
   }
+
 
   @Override
   public void onError(Throwable t) {
@@ -46,9 +49,6 @@ public class ServerAdditionObserver implements StreamObserver<AdditionRequest> {
   @Override
   public void onCompleted() {
     AdditionResponse response = AdditionResponse.newBuilder().setSum(sum).build();
-    AuditLog.Builder auditLogBuilder = AuditLogs.getBuilderFromContext();
-    // TODO: what should we set as resource names for client streaming?
-    auditLogBuilder.setResourceName("Placeholder");
     responseStream.onNext(response);
     responseStream.onCompleted();
   }
