@@ -35,47 +35,48 @@ import (
 type GRPC struct {
 	t            testing.TB
 	ctx          context.Context
-	endpointURL  string
-	idToken      string
 	projectID    string
 	datasetQuery string
 	cfg          *utils.Config
+	talkerClient talkerpb.TalkerClient
+	bqClient     *bigquery.Client
 }
 
 func TestGRPCEndpoint(t testing.TB, ctx context.Context, endpointURL string, idToken string, projectID string, datasetQuery string, cfg *utils.Config) {
-	g := &GRPC{
-		t:            t,
-		ctx:          ctx,
-		endpointURL:  endpointURL,
-		idToken:      idToken,
-		projectID:    projectID,
-		datasetQuery: datasetQuery,
-		cfg:          cfg,
-	}
-	conn := createConnection(g.t, g.endpointURL, g.idToken)
+	conn := createConnection(t, endpointURL, idToken)
 	defer conn.Close()
 	talkerClient := talkerpb.NewTalkerClient(conn)
 
-	bqClient, err := utils.MakeClient(g.ctx, g.projectID)
+	bqClient, err := utils.MakeClient(ctx, projectID)
 	if err != nil {
-		g.t.Fatalf("BigQuery request failed: %v.", err)
+		t.Fatalf("BigQuery request failed: %v.", err)
 	}
 
 	defer func() {
 		if err := bqClient.Close(); err != nil {
-			g.t.Logf("Failed to close the BQ client: %v.", err)
+			t.Logf("Failed to close the BQ client: %v.", err)
 		}
 	}()
 
-	g.runHelloCheck(talkerClient, bqClient)
-	g.runFibonacciCheck(talkerClient, bqClient)
+	g := &GRPC{
+		t:            t,
+		ctx:          ctx,
+		projectID:    projectID,
+		datasetQuery: datasetQuery,
+		cfg:          cfg,
+		talkerClient: talkerClient,
+		bqClient:     bqClient,
+	}
+
+	g.runHelloCheck()
+	g.runFibonacciCheck()
 }
 
 // End-to-end test for the fibonacci API, which is a test for server-side streaming.
-func (g *GRPC) runFibonacciCheck(talkerClient talkerpb.TalkerClient, bqClient *bigquery.Client) {
+func (g *GRPC) runFibonacciCheck() {
 	u := uuid.New()
 	places := 5
-	stream, err := talkerClient.Fibonacci(g.ctx, &talkerpb.FibonacciRequest{Places: uint32(places), Target: u.String()})
+	stream, err := g.talkerClient.Fibonacci(g.ctx, &talkerpb.FibonacciRequest{Places: uint32(places), Target: u.String()})
 	if err != nil {
 		g.t.Fatalf("fibonacci call failed: %v", err)
 	}
@@ -90,18 +91,18 @@ func (g *GRPC) runFibonacciCheck(talkerClient talkerpb.TalkerClient, bqClient *b
 		}
 		g.t.Logf("Received value %s", place.Value)
 	}
-	query := makeQueryForGrpcStream(*bqClient, u, g.projectID, g.datasetQuery)
+	query := makeQueryForGrpcStream(*g.bqClient, u, g.projectID, g.datasetQuery)
 	utils.QueryIfAuditLogsExistWithRetries(g.t, g.ctx, query, g.cfg, int64(places))
 }
 
 // End-to-end test for the hello API, which is a test for unary requests.
-func (g *GRPC) runHelloCheck(talkerClient talkerpb.TalkerClient, bqClient *bigquery.Client) {
+func (g *GRPC) runHelloCheck() {
 	u := uuid.New()
-	_, err := talkerClient.Hello(g.ctx, &talkerpb.HelloRequest{Message: "Some Message", Target: u.String()})
+	_, err := g.talkerClient.Hello(g.ctx, &talkerpb.HelloRequest{Message: "Some Message", Target: u.String()})
 	if err != nil {
 		g.t.Fatalf("could not greet: %v", err)
 	}
-	query := makeQueryForGrpcUnary(*bqClient, u, g.projectID, g.datasetQuery)
+	query := makeQueryForGrpcUnary(*g.bqClient, u, g.projectID, g.datasetQuery)
 	utils.QueryIfAuditLogExistsWithRetries(g.t, g.ctx, query, g.cfg)
 }
 
