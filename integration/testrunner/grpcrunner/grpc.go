@@ -91,7 +91,7 @@ func (g *GRPC) runFibonacciCheck() {
 		}
 		g.t.Logf("Received value %s", place.Value)
 	}
-	query := makeQueryForGrpcStream(*g.bqClient, u, g.projectID, g.datasetQuery)
+	query := g.makeQueryForGrpcStream(u)
 	utils.QueryIfAuditLogsExistWithRetries(g.t, g.ctx, query, g.cfg, int64(places))
 }
 
@@ -102,7 +102,7 @@ func (g *GRPC) runHelloCheck() {
 	if err != nil {
 		g.t.Fatalf("could not greet: %v", err)
 	}
-	query := makeQueryForGrpcUnary(*g.bqClient, u, g.projectID, g.datasetQuery)
+	query := g.makeQueryForGrpcUnary(u)
 	utils.QueryIfAuditLogExistsWithRetries(g.t, g.ctx, query, g.cfg)
 }
 
@@ -133,13 +133,13 @@ func createConnection(t testing.TB, addr string, idToken string) *grpc.ClientCon
 // This query is used to find the relevant audit log in BigQuery, which we assume will be added by the server.
 // We specifically look up the log using the UUID specified in the request as we know the server will add that
 // as the resource name, and provides us a unique key to find logs with.
-func makeQueryForGrpcUnary(client bigquery.Client, u uuid.UUID, projectID string, datasetQuery string) *bigquery.Query {
-	queryString := fmt.Sprintf("SELECT count(*) FROM %s.%s WHERE jsonPayload.resource_name=? LIMIT 1", projectID, datasetQuery)
-	return utils.MakeQuery(client, u, queryString)
+func (g *GRPC) makeQueryForGrpcUnary(u uuid.UUID) *bigquery.Query {
+	queryString := fmt.Sprintf("SELECT count(*) FROM %s.%s WHERE jsonPayload.resource_name=? LIMIT 1", g.projectID, g.datasetQuery)
+	return utils.MakeQuery(*g.bqClient, u, queryString)
 }
 
 // Similar to the above function, but can return multiple results, which is what we expect for streaming.
-func makeQueryForGrpcStream(client bigquery.Client, u uuid.UUID, projectID string, datasetQuery string) *bigquery.Query {
-	queryString := fmt.Sprintf("SELECT count(*) FROM %s.%s WHERE jsonPayload.resource_name=?", projectID, datasetQuery)
-	return utils.MakeQuery(client, u, queryString)
+func (g *GRPC) makeQueryForGrpcStream(u uuid.UUID) *bigquery.Query {
+	queryString := fmt.Sprintf("SELECT count(*) FROM %s.%s WHERE jsonPayload.resource_name=?", g.projectID, g.datasetQuery)
+	return utils.MakeQuery(*g.bqClient, u, queryString)
 }
