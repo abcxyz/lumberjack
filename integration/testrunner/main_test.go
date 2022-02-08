@@ -103,7 +103,15 @@ func TestGRPCEndpoints(t *testing.T) {
 			}
 
 			ctx := context.Background()
-			grpcrunner.TestGRPCEndpoint(t, ctx, test, idToken, *projectIDPtr, *datasetQueryPtr, cfg)
+			grpcrunner.TestGRPCEndpoint(t, ctx, &grpcrunner.GRPC{
+				ProjectID:    *projectIDPtr,
+				DatasetQuery: *datasetQueryPtr,
+
+				IDToken:     idToken,
+				EndpointURL: test,
+
+				Config: cfg,
+			})
 		})
 	}
 

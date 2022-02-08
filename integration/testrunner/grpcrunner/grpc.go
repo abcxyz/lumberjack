@@ -18,6 +18,7 @@ import (
 	"context"
 	"crypto/x509"
 	"fmt"
+	"io"
 	"strings"
 	"testing"
 
@@ -31,30 +32,92 @@ import (
 	"google.golang.org/grpc/credentials/oauth"
 )
 
-func TestGRPCEndpoint(t testing.TB, ctx context.Context, endpointURL string,
-	idToken string, projectID string, datasetQuery string, cfg *utils.Config) {
-	conn := createConnection(t, endpointURL, idToken)
-	defer conn.Close()
-	c := talkerpb.NewTalkerClient(conn)
+type GRPC struct {
+	ProjectID    string
+	DatasetQuery string
+
+	// IDToken and endpoint URL are required unless a custom TalkerClient is provided.
+	IDToken      string
+	EndpointURL  string
+	TalkerClient talkerpb.TalkerClient
+
+	Config         *utils.Config
+	BigQueryClient *bigquery.Client
+}
+
+// TestGRPCEndpoint runs tests against a GRPC endpoint. The given GRPC must
+// define a projectID and datasetQuery. If a TalkerClient or BigQueryClient are
+// not provided, they are instantiated via the defaults.
+func TestGRPCEndpoint(t testing.TB, ctx context.Context, g *GRPC) {
+	if g.ProjectID == "" {
+		t.Fatal("ProjectID must be set")
+	}
+
+	if g.DatasetQuery == "" {
+		t.Fatal("DatasetQuery must be set")
+	}
+
+	if g.TalkerClient == nil {
+		if g.IDToken == "" || g.EndpointURL == "" {
+			t.Fatal("IDToken and EndpointURL are required to create a TalkerClient")
+		}
+
+		conn := createConnection(t, g.EndpointURL, g.IDToken)
+		t.Cleanup(func() {
+			conn.Close()
+		})
+		g.TalkerClient = talkerpb.NewTalkerClient(conn)
+	}
+
+	if g.BigQueryClient == nil {
+		bqClient, err := utils.MakeClient(ctx, g.ProjectID)
+		if err != nil {
+			t.Fatalf("BigQuery request failed: %v", err)
+		}
+		t.Cleanup(func() {
+			if err := bqClient.Close(); err != nil {
+				t.Errorf("Failed to close the BQ client: %v", err)
+			}
+		})
+		g.BigQueryClient = bqClient
+	}
+
+	g.runHelloCheck(t, ctx)
+	g.runFibonacciCheck(t, ctx)
+}
+
+// End-to-end test for the fibonacci API, which is a test for server-side streaming.
+func (g *GRPC) runFibonacciCheck(t testing.TB, ctx context.Context) {
 	u := uuid.New()
-	_, err := c.Hello(ctx, &talkerpb.HelloRequest{Message: "Some Message", Target: u.String()})
+	places := 5
+	stream, err := g.TalkerClient.Fibonacci(ctx, &talkerpb.FibonacciRequest{Places: uint32(places), Target: u.String()})
+	if err != nil {
+		t.Fatalf("fibonacci call failed: %v", err)
+	}
+	for {
+		place, err := stream.Recv()
+		if err == io.EOF {
+			// stream is finished
+			break
+		}
+		if err != nil {
+			t.Fatalf("Err while reading fibonacci stream: %v", err)
+		}
+		t.Logf("Received value %v", place.Value)
+	}
+	query := g.makeQueryForGRPCStream(u)
+	utils.QueryIfAuditLogsExistWithRetries(t, ctx, query, g.Config, int64(places))
+}
+
+// End-to-end test for the hello API, which is a test for unary requests.
+func (g *GRPC) runHelloCheck(t testing.TB, ctx context.Context) {
+	u := uuid.New()
+	_, err := g.TalkerClient.Hello(ctx, &talkerpb.HelloRequest{Message: "Some Message", Target: u.String()})
 	if err != nil {
 		t.Fatalf("could not greet: %v", err)
 	}
-
-	bqClient, err := utils.MakeClient(ctx, projectID)
-	if err != nil {
-		t.Fatalf("BigQuery request failed: %v.", err)
-	}
-
-	defer func() {
-		if err := bqClient.Close(); err != nil {
-			t.Logf("Failed to close the BQ client: %v.", err)
-		}
-	}()
-
-	query := makeQueryForGrpc(*bqClient, u, projectID, datasetQuery)
-	utils.QueryIfAuditLogExistsWithRetries(t, ctx, query, cfg)
+	query := g.makeQueryForGRPCUnary(u)
+	utils.QueryIfAuditLogExistsWithRetries(t, ctx, query, g.Config)
 }
 
 // Server is in cloud run. Example: https://cloud.google.com/run/docs/triggering/grpc#request-auth
@@ -84,7 +147,13 @@ func createConnection(t testing.TB, addr string, idToken string) *grpc.ClientCon
 // This query is used to find the relevant audit log in BigQuery, which we assume will be added by the server.
 // We specifically look up the log using the UUID specified in the request as we know the server will add that
 // as the resource name, and provides us a unique key to find logs with.
-func makeQueryForGrpc(client bigquery.Client, u uuid.UUID, projectID string, datasetQuery string) *bigquery.Query {
-	queryString := fmt.Sprintf("SELECT count(*) FROM %s.%s WHERE jsonPayload.resource_name=? LIMIT 1", projectID, datasetQuery)
-	return utils.MakeQuery(client, u, queryString)
+func (g *GRPC) makeQueryForGRPCUnary(u uuid.UUID) *bigquery.Query {
+	queryString := fmt.Sprintf("SELECT count(*) FROM %s.%s WHERE jsonPayload.resource_name=? LIMIT 1", g.ProjectID, g.DatasetQuery)
+	return utils.MakeQuery(*g.BigQueryClient, u, queryString)
+}
+
+// Similar to the above function, but can return multiple results, which is what we expect for streaming.
+func (g *GRPC) makeQueryForGRPCStream(u uuid.UUID) *bigquery.Query {
+	queryString := fmt.Sprintf("SELECT count(*) FROM %s.%s WHERE jsonPayload.resource_name=?", g.ProjectID, g.DatasetQuery)
+	return utils.MakeQuery(*g.BigQueryClient, u, queryString)
 }
