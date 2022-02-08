@@ -65,7 +65,7 @@ func createConnection(t testing.TB, addr string, idToken string) *grpc.ClientCon
 
 	pool, err := x509.SystemCertPool()
 	if err != nil {
-		t.Fatalf("failed to load system cert pool: %w", err)
+		t.Fatalf("failed to load system cert pool: %v", err)
 	}
 	creds := credentials.NewClientTLSFromCert(pool, "")
 

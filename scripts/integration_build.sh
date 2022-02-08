@@ -20,6 +20,7 @@ ROOT="$(cd "$(dirname "$0")/.." &>/dev/null; pwd -P)"
 TF_CI_WITH_SERVER_DIR=${ROOT}/terraform/ci-run-with-server
 SERVICE_NAME=ci-with-server-${RANDOM}
 GO_BUILD_COMMAND=${ROOT}/clients/go/test/shell/build.sh
+GO_GRPC_BUILD_COMMAND=${ROOT}/clients/go/test/grpc-app/build.sh
 JAVA_BUILD_COMMAND=${ROOT}/clients/java-logger/scripts/build_shell.sh
 JAVA_GRPC_BUILD_COMMAND=${ROOT}/clients/java-logger/scripts/build_server.sh
 
@@ -46,7 +47,7 @@ terraform -chdir=${TF_CI_WITH_SERVER_DIR} apply -auto-approve \
   -var="app_project_id=${SHELL_APP_PROJECT_ID}" \
   -var="service_name=${SERVICE_NAME}" \
   -var='build_commands={"go":"'${GO_BUILD_COMMAND}'", "java":"'${JAVA_BUILD_COMMAND}'"}' \
-  -var="java_grpc_build_command=${JAVA_GRPC_BUILD_COMMAND}" \
+  -var='grpc_build_commands={"go":"'${GO_GRPC_BUILD_COMMAND}'", "java":"'${JAVA_GRPC_BUILD_COMMAND}'"}' \
   -var=${ENV_VARS} \
   -var="use_random_tag=true"
 
@@ -56,13 +57,13 @@ clean_up() {
     -var="app_project_id=${SHELL_APP_PROJECT_ID}" \
     -var="service_name=${SERVICE_NAME}" \
     -var='build_commands={"go":"'${GO_BUILD_COMMAND}'", "java":"'${JAVA_BUILD_COMMAND}'"}' \
-    -var="java_grpc_build_command=${JAVA_GRPC_BUILD_COMMAND}"
+    -var='grpc_build_commands={"go":"'${GO_GRPC_BUILD_COMMAND}'", "java":"'${JAVA_GRPC_BUILD_COMMAND}'"}'
 }
 
 trap clean_up EXIT
 
 export HTTP_ENDPOINTS=$(terraform -chdir=${TF_CI_WITH_SERVER_DIR} output -json instance_addresses)
-export GRPC_ENDPOINTS=$(terraform -chdir=${TF_CI_WITH_SERVER_DIR} output -json grpc_address)
+export GRPC_ENDPOINTS=$(terraform -chdir=${TF_CI_WITH_SERVER_DIR} output -json grpc_addresses)
 # TODO(b/203448874): Use updated (finalized) log name.
 BIGQUERY_DATASET_QUERY=${BIGQUERY_DATASET_ID}.auditlog_gcloudsolutions_dev_data_access
 
