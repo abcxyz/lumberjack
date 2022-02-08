@@ -33,8 +33,6 @@ import (
 )
 
 type GRPC struct {
-	t            testing.TB
-	ctx          context.Context
 	projectID    string
 	datasetQuery string
 	cfg          *utils.Config
@@ -59,8 +57,6 @@ func TestGRPCEndpoint(t testing.TB, ctx context.Context, endpointURL string, idT
 	}()
 
 	g := &GRPC{
-		t:            t,
-		ctx:          ctx,
 		projectID:    projectID,
 		datasetQuery: datasetQuery,
 		cfg:          cfg,
@@ -68,17 +64,17 @@ func TestGRPCEndpoint(t testing.TB, ctx context.Context, endpointURL string, idT
 		bqClient:     bqClient,
 	}
 
-	g.runHelloCheck()
-	g.runFibonacciCheck()
+	g.runHelloCheck(t, ctx)
+	g.runFibonacciCheck(t, ctx)
 }
 
 // End-to-end test for the fibonacci API, which is a test for server-side streaming.
-func (g *GRPC) runFibonacciCheck() {
+func (g *GRPC) runFibonacciCheck(t testing.TB, ctx context.Context) {
 	u := uuid.New()
 	places := 5
-	stream, err := g.talkerClient.Fibonacci(g.ctx, &talkerpb.FibonacciRequest{Places: uint32(places), Target: u.String()})
+	stream, err := g.talkerClient.Fibonacci(ctx, &talkerpb.FibonacciRequest{Places: uint32(places), Target: u.String()})
 	if err != nil {
-		g.t.Fatalf("fibonacci call failed: %v", err)
+		t.Fatalf("fibonacci call failed: %v", err)
 	}
 	for {
 		place, err := stream.Recv()
@@ -87,23 +83,23 @@ func (g *GRPC) runFibonacciCheck() {
 			break
 		}
 		if err != nil {
-			g.t.Fatalf("Err while reading fibonacci stream: %v", err)
+			t.Fatalf("Err while reading fibonacci stream: %v", err)
 		}
-		g.t.Logf("Received value %s", place.Value)
+		t.Logf("Received value %s", place.Value)
 	}
 	query := g.makeQueryForGRPCStream(u)
-	utils.QueryIfAuditLogsExistWithRetries(g.t, g.ctx, query, g.cfg, int64(places))
+	utils.QueryIfAuditLogsExistWithRetries(t, ctx, query, g.cfg, int64(places))
 }
 
 // End-to-end test for the hello API, which is a test for unary requests.
-func (g *GRPC) runHelloCheck() {
+func (g *GRPC) runHelloCheck(t testing.TB, ctx context.Context) {
 	u := uuid.New()
-	_, err := g.talkerClient.Hello(g.ctx, &talkerpb.HelloRequest{Message: "Some Message", Target: u.String()})
+	_, err := g.talkerClient.Hello(ctx, &talkerpb.HelloRequest{Message: "Some Message", Target: u.String()})
 	if err != nil {
-		g.t.Fatalf("could not greet: %v", err)
+		t.Fatalf("could not greet: %v", err)
 	}
 	query := g.makeQueryForGRPCUnary(u)
-	utils.QueryIfAuditLogExistsWithRetries(g.t, g.ctx, query, g.cfg)
+	utils.QueryIfAuditLogExistsWithRetries(t, ctx, query, g.cfg)
 }
 
 // Server is in cloud run. Example: https://cloud.google.com/run/docs/triggering/grpc#request-auth
