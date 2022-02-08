@@ -67,6 +67,7 @@ message ByeResponse {
 
 message FibonacciRequest {
   uint32 places = 1;
+  string target = 2;
 }
 
 message FibonacciResponse {
@@ -76,6 +77,7 @@ message FibonacciResponse {
 
 message AdditionRequest {
   uint32 addend = 1;
+  string target = 2;
 }
 
 message AdditionResponse {

@@ -27,6 +27,8 @@ type TalkerClient interface {
 	// Say bye with something OK to audit log in request,
 	// but we don't care the response at all.
 	Bye(ctx context.Context, in *ByeRequest, opts ...grpc.CallOption) (*ByeResponse, error)
+	Fibonacci(ctx context.Context, in *FibonacciRequest, opts ...grpc.CallOption) (Talker_FibonacciClient, error)
+	Addition(ctx context.Context, opts ...grpc.CallOption) (Talker_AdditionClient, error)
 }
 
 type talkerClient struct {
@@ -64,6 +66,72 @@ func (c *talkerClient) Bye(ctx context.Context, in *ByeRequest, opts ...grpc.Cal
 	return out, nil
 }
 
+func (c *talkerClient) Fibonacci(ctx context.Context, in *FibonacciRequest, opts ...grpc.CallOption) (Talker_FibonacciClient, error) {
+	stream, err := c.cc.NewStream(ctx, &Talker_ServiceDesc.Streams[0], "/abcxyz.test.Talker/Fibonacci", opts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &talkerFibonacciClient{stream}
+	if err := x.ClientStream.SendMsg(in); err != nil {
+		return nil, err
+	}
+	if err := x.ClientStream.CloseSend(); err != nil {
+		return nil, err
+	}
+	return x, nil
+}
+
+type Talker_FibonacciClient interface {
+	Recv() (*FibonacciResponse, error)
+	grpc.ClientStream
+}
+
+type talkerFibonacciClient struct {
+	grpc.ClientStream
+}
+
+func (x *talkerFibonacciClient) Recv() (*FibonacciResponse, error) {
+	m := new(FibonacciResponse)
+	if err := x.ClientStream.RecvMsg(m); err != nil {
+		return nil, err
+	}
+	return m, nil
+}
+
+func (c *talkerClient) Addition(ctx context.Context, opts ...grpc.CallOption) (Talker_AdditionClient, error) {
+	stream, err := c.cc.NewStream(ctx, &Talker_ServiceDesc.Streams[1], "/abcxyz.test.Talker/Addition", opts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &talkerAdditionClient{stream}
+	return x, nil
+}
+
+type Talker_AdditionClient interface {
+	Send(*AdditionRequest) error
+	CloseAndRecv() (*AdditionResponse, error)
+	grpc.ClientStream
+}
+
+type talkerAdditionClient struct {
+	grpc.ClientStream
+}
+
+func (x *talkerAdditionClient) Send(m *AdditionRequest) error {
+	return x.ClientStream.SendMsg(m)
+}
+
+func (x *talkerAdditionClient) CloseAndRecv() (*AdditionResponse, error) {
+	if err := x.ClientStream.CloseSend(); err != nil {
+		return nil, err
+	}
+	m := new(AdditionResponse)
+	if err := x.ClientStream.RecvMsg(m); err != nil {
+		return nil, err
+	}
+	return m, nil
+}
+
 // TalkerServer is the server API for Talker service.
 // All implementations must embed UnimplementedTalkerServer
 // for forward compatibility
@@ -76,6 +144,8 @@ type TalkerServer interface {
 	// Say bye with something OK to audit log in request,
 	// but we don't care the response at all.
 	Bye(context.Context, *ByeRequest) (*ByeResponse, error)
+	Fibonacci(*FibonacciRequest, Talker_FibonacciServer) error
+	Addition(Talker_AdditionServer) error
 	mustEmbedUnimplementedTalkerServer()
 }
 
@@ -91,6 +161,12 @@ func (UnimplementedTalkerServer) Whisper(context.Context, *WhisperRequest) (*Whi
 }
 func (UnimplementedTalkerServer) Bye(context.Context, *ByeRequest) (*ByeResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Bye not implemented")
+}
+func (UnimplementedTalkerServer) Fibonacci(*FibonacciRequest, Talker_FibonacciServer) error {
+	return status.Errorf(codes.Unimplemented, "method Fibonacci not implemented")
+}
+func (UnimplementedTalkerServer) Addition(Talker_AdditionServer) error {
+	return status.Errorf(codes.Unimplemented, "method Addition not implemented")
 }
 func (UnimplementedTalkerServer) mustEmbedUnimplementedTalkerServer() {}
 
@@ -159,6 +235,53 @@ func _Talker_Bye_Handler(srv interface{}, ctx context.Context, dec func(interfac
 	return interceptor(ctx, in, info, handler)
 }
 
+func _Talker_Fibonacci_Handler(srv interface{}, stream grpc.ServerStream) error {
+	m := new(FibonacciRequest)
+	if err := stream.RecvMsg(m); err != nil {
+		return err
+	}
+	return srv.(TalkerServer).Fibonacci(m, &talkerFibonacciServer{stream})
+}
+
+type Talker_FibonacciServer interface {
+	Send(*FibonacciResponse) error
+	grpc.ServerStream
+}
+
+type talkerFibonacciServer struct {
+	grpc.ServerStream
+}
+
+func (x *talkerFibonacciServer) Send(m *FibonacciResponse) error {
+	return x.ServerStream.SendMsg(m)
+}
+
+func _Talker_Addition_Handler(srv interface{}, stream grpc.ServerStream) error {
+	return srv.(TalkerServer).Addition(&talkerAdditionServer{stream})
+}
+
+type Talker_AdditionServer interface {
+	SendAndClose(*AdditionResponse) error
+	Recv() (*AdditionRequest, error)
+	grpc.ServerStream
+}
+
+type talkerAdditionServer struct {
+	grpc.ServerStream
+}
+
+func (x *talkerAdditionServer) SendAndClose(m *AdditionResponse) error {
+	return x.ServerStream.SendMsg(m)
+}
+
+func (x *talkerAdditionServer) Recv() (*AdditionRequest, error) {
+	m := new(AdditionRequest)
+	if err := x.ServerStream.RecvMsg(m); err != nil {
+		return nil, err
+	}
+	return m, nil
+}
+
 // Talker_ServiceDesc is the grpc.ServiceDesc for Talker service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -179,6 +302,17 @@ var Talker_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _Talker_Bye_Handler,
 		},
 	},
-	Streams:  []grpc.StreamDesc{},
+	Streams: []grpc.StreamDesc{
+		{
+			StreamName:    "Fibonacci",
+			Handler:       _Talker_Fibonacci_Handler,
+			ServerStreams: true,
+		},
+		{
+			StreamName:    "Addition",
+			Handler:       _Talker_Addition_Handler,
+			ClientStreams: true,
+		},
+	},
 	Metadata: "integration/protos/talker.proto",
 }
