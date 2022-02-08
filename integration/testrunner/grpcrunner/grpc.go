@@ -79,6 +79,7 @@ func TestGRPCEndpoint(t testing.TB, ctx context.Context, g *GRPC) {
 				t.Errorf("Failed to close the BQ client: %v", err)
 			}
 		})
+		g.BigQueryClient = bqClient
 	}
 
 	g.runHelloCheck(t, ctx)
