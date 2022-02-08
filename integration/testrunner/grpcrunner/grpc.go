@@ -42,8 +42,8 @@ type GRPC struct {
 	cfg          *utils.Config
 }
 
-func NewGRPC(t testing.TB, ctx context.Context, endpointURL string, idToken string, projectID string, datasetQuery string, cfg *utils.Config) *GRPC {
-	return &GRPC{
+func TestGRPCEndpoint(t testing.TB, ctx context.Context, endpointURL string, idToken string, projectID string, datasetQuery string, cfg *utils.Config) {
+	g := &GRPC{
 		t:            t,
 		ctx:          ctx,
 		endpointURL:  endpointURL,
@@ -52,9 +52,6 @@ func NewGRPC(t testing.TB, ctx context.Context, endpointURL string, idToken stri
 		datasetQuery: datasetQuery,
 		cfg:          cfg,
 	}
-}
-
-func (g *GRPC) TestGRPCEndpoint() {
 	conn := createConnection(g.t, g.endpointURL, g.idToken)
 	defer conn.Close()
 	talkerClient := talkerpb.NewTalkerClient(conn)
