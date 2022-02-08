@@ -1,7 +1,7 @@
 version: v1alpha1
 security_context:
   from_raw_jwt:
-    key: "authorization"
+  - key: "authorization"
     prefix: "Bearer "
 rules:
 - selector: "*"
