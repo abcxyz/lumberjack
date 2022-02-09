@@ -87,7 +87,7 @@ func TestGRPCEndpoint(t testing.TB, ctx context.Context, g *GRPC) {
 	// TODO(#149): Reenable stream interception tests once Go adds stream handling.
 	if strings.Contains(g.EndpointURL, "java") {
 		g.runFibonacciCheck(t, ctx)
-    g.runAdditionCheck(t, ctx)
+		g.runAdditionCheck(t, ctx)
 	}
 }
 
