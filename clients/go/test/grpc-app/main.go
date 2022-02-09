@@ -38,20 +38,18 @@ func main() {
 	if err != nil {
 		log.Fatalf("failed to listen: %v", err)
 	}
-	opt, c, err := auditopt.WithInterceptorFromConfigFile(auditopt.DefaultConfigFilePath)
+	interceptor, err := auditopt.WithInterceptorFromConfigFile(auditopt.DefaultConfigFilePath)
+	defer interceptor.Stop()
 	if err != nil {
 		log.Fatalf("failed to setup audit interceptor: %v", err)
 	}
-	s := grpc.NewServer(opt)
+	s := grpc.NewServer(grpc.UnaryInterceptor(interceptor.UnaryInterceptor))
 	talkerpb.RegisterTalkerServer(s, &server{})
 	// Register the reflection service makes it easier for some clients.
 	reflection.Register(s)
 	log.Printf("server listening at %v", lis.Addr())
 	if err := s.Serve(lis); err != nil {
 		log.Fatalf("failed to serve: %v", err)
-	}
-	if err := c.Stop(); err != nil {
-		log.Fatalf("failed to stop audit client: %v", err)
 	}
 }
 

@@ -34,7 +34,6 @@ import (
 	"github.com/abcxyz/lumberjack/clients/go/pkg/remote"
 	"github.com/abcxyz/lumberjack/clients/go/pkg/security"
 	"github.com/sethvargo/go-envconfig"
-	"google.golang.org/grpc"
 	"gopkg.in/yaml.v2"
 
 	alpb "github.com/abcxyz/lumberjack/clients/go/apis/v1alpha1"
@@ -102,20 +101,20 @@ func FromConfigFile(path string) audit.Option {
 // s := grpc.NewServer(opt)
 // ```
 // TODO(#109): add streaming interceptor.
-func WithInterceptorFromConfigFile(path string) (grpc.ServerOption, *audit.Client, error) {
+func WithInterceptorFromConfigFile(path string) (*audit.Interceptor, error) {
 	fc, err := ioutil.ReadFile(path)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 	cfg := &alpb.Config{}
 	if err := yaml.Unmarshal(fc, cfg); err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 	if err := cfg.ValidateSecurityContext(); err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 	if err := setAndValidate(cfg); err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
 	interceptor := &audit.Interceptor{}
@@ -127,7 +126,7 @@ func WithInterceptorFromConfigFile(path string) (grpc.ServerOption, *audit.Clien
 		}
 		interceptor.SecurityContext = fromRawJWT
 	default:
-		return nil, nil, fmt.Errorf("no supported security context configured in config %+v", cfg)
+		return nil, fmt.Errorf("no supported security context configured in config %+v", cfg)
 	}
 
 	// Add audit rules to interceptor.
@@ -139,11 +138,11 @@ func WithInterceptorFromConfigFile(path string) (grpc.ServerOption, *audit.Clien
 	}
 	auditClient, err := audit.NewClient(auditOpt)
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to create audit client from config %+v: %w", cfg, err)
+		return nil, fmt.Errorf("failed to create audit client from config %+v: %w", cfg, err)
 	}
 	interceptor.Client = auditClient
 
-	return grpc.UnaryInterceptor(interceptor.UnaryInterceptor), auditClient, nil
+	return interceptor, nil
 }
 
 func clientFromConfig(c *audit.Client, cfg *alpb.Config) error {
