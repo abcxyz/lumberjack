@@ -50,6 +50,19 @@ func TestFromRawJWT_RequestPrincipal(t *testing.T) {
 			want: "user@example.com",
 		},
 		{
+			name: "valid_jwt_with_capitalized_config",
+			ctx: metadata.NewIncomingContext(context.Background(), metadata.New(map[string]string{
+				"authorization": "bearer " + testutil.JWTFromClaims(t, map[string]interface{}{
+					"email": "user@example.com",
+				}),
+			})),
+			fromRawJWT: []*v1alpha1.FromRawJWT{{
+				Key:    "Authorization",
+				Prefix: "Bearer ",
+			}},
+			want: "user@example.com",
+		},
+		{
 			name: "multi_jwts",
 			ctx: metadata.NewIncomingContext(context.Background(), metadata.New(map[string]string{
 				"x-jwt-assertion": testutil.JWTFromClaims(t, map[string]interface{}{
