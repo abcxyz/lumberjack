@@ -104,11 +104,11 @@ func FromConfigFile(path string) audit.Option {
 func WithInterceptorFromConfigFile(path string) (*audit.Interceptor, error) {
 	fc, err := ioutil.ReadFile(path)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to read config file: %w", err)
 	}
 	cfg := &alpb.Config{}
 	if err := yaml.Unmarshal(fc, cfg); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to unmarshall file to yaml: %w", err)
 	}
 	if err := cfg.ValidateSecurityContext(); err != nil {
 		return nil, err
