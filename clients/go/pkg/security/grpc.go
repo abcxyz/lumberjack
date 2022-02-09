@@ -83,12 +83,13 @@ func (j *FromRawJWT) RequestPrincipal(ctx context.Context) (string, error) {
 func (j *FromRawJWT) findJWT(md grpcmetadata.MD) (string, error) {
 	for _, fj := range j.FromRawJWT {
 		// Keys in grpc metadata are all lowercases.
-		vals, ok := md[strings.ToLower(fj.Key)]
-		if !ok {
+		vals := md.Get(fj.Key)
+		if len(vals) == 0 {
 			continue
 		}
 		jwtRaw := vals[0]
-		if !strings.HasPrefix(jwtRaw, fj.Prefix) {
+		// We compare prefix case insensitively.
+		if !strings.HasPrefix(strings.ToLower(jwtRaw), strings.ToLower(fj.Prefix)) {
 			continue
 		}
 		idToken := jwtRaw[len(fj.Prefix):]
