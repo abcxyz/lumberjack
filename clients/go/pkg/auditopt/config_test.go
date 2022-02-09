@@ -570,7 +570,7 @@ rules:
 				t.Fatal(err)
 			}
 
-			_, _, err := WithInterceptorFromConfigFile(path)
+			_, err := WithInterceptorFromConfigFile(path)
 			if diff := errutil.DiffSubstring(err, tc.wantErrSubstr); diff != "" {
 				t.Errorf("WithInterceptorFromConfigFile(path) got unexpected error substring: %v", diff)
 			}
