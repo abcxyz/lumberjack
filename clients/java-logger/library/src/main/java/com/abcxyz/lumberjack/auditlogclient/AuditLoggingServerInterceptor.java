@@ -162,9 +162,15 @@ public class AuditLoggingServerInterceptor<ReqT extends Message> implements Serv
       LogEntryOperation logEntryOperation) {
     if (selector.getDirective().shouldLogResponse() && response != null) {
       logBuilder.setResponse(messageToStruct(response));
+    } else {
+      // If we don't want to log the response, make sure its empty.
+      logBuilder.setResponse(Struct.newBuilder().build());
     }
     if (selector.getDirective().shouldLogRequest() && request != null) {
       logBuilder.setRequest(messageToStruct(request));
+    } else {
+      // If we don't want to log the request, make sure its empty.
+      logBuilder.setRequest(Struct.newBuilder().build());
     }
 
     AuditLogRequest.Builder builder = AuditLogRequest.newBuilder();

@@ -118,3 +118,133 @@ The following configs can be overwritten with env vars.
 -   `AUDIT_CLIENT_BACKEND_ADDRESS` - to overwrite backend address
 -   `AUDIT_CLIENT_BACKEND_INSECURE_ENABLED` - to force using insecure connection
 -   `AUDIT_CLIENT_BACKEND_IMPERSONATE_ACCOUNT` - to impersonate a service
+
+# Auto Audit Logging Behavior
+## Unary Calls
+Unary calls are single request/response pairs. In this case, a single audit log will be generated that includes all relevant fields, as well as both the request and response. 
+
+Example (edited for brevity):
+
+```
+{
+    ...
+    "jsonPayload": {
+       ...
+      "response": {
+        "message": "Hello Some Message",
+      },
+      "request": {
+        "message": "Some Message",
+        "target": "e5cd4be1-7143-49c5-9f80-9d6ba779fdc3",
+      },
+      "resource_name": "e5cd4be1-7143-49c5-9f80-9d6ba779fdc3"
+    },
+    ...
+  }
+```
+
+## Streaming Calls
+### Server -> Client streaming
+A log is created for each response (message sent from server). If a request has been sent before the request occurred, and we haven't logged that request, we add it as part of the audit log. 
+
+Example (edited for brevity):
+
+```
+  {
+    "method_name": "abcxyz.test.Talker/Fibonacci",
+    "request": {},
+    "response": {
+      "position": "3.0",
+      "value": "1.0",
+    },
+    "operation": {
+      "id": "475c0f1c-a4f3-448c-a147-7ee041a64dda",
+      "producer": "abcxyz.test.Talker/Fibonacci",
+    }
+  },
+  {
+    "method_name": "abcxyz.test.Talker/Fibonacci",
+    "request": {},
+    "response": {
+      "position": "2.0",
+      "value": "1.0",
+    },
+    "operation": {
+      "id": "475c0f1c-a4f3-448c-a147-7ee041a64dda",
+      "producer": "abcxyz.test.Talker/Fibonacci",
+    }
+  },
+  {
+    "method_name": "abcxyz.test.Talker/Fibonacci",
+    "request": {
+      "target": "3548b8c0-6b25-40f0-9a8e-da3ef3d0212d",
+      "places": "3.0",
+    },
+    "response": {
+      "position": "1.0",
+    },
+    "operation": {
+      "id": "475c0f1c-a4f3-448c-a147-7ee041a64dda",
+      "producer": "abcxyz.test.Talker/Fibonacci",
+    }
+  }
+```
+
+In this example, the client sent a single request (for 3 places of fibonacci) and the server responded with 3 separate responses. Each of those responses have been audit logged, and the first response includes the request in addition to the response.
+
+### Client -> Server streaming
+We attempt to pair requests (message from client) with responses in a best-effort fashion. However, if another request comes in before a response occurs, we log the previously unlogged requests without responses attached. 
+
+Example (edited for brevity):
+
+```
+ {
+    "method_name": "abcxyz.test.Talker/Addition",
+    "request": {
+      "target": "cff5c025-09d9-4892-91a8-3a6ec8ca3060",
+      "addend": "3.0"
+    },
+    "response": {
+      "sum": "6"
+    },
+    "response": null,
+    "operation": {
+      "id": "9e428c00-6e4f-4dd6-bd75-3c8dd83afe6c",
+      "producer": "abcxyz.test.Talker/Addition",
+    }
+  },
+  {
+    "method_name": "abcxyz.test.Talker/Addition",
+    "request": {
+      "target": "cff5c025-09d9-4892-91a8-3a6ec8ca3060",
+      "addend": "2.0"
+    },
+    "response": null,
+    "operation": {
+      "id": "9e428c00-6e4f-4dd6-bd75-3c8dd83afe6c",
+      "producer": "abcxyz.test.Talker/Addition",
+    }
+  },
+  {
+    "method_name": "abcxyz.test.Talker/Addition",
+    "request": {
+      "target": "cff5c025-09d9-4892-91a8-3a6ec8ca3060",
+      "addend": "1.0"
+    },
+    "response": null,
+    "operation": {
+      "id": "9e428c00-6e4f-4dd6-bd75-3c8dd83afe6c",
+      "producer": "abcxyz.test.Talker/Addition",
+    }
+  }
+```
+
+In this example, the client sent 3 numbers for the server to add up (1, 2, 3). Each of those requests got an audit log, and the last request additionally was paired with the response (6). 
+
+### Bi-Directional Streaming
+Bi-directional streaming is handled similarly to both of the above, in that we try to best-effort pair requests and responses, but we only log each request and response once. 
+
+TODO: add demonstrating example once we have a bi-directional streaming integ test
+
+### Operation Fields
+In the examples above we have included the "operation" fields. These fields are automatically added, and the id + producer within the operation block form a unique key that can be used to correlate all request/response values within a single connection/streaming session.
