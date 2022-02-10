@@ -120,6 +120,7 @@ The following configs can be overwritten with env vars.
 -   `AUDIT_CLIENT_BACKEND_IMPERSONATE_ACCOUNT` - to impersonate a service
 
 # Auto Audit Logging Behavior
+
 ## Unary Calls
 Unary calls are single request/response pairs. In this case, a single audit log will be generated that includes all relevant fields, as well as both the request and response. 
 
@@ -259,12 +260,13 @@ Bi-directional streaming is handled similarly to both of the above, in that we
 try to best-effort pair requests and responses, but we only log each request and
 response once.
 
-TODO: add demonstrating example once we have a bi-directional streaming integ
-test
+TODO([#156](https://github.com/abcxyz/lumberjack/issues/156)): add demonstrating
+example once we have a bi-directional streaming integ test
 
 ### Operation Fields
 
 In the examples above we have included the "operation" fields. These fields are
 automatically added, and the id + producer within the operation block form a
 unique key that can be used to correlate all request/response values within a
-single connection/streaming session.
+single connection/streaming session.The id is a randomly generated UUID input by
+the interceptor, and the producer is the full method name.
