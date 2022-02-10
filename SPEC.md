@@ -125,7 +125,7 @@ Unary calls are single request/response pairs. In this case, a single audit log 
 
 Example (edited for brevity):
 
-```
+```json
 {
     ...
     "jsonPayload": {
@@ -149,7 +149,7 @@ A log is created for each response (message sent from server). If a request has 
 
 Example (edited for brevity):
 
-```
+```json
   {
     "method_name": "abcxyz.test.Talker/Fibonacci",
     "request": {
@@ -197,7 +197,7 @@ We attempt to pair requests (message from client) with responses in a best-effor
 
 Example (edited for brevity):
 
-```
+```json
   {
     "method_name": "abcxyz.test.Talker/Addition",
     "request": {
