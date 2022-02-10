@@ -206,7 +206,7 @@ public class LoggingClientTests {
     // Exception is thrown
     Assertions.assertThrows(IllegalArgumentException.class, () -> loggingClient.log(logRequest));
 
-    // No other processors were run after the exception was swallowed.
+    // No other processors were run after the exception was thrown.
     verify(filteringProcessor, times(0)).process(logRequest);
     verify(runtimeInfoProcessor, times(0)).process(logRequest);
     verify(cloudLoggingProcessor, times(0)).process(logRequest);
