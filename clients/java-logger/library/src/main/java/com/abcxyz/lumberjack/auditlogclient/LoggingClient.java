@@ -60,7 +60,8 @@ public class LoggingClient {
       if (config.shouldFailClose()) {
         throw new LogProcessingException("Fail close enabled and ran into exception while audit logging.", e);
       } else {
-        log.warning("Log mode isn't fail close, swallowing error: " + e.getMessage());
+        log.warning("Fail close is disabled. Exception occurred while attempting to audit log, so "
+            + "continuing without audit logging: " + e.getMessage());
       }
     }
   }

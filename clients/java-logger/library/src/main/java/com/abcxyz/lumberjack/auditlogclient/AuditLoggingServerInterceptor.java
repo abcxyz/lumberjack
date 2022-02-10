@@ -86,9 +86,10 @@ public class AuditLoggingServerInterceptor<ReqT extends Message> implements Serv
     } catch (AuthorizationException e) {
       log.warning("Exception while trying to determine principal..");
       if (auditLoggingConfiguration.shouldFailClose()) {
-        throw new RuntimeException("Fail close enabled, and unable to determine principal.", e);
+        throw new IllegalStateException("Fail close enabled, and unable to determine principal.", e);
       } else {
-        log.warning("Fail close is disabled, swallowing error: " + e.getMessage());
+        log.warning("Fail close is disabled. Principal was unable to be determined, but "
+            + "continuing without audit logging: " + e.getMessage());
         next.startCall(call, headers);
       }
     }
