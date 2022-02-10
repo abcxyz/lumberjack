@@ -152,10 +152,12 @@ Example (edited for brevity):
 ```
   {
     "method_name": "abcxyz.test.Talker/Fibonacci",
-    "request": {},
+    "request": {
+      "target": "3548b8c0-6b25-40f0-9a8e-da3ef3d0212d",
+      "places": "3.0",
+    },
     "response": {
-      "position": "3.0",
-      "value": "1.0",
+      "position": "1.0",
     },
     "operation": {
       "id": "475c0f1c-a4f3-448c-a147-7ee041a64dda",
@@ -176,12 +178,10 @@ Example (edited for brevity):
   },
   {
     "method_name": "abcxyz.test.Talker/Fibonacci",
-    "request": {
-      "target": "3548b8c0-6b25-40f0-9a8e-da3ef3d0212d",
-      "places": "3.0",
-    },
+    "request": {},
     "response": {
-      "position": "1.0",
+      "position": "3.0",
+      "value": "1.0",
     },
     "operation": {
       "id": "475c0f1c-a4f3-448c-a147-7ee041a64dda",
@@ -198,14 +198,11 @@ We attempt to pair requests (message from client) with responses in a best-effor
 Example (edited for brevity):
 
 ```
- {
+  {
     "method_name": "abcxyz.test.Talker/Addition",
     "request": {
       "target": "cff5c025-09d9-4892-91a8-3a6ec8ca3060",
-      "addend": "3.0"
-    },
-    "response": {
-      "sum": "6"
+      "addend": "1.0"
     },
     "response": null,
     "operation": {
@@ -225,11 +222,14 @@ Example (edited for brevity):
       "producer": "abcxyz.test.Talker/Addition",
     }
   },
-  {
+ {
     "method_name": "abcxyz.test.Talker/Addition",
     "request": {
       "target": "cff5c025-09d9-4892-91a8-3a6ec8ca3060",
-      "addend": "1.0"
+      "addend": "3.0"
+    },
+    "response": {
+      "sum": "6"
     },
     "response": null,
     "operation": {
