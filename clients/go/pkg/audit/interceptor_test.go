@@ -359,10 +359,11 @@ func TestStreamInterceptor(t *testing.T) {
 			logReq, _ := LogReqFromCtx(ss.Context())
 			logReq.Payload.ResourceName = "ExampleResourceName"
 			for _, m := range []*msg{{Val: "req1"}, {Val: "req2"}, {Val: "req3"}} {
-				ss.RecvMsg(m)
+				if err := ss.RecvMsg(m); err != nil {
+					return err
+				}
 			}
-			ss.SendMsg(&msg{Val: "resp1"})
-			return nil
+			return ss.SendMsg(&msg{Val: "resp1"})
 		},
 		wantLogReqs: []*alpb.AuditLogRequest{{
 			Type: alpb.AuditLogRequest_DATA_ACCESS,
@@ -425,9 +426,13 @@ func TestStreamInterceptor(t *testing.T) {
 		handler: func(srv interface{}, ss grpc.ServerStream) error {
 			logReq, _ := LogReqFromCtx(ss.Context())
 			logReq.Payload.ResourceName = "ExampleResourceName"
-			ss.RecvMsg(&msg{Val: "req1"})
+			if err := ss.RecvMsg(&msg{Val: "req1"}); err != nil {
+				return err
+			}
 			for _, m := range []*msg{{Val: "resp1"}, {Val: "resp2"}, {Val: "resp3"}} {
-				ss.SendMsg(m)
+				if err := ss.SendMsg(m); err != nil {
+					return err
+				}
 			}
 			return nil
 		},
@@ -492,10 +497,18 @@ func TestStreamInterceptor(t *testing.T) {
 		handler: func(srv interface{}, ss grpc.ServerStream) error {
 			logReq, _ := LogReqFromCtx(ss.Context())
 			logReq.Payload.ResourceName = "ExampleResourceName"
-			ss.RecvMsg(&msg{Val: "req1"})
-			ss.SendMsg(&msg{Val: "resp1"})
-			ss.RecvMsg(&msg{Val: "req2"})
-			ss.SendMsg(&msg{Val: "resp2"})
+			if err := ss.RecvMsg(&msg{Val: "req1"}); err != nil {
+				return err
+			}
+			if err := ss.SendMsg(&msg{Val: "resp1"}); err != nil {
+				return err
+			}
+			if err := ss.RecvMsg(&msg{Val: "req2"}); err != nil {
+				return err
+			}
+			if err := ss.SendMsg(&msg{Val: "resp2"}); err != nil {
+				return err
+			}
 			return nil
 		},
 		wantLogReqs: []*alpb.AuditLogRequest{{
@@ -549,10 +562,18 @@ func TestStreamInterceptor(t *testing.T) {
 		handler: func(srv interface{}, ss grpc.ServerStream) error {
 			logReq, _ := LogReqFromCtx(ss.Context())
 			logReq.Payload.ResourceName = "ExampleResourceName"
-			ss.RecvMsg(&msg{Val: "req1"})
-			ss.SendMsg(&msg{Val: "resp1"})
-			ss.RecvMsg(&msg{Val: "req2"})
-			ss.SendMsg(&msg{Val: "resp2"})
+			if err := ss.RecvMsg(&msg{Val: "req1"}); err != nil {
+				return err
+			}
+			if err := ss.SendMsg(&msg{Val: "resp1"}); err != nil {
+				return err
+			}
+			if err := ss.RecvMsg(&msg{Val: "req2"}); err != nil {
+				return err
+			}
+			if err := ss.SendMsg(&msg{Val: "resp2"}); err != nil {
+				return err
+			}
 			return nil
 		},
 		wantLogReqs: []*alpb.AuditLogRequest{{
@@ -594,10 +615,18 @@ func TestStreamInterceptor(t *testing.T) {
 		handler: func(srv interface{}, ss grpc.ServerStream) error {
 			logReq, _ := LogReqFromCtx(ss.Context())
 			logReq.Payload.ResourceName = "ExampleResourceName"
-			ss.RecvMsg(&msg{Val: "req1"})
-			ss.SendMsg(&msg{Val: "resp1"})
-			ss.RecvMsg(&msg{Val: "req2"})
-			ss.SendMsg(&msg{Val: "resp2"})
+			if err := ss.RecvMsg(&msg{Val: "req1"}); err != nil {
+				return err
+			}
+			if err := ss.SendMsg(&msg{Val: "resp1"}); err != nil {
+				return err
+			}
+			if err := ss.RecvMsg(&msg{Val: "req2"}); err != nil {
+				return err
+			}
+			if err := ss.SendMsg(&msg{Val: "resp2"}); err != nil {
+				return err
+			}
 			return nil
 		},
 		wantLogReqs: []*alpb.AuditLogRequest{{
@@ -645,8 +674,12 @@ func TestStreamInterceptor(t *testing.T) {
 		handler: func(srv interface{}, ss grpc.ServerStream) error {
 			logReq, _ := LogReqFromCtx(ss.Context())
 			logReq.Payload.ResourceName = "ExampleResourceName"
-			ss.RecvMsg(&msg{Val: "req1"})
-			ss.SendMsg(&msg{Val: "resp1"})
+			if err := ss.RecvMsg(&msg{Val: "req1"}); err != nil {
+				return err
+			}
+			if err := ss.SendMsg(&msg{Val: "resp1"}); err != nil {
+				return err
+			}
 			return nil
 		},
 	}, {
@@ -667,8 +700,12 @@ func TestStreamInterceptor(t *testing.T) {
 		handler: func(srv interface{}, ss grpc.ServerStream) error {
 			logReq, _ := LogReqFromCtx(ss.Context())
 			logReq.Payload.ResourceName = "ExampleResourceName"
-			ss.RecvMsg(&msg{Val: "req1"})
-			ss.SendMsg(&msg{Val: "resp1"})
+			if err := ss.RecvMsg(&msg{Val: "req1"}); err != nil {
+				return err
+			}
+			if err := ss.SendMsg(&msg{Val: "resp1"}); err != nil {
+				return err
+			}
 			return nil
 		},
 	}, {

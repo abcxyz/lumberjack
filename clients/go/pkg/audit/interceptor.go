@@ -115,7 +115,7 @@ func (i *Interceptor) UnaryInterceptor(ctx context.Context, req interface{}, inf
 		}
 	}
 
-	// Emits the log in best-effort logging mode.
+	// TODO(#95): Needs to honor the log mode.
 	if err := i.Log(ctx, logReq); err != nil {
 		return nil, status.Errorf(codes.Internal, "audit interceptor failed to emit log: %v", err)
 	}
@@ -225,7 +225,9 @@ func (ss *serverStreamWrapper) RecvMsg(m interface{}) error {
 				return status.Errorf(codes.Internal, "audit interceptor failed converting req into a proto struct: %v", err)
 			} else {
 				logReq.Payload.Request = ms
-				ss.c.Log(ss.ServerStream.Context(), logReq)
+				if err := ss.c.Log(ss.ServerStream.Context(), logReq); err != nil {
+					return status.Errorf(codes.Internal, "audit interceptor failed to emit log: %v", err)
+				}
 			}
 		}
 	}
@@ -258,7 +260,9 @@ func (ss *serverStreamWrapper) SendMsg(m interface{}) error {
 		}
 	}
 
-	ss.c.Log(ss.ServerStream.Context(), logReq)
+	if err := ss.c.Log(ss.ServerStream.Context(), logReq); err != nil {
+		return status.Errorf(codes.Internal, "audit interceptor failed to emit log: %v", err)
+	}
 
 	// TODO(#96): Consider emitting an audit log when the RPC call fails.
 	return ss.ServerStream.SendMsg(m)
