@@ -84,8 +84,13 @@ public class AuditLoggingServerInterceptor<ReqT extends Message> implements Serv
     try {
       principal = auditLoggingConfiguration.getSecurityContext().getPrincipal(headers);
     } catch (AuthorizationException e) {
-      log.info("Exception while trying to determine principal..");
-      next.startCall(call, headers);
+      log.warning("Exception while trying to determine principal..");
+      if (auditLoggingConfiguration.shouldFailClose()) {
+        throw new RuntimeException(e);
+      } else {
+        log.warning("Fail close is disabled, swallowing error: " + e.getMessage());
+        next.startCall(call, headers);
+      }
     }
 
     AuditLog.Builder logBuilder = AuditLog.newBuilder();

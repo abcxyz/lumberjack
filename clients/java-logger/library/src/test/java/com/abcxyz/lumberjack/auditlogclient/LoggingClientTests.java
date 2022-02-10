@@ -18,8 +18,11 @@ package com.abcxyz.lumberjack.auditlogclient;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.when;
 import static org.mockito.Mockito.verify;
 
+import com.abcxyz.lumberjack.auditlogclient.config.AuditLoggingConfiguration;
 import com.abcxyz.lumberjack.auditlogclient.processor.CloudLoggingProcessor;
 import com.abcxyz.lumberjack.auditlogclient.processor.FilteringProcessor;
 import com.abcxyz.lumberjack.auditlogclient.processor.LogProcessingException;
@@ -31,6 +34,7 @@ import java.util.Collections;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.Assertions;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -43,6 +47,7 @@ public class LoggingClientTests {
   @Mock RemoteProcessor remoteProcessor;
   @Mock FilteringProcessor filteringProcessor;
   @Mock RuntimeInfoProcessor runtimeInfoProcessor;
+  @Mock AuditLoggingConfiguration auditLoggingConfiguration;
 
   @InjectMocks LoggingClientBuilder loggingClientBuilder;
 
@@ -76,7 +81,7 @@ public class LoggingClientTests {
   void logMethodCallsValidateProcessorTest() throws LogProcessingException {
     LoggingClient loggingClient =
         new LoggingClient(
-            List.of(validationProcessor), Collections.emptyList(), Collections.emptyList());
+            List.of(validationProcessor), Collections.emptyList(), Collections.emptyList(), auditLoggingConfiguration);
     AuditLogRequest logRequest = AuditLogRequest.newBuilder().getDefaultInstanceForType();
     loggingClient.log(logRequest);
     verify(validationProcessor).process(logRequest);
@@ -86,7 +91,7 @@ public class LoggingClientTests {
   void logMethodCallsRemoteServiceLoggingProcessorTest() throws LogProcessingException {
     LoggingClient loggingClient =
         new LoggingClient(
-            Collections.emptyList(), Collections.emptyList(), List.of(remoteProcessor));
+            Collections.emptyList(), Collections.emptyList(), List.of(remoteProcessor), auditLoggingConfiguration);
     AuditLogRequest logRequest = AuditLogRequest.newBuilder().getDefaultInstanceForType();
     loggingClient.log(logRequest);
     verify(remoteProcessor).process(logRequest);
@@ -96,7 +101,7 @@ public class LoggingClientTests {
   void logMethodCallsFilteringProcessorTest() throws LogProcessingException {
     LoggingClient loggingClient =
         new LoggingClient(
-            Collections.emptyList(), List.of(filteringProcessor), Collections.emptyList());
+            Collections.emptyList(), List.of(filteringProcessor), Collections.emptyList(), auditLoggingConfiguration);
     AuditLogRequest logRequest = AuditLogRequest.newBuilder().getDefaultInstanceForType();
     loggingClient.log(logRequest);
     verify(filteringProcessor).process(logRequest);
@@ -106,7 +111,7 @@ public class LoggingClientTests {
   void logMethodCallsRuntimeInfoProcessorTest() throws LogProcessingException {
     LoggingClient loggingClient =
         new LoggingClient(
-            Collections.emptyList(), List.of(runtimeInfoProcessor), Collections.emptyList());
+            Collections.emptyList(), List.of(runtimeInfoProcessor), Collections.emptyList(), auditLoggingConfiguration);
     AuditLogRequest logRequest = AuditLogRequest.newBuilder().getDefaultInstanceForType();
     loggingClient.log(logRequest);
     verify(runtimeInfoProcessor).process(logRequest);
@@ -116,7 +121,7 @@ public class LoggingClientTests {
   void logMethodCallsCloudLoggingProcessorTest() throws LogProcessingException {
     LoggingClient loggingClient =
         new LoggingClient(
-            Collections.emptyList(), Collections.emptyList(), List.of(cloudLoggingProcessor));
+            Collections.emptyList(), Collections.emptyList(), List.of(cloudLoggingProcessor), auditLoggingConfiguration);
     AuditLogRequest logRequest = AuditLogRequest.newBuilder().getDefaultInstanceForType();
     loggingClient.log(logRequest);
     verify(cloudLoggingProcessor).process(logRequest);
@@ -128,7 +133,7 @@ public class LoggingClientTests {
         new LoggingClient(
             List.of(validationProcessor),
             Collections.emptyList(),
-            List.of(cloudLoggingProcessor, remoteProcessor));
+            List.of(cloudLoggingProcessor, remoteProcessor), auditLoggingConfiguration);
     AuditLogRequest logRequest = AuditLogRequest.newBuilder().getDefaultInstanceForType();
     doReturn(logRequest).when(validationProcessor).process(logRequest);
     doReturn(logRequest).when(cloudLoggingProcessor).process(logRequest);
@@ -145,7 +150,8 @@ public class LoggingClientTests {
         new LoggingClient(
             List.of(validationProcessor),
             List.of(filteringProcessor, runtimeInfoProcessor),
-            List.of(cloudLoggingProcessor, remoteProcessor));
+            List.of(cloudLoggingProcessor, remoteProcessor),
+            auditLoggingConfiguration);
     AuditLogRequest logRequest = AuditLogRequest.newBuilder().getDefaultInstanceForType();
     doReturn(logRequest).when(validationProcessor).process(logRequest);
     doReturn(logRequest).when(filteringProcessor).process(logRequest);
@@ -157,5 +163,53 @@ public class LoggingClientTests {
     verify(runtimeInfoProcessor).process(logRequest);
     verify(cloudLoggingProcessor).process(logRequest);
     verify(remoteProcessor).process(logRequest);
+  }
+
+  @Test
+  void failsOpen() throws LogProcessingException {
+    // Set config to fail open
+    doReturn(false).when(auditLoggingConfiguration).shouldFailClose();
+    LoggingClient loggingClient =
+        new LoggingClient(
+            List.of(validationProcessor),
+            List.of(filteringProcessor, runtimeInfoProcessor),
+            List.of(cloudLoggingProcessor, remoteProcessor),
+            auditLoggingConfiguration);
+    AuditLogRequest logRequest = AuditLogRequest.newBuilder().getDefaultInstanceForType();
+    when(validationProcessor.process(logRequest))
+        .thenThrow(new IllegalArgumentException());
+
+    // No exception is thrown
+    Assertions.assertDoesNotThrow(() -> loggingClient.log(logRequest));
+
+    // No other processors were run after the exception was swallowed.
+    verify(filteringProcessor, times(0)).process(logRequest);
+    verify(runtimeInfoProcessor, times(0)).process(logRequest);
+    verify(cloudLoggingProcessor, times(0)).process(logRequest);
+    verify(remoteProcessor, times(0)).process(logRequest);
+  }
+
+  @Test
+  void failsClose() throws LogProcessingException {
+    // Set config to fail close
+    doReturn(true).when(auditLoggingConfiguration).shouldFailClose();
+    LoggingClient loggingClient =
+        new LoggingClient(
+            List.of(validationProcessor),
+            List.of(filteringProcessor, runtimeInfoProcessor),
+            List.of(cloudLoggingProcessor, remoteProcessor),
+            auditLoggingConfiguration);
+    AuditLogRequest logRequest = AuditLogRequest.newBuilder().getDefaultInstanceForType();
+    when(validationProcessor.process(logRequest))
+        .thenThrow(new IllegalArgumentException());
+
+    // Exception is thrown
+    Assertions.assertThrows(IllegalArgumentException.class, () -> loggingClient.log(logRequest));
+
+    // No other processors were run after the exception was swallowed.
+    verify(filteringProcessor, times(0)).process(logRequest);
+    verify(runtimeInfoProcessor, times(0)).process(logRequest);
+    verify(cloudLoggingProcessor, times(0)).process(logRequest);
+    verify(remoteProcessor, times(0)).process(logRequest);
   }
 }

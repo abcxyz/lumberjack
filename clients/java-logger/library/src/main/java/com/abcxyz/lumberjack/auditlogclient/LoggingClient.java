@@ -16,6 +16,7 @@
 
 package com.abcxyz.lumberjack.auditlogclient;
 
+import com.abcxyz.lumberjack.auditlogclient.config.AuditLoggingConfiguration;
 import com.abcxyz.lumberjack.auditlogclient.processor.LogProcessingException;
 import com.abcxyz.lumberjack.auditlogclient.processor.LogProcessor;
 import com.abcxyz.lumberjack.auditlogclient.processor.LogProcessor.LogBackend;
@@ -26,14 +27,17 @@ import java.util.List;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
+import lombok.extern.java.Log;
 
 /** Logging client for lumberjack audit logging */
 @Getter(AccessLevel.PROTECTED)
 @AllArgsConstructor
+@Log
 public class LoggingClient {
   private final List<LogValidator> validators;
   private final List<LogMutator> mutators;
   private final List<LogBackend> backends;
+  private final AuditLoggingConfiguration config;
 
   /**
    * Iterates through all the log processors for a client sequentially and calls their {@link
@@ -42,14 +46,23 @@ public class LoggingClient {
    * @param auditLogRequest log request
    */
   public void log(AuditLogRequest auditLogRequest) throws LogProcessingException {
-    for (LogProcessor processor : validators) {
-      auditLogRequest = processor.process(auditLogRequest);
-    }
-    for (LogProcessor processor : mutators) {
-      auditLogRequest = processor.process(auditLogRequest);
-    }
-    for (LogProcessor processor : backends) {
-      auditLogRequest = processor.process(auditLogRequest);
+    try {
+      for (LogProcessor processor : validators) {
+        auditLogRequest = processor.process(auditLogRequest);
+      }
+      for (LogProcessor processor : mutators) {
+        auditLogRequest = processor.process(auditLogRequest);
+      }
+      for (LogProcessor processor : backends) {
+        auditLogRequest = processor.process(auditLogRequest);
+      }
+    } catch (Exception e) { // TODO: Should we swallow throwable?
+      if (config.shouldFailClose()) {
+        log.info("Log mode is fail close, raising up error.");
+        throw e;
+      } else {
+        log.warning("Log mode isn't fail close, swallowing error: " + e.getMessage());
+      }
     }
   }
 }
