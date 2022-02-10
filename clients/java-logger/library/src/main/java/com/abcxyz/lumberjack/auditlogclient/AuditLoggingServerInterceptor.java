@@ -89,7 +89,7 @@ public class AuditLoggingServerInterceptor<ReqT extends Message> implements Serv
       if (ConfigUtils.shouldFailClose(auditLoggingConfiguration.getLogMode())) {
         throw new IllegalStateException("Fail close enabled, and unable to determine principal.", e);
       } else {
-        log.warning("Fail close is disabled. Principal was unable to be determined, but "
+        log.warning("Principal was unable to be determined, but "
             + "continuing without audit logging: " + e.getMessage());
         next.startCall(call, headers);
       }
