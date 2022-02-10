@@ -58,8 +58,7 @@ public class LoggingClient {
       }
     } catch (Exception e) { // TODO: Should we swallow throwable?
       if (config.shouldFailClose()) {
-        log.info("Log mode is fail close, raising up error.");
-        throw e;
+        throw new LogProcessingException("Fail close enabled and ran into exception while audit logging.", e);
       } else {
         log.warning("Log mode isn't fail close, swallowing error: " + e.getMessage());
       }
