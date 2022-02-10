@@ -30,6 +30,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
+	"google.golang.org/grpc/status"
 	grpcstatus "google.golang.org/grpc/status"
 	"google.golang.org/protobuf/testing/protocmp"
 	"google.golang.org/protobuf/types/known/structpb"
@@ -37,12 +38,36 @@ import (
 
 type fakeServer struct {
 	alpb.UnimplementedAuditLogAgentServer
-	gotReq *alpb.AuditLogRequest
+	gotReqs []*alpb.AuditLogRequest
 }
 
 func (s *fakeServer) ProcessLog(_ context.Context, logReq *alpb.AuditLogRequest) (*alpb.AuditLogResponse, error) {
-	s.gotReq = logReq
+	s.gotReqs = append(s.gotReqs, logReq)
 	return &alpb.AuditLogResponse{Result: logReq}, nil
+}
+
+type fakeServerStream struct {
+	grpc.ServerStream
+
+	incomingCtx context.Context
+	gotRecvMsgs []interface{}
+	gotSendMsgs []interface{}
+}
+
+func (ss *fakeServerStream) Context() context.Context {
+	return ss.incomingCtx
+}
+
+func (ss *fakeServerStream) SendMsg(m interface{}) error {
+	// Not thread safe.
+	ss.gotSendMsgs = append(ss.gotSendMsgs, m)
+	return nil
+}
+
+func (ss *fakeServerStream) RecvMsg(m interface{}) error {
+	// Not thread safe.
+	ss.gotRecvMsgs = append(ss.gotRecvMsgs, m)
+	return nil
 }
 
 func TestUnaryInterceptor(t *testing.T) {
@@ -231,7 +256,7 @@ func TestUnaryInterceptor(t *testing.T) {
 				return nil, nil
 			},
 			req:           "bananas",
-			wantErrSubstr: "audit interceptor failed converting req into a Google struct proto",
+			wantErrSubstr: "audit interceptor failed converting req into a proto struct",
 		},
 	}
 	for _, tc := range tests {
@@ -280,8 +305,448 @@ func TestUnaryInterceptor(t *testing.T) {
 				t.Errorf("UnaryInterceptor(...) got unexpected error substring: %v", diff)
 			}
 
-			if diff := cmp.Diff(tc.wantLogReq, r.gotReq, protocmp.Transform()); diff != "" {
+			var gotReq *alpb.AuditLogRequest
+			if len(r.gotReqs) > 0 {
+				gotReq = r.gotReqs[0]
+			}
+			if diff := cmp.Diff(tc.wantLogReq, gotReq, protocmp.Transform()); diff != "" {
 				t.Errorf("UnaryInterceptor(...) got diff in automatically emitted LogReq (-want, +got): %v", diff)
+			}
+
+			if err := c.Stop(); err != nil {
+				t.Fatal(err)
+			}
+		})
+	}
+}
+
+func TestStreamInterceptor(t *testing.T) {
+	t.Parallel()
+
+	jwt := "Bearer " + testutil.JWTFromClaims(t, map[string]interface{}{
+		"email": "user@example.com",
+	})
+
+	type msg struct {
+		Val string
+	}
+
+	cases := []struct {
+		name          string
+		ss            *fakeServerStream
+		info          *grpc.StreamServerInfo
+		handler       grpc.StreamHandler
+		auditRules    []*alpb.AuditRule
+		wantLogReqs   []*alpb.AuditLogRequest
+		wantErrSubstr string
+	}{{
+		name: "client_stream_multiple_reqs_single_resp",
+		ss: &fakeServerStream{
+			incomingCtx: metadata.NewIncomingContext(context.Background(), metadata.New(map[string]string{
+				"authorization": jwt,
+			})),
+		},
+		info: &grpc.StreamServerInfo{
+			FullMethod: "/ExampleService/ExampleMethod",
+		},
+		auditRules: []*alpb.AuditRule{{
+			Selector:  "/ExampleService/ExampleMethod",
+			Directive: alpb.AuditRuleDirectiveRequestAndResponse,
+			LogType:   "DATA_ACCESS",
+		}},
+		handler: func(srv interface{}, ss grpc.ServerStream) error {
+			logReq, _ := LogReqFromCtx(ss.Context())
+			logReq.Payload.ResourceName = "ExampleResourceName"
+			for _, m := range []*msg{{Val: "req1"}, {Val: "req2"}, {Val: "req3"}} {
+				ss.RecvMsg(m)
+			}
+			ss.SendMsg(&msg{Val: "resp1"})
+			return nil
+		},
+		wantLogReqs: []*alpb.AuditLogRequest{{
+			Type: alpb.AuditLogRequest_DATA_ACCESS,
+			Payload: &calpb.AuditLog{
+				ServiceName:  "ExampleService",
+				MethodName:   "/ExampleService/ExampleMethod",
+				ResourceName: "ExampleResourceName",
+				AuthenticationInfo: &calpb.AuthenticationInfo{
+					PrincipalEmail: "user@example.com",
+				},
+				Request: &structpb.Struct{Fields: map[string]*structpb.Value{
+					"Val": structpb.NewStringValue("req1"),
+				}},
+			},
+		}, {
+			Type: alpb.AuditLogRequest_DATA_ACCESS,
+			Payload: &calpb.AuditLog{
+				ServiceName:  "ExampleService",
+				MethodName:   "/ExampleService/ExampleMethod",
+				ResourceName: "ExampleResourceName",
+				AuthenticationInfo: &calpb.AuthenticationInfo{
+					PrincipalEmail: "user@example.com",
+				},
+				Request: &structpb.Struct{Fields: map[string]*structpb.Value{
+					"Val": structpb.NewStringValue("req2"),
+				}},
+			},
+		}, {
+			Type: alpb.AuditLogRequest_DATA_ACCESS,
+			Payload: &calpb.AuditLog{
+				ServiceName:  "ExampleService",
+				MethodName:   "/ExampleService/ExampleMethod",
+				ResourceName: "ExampleResourceName",
+				AuthenticationInfo: &calpb.AuthenticationInfo{
+					PrincipalEmail: "user@example.com",
+				},
+				Request: &structpb.Struct{Fields: map[string]*structpb.Value{
+					"Val": structpb.NewStringValue("req3"),
+				}},
+				Response: &structpb.Struct{Fields: map[string]*structpb.Value{
+					"Val": structpb.NewStringValue("resp1"),
+				}},
+			},
+		}},
+	}, {
+		name: "server_stream_single_req_multiple_resps",
+		ss: &fakeServerStream{
+			incomingCtx: metadata.NewIncomingContext(context.Background(), metadata.New(map[string]string{
+				"authorization": jwt,
+			})),
+		},
+		info: &grpc.StreamServerInfo{
+			FullMethod: "/ExampleService/ExampleMethod",
+		},
+		auditRules: []*alpb.AuditRule{{
+			Selector:  "/ExampleService/ExampleMethod",
+			Directive: alpb.AuditRuleDirectiveRequestAndResponse,
+			LogType:   "DATA_ACCESS",
+		}},
+		handler: func(srv interface{}, ss grpc.ServerStream) error {
+			logReq, _ := LogReqFromCtx(ss.Context())
+			logReq.Payload.ResourceName = "ExampleResourceName"
+			ss.RecvMsg(&msg{Val: "req1"})
+			for _, m := range []*msg{{Val: "resp1"}, {Val: "resp2"}, {Val: "resp3"}} {
+				ss.SendMsg(m)
+			}
+			return nil
+		},
+		wantLogReqs: []*alpb.AuditLogRequest{{
+			Type: alpb.AuditLogRequest_DATA_ACCESS,
+			Payload: &calpb.AuditLog{
+				ServiceName:  "ExampleService",
+				MethodName:   "/ExampleService/ExampleMethod",
+				ResourceName: "ExampleResourceName",
+				AuthenticationInfo: &calpb.AuthenticationInfo{
+					PrincipalEmail: "user@example.com",
+				},
+				Request: &structpb.Struct{Fields: map[string]*structpb.Value{
+					"Val": structpb.NewStringValue("req1"),
+				}},
+				Response: &structpb.Struct{Fields: map[string]*structpb.Value{
+					"Val": structpb.NewStringValue("resp1"),
+				}},
+			},
+		}, {
+			Type: alpb.AuditLogRequest_DATA_ACCESS,
+			Payload: &calpb.AuditLog{
+				ServiceName:  "ExampleService",
+				MethodName:   "/ExampleService/ExampleMethod",
+				ResourceName: "ExampleResourceName",
+				AuthenticationInfo: &calpb.AuthenticationInfo{
+					PrincipalEmail: "user@example.com",
+				},
+				Response: &structpb.Struct{Fields: map[string]*structpb.Value{
+					"Val": structpb.NewStringValue("resp2"),
+				}},
+			},
+		}, {
+			Type: alpb.AuditLogRequest_DATA_ACCESS,
+			Payload: &calpb.AuditLog{
+				ServiceName:  "ExampleService",
+				MethodName:   "/ExampleService/ExampleMethod",
+				ResourceName: "ExampleResourceName",
+				AuthenticationInfo: &calpb.AuthenticationInfo{
+					PrincipalEmail: "user@example.com",
+				},
+				Response: &structpb.Struct{Fields: map[string]*structpb.Value{
+					"Val": structpb.NewStringValue("resp3"),
+				}},
+			},
+		}},
+	}, {
+		name: "bidirection_stream_multiple_reqs_resps",
+		ss: &fakeServerStream{
+			incomingCtx: metadata.NewIncomingContext(context.Background(), metadata.New(map[string]string{
+				"authorization": jwt,
+			})),
+		},
+		info: &grpc.StreamServerInfo{
+			FullMethod: "/ExampleService/ExampleMethod",
+		},
+		auditRules: []*alpb.AuditRule{{
+			Selector:  "/ExampleService/ExampleMethod",
+			Directive: alpb.AuditRuleDirectiveRequestAndResponse,
+			LogType:   "DATA_ACCESS",
+		}},
+		handler: func(srv interface{}, ss grpc.ServerStream) error {
+			logReq, _ := LogReqFromCtx(ss.Context())
+			logReq.Payload.ResourceName = "ExampleResourceName"
+			ss.RecvMsg(&msg{Val: "req1"})
+			ss.SendMsg(&msg{Val: "resp1"})
+			ss.RecvMsg(&msg{Val: "req2"})
+			ss.SendMsg(&msg{Val: "resp2"})
+			return nil
+		},
+		wantLogReqs: []*alpb.AuditLogRequest{{
+			Type: alpb.AuditLogRequest_DATA_ACCESS,
+			Payload: &calpb.AuditLog{
+				ServiceName:  "ExampleService",
+				MethodName:   "/ExampleService/ExampleMethod",
+				ResourceName: "ExampleResourceName",
+				AuthenticationInfo: &calpb.AuthenticationInfo{
+					PrincipalEmail: "user@example.com",
+				},
+				Request: &structpb.Struct{Fields: map[string]*structpb.Value{
+					"Val": structpb.NewStringValue("req1"),
+				}},
+				Response: &structpb.Struct{Fields: map[string]*structpb.Value{
+					"Val": structpb.NewStringValue("resp1"),
+				}},
+			},
+		}, {
+			Type: alpb.AuditLogRequest_DATA_ACCESS,
+			Payload: &calpb.AuditLog{
+				ServiceName:  "ExampleService",
+				MethodName:   "/ExampleService/ExampleMethod",
+				ResourceName: "ExampleResourceName",
+				AuthenticationInfo: &calpb.AuthenticationInfo{
+					PrincipalEmail: "user@example.com",
+				},
+				Request: &structpb.Struct{Fields: map[string]*structpb.Value{
+					"Val": structpb.NewStringValue("req2"),
+				}},
+				Response: &structpb.Struct{Fields: map[string]*structpb.Value{
+					"Val": structpb.NewStringValue("resp2"),
+				}},
+			},
+		}},
+	}, {
+		name: "stream_wihtout_logging_req_resp",
+		ss: &fakeServerStream{
+			incomingCtx: metadata.NewIncomingContext(context.Background(), metadata.New(map[string]string{
+				"authorization": jwt,
+			})),
+		},
+		info: &grpc.StreamServerInfo{
+			FullMethod: "/ExampleService/ExampleMethod",
+		},
+		auditRules: []*alpb.AuditRule{{
+			Selector:  "/ExampleService/ExampleMethod",
+			Directive: alpb.AuditRuleDirectiveDefault,
+			LogType:   "DATA_ACCESS",
+		}},
+		handler: func(srv interface{}, ss grpc.ServerStream) error {
+			logReq, _ := LogReqFromCtx(ss.Context())
+			logReq.Payload.ResourceName = "ExampleResourceName"
+			ss.RecvMsg(&msg{Val: "req1"})
+			ss.SendMsg(&msg{Val: "resp1"})
+			ss.RecvMsg(&msg{Val: "req2"})
+			ss.SendMsg(&msg{Val: "resp2"})
+			return nil
+		},
+		wantLogReqs: []*alpb.AuditLogRequest{{
+			Type: alpb.AuditLogRequest_DATA_ACCESS,
+			Payload: &calpb.AuditLog{
+				ServiceName:  "ExampleService",
+				MethodName:   "/ExampleService/ExampleMethod",
+				ResourceName: "ExampleResourceName",
+				AuthenticationInfo: &calpb.AuthenticationInfo{
+					PrincipalEmail: "user@example.com",
+				},
+			},
+		}, {
+			Type: alpb.AuditLogRequest_DATA_ACCESS,
+			Payload: &calpb.AuditLog{
+				ServiceName:  "ExampleService",
+				MethodName:   "/ExampleService/ExampleMethod",
+				ResourceName: "ExampleResourceName",
+				AuthenticationInfo: &calpb.AuthenticationInfo{
+					PrincipalEmail: "user@example.com",
+				},
+			},
+		}},
+	}, {
+		name: "stream_wiht_logging_req_only",
+		ss: &fakeServerStream{
+			incomingCtx: metadata.NewIncomingContext(context.Background(), metadata.New(map[string]string{
+				"authorization": jwt,
+			})),
+		},
+		info: &grpc.StreamServerInfo{
+			FullMethod: "/ExampleService/ExampleMethod",
+		},
+		auditRules: []*alpb.AuditRule{{
+			Selector:  "/ExampleService/ExampleMethod",
+			Directive: alpb.AuditRuleDirectiveRequestOnly,
+			LogType:   "DATA_ACCESS",
+		}},
+		handler: func(srv interface{}, ss grpc.ServerStream) error {
+			logReq, _ := LogReqFromCtx(ss.Context())
+			logReq.Payload.ResourceName = "ExampleResourceName"
+			ss.RecvMsg(&msg{Val: "req1"})
+			ss.SendMsg(&msg{Val: "resp1"})
+			ss.RecvMsg(&msg{Val: "req2"})
+			ss.SendMsg(&msg{Val: "resp2"})
+			return nil
+		},
+		wantLogReqs: []*alpb.AuditLogRequest{{
+			Type: alpb.AuditLogRequest_DATA_ACCESS,
+			Payload: &calpb.AuditLog{
+				ServiceName:  "ExampleService",
+				MethodName:   "/ExampleService/ExampleMethod",
+				ResourceName: "ExampleResourceName",
+				AuthenticationInfo: &calpb.AuthenticationInfo{
+					PrincipalEmail: "user@example.com",
+				},
+				Request: &structpb.Struct{Fields: map[string]*structpb.Value{
+					"Val": structpb.NewStringValue("req1"),
+				}},
+			},
+		}, {
+			Type: alpb.AuditLogRequest_DATA_ACCESS,
+			Payload: &calpb.AuditLog{
+				ServiceName:  "ExampleService",
+				MethodName:   "/ExampleService/ExampleMethod",
+				ResourceName: "ExampleResourceName",
+				AuthenticationInfo: &calpb.AuthenticationInfo{
+					PrincipalEmail: "user@example.com",
+				},
+				Request: &structpb.Struct{Fields: map[string]*structpb.Value{
+					"Val": structpb.NewStringValue("req2"),
+				}},
+			},
+		}},
+	}, {
+		name: "audit_rule_is_inapplicable",
+		ss: &fakeServerStream{
+			incomingCtx: metadata.NewIncomingContext(context.Background(), metadata.New(map[string]string{
+				"authorization": jwt,
+			})),
+		},
+		info: &grpc.StreamServerInfo{
+			FullMethod: "/ExampleService/ExampleMethod",
+		},
+		auditRules: []*alpb.AuditRule{{
+			Selector:  "/ExampleService/OtherMethod",
+			Directive: alpb.AuditRuleDirectiveDefault,
+			LogType:   "DATA_ACCESS",
+		}},
+		handler: func(srv interface{}, ss grpc.ServerStream) error {
+			logReq, _ := LogReqFromCtx(ss.Context())
+			logReq.Payload.ResourceName = "ExampleResourceName"
+			ss.RecvMsg(&msg{Val: "req1"})
+			ss.SendMsg(&msg{Val: "resp1"})
+			return nil
+		},
+	}, {
+		name: "fail_to_retrieve_principal",
+		ss: &fakeServerStream{
+			incomingCtx: metadata.NewIncomingContext(context.Background(), metadata.New(map[string]string{
+				"authorization": "banana",
+			})),
+		},
+		info: &grpc.StreamServerInfo{
+			FullMethod: "/ExampleService/ExampleMethod",
+		},
+		auditRules: []*alpb.AuditRule{{
+			Selector:  "/ExampleService/OtherMethod",
+			Directive: alpb.AuditRuleDirectiveDefault,
+			LogType:   "DATA_ACCESS",
+		}},
+		handler: func(srv interface{}, ss grpc.ServerStream) error {
+			logReq, _ := LogReqFromCtx(ss.Context())
+			logReq.Payload.ResourceName = "ExampleResourceName"
+			ss.RecvMsg(&msg{Val: "req1"})
+			ss.SendMsg(&msg{Val: "resp1"})
+			return nil
+		},
+	}, {
+		name: "handler_error",
+		ss: &fakeServerStream{
+			incomingCtx: metadata.NewIncomingContext(context.Background(), metadata.New(map[string]string{
+				"authorization": jwt,
+			})),
+		},
+		info: &grpc.StreamServerInfo{
+			FullMethod: "/ExampleService/ExampleMethod",
+		},
+		auditRules: []*alpb.AuditRule{{
+			Selector:  "/ExampleService/OtherMethod",
+			Directive: alpb.AuditRuleDirectiveDefault,
+			LogType:   "DATA_ACCESS",
+		}},
+		handler: func(srv interface{}, ss grpc.ServerStream) error {
+			return status.Error(codes.Internal, "something is wrong")
+		},
+		wantErrSubstr: "something is wrong",
+	}}
+
+	for _, tc := range cases {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			i := &Interceptor{Rules: tc.auditRules}
+
+			r := &fakeServer{}
+			s := grpc.NewServer()
+			t.Cleanup(s.Stop)
+
+			alpb.RegisterAuditLogAgentServer(s, r)
+			lis, err := net.Listen("tcp", "localhost:0")
+			if err != nil {
+				t.Fatal(err)
+			}
+			go func(t *testing.T, s *grpc.Server, lis net.Listener) {
+				err := s.Serve(lis)
+				if err != nil {
+					// TODO: it may be worth validating this scenario. #47
+					fmt.Printf("net.Listen(tcp, localhost:0) serve failed: %v", err)
+				}
+			}(t, s, lis)
+			p, err := remote.NewProcessor(lis.Addr().String())
+			if err != nil {
+				t.Fatal(err)
+			}
+			c, err := NewClient(WithBackend(p))
+			if err != nil {
+				t.Fatal(err)
+			}
+			i.Client = c
+
+			fromRawJWT := &security.FromRawJWT{
+				FromRawJWT: []*alpb.FromRawJWT{{
+					Key:    "authorization",
+					Prefix: "Bearer ",
+				}},
+			}
+			i.SecurityContext = fromRawJWT
+
+			gotErr := i.StreamInterceptor(nil, tc.ss, tc.info, tc.handler)
+			if diff := errutil.DiffSubstring(gotErr, tc.wantErrSubstr); diff != "" {
+				t.Errorf("UnaryInterceptor(...) got unexpected error substring: %v", diff)
+			}
+
+			for i, lr := range r.gotReqs {
+				if lr.Operation == nil || lr.Operation.Id == "" {
+					t.Errorf("StreamInterceptor(...) gotReqs[%d] missing operation id", i)
+				}
+				// Nil the operation for easy comparison below.
+				lr.Operation = nil
+			}
+
+			if diff := cmp.Diff(tc.wantLogReqs, r.gotReqs, protocmp.Transform()); diff != "" {
+				t.Errorf("StreamInterceptor(...) got diff in automatically emitted log requests (-want, +got): %v", diff)
 			}
 
 			if err := c.Stop(); err != nil {
