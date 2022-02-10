@@ -166,15 +166,16 @@ public class AuditLoggingServerInterceptor<ReqT extends Message> implements Serv
       RespT response,
       AuditLog.Builder logBuilder,
       LogEntryOperation logEntryOperation) {
+    AuditLog.Builder logBuilderCopy = logBuilder.build().toBuilder();
     if (selector.getDirective().shouldLogResponse() && response != null) {
-      logBuilder.setResponse(messageToStruct(response));
+      logBuilderCopy.setResponse(messageToStruct(response));
     }
     if (selector.getDirective().shouldLogRequest() && request != null) {
-      logBuilder.setRequest(messageToStruct(request));
+      logBuilderCopy.setRequest(messageToStruct(request));
     }
 
     AuditLogRequest.Builder builder = AuditLogRequest.newBuilder();
-    builder.setPayload(logBuilder.build());
+    builder.setPayload(logBuilderCopy.build());
     builder.setType(selector.getLogType());
     builder.setOperation(logEntryOperation);
 
