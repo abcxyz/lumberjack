@@ -66,7 +66,7 @@ public class LoggingClient {
       if (ConfigUtils.shouldFailClose(logMode)) {
         throw new LogProcessingException("Fail close enabled and ran into exception while audit logging.", e);
       } else {
-        log.warning("Fail close is disabled. Exception occurred while attempting to audit log, so "
+        log.warning("Exception occurred while attempting to audit log, "
             + "continuing without audit logging: " + e.getMessage());
       }
     }
