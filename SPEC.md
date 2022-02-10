@@ -144,8 +144,12 @@ Example (edited for brevity):
 ```
 
 ## Streaming Calls
+
 ### Server -> Client streaming
-A log is created for each response (message sent from server). If a request has been sent before the request occurred, and we haven't logged that request, we add it as part of the audit log. 
+
+A log is created for each response (message sent from server). If a request has
+been sent before the request occurred, and we haven't logged that request, we
+add it as part of the audit log.
 
 Example (edited for brevity):
 
@@ -190,10 +194,16 @@ Example (edited for brevity):
   }
 ```
 
-In this example, the client sent a single request (for 3 places of fibonacci) and the server responded with 3 separate responses. Each of those responses have been audit logged, and the first response includes the request in addition to the response.
+In this example, the client sent a single request (for 3 places of fibonacci)
+and the server responded with 3 separate responses. Each of those responses have
+been audit logged, and the first response includes the request in addition to
+the response.
 
 ### Client -> Server streaming
-We attempt to pair requests (message from client) with responses in a best-effort fashion. However, if another request comes in before a response occurs, we log the previously unlogged requests without responses attached. 
+
+We attempt to pair requests (message from client) with responses in a
+best-effort fashion. However, if another request comes in before a response
+occurs, we log the previously unlogged requests without responses attached.
 
 Example (edited for brevity):
 
@@ -239,12 +249,22 @@ Example (edited for brevity):
   }
 ```
 
-In this example, the client sent 3 numbers for the server to add up (1, 2, 3). Each of those requests got an audit log, and the last request additionally was paired with the response (6). 
+In this example, the client sent 3 numbers for the server to add up (1, 2, 3).
+Each of those requests got an audit log, and the last request additionally was
+paired with the response (6).
 
 ### Bi-Directional Streaming
-Bi-directional streaming is handled similarly to both of the above, in that we try to best-effort pair requests and responses, but we only log each request and response once. 
 
-TODO: add demonstrating example once we have a bi-directional streaming integ test
+Bi-directional streaming is handled similarly to both of the above, in that we
+try to best-effort pair requests and responses, but we only log each request and
+response once.
+
+TODO: add demonstrating example once we have a bi-directional streaming integ
+test
 
 ### Operation Fields
-In the examples above we have included the "operation" fields. These fields are automatically added, and the id + producer within the operation block form a unique key that can be used to correlate all request/response values within a single connection/streaming session.
+
+In the examples above we have included the "operation" fields. These fields are
+automatically added, and the id + producer within the operation block form a
+unique key that can be used to correlate all request/response values within a
+single connection/streaming session.
