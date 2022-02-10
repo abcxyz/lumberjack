@@ -40,6 +40,11 @@ type Config struct {
 	// This config is only used for auto audit logging.
 	// When auto audit logging is not used, setting this field has no effect.
 	Rules []*AuditRule `yaml:"rules,omitempty"`
+
+	// LogMode specifies whether the audit logger should fail open or close.
+	// If fail-close is not chosen, the audit logger will try to swallow any
+	// errors that occur, and not impede the application in any way.
+	LogMode AuditLogRequest_LogMode `yaml: "log_mode,omitempty"`
 }
 
 // Validate checks if the config is valid.
@@ -93,13 +98,18 @@ func (cfg *Config) SetDefault() {
 	}
 }
 
+// ShouldFailClose returns true only if FAIL_CLOSE is explicitly configured. On BEST_EFFORT or LOG_MODE_UNSPECIFIED (the default) then return false.
+func (cfg *Config) ShouldFailClose() bool {
+	return cfg.LogMode == AuditLogRequest_FAIL_CLOSE
+}
+
 // Backend is the remote backend service to send audit logs to.
 // The backend must be a gRPC service that implements protos/v1alpha1/audit_log_agent.proto.
 type Backend struct {
 	// Address is the remote backend address. It must be set.
 	Address string `yaml:"address,omitempty" env:"BACKEND_ADDRESS,overwrite"`
 
-	// InsecureEnabled indicates whehter to insecurely connects to the backend.
+	// InsecureEnabled indicates whether to insecurely connect to the backend.
 	// This should be set to false for production usage.
 	InsecureEnabled bool `yaml:"insecure_enabled,omitempty" env:"BACKEND_INSECURE_ENABLED,overwrite"`
 

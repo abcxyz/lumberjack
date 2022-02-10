@@ -57,6 +57,7 @@ func TestUnaryInterceptor(t *testing.T) {
 		ctx           context.Context
 		auditRules    []*alpb.AuditRule
 		req           interface{}
+		failClose     bool
 		info          *grpc.UnaryServerInfo
 		handler       grpc.UnaryHandler
 		wantLogReq    *alpb.AuditLogRequest
@@ -72,6 +73,7 @@ func TestUnaryInterceptor(t *testing.T) {
 				Directive: alpb.AuditRuleDirectiveRequestAndResponse,
 				LogType:   "ADMIN_ACTIVITY",
 			}},
+			failClose: false,
 			info: &grpc.UnaryServerInfo{
 				FullMethod: "/ExampleService/ExampleMethod",
 			},
@@ -104,6 +106,7 @@ func TestUnaryInterceptor(t *testing.T) {
 				Directive: alpb.AuditRuleDirectiveRequestAndResponse,
 				LogType:   "DATA_ACCESS",
 			}},
+			failClose: false,
 			info: &grpc.UnaryServerInfo{
 				FullMethod: "/ExampleService/ExampleMethod",
 			},
@@ -123,6 +126,7 @@ func TestUnaryInterceptor(t *testing.T) {
 				Selector:  "/ExampleService/ExampleMethod",
 				Directive: alpb.AuditRuleDirectiveDefault,
 			}},
+			failClose: false,
 			info: &grpc.UnaryServerInfo{
 				FullMethod: "/ExampleService/ExampleMethod",
 			},
@@ -151,6 +155,7 @@ func TestUnaryInterceptor(t *testing.T) {
 				Selector:  "/ExampleService/ExampleMethod",
 				Directive: alpb.AuditRuleDirectiveRequestOnly,
 			}},
+			failClose: false,
 			info: &grpc.UnaryServerInfo{
 				FullMethod: "/ExampleService/ExampleMethod",
 			},
@@ -177,6 +182,7 @@ func TestUnaryInterceptor(t *testing.T) {
 			auditRules: []*alpb.AuditRule{{
 				Selector: "/ExampleService/Inapplicable",
 			}},
+			failClose: false,
 			info: &grpc.UnaryServerInfo{
 				FullMethod: "/ExampleService/ExampleMethod",
 			},
@@ -185,11 +191,12 @@ func TestUnaryInterceptor(t *testing.T) {
 			},
 		},
 		{
-			name: "malformed_method_info",
+			name: "malformed_method_info_fail_close",
 			ctx:  context.Background(),
 			auditRules: []*alpb.AuditRule{{
 				Selector: "*",
 			}},
+			failClose: true,
 			info: &grpc.UnaryServerInfo{
 				FullMethod: "bananas",
 			},
@@ -199,13 +206,28 @@ func TestUnaryInterceptor(t *testing.T) {
 			wantErrSubstr: `audit interceptor: failed capturing non-nil service name with regexp "^/{1,2}(.*?)/" from "bananas"`,
 		},
 		{
-			name: "unable_to_extract_principal",
+			name: "malformed_method_info_fail_open",
+			ctx:  context.Background(),
+			auditRules: []*alpb.AuditRule{{
+				Selector: "*",
+			}},
+			failClose: false,
+			info: &grpc.UnaryServerInfo{
+				FullMethod: "bananas",
+			},
+			handler: func(ctx context.Context, req interface{}) (interface{}, error) {
+				return nil, nil
+			},
+		},
+		{
+			name: "unable_to_extract_principal_fail_open",
 			ctx: metadata.NewIncomingContext(context.Background(), metadata.New(map[string]string{
 				"authorization": "bananas",
 			})),
 			auditRules: []*alpb.AuditRule{{
 				Selector: "*",
 			}},
+			failClose: false,
 			info: &grpc.UnaryServerInfo{
 				FullMethod: "/ExampleService/ExampleMethod",
 			},
@@ -214,7 +236,24 @@ func TestUnaryInterceptor(t *testing.T) {
 			},
 		},
 		{
-			name: "unable_to_convert_req_to_proto_struct",
+			name: "unable_to_extract_principal_fail_close",
+			ctx: metadata.NewIncomingContext(context.Background(), metadata.New(map[string]string{
+				"authorization": "bananas",
+			})),
+			auditRules: []*alpb.AuditRule{{
+				Selector: "*",
+			}},
+			failClose: true,
+			info: &grpc.UnaryServerInfo{
+				FullMethod: "/ExampleService/ExampleMethod",
+			},
+			handler: func(ctx context.Context, req interface{}) (interface{}, error) {
+				return nil, nil
+			},
+			wantErrSubstr: `audit interceptor failed to get request principal; this is likely caused a misconfiguration of audit client (security_context)`,
+		},
+		{
+			name: "unable_to_convert_req_to_proto_struct_fail_close",
 			ctx: metadata.NewIncomingContext(context.Background(), metadata.New(map[string]string{
 				"authorization": jwt,
 			})),
@@ -222,6 +261,7 @@ func TestUnaryInterceptor(t *testing.T) {
 				Selector:  "*",
 				Directive: alpb.AuditRuleDirectiveRequestAndResponse,
 			}},
+			failClose: true,
 			info: &grpc.UnaryServerInfo{
 				FullMethod: "/ExampleService/ExampleMethod",
 			},
@@ -233,13 +273,33 @@ func TestUnaryInterceptor(t *testing.T) {
 			req:           "bananas",
 			wantErrSubstr: "audit interceptor failed converting req into a Google struct proto",
 		},
+		{
+			name: "unable_to_convert_req_to_proto_struct_fail_open",
+			ctx: metadata.NewIncomingContext(context.Background(), metadata.New(map[string]string{
+				"authorization": jwt,
+			})),
+			auditRules: []*alpb.AuditRule{{
+				Selector:  "*",
+				Directive: alpb.AuditRuleDirectiveRequestAndResponse,
+			}},
+			failClose: false,
+			info: &grpc.UnaryServerInfo{
+				FullMethod: "/ExampleService/ExampleMethod",
+			},
+			handler: func(ctx context.Context, req interface{}) (interface{}, error) {
+				logReq, _ := LogReqFromCtx(ctx)
+				logReq.Payload.ResourceName = "ExampleResourceName"
+				return nil, nil
+			},
+			req: "bananas",
+		},
 	}
 	for _, tc := range tests {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
-			i := &Interceptor{Rules: tc.auditRules}
+			i := &Interceptor{Rules: tc.auditRules, FailClose: tc.failClose}
 
 			r := &fakeServer{}
 			s := grpc.NewServer()

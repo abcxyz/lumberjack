@@ -39,6 +39,7 @@ type Interceptor struct {
 	*Client
 	SecurityContext security.GRPCContext
 	Rules           []*alpb.AuditRule
+	FailClose       bool
 }
 
 // UnaryInterceptor is a gRPC unary interceptor that automatically emits application audit logs.
@@ -49,7 +50,7 @@ func (i *Interceptor) UnaryInterceptor(ctx context.Context, req interface{}, inf
 	mostRelevantRule := mostRelevantRule(info.FullMethod, i.Rules)
 	if mostRelevantRule == nil {
 		zlogger.Debug("no audit rule matching the method name", zap.String("method_name", info.FullMethod), zap.Any("audit_rules", i.Rules))
-		return handler(ctx, req)
+		return i.handleReturn(ctx, req, handler, nil)
 	}
 
 	logReq := &alpb.AuditLogRequest{Payload: &calpb.AuditLog{}}
@@ -64,16 +65,17 @@ func (i *Interceptor) UnaryInterceptor(ctx context.Context, req interface{}, inf
 	logReq.Payload.MethodName = info.FullMethod
 	serviceName, err := serviceName(info.FullMethod)
 	if err != nil {
-		return nil, status.Errorf(codes.FailedPrecondition, "audit interceptor: %v", err)
+		return i.handleReturn(ctx, req, handler, status.Errorf(codes.FailedPrecondition, "audit interceptor: %v", err))
 	}
 	logReq.Payload.ServiceName = serviceName
 
 	// Autofill `Payload.AuthenticationInfo.PrincipalEmail`.
 	principal, err := i.SecurityContext.RequestPrincipal(ctx)
 	if err != nil {
-		zlogger.Warn("audit interceptor failed to get request principal; this is likely caused a misconfiguration of audit client (security_context)",
-			zap.Any("security_context", i.SecurityContext), zap.Error(err))
-		return handler(ctx, req)
+		zlogger.Warn()
+		return i.handleReturn(ctx, req, handler, status.Errorf(codes.FailedPrecondition,
+			"audit interceptor failed to get request principal; this is likely caused a misconfiguration of audit client (security_context): %v %v",
+			zap.Any("security_context", i.SecurityContext), zap.Error(err)))
 	}
 	logReq.Payload.AuthenticationInfo = &calpb.AuthenticationInfo{PrincipalEmail: principal}
 
@@ -81,7 +83,8 @@ func (i *Interceptor) UnaryInterceptor(ctx context.Context, req interface{}, inf
 	d := mostRelevantRule.Directive
 	if d == alpb.AuditRuleDirectiveRequestAndResponse || d == alpb.AuditRuleDirectiveRequestOnly {
 		if reqStruct, err := toProtoStruct(req); err != nil {
-			return nil, status.Errorf(codes.Internal, "audit interceptor failed converting req into a Google struct proto: %v", err)
+			return i.handleReturn(ctx, req, handler, status.Errorf(codes.Internal,
+				"audit interceptor failed converting req into a Google struct proto: %v", err))
 		} else {
 			logReq.Payload.Request = reqStruct
 		}
@@ -98,13 +101,15 @@ func (i *Interceptor) UnaryInterceptor(ctx context.Context, req interface{}, inf
 	handlerResp, handlerErr := handler(ctx, req)
 	if handlerErr != nil {
 		// TODO(#96): Consider emitting an audit log when the RPC call fails.
+		// These errors would be from outside this code. Therefore, we leave the error as-is.
 		return handlerResp, handlerErr
 	}
 
 	// Autofill `Payload.Response`.
 	if d == alpb.AuditRuleDirectiveRequestAndResponse {
 		if respStruct, err := toProtoStruct(handlerResp); err != nil {
-			return nil, status.Errorf(codes.Internal, "audit interceptor failed converting resp into a Google struct proto: %v", err)
+			return i.handleReturnWithResponse(handlerResp, status.Errorf(codes.Internal,
+				"audit interceptor failed converting resp into a Google struct proto: %v", err))
 		} else {
 			logReq.Payload.Response = respStruct
 		}
@@ -112,10 +117,31 @@ func (i *Interceptor) UnaryInterceptor(ctx context.Context, req interface{}, inf
 
 	// Emits the log in best-effort logging mode.
 	if err := i.Log(ctx, logReq); err != nil {
-		return nil, status.Errorf(codes.Internal, "audit interceptor failed to emit log: %v", err)
+		return i.handleReturnWithResponse(handlerResp, status.Errorf(codes.Internal, "audit interceptor failed to emit log: %v", err))
 	}
 
 	return handlerResp, handlerErr
+}
+
+func (i *Interceptor) handleReturn(ctx context.Context, req interface{}, handler grpc.UnaryHandler, err error) (interface{}, error) {
+	if i.FailClose && err != nil {
+		return nil, err
+	} else {
+		// There was an error, but we are failing open.
+		zlogger := zlogger.FromContext(ctx)
+		zlogger.Warn("Fail close is disabled. Error occurred while attempting to audit log, but continuing without audit logging or raising error.",
+			zap.Error(err))
+		return handler(ctx, req)
+	}
+}
+
+func (i *Interceptor) handleReturnWithResponse(handlerResp interface{}, err error) (interface{}, error) {
+	if i.FailClose && err != nil {
+		return handlerResp, err
+	} else {
+		// There was an error, but we are failing open.
+		return handlerResp, nil
+	}
 }
 
 var serviceNameRegexp = regexp.MustCompile("^/{1,2}(.*?)/")
