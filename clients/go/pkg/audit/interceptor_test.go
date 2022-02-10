@@ -20,13 +20,11 @@ import (
 	"net"
 	"testing"
 
-	alpb "github.com/abcxyz/lumberjack/clients/go/apis/v1alpha1"
 	"github.com/abcxyz/lumberjack/clients/go/pkg/errutil"
 	"github.com/abcxyz/lumberjack/clients/go/pkg/remote"
 	"github.com/abcxyz/lumberjack/clients/go/pkg/security"
 	"github.com/abcxyz/lumberjack/clients/go/pkg/testutil"
 	"github.com/google/go-cmp/cmp"
-	calpb "google.golang.org/genproto/googleapis/cloud/audit"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
@@ -34,6 +32,9 @@ import (
 	grpcstatus "google.golang.org/grpc/status"
 	"google.golang.org/protobuf/testing/protocmp"
 	"google.golang.org/protobuf/types/known/structpb"
+
+	alpb "github.com/abcxyz/lumberjack/clients/go/apis/v1alpha1"
+	calpb "google.golang.org/genproto/googleapis/cloud/audit"
 )
 
 type fakeServer struct {

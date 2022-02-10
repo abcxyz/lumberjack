@@ -21,20 +21,19 @@ import (
 	"regexp"
 	"sync"
 
+	"github.com/abcxyz/lumberjack/clients/go/pkg/security"
+	"github.com/abcxyz/lumberjack/clients/go/pkg/zlogger"
+	"github.com/google/uuid"
 	"go.uber.org/zap"
+	"google.golang.org/genproto/googleapis/logging/v2"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/structpb"
 
-	calpb "google.golang.org/genproto/googleapis/cloud/audit"
-	"google.golang.org/genproto/googleapis/logging/v2"
-
 	alpb "github.com/abcxyz/lumberjack/clients/go/apis/v1alpha1"
-	"github.com/abcxyz/lumberjack/clients/go/pkg/security"
-	"github.com/abcxyz/lumberjack/clients/go/pkg/zlogger"
-	"github.com/google/uuid"
+	calpb "google.golang.org/genproto/googleapis/cloud/audit"
 )
 
 type auditLogReqKey struct{}
