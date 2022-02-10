@@ -204,7 +204,7 @@ public class LoggingClientTests {
         .thenThrow(new IllegalArgumentException());
 
     // Exception is thrown
-    Assertions.assertThrows(IllegalArgumentException.class, () -> loggingClient.log(logRequest));
+    Assertions.assertThrows(LogProcessingException.class, () -> loggingClient.log(logRequest));
 
     // No other processors were run after the exception was thrown.
     verify(filteringProcessor, times(0)).process(logRequest);
