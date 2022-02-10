@@ -51,27 +51,29 @@ type Interceptor struct {
 // TODO(#95): add support for fail-close/best-effort logging.
 func (i *Interceptor) UnaryInterceptor(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error) {
 	zlogger := zlogger.FromContext(ctx)
-	mostRelevantRule := mostRelevantRule(info.FullMethod, i.Rules)
-	if mostRelevantRule == nil {
+	r := mostRelevantRule(info.FullMethod, i.Rules)
+	if r == nil {
 		zlogger.Debug("no audit rule matching the method name", zap.String("method_name", info.FullMethod), zap.Any("audit_rules", i.Rules))
 		return handler(ctx, req)
 	}
 
-	logReq := &alpb.AuditLogRequest{Payload: &calpb.AuditLog{}}
-
-	// Set log type.
-	logReq.Type = alpb.AuditLogRequest_UNSPECIFIED
-	if t, ok := alpb.AuditLogRequest_LogType_value[mostRelevantRule.LogType]; ok {
-		logReq.Type = alpb.AuditLogRequest_LogType(t)
-	}
-
-	// Autofill `Payload.ServiceName` and `Payload.MethodName`.
-	logReq.Payload.MethodName = info.FullMethod
 	serviceName, err := serviceName(info.FullMethod)
 	if err != nil {
 		return nil, status.Errorf(codes.FailedPrecondition, "audit interceptor: %v", err)
 	}
-	logReq.Payload.ServiceName = serviceName
+
+	logReq := &alpb.AuditLogRequest{
+		Payload: &calpb.AuditLog{
+			ServiceName: serviceName,
+			MethodName:  info.FullMethod,
+		},
+	}
+
+	// Set log type.
+	logReq.Type = alpb.AuditLogRequest_UNSPECIFIED
+	if t, ok := alpb.AuditLogRequest_LogType_value[r.LogType]; ok {
+		logReq.Type = alpb.AuditLogRequest_LogType(t)
+	}
 
 	// Autofill `Payload.AuthenticationInfo.PrincipalEmail`.
 	principal, err := i.SecurityContext.RequestPrincipal(ctx)
@@ -83,12 +85,9 @@ func (i *Interceptor) UnaryInterceptor(ctx context.Context, req interface{}, inf
 	logReq.Payload.AuthenticationInfo = &calpb.AuthenticationInfo{PrincipalEmail: principal}
 
 	// Autofill `Payload.Request`.
-	d := mostRelevantRule.Directive
-	if d == alpb.AuditRuleDirectiveRequestAndResponse || d == alpb.AuditRuleDirectiveRequestOnly {
-		if reqStruct, err := toProtoStruct(req); err != nil {
-			return nil, status.Errorf(codes.Internal, "audit interceptor failed converting req into a proto struct: %v", err)
-		} else {
-			logReq.Payload.Request = reqStruct
+	if shouldLogReq(r) {
+		if err := setReq(logReq, req); err != nil {
+			return nil, err
 		}
 	}
 
@@ -100,18 +99,16 @@ func (i *Interceptor) UnaryInterceptor(ctx context.Context, req interface{}, inf
 	// req in the context. For example, the handler can:
 	//   - overwrite a log req field we set previously
 	//   - fill the field `Payload.ResourceName`
-	handlerResp, handlerErr := handler(ctx, req)
+	resp, handlerErr := handler(ctx, req)
 	if handlerErr != nil {
 		// TODO(#96): Consider emitting an audit log when the RPC call fails.
-		return handlerResp, handlerErr
+		return resp, handlerErr
 	}
 
 	// Autofill `Payload.Response`.
-	if d == alpb.AuditRuleDirectiveRequestAndResponse {
-		if respStruct, err := toProtoStruct(handlerResp); err != nil {
-			return nil, status.Errorf(codes.Internal, "audit interceptor failed converting resp into a proto struct: %v", err)
-		} else {
-			logReq.Payload.Response = respStruct
+	if shouldLogResp(r) {
+		if err := setResp(logReq, resp); err != nil {
+			return nil, err
 		}
 	}
 
@@ -120,7 +117,7 @@ func (i *Interceptor) UnaryInterceptor(ctx context.Context, req interface{}, inf
 		return nil, status.Errorf(codes.Internal, "audit interceptor failed to emit log: %v", err)
 	}
 
-	return handlerResp, handlerErr
+	return resp, handlerErr
 }
 
 // StreamInterceptor intercepts gRPC stream calls to inject audit logging capability.
@@ -134,9 +131,17 @@ func (i *Interceptor) StreamInterceptor(srv interface{}, ss grpc.ServerStream, i
 		return handler(srv, ss)
 	}
 
+	serviceName, err := serviceName(info.FullMethod)
+	if err != nil {
+		return status.Errorf(codes.FailedPrecondition, "audit interceptor: %v", err)
+	}
+
 	// Build a baseline log request to be shared by all stream calls.
 	logReq := &alpb.AuditLogRequest{
-		Payload: &calpb.AuditLog{},
+		Payload: &calpb.AuditLog{
+			ServiceName: serviceName,
+			MethodName:  info.FullMethod,
+		},
 		// Set operation to associate logs from the same stream.
 		Operation: &logging.LogEntryOperation{
 			Producer: info.FullMethod,
@@ -149,14 +154,6 @@ func (i *Interceptor) StreamInterceptor(srv interface{}, ss grpc.ServerStream, i
 	if t, ok := alpb.AuditLogRequest_LogType_value[r.LogType]; ok {
 		logReq.Type = alpb.AuditLogRequest_LogType(t)
 	}
-
-	// Autofill `Payload.ServiceName` and `Payload.MethodName`.
-	logReq.Payload.MethodName = info.FullMethod
-	serviceName, err := serviceName(info.FullMethod)
-	if err != nil {
-		return status.Errorf(codes.FailedPrecondition, "audit interceptor: %v", err)
-	}
-	logReq.Payload.ServiceName = serviceName
 
 	// Autofill `Payload.AuthenticationInfo.PrincipalEmail`.
 	principal, err := i.SecurityContext.RequestPrincipal(ctx)
@@ -220,14 +217,12 @@ func (ss *serverStreamWrapper) RecvMsg(m interface{}) error {
 
 	lr := ss.swapLastReq(m)
 	if lr != nil {
-		if ss.rule.Directive == alpb.AuditRuleDirectiveRequestAndResponse || ss.rule.Directive == alpb.AuditRuleDirectiveRequestOnly {
-			if ms, err := toProtoStruct(lr); err != nil {
-				return status.Errorf(codes.Internal, "audit interceptor failed converting req into a proto struct: %v", err)
-			} else {
-				logReq.Payload.Request = ms
-				if err := ss.c.Log(ss.ServerStream.Context(), logReq); err != nil {
-					return status.Errorf(codes.Internal, "audit interceptor failed to emit log: %v", err)
-				}
+		if shouldLogReq(ss.rule) {
+			if err := setReq(logReq, lr); err != nil {
+				return err
+			}
+			if err := ss.c.Log(ss.ServerStream.Context(), logReq); err != nil {
+				return status.Errorf(codes.Internal, "audit interceptor failed to emit log: %v", err)
 			}
 		}
 	}
@@ -243,20 +238,16 @@ func (ss *serverStreamWrapper) SendMsg(m interface{}) error {
 	// Otherwise, this log entry will only contain the response.
 	lr := ss.popLastReq()
 	if lr != nil {
-		if ss.rule.Directive == alpb.AuditRuleDirectiveRequestAndResponse || ss.rule.Directive == alpb.AuditRuleDirectiveRequestOnly {
-			if ms, err := toProtoStruct(lr); err != nil {
-				return status.Errorf(codes.Internal, "audit interceptor failed converting req into a proto struct: %v", err)
-			} else {
-				logReq.Payload.Request = ms
+		if shouldLogReq(ss.rule) {
+			if err := setReq(logReq, lr); err != nil {
+				return err
 			}
 		}
 	}
 
-	if ss.rule.Directive == alpb.AuditRuleDirectiveRequestAndResponse {
-		if ms, err := toProtoStruct(m); err != nil {
-			return status.Errorf(codes.Internal, "audit interceptor failed converting resp into a proto struct: %v", err)
-		} else {
-			logReq.Payload.Response = ms
+	if shouldLogResp(ss.rule) {
+		if err := setResp(logReq, m); err != nil {
+			return err
 		}
 	}
 
@@ -266,6 +257,32 @@ func (ss *serverStreamWrapper) SendMsg(m interface{}) error {
 
 	// TODO(#96): Consider emitting an audit log when the RPC call fails.
 	return ss.ServerStream.SendMsg(m)
+}
+
+func setReq(logReq *alpb.AuditLogRequest, m interface{}) error {
+	ms, err := toProtoStruct(m)
+	if err != nil {
+		return status.Errorf(codes.Internal, "audit interceptor failed converting req into a proto struct: %v", err)
+	}
+	logReq.Payload.Request = ms
+	return nil
+}
+
+func setResp(logReq *alpb.AuditLogRequest, m interface{}) error {
+	ms, err := toProtoStruct(m)
+	if err != nil {
+		return status.Errorf(codes.Internal, "audit interceptor failed converting resp into a proto struct: %v", err)
+	}
+	logReq.Payload.Response = ms
+	return nil
+}
+
+func shouldLogReq(r *alpb.AuditRule) bool {
+	return r.Directive == alpb.AuditRuleDirectiveRequestAndResponse || r.Directive == alpb.AuditRuleDirectiveRequestOnly
+}
+
+func shouldLogResp(r *alpb.AuditRule) bool {
+	return r.Directive == alpb.AuditRuleDirectiveRequestAndResponse
 }
 
 var serviceNameRegexp = regexp.MustCompile("^/{1,2}(.*?)/")
