@@ -22,7 +22,9 @@ import com.abcxyz.lumberjack.auditlogclient.processor.LogProcessor;
 import com.abcxyz.lumberjack.auditlogclient.processor.LogProcessor.LogBackend;
 import com.abcxyz.lumberjack.auditlogclient.processor.LogProcessor.LogMutator;
 import com.abcxyz.lumberjack.auditlogclient.processor.LogProcessor.LogValidator;
+import com.abcxyz.lumberjack.auditlogclient.utils.ConfigUtils;
 import com.abcxyz.lumberjack.v1alpha1.AuditLogRequest;
+import com.abcxyz.lumberjack.v1alpha1.AuditLogRequest.LogMode;
 import java.util.List;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
@@ -56,8 +58,12 @@ public class LoggingClient {
       for (LogProcessor processor : backends) {
         auditLogRequest = processor.process(auditLogRequest);
       }
-    } catch (Exception e) { // TODO: Should we swallow throwable?
-      if (config.shouldFailClose()) {
+    } catch (Exception e) { // TODO(#157): Should we swallow throwable?
+      // Override config's log mode if the request has explicitly specified log mode.
+      LogMode logMode = auditLogRequest.getMode() == null
+          || auditLogRequest.getMode().equals(LogMode.LOG_MODE_UNSPECIFIED) ?
+          config.getLogMode() : auditLogRequest.getMode();
+      if (ConfigUtils.shouldFailClose(logMode)) {
         throw new LogProcessingException("Fail close enabled and ran into exception while audit logging.", e);
       } else {
         log.warning("Fail close is disabled. Exception occurred while attempting to audit log, so "

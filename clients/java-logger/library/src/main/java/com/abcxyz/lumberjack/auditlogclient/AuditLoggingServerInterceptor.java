@@ -20,6 +20,7 @@ import com.abcxyz.lumberjack.auditlogclient.config.AuditLoggingConfiguration;
 import com.abcxyz.lumberjack.auditlogclient.config.Selector;
 import com.abcxyz.lumberjack.auditlogclient.exceptions.AuthorizationException;
 import com.abcxyz.lumberjack.auditlogclient.processor.LogProcessingException;
+import com.abcxyz.lumberjack.auditlogclient.utils.ConfigUtils;
 import com.abcxyz.lumberjack.v1alpha1.AuditLogRequest;
 import com.google.cloud.audit.AuditLog;
 import com.google.cloud.audit.AuthenticationInfo;
@@ -85,7 +86,7 @@ public class AuditLoggingServerInterceptor<ReqT extends Message> implements Serv
       principal = auditLoggingConfiguration.getSecurityContext().getPrincipal(headers);
     } catch (AuthorizationException e) {
       log.warning("Exception while trying to determine principal..");
-      if (auditLoggingConfiguration.shouldFailClose()) {
+      if (ConfigUtils.shouldFailClose(auditLoggingConfiguration.getLogMode())) {
         throw new IllegalStateException("Fail close enabled, and unable to determine principal.", e);
       } else {
         log.warning("Fail close is disabled. Principal was unable to be determined, but "

@@ -53,14 +53,6 @@ public class AuditLoggingConfiguration {
     return logMode == null ? LogMode.LOG_MODE_UNSPECIFIED : logMode;
   }
 
-  /**
-   * Returns whether we should fail close on errors. Unspecified (LOG_MODE_UNSPECIFIED)
-   * is handled equivalently to BEST_EFFORT, which is to not fail close.
-   */
-  public boolean shouldFailClose() {
-    return getLogMode().equals(LogMode.FAIL_CLOSE);
-  }
-
   @Data
   private class ConditionConfig {
     @JsonProperty("regex")

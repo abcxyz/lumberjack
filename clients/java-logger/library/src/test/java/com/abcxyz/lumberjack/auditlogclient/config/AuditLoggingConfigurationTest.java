@@ -16,23 +16,9 @@ public class AuditLoggingConfigurationTest {
     assertThat(config.getConditions()).isNull();
     assertThat(config.getRules().size()).isEqualTo(1);
     assertThat(config.getLogMode()).isEqualTo(LogMode.LOG_MODE_UNSPECIFIED);
-    assertThat(config.shouldFailClose()).isFalse();
 
     assertThat(module.backendContext(config)).isEqualTo(new BackendContext());
     assertThat(module.filters(config)).isEqualTo(new Filters());
   }
 
-  @Test
-  public void testLogMode() {
-    AuditLoggingModule module = new AuditLoggingModule();
-    AuditLoggingConfiguration config = module.auditLoggingConfiguration("log_mode.yml");
-    assertThat(config.getBackend()).isNull();
-    assertThat(config.getConditions()).isNull();
-    assertThat(config.getRules().size()).isEqualTo(1);
-    assertThat(config.getLogMode()).isEqualTo(LogMode.FAIL_CLOSE);
-    assertThat(config.shouldFailClose()).isTrue();
-
-    assertThat(module.backendContext(config)).isEqualTo(new BackendContext());
-    assertThat(module.filters(config)).isEqualTo(new Filters());
-  }
 }

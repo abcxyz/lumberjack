@@ -21,6 +21,7 @@ import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.when;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.lenient;
 
 import com.abcxyz.lumberjack.auditlogclient.config.AuditLoggingConfiguration;
 import com.abcxyz.lumberjack.auditlogclient.processor.CloudLoggingProcessor;
@@ -30,6 +31,7 @@ import com.abcxyz.lumberjack.auditlogclient.processor.RemoteProcessor;
 import com.abcxyz.lumberjack.auditlogclient.processor.RuntimeInfoProcessor;
 import com.abcxyz.lumberjack.auditlogclient.processor.ValidationProcessor;
 import com.abcxyz.lumberjack.v1alpha1.AuditLogRequest;
+import com.abcxyz.lumberjack.v1alpha1.AuditLogRequest.LogMode;
 import java.util.Collections;
 import java.util.List;
 import org.junit.jupiter.api.Test;
@@ -168,7 +170,7 @@ public class LoggingClientTests {
   @Test
   void failsOpen() throws LogProcessingException {
     // Set config to fail open
-    doReturn(false).when(auditLoggingConfiguration).shouldFailClose();
+    doReturn(LogMode.BEST_EFFORT).when(auditLoggingConfiguration).getLogMode();
     LoggingClient loggingClient =
         new LoggingClient(
             List.of(validationProcessor),
@@ -192,7 +194,7 @@ public class LoggingClientTests {
   @Test
   void failsClose() throws LogProcessingException {
     // Set config to fail close
-    doReturn(true).when(auditLoggingConfiguration).shouldFailClose();
+    doReturn(LogMode.FAIL_CLOSE).when(auditLoggingConfiguration).getLogMode();
     LoggingClient loggingClient =
         new LoggingClient(
             List.of(validationProcessor),
@@ -200,6 +202,30 @@ public class LoggingClientTests {
             List.of(cloudLoggingProcessor, remoteProcessor),
             auditLoggingConfiguration);
     AuditLogRequest logRequest = AuditLogRequest.newBuilder().getDefaultInstanceForType();
+    when(validationProcessor.process(logRequest))
+        .thenThrow(new IllegalArgumentException());
+
+    // Exception is thrown
+    Assertions.assertThrows(LogProcessingException.class, () -> loggingClient.log(logRequest));
+
+    // No other processors were run after the exception was thrown.
+    verify(filteringProcessor, times(0)).process(logRequest);
+    verify(runtimeInfoProcessor, times(0)).process(logRequest);
+    verify(cloudLoggingProcessor, times(0)).process(logRequest);
+    verify(remoteProcessor, times(0)).process(logRequest);
+  }
+
+  @Test
+  void requestLogModeValueOverridesConfig() throws LogProcessingException {
+    // Set config to fail open. We use lenient() here, as we don't expect this value to be used.
+    lenient().doReturn(LogMode.BEST_EFFORT).when(auditLoggingConfiguration).getLogMode();
+    LoggingClient loggingClient =
+        new LoggingClient(
+            List.of(validationProcessor),
+            List.of(filteringProcessor, runtimeInfoProcessor),
+            List.of(cloudLoggingProcessor, remoteProcessor),
+            auditLoggingConfiguration);
+    AuditLogRequest logRequest = AuditLogRequest.newBuilder().setMode(LogMode.FAIL_CLOSE).build();
     when(validationProcessor.process(logRequest))
         .thenThrow(new IllegalArgumentException());
 
