@@ -255,7 +255,7 @@ func toStructVal(monitoredResource *mrpb.MonitoredResource) (*structpb.Value, er
 	}
 	s := &structpb.Struct{}
 	if err := protojson.Unmarshal(b, s); err != nil {
-		return nil, fmt.Errorf("unmarshall error: %w", err)
+		return nil, fmt.Errorf("unmarshal error: %w", err)
 	}
 	val := &structpb.Value{
 		Kind: &structpb.Value_StructValue{StructValue: s},
