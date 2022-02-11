@@ -22,7 +22,7 @@ import (
 	"sync"
 
 	"github.com/abcxyz/lumberjack/clients/go/pkg/security"
-  "github.com/abcxyz/lumberjack/clients/go/pkg/util"
+	"github.com/abcxyz/lumberjack/clients/go/pkg/util"
 	"github.com/abcxyz/lumberjack/clients/go/pkg/zlogger"
 	"github.com/google/uuid"
 	"go.uber.org/zap"
@@ -56,12 +56,13 @@ func (i *Interceptor) UnaryInterceptor(ctx context.Context, req interface{}, inf
 	r := mostRelevantRule(info.FullMethod, i.Rules)
 	if r == nil {
 		zlogger.Debug("no audit rule matching the method name", zap.String("method_name", info.FullMethod), zap.Any("audit_rules", i.Rules))
-		return i.handleReturn(ctx, req, handler, nil)
+		// Interceptor not applied to this method, continue
+		return handler(ctx, req)
 	}
 
 	serviceName, err := serviceName(info.FullMethod)
 	if err != nil {
-		return nil, status.Errorf(codes.FailedPrecondition, "audit interceptor: %v", err)
+		return i.handleReturn(ctx, req, handler, status.Errorf(codes.FailedPrecondition, "audit interceptor: %v", err))
 	}
 
 	logReq := &alpb.AuditLogRequest{
@@ -69,7 +70,7 @@ func (i *Interceptor) UnaryInterceptor(ctx context.Context, req interface{}, inf
 			ServiceName: serviceName,
 			MethodName:  info.FullMethod,
 		},
-    Mode: i.LogMode,
+		Mode: i.LogMode,
 	}
 
 	// Set log type.
@@ -77,14 +78,6 @@ func (i *Interceptor) UnaryInterceptor(ctx context.Context, req interface{}, inf
 	if t, ok := alpb.AuditLogRequest_LogType_value[r.LogType]; ok {
 		logReq.Type = alpb.AuditLogRequest_LogType(t)
 	}
-
-	// Autofill `Payload.ServiceName` and `Payload.MethodName`.
-	logReq.Payload.MethodName = info.FullMethod
-	serviceName, err := serviceName(info.FullMethod)
-	if err != nil {
-		return i.handleReturn(ctx, req, handler, status.Errorf(codes.FailedPrecondition, "audit interceptor: %v", err))
-	}
-	logReq.Payload.ServiceName = serviceName
 
 	// Autofill `Payload.AuthenticationInfo.PrincipalEmail`.
 	principal, err := i.SecurityContext.RequestPrincipal(ctx)
@@ -132,7 +125,7 @@ func (i *Interceptor) UnaryInterceptor(ctx context.Context, req interface{}, inf
 
 	// TODO(#95): Needs to honor the log mode.
 	if err := i.Log(ctx, logReq); err != nil {
-		return i.handleReturnWithResponse(ctx, handlerResp, status.Errorf(codes.Internal, "audit interceptor failed to emit log: %v", err))
+		return i.handleReturnWithResponse(ctx, resp, status.Errorf(codes.Internal, "audit interceptor failed to emit log: %v", err))
 	}
 
 	return resp, handlerErr

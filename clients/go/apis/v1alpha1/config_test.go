@@ -35,7 +35,7 @@ rules:
 - selector: com.example.*
   directive: AUDIT
   log_type: ADMIN_ACTIVITY
-  log_mode: BEST_EFFORT`,
+log_mode: BEST_EFFORT`,
 		wantConfig: &Config{
 			Version: "v1alpha1",
 			Backend: &Backend{

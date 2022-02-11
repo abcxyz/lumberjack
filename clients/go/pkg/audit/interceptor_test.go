@@ -280,7 +280,7 @@ func TestUnaryInterceptor(t *testing.T) {
 			handler: func(ctx context.Context, req interface{}) (interface{}, error) {
 				return nil, nil
 			},
-			wantErrSubstr: `audit interceptor failed to get request principal; this is likely caused a misconfiguration of audit client (security_context)`,
+			wantErrSubstr: `audit interceptor failed to get request principal;`,
 		},
 		{
 			name: "unable_to_convert_req_to_proto_struct_fail_close",
@@ -301,7 +301,7 @@ func TestUnaryInterceptor(t *testing.T) {
 				return nil, nil
 			},
 			req:           "bananas",
-			wantErrSubstr: "audit interceptor failed converting req into a proto struct",
+			wantErrSubstr: "audit interceptor failed converting req into a Google struct",
 		},
 		{
 			name: "unable_to_convert_req_to_proto_struct_best_effort",
