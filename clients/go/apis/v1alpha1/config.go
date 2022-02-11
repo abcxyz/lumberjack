@@ -105,6 +105,7 @@ func (cfg *Config) SetDefault() {
 	}
 }
 
+// GetLogMode converts the LogMode string to a AuditLogRequest_LogMode.
 func (cfg *Config) GetLogMode() AuditLogRequest_LogMode {
 	return StringToLogMode[cfg.LogMode]
 }

@@ -22,6 +22,7 @@ import (
 
 	"github.com/abcxyz/lumberjack/clients/go/pkg/util"
 	"go.uber.org/multierr"
+	"go.uber.org/zap"
 
 	alpb "github.com/abcxyz/lumberjack/clients/go/apis/v1alpha1"
 	"github.com/abcxyz/lumberjack/clients/go/pkg/zlogger"
@@ -165,15 +166,15 @@ func (c *Client) Log(ctx context.Context, logReq *alpb.AuditLogRequest) error {
 	return nil
 }
 
-// handleReturn is intended to be a wrapper that handles the LogMode correctly, and returns errors or nil
-// depending on whether the config and request have specified that they want to fail close.
+// handleReturn is intended to be a wrapper that handles the LogMode correctly, and returns errors or
+// nil depending on whether the config and request have specified that they want to fail close.
 func (c *Client) handleReturn(ctx context.Context, err error, requestedLogMode alpb.AuditLogRequest_LogMode) error {
 	logger := zlogger.FromContext(ctx)
 	// If there is no error, just return nil.
 	if err == nil {
 		return nil
 	}
-	// Default to configuration value
+	// Default mode to configuration value
 	mode := c.logMode
 	// If a request specified log mode, overwrite
 	if requestedLogMode != alpb.AuditLogRequest_LOG_MODE_UNSPECIFIED {
@@ -184,6 +185,6 @@ func (c *Client) handleReturn(ctx context.Context, err error, requestedLogMode a
 		return err
 	}
 	// If there is an error, and we shouldn't fail close, log and return nil.
-	logger.Warnf("Continuing without audit logging.")
+	logger.Warn("Error occurred while attempting to audit log, continuing without audit logging.", zap.Error(err))
 	return nil
 }

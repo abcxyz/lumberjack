@@ -132,7 +132,7 @@ func (i *Interceptor) handleReturn(ctx context.Context, req interface{}, handler
 		if err != nil {
 			// There was an error, but we are failing open.
 			zlogger := zlogger.FromContext(ctx)
-			zlogger.Warn("Fail close is disabled. Error occurred while attempting to audit log, but continuing without audit logging or raising error.",
+			zlogger.Warn("Error occurred while attempting to audit log, but continuing without audit logging or raising error.",
 				zap.Error(err))
 		}
 		return handler(ctx, req)
@@ -149,7 +149,7 @@ func (i *Interceptor) handleReturnWithResponse(ctx context.Context, handlerResp 
 		if err != nil {
 			// There was an error, but we are failing open.
 			zlogger := zlogger.FromContext(ctx)
-			zlogger.Warn("Fail close is disabled. Error occurred while attempting to audit log, but continuing without audit logging or raising error.",
+			zlogger.Warn("Error occurred while attempting to audit log, but continuing without audit logging or raising error.",
 				zap.Error(err))
 		}
 		return handlerResp, nil
