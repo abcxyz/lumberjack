@@ -34,6 +34,7 @@ import com.abcxyz.lumberjack.v1alpha1.AuditLogRequest;
 import com.abcxyz.lumberjack.v1alpha1.AuditLogRequest.LogMode;
 import java.util.Collections;
 import java.util.List;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.Assertions;
@@ -52,6 +53,11 @@ public class LoggingClientTests {
   @Mock AuditLoggingConfiguration auditLoggingConfiguration;
 
   @InjectMocks LoggingClientBuilder loggingClientBuilder;
+
+  @BeforeEach
+  void setup() {
+    lenient().doReturn(LogMode.LOG_MODE_UNSPECIFIED).when(auditLoggingConfiguration).getLogMode();
+  }
 
   @Test
   void successfulClientCreate() {
