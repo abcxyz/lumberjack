@@ -598,7 +598,7 @@ func TestStreamInterceptor(t *testing.T) {
 			},
 		}},
 	}, {
-		name: "stream_wiht_logging_req_only",
+		name: "stream_with_logging_req_only",
 		ss: &fakeServerStream{
 			incomingCtx: metadata.NewIncomingContext(context.Background(), metadata.New(map[string]string{
 				"authorization": jwt,
