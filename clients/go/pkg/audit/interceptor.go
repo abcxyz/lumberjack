@@ -19,20 +19,25 @@ import (
 	"encoding/json"
 	"fmt"
 	"regexp"
+	"sync"
 
-	"github.com/abcxyz/lumberjack/clients/go/pkg/util"
+	"github.com/abcxyz/lumberjack/clients/go/pkg/security"
+  "github.com/abcxyz/lumberjack/clients/go/pkg/util"
+	"github.com/abcxyz/lumberjack/clients/go/pkg/zlogger"
+	"github.com/google/uuid"
 	"go.uber.org/zap"
+	"google.golang.org/genproto/googleapis/logging/v2"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/structpb"
 
-	calpb "google.golang.org/genproto/googleapis/cloud/audit"
-
 	alpb "github.com/abcxyz/lumberjack/clients/go/apis/v1alpha1"
-	"github.com/abcxyz/lumberjack/clients/go/pkg/security"
-	"github.com/abcxyz/lumberjack/clients/go/pkg/zlogger"
+	calpb "google.golang.org/genproto/googleapis/cloud/audit"
 )
+
+type auditLogReqKey struct{}
 
 // Interceptor contains the fields required for an interceptor
 // to autofill and emit audit logs.
@@ -48,17 +53,28 @@ type Interceptor struct {
 // TODO(#95): add support for fail-close/best-effort logging.
 func (i *Interceptor) UnaryInterceptor(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error) {
 	zlogger := zlogger.FromContext(ctx)
-	mostRelevantRule := mostRelevantRule(info.FullMethod, i.Rules)
-	if mostRelevantRule == nil {
+	r := mostRelevantRule(info.FullMethod, i.Rules)
+	if r == nil {
 		zlogger.Debug("no audit rule matching the method name", zap.String("method_name", info.FullMethod), zap.Any("audit_rules", i.Rules))
 		return i.handleReturn(ctx, req, handler, nil)
 	}
 
-	logReq := &alpb.AuditLogRequest{Payload: &calpb.AuditLog{}, Mode: i.LogMode}
+	serviceName, err := serviceName(info.FullMethod)
+	if err != nil {
+		return nil, status.Errorf(codes.FailedPrecondition, "audit interceptor: %v", err)
+	}
+
+	logReq := &alpb.AuditLogRequest{
+		Payload: &calpb.AuditLog{
+			ServiceName: serviceName,
+			MethodName:  info.FullMethod,
+		},
+    Mode: i.LogMode,
+	}
 
 	// Set log type.
 	logReq.Type = alpb.AuditLogRequest_UNSPECIFIED
-	if t, ok := alpb.AuditLogRequest_LogType_value[mostRelevantRule.LogType]; ok {
+	if t, ok := alpb.AuditLogRequest_LogType_value[r.LogType]; ok {
 		logReq.Type = alpb.AuditLogRequest_LogType(t)
 	}
 
@@ -74,14 +90,13 @@ func (i *Interceptor) UnaryInterceptor(ctx context.Context, req interface{}, inf
 	principal, err := i.SecurityContext.RequestPrincipal(ctx)
 	if err != nil {
 		return i.handleReturn(ctx, req, handler, status.Errorf(codes.FailedPrecondition,
-			"audit interceptor failed to get request principal; this is likely caused a misconfiguration of audit client (security_context): %v %v",
+			"audit interceptor failed to get request principal; this is likely a result of misconfiguration of audit client (security_context): %v %v",
 			zap.Any("security_context", i.SecurityContext), zap.Error(err)))
 	}
 	logReq.Payload.AuthenticationInfo = &calpb.AuthenticationInfo{PrincipalEmail: principal}
 
 	// Autofill `Payload.Request`.
-	d := mostRelevantRule.Directive
-	if d == alpb.AuditRuleDirectiveRequestAndResponse || d == alpb.AuditRuleDirectiveRequestOnly {
+	if shouldLogReq(r) {
 		if reqStruct, err := toProtoStruct(req); err != nil {
 			return i.handleReturn(ctx, req, handler, status.Errorf(codes.Internal,
 				"audit interceptor failed converting req into a Google struct proto: %v", err))
@@ -98,29 +113,197 @@ func (i *Interceptor) UnaryInterceptor(ctx context.Context, req interface{}, inf
 	// req in the context. For example, the handler can:
 	//   - overwrite a log req field we set previously
 	//   - fill the field `Payload.ResourceName`
-	handlerResp, handlerErr := handler(ctx, req)
+	resp, handlerErr := handler(ctx, req)
 	if handlerErr != nil {
 		// TODO(#96): Consider emitting an audit log when the RPC call fails.
 		// These errors are from outside this interceptor. Therefore, we return the error as-is.
-		return handlerResp, handlerErr
+		return resp, handlerErr
 	}
 
 	// Autofill `Payload.Response`.
-	if d == alpb.AuditRuleDirectiveRequestAndResponse {
-		if respStruct, err := toProtoStruct(handlerResp); err != nil {
-			return i.handleReturnWithResponse(ctx, handlerResp, status.Errorf(codes.Internal,
+	if shouldLogResp(r) {
+		if respStruct, err := toProtoStruct(resp); err != nil {
+			return i.handleReturnWithResponse(ctx, resp, status.Errorf(codes.Internal,
 				"audit interceptor failed converting resp into a Google struct proto: %v", err))
 		} else {
 			logReq.Payload.Response = respStruct
 		}
 	}
 
-	// Emits the log in best-effort logging mode.
+	// TODO(#95): Needs to honor the log mode.
 	if err := i.Log(ctx, logReq); err != nil {
 		return i.handleReturnWithResponse(ctx, handlerResp, status.Errorf(codes.Internal, "audit interceptor failed to emit log: %v", err))
 	}
 
-	return handlerResp, handlerErr
+	return resp, handlerErr
+}
+
+// StreamInterceptor intercepts gRPC stream calls to inject audit logging capability.
+func (i *Interceptor) StreamInterceptor(srv interface{}, ss grpc.ServerStream, info *grpc.StreamServerInfo, handler grpc.StreamHandler) error {
+	ctx := ss.Context()
+	zlogger := zlogger.FromContext(ctx)
+
+	r := mostRelevantRule(info.FullMethod, i.Rules)
+	if r == nil {
+		zlogger.Debug("no audit rule matching the method name", zap.String("method_name", info.FullMethod), zap.Any("audit_rules", i.Rules))
+		return handler(srv, ss)
+	}
+
+	serviceName, err := serviceName(info.FullMethod)
+	if err != nil {
+		return status.Errorf(codes.FailedPrecondition, "audit interceptor: %v", err)
+	}
+
+	// Build a baseline log request to be shared by all stream calls.
+	logReq := &alpb.AuditLogRequest{
+		Payload: &calpb.AuditLog{
+			ServiceName: serviceName,
+			MethodName:  info.FullMethod,
+		},
+		// Set operation to associate logs from the same stream.
+		Operation: &logging.LogEntryOperation{
+			Producer: info.FullMethod,
+			Id:       uuid.New().String(),
+		},
+	}
+
+	// Set log type.
+	logReq.Type = alpb.AuditLogRequest_UNSPECIFIED
+	if t, ok := alpb.AuditLogRequest_LogType_value[r.LogType]; ok {
+		logReq.Type = alpb.AuditLogRequest_LogType(t)
+	}
+
+	// Autofill `Payload.AuthenticationInfo.PrincipalEmail`.
+	principal, err := i.SecurityContext.RequestPrincipal(ctx)
+	if err != nil {
+		zlogger.Warn("audit interceptor failed to get request principal; this is likely a result of misconfiguration of audit client (security_context)",
+			zap.Any("security_context", i.SecurityContext), zap.Error(err))
+		return handler(srv, ss)
+	}
+	logReq.Payload.AuthenticationInfo = &calpb.AuthenticationInfo{PrincipalEmail: principal}
+
+	return handler(srv, &serverStreamWrapper{
+		c:              i.Client,
+		baselineLogReq: logReq,
+		rule:           r,
+		ServerStream:   ss,
+	})
+}
+
+type serverStreamWrapper struct {
+	grpc.ServerStream
+
+	c *Client
+
+	baselineLogReq *alpb.AuditLogRequest
+	rule           *alpb.AuditRule
+
+	// We use a lock to guard the last received request.
+	// This is OK because according to: https://pkg.go.dev/google.golang.org/grpc#ServerStream
+	// It's not safe to call RecvMsg on the same stream in different goroutines.
+	// As a result, (per stream) we will only have one last received request at a time.
+	mu      sync.Mutex
+	lastReq interface{}
+}
+
+func (ss *serverStreamWrapper) swapLastReq(m interface{}) interface{} {
+	ss.mu.Lock()
+	defer ss.mu.Unlock()
+	old := ss.lastReq
+	ss.lastReq = m
+	return old
+}
+
+func (ss *serverStreamWrapper) popLastReq() interface{} {
+	ss.mu.Lock()
+	defer ss.mu.Unlock()
+	m := ss.lastReq
+	ss.lastReq = nil
+	return m
+}
+
+// Context attaches the audit log request to the original context.
+func (ss *serverStreamWrapper) Context() context.Context {
+	return context.WithValue(ss.ServerStream.Context(), auditLogReqKey{}, ss.baselineLogReq)
+}
+
+// RecvMsg wraps the original ServerStream.RecvMsg to send audit logs
+// for incoming requests. We first log the last request received if any.
+// We keep the latest request with the hope it can be logged in the next response.
+func (ss *serverStreamWrapper) RecvMsg(m interface{}) error {
+	logReq := proto.Clone(ss.baselineLogReq).(*alpb.AuditLogRequest)
+
+	lr := ss.swapLastReq(m)
+	if lr != nil {
+		if shouldLogReq(ss.rule) {
+			if err := setReq(logReq, lr); err != nil {
+				return err
+			}
+			if err := ss.c.Log(ss.ServerStream.Context(), logReq); err != nil {
+				return status.Errorf(codes.Internal, "audit interceptor failed to emit log: %v", err)
+			}
+		}
+	}
+
+	// TODO(#96): Consider emitting an audit log when the RPC call fails.
+	return ss.ServerStream.RecvMsg(m)
+}
+
+// SendMsg wraps the original ServerStream.SendMsg to send audit logs
+// for outgoing responses. If there is a request from last time, we log them
+// together. Otherwise, only the response will be logged.
+func (ss *serverStreamWrapper) SendMsg(m interface{}) error {
+	logReq := proto.Clone(ss.baselineLogReq).(*alpb.AuditLogRequest)
+
+	// If there is a last request, we log it with the response in the same log entry.
+	// Otherwise, this log entry will only contain the response.
+	lr := ss.popLastReq()
+	if lr != nil {
+		if shouldLogReq(ss.rule) {
+			if err := setReq(logReq, lr); err != nil {
+				return err
+			}
+		}
+	}
+
+	if shouldLogResp(ss.rule) {
+		if err := setResp(logReq, m); err != nil {
+			return err
+		}
+	}
+
+	if err := ss.c.Log(ss.ServerStream.Context(), logReq); err != nil {
+		return status.Errorf(codes.Internal, "audit interceptor failed to emit log: %v", err)
+	}
+
+	// TODO(#96): Consider emitting an audit log when the RPC call fails.
+	return ss.ServerStream.SendMsg(m)
+}
+
+func setReq(logReq *alpb.AuditLogRequest, m interface{}) error {
+	ms, err := toProtoStruct(m)
+	if err != nil {
+		return status.Errorf(codes.Internal, "audit interceptor failed converting req into a proto struct: %v", err)
+	}
+	logReq.Payload.Request = ms
+	return nil
+}
+
+func setResp(logReq *alpb.AuditLogRequest, m interface{}) error {
+	ms, err := toProtoStruct(m)
+	if err != nil {
+		return status.Errorf(codes.Internal, "audit interceptor failed converting resp into a proto struct: %v", err)
+	}
+	logReq.Payload.Response = ms
+	return nil
+}
+
+func shouldLogReq(r *alpb.AuditRule) bool {
+	return r.Directive == alpb.AuditRuleDirectiveRequestAndResponse || r.Directive == alpb.AuditRuleDirectiveRequestOnly
+}
+
+func shouldLogResp(r *alpb.AuditRule) bool {
+	return r.Directive == alpb.AuditRuleDirectiveRequestAndResponse
 }
 
 // handleReturn is intended to be a wrapper that handles the LogMode correctly, and returns errors or the handler
@@ -171,8 +354,6 @@ func serviceName(methodName string) (string, error) {
 	return groups[1], nil
 }
 
-type auditLogReqKey struct{}
-
 // LogReqFromCtx returns the AuditLogRequest stored in the context.
 // If the AuditLogRequest doesn't exist, we return an empty one.
 func LogReqFromCtx(ctx context.Context) (*alpb.AuditLogRequest, bool) {
@@ -183,7 +364,7 @@ func LogReqFromCtx(ctx context.Context) (*alpb.AuditLogRequest, bool) {
 }
 
 // toProtoStruct converts v, which must marshal into a JSON object,
-// into a Google Struct proto.
+// into a proto struct.
 // This method is inspired from the Google Cloud Logging Client.
 // https://github.com/googleapis/google-cloud-go/blob/main/logging/logging.go#L650
 func toProtoStruct(v interface{}) (*structpb.Struct, error) {

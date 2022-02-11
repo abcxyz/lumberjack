@@ -91,16 +91,7 @@ func FromConfigFile(path string) audit.Option {
 // to a gRPC server. This interceptor autofills and emits audit logs for gRPC unary
 // calls. WithInterceptorFromConfigFile also returns the audit client that the interceptor
 // uses. This allows the caller to close the client when shutting down the gRPC server.
-// For example:
-// ```
-// opt, c, err := audit.WithInterceptorFromConfigFile("auditconfig.yaml")
-// if err != nil {
-//	log.Fatalf(err)
-// }
-// defer c.Stop()
-// s := grpc.NewServer(opt)
-// ```
-// TODO(#109): add streaming interceptor.
+// TODO(#152): Refactor this to separate option loading from construction of the interceptor.
 func WithInterceptorFromConfigFile(path string) (*audit.Interceptor, error) {
 	fc, err := ioutil.ReadFile(path)
 	if err != nil {
