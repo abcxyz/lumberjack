@@ -59,8 +59,11 @@ func TestLog(t *testing.T) {
 			wantLogReq: testutil.ReqBuilder().Build(),
 		},
 		{
-			name:          "nil_payload_should_error_from_default_validator",
-			logReq:        &alpb.AuditLogRequest{},
+			name:   "nil_payload_should_error_from_default_validator",
+			logReq: &alpb.AuditLogRequest{},
+			opts: []Option{
+				WithFailClose(true),
+			},
 			wantLogReq:    &alpb.AuditLogRequest{},
 			wantErrSubstr: "failed to execute validator",
 		},
@@ -103,10 +106,11 @@ func TestLog(t *testing.T) {
 			).Build(),
 		},
 		{
-			name:   "injected_error_in_mutator_should_return_error",
+			name:   "injected_error_in_mutator_should_return_error_on_fail_close",
 			logReq: testutil.ReqBuilder().Build(),
 			opts: []Option{
 				WithMutator(testOrderProcessor{name: "fake", returnErr: fmt.Errorf("fake error")}),
+				WithFailClose(true),
 			},
 			wantLogReq: testutil.ReqBuilder().WithLabels(
 				map[string]string{processorOrderKey: "fake, "},
@@ -114,20 +118,33 @@ func TestLog(t *testing.T) {
 			wantErrSubstr: "failed to execute mutator",
 		},
 		{
-			name:   "failed_precondition_in_mutator_should_return_nil",
+			name:   "injected_error_in_mutator_should_return_nil_on_fail_open",
 			logReq: testutil.ReqBuilder().Build(),
 			opts: []Option{
-				WithMutator(testOrderProcessor{name: "fake", returnErr: fmt.Errorf("fake error: %w", ErrFailedPrecondition)}),
+				WithMutator(testOrderProcessor{name: "fake", returnErr: fmt.Errorf("fake error")}),
+				WithFailClose(false),
 			},
 			wantLogReq: testutil.ReqBuilder().WithLabels(
 				map[string]string{processorOrderKey: "fake, "},
 			).Build(),
 		},
 		{
-			name:   "injected_error_in_backend_should_return_error",
+			name:   "failed_precondition_in_mutator_should_return_nil_on_fail_open",
+			logReq: testutil.ReqBuilder().Build(),
+			opts: []Option{
+				WithMutator(testOrderProcessor{name: "fake", returnErr: fmt.Errorf("fake error: %w", ErrFailedPrecondition)}),
+				WithFailClose(false),
+			},
+			wantLogReq: testutil.ReqBuilder().WithLabels(
+				map[string]string{processorOrderKey: "fake, "},
+			).Build(),
+		},
+		{
+			name:   "injected_error_in_backend_should_return_error_on_fail_close",
 			logReq: testutil.ReqBuilder().Build(),
 			opts: []Option{
 				WithBackend(testOrderProcessor{name: "fake", returnErr: fmt.Errorf("fake error")}),
+				WithFailClose(true),
 			},
 			wantLogReq: testutil.ReqBuilder().WithLabels(
 				map[string]string{processorOrderKey: "fake, "},
@@ -135,14 +152,16 @@ func TestLog(t *testing.T) {
 			wantErrSubstr: "failed to execute backend",
 		},
 		{
-			name:   "failed_precondition_in_backend_should_return_nil",
+			name:   "failed_precondition_in_backend_should_return_error_on_fail_close",
 			logReq: testutil.ReqBuilder().Build(),
 			opts: []Option{
 				WithBackend(testOrderProcessor{name: "fake", returnErr: fmt.Errorf("fake error: %w", ErrFailedPrecondition)}),
+				WithFailClose(true),
 			},
 			wantLogReq: testutil.ReqBuilder().WithLabels(
 				map[string]string{processorOrderKey: "fake, "},
 			).Build(),
+			wantErrSubstr: "failed to execute backend",
 		},
 	}
 	for _, test := range tests {

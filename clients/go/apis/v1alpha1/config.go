@@ -14,10 +14,14 @@ const (
 	AuditRuleDirectiveDefault            = "AUDIT"
 	AuditRuleDirectiveRequestOnly        = "AUDIT_REQUEST_ONLY"
 	AuditRuleDirectiveRequestAndResponse = "AUDIT_REQUEST_AND_RESPONSE"
-
-	// FailCloseString is re-defined, as i can't find a better way to get it from AuditLogRequest_LogMode.
-	FailCloseString = "FAIL_CLOSE"
 )
+
+// Re-define these strings, as i can't find a better way to map them to AuditLogRequest_LogMode.
+var StringToLogMode = map[string]AuditLogRequest_LogMode{
+	"BEST_EFFORT":          AuditLogRequest_BEST_EFFORT,
+	"FAIL_CLOSE":           AuditLogRequest_FAIL_CLOSE,
+	"LOG_MODE_UNSPECIFIED": AuditLogRequest_LOG_MODE_UNSPECIFIED,
+}
 
 // Config is the full audit client config.
 type Config struct {
@@ -101,10 +105,13 @@ func (cfg *Config) SetDefault() {
 	}
 }
 
+func (cfg *Config) getLogMode() AuditLogRequest_LogMode {
+	return StringToLogMode[cfg.LogMode]
+}
+
 // ShouldFailClose returns true only if FAIL_CLOSE is explicitly configured. On BEST_EFFORT or LOG_MODE_UNSPECIFIED (the default) then return false.
 func (cfg *Config) ShouldFailClose() bool {
-	return AuditLogRequest_LogMode_value[cfg.LogMode] ==
-		AuditLogRequest_LogMode_value[FailCloseString]
+	return cfg.getLogMode() == AuditLogRequest_FAIL_CLOSE
 }
 
 // Backend is the remote backend service to send audit logs to.

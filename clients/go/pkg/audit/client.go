@@ -31,6 +31,7 @@ type Client struct {
 	validators []LogProcessor
 	mutators   []LogProcessor
 	backends   []LogProcessor
+	FailClose  bool
 }
 
 // LogProcessor is the interface we use to process an AuditLogRequest.
@@ -94,6 +95,15 @@ func WithBackend(p LogProcessor) Option {
 	}
 }
 
+// Sets FailClose value. This specifies whether errors should be surfaced
+// or swalled. Can be overridden on a per-request basis.
+func WithFailClose(f bool) Option {
+	return func(o *Client) error {
+		o.FailClose = f
+		return nil
+	}
+}
+
 // NewClient initializes a logger with the given options.
 func NewClient(options ...Option) (*Client, error) {
 	client := &Client{
@@ -131,28 +141,43 @@ func (c *Client) Log(ctx context.Context, logReq *alpb.AuditLogRequest) error {
 		if err := p.Process(ctx, logReq); err != nil {
 			if errors.Is(err, ErrFailedPrecondition) {
 				logger.Warnf("stopped log request processing as validator %T precondition failed: %v", p, err)
-				return nil
 			}
-			return fmt.Errorf("failed to execute validator %T: %w", p, err)
+			return c.handleReturn(ctx, fmt.Errorf("failed to execute validator %T: %w", p, err), logReq.Mode)
 		}
 	}
 	for _, p := range c.mutators {
 		if err := p.Process(ctx, logReq); err != nil {
 			if errors.Is(err, ErrFailedPrecondition) {
 				logger.Warnf("stopped log request processing as mutator %T precondition failed: %v", p, err)
-				return nil
 			}
-			return fmt.Errorf("failed to execute mutator %T: %w", p, err)
+			return c.handleReturn(ctx, fmt.Errorf("failed to execute mutator %T: %w", p, err), logReq.Mode)
 		}
 	}
 	for _, p := range c.backends {
 		if err := p.Process(ctx, logReq); err != nil {
 			if errors.Is(err, ErrFailedPrecondition) {
 				logger.Warnf("stopped log request processing as backend %T precondition failed: %v", p, err)
-				return nil
 			}
-			return fmt.Errorf("failed to execute backend %T: %w", p, err)
+			return c.handleReturn(ctx, fmt.Errorf("failed to execute backend %T: %w", p, err), logReq.Mode)
 		}
 	}
+	return nil
+}
+
+func (c *Client) handleReturn(ctx context.Context, err error, requestedLogMode alpb.AuditLogRequest_LogMode) error {
+	logger := zlogger.FromContext(ctx)
+	if err == nil {
+		return nil
+	}
+	// Default to configuration value
+	fail := c.FailClose
+	// If a request specified log mode, overwrite
+	if requestedLogMode != alpb.AuditLogRequest_LOG_MODE_UNSPECIFIED {
+		fail = requestedLogMode == alpb.AuditLogRequest_FAIL_CLOSE
+	}
+	if fail {
+		return err
+	}
+	logger.Warnf("Continuing without audit logging.")
 	return nil
 }
