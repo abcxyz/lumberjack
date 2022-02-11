@@ -60,12 +60,12 @@ func TestLog(t *testing.T) {
 			wantLogReq: testutil.ReqBuilder().Build(),
 		},
 		{
-			name:   "nil_payload_should_error_from_default_validator",
+			name:   "nil_payload_should_error_from_default_validator_fail_close",
 			logReq: &alpb.AuditLogRequest{},
 			opts: []Option{
 				WithLogMode(alpb.AuditLogRequest_FAIL_CLOSE),
 			},
-			wantLogReq:    &alpb.AuditLogRequest{},
+			wantLogReq:    &alpb.AuditLogRequest{Mode: alpb.AuditLogRequest_FAIL_CLOSE},
 			wantErrSubstr: "failed to execute validator",
 		},
 		{
@@ -91,7 +91,8 @@ func TestLog(t *testing.T) {
 				WithValidator(testOrderProcessor{name: "validator2"}),
 			},
 			wantLogReq: testutil.ReqBuilder().WithLabels(
-				map[string]string{processorOrderKey: "validator0, validator1, validator2, backend0, backend1, "}).Build(),
+				map[string]string{processorOrderKey: "validator0, validator1, validator2, backend0, backend1, "},
+			).Build(),
 		},
 		{
 			name:   "skip_subsequent_processors_when_precondition_failed",
@@ -115,7 +116,7 @@ func TestLog(t *testing.T) {
 			},
 			wantLogReq: testutil.ReqBuilder().WithLabels(
 				map[string]string{processorOrderKey: "fake, "},
-			).Build(),
+			).WithMode(alpb.AuditLogRequest_FAIL_CLOSE).Build(),
 			wantErrSubstr: "failed to execute mutator",
 		},
 		{
@@ -127,7 +128,7 @@ func TestLog(t *testing.T) {
 			},
 			wantLogReq: testutil.ReqBuilder().WithLabels(
 				map[string]string{processorOrderKey: "fake, "},
-			).Build(),
+			).WithMode(alpb.AuditLogRequest_BEST_EFFORT).Build(),
 		},
 		{
 			name:   "failed_precondition_in_mutator_should_return_nil_on_best_effort",
@@ -138,7 +139,7 @@ func TestLog(t *testing.T) {
 			},
 			wantLogReq: testutil.ReqBuilder().WithLabels(
 				map[string]string{processorOrderKey: "fake, "},
-			).Build(),
+			).WithMode(alpb.AuditLogRequest_BEST_EFFORT).Build(),
 		},
 		{
 			name:   "injected_error_in_backend_should_return_error_on_fail_close",
@@ -149,7 +150,7 @@ func TestLog(t *testing.T) {
 			},
 			wantLogReq: testutil.ReqBuilder().WithLabels(
 				map[string]string{processorOrderKey: "fake, "},
-			).Build(),
+			).WithMode(alpb.AuditLogRequest_FAIL_CLOSE).Build(),
 			wantErrSubstr: "failed to execute backend",
 		},
 		{
@@ -161,7 +162,7 @@ func TestLog(t *testing.T) {
 			},
 			wantLogReq: testutil.ReqBuilder().WithLabels(
 				map[string]string{processorOrderKey: "fake, "},
-			).Build(),
+			).WithMode(alpb.AuditLogRequest_FAIL_CLOSE).Build(),
 			wantErrSubstr: "failed to execute backend",
 		},
 	}
@@ -196,52 +197,34 @@ func TestHandleReturn_Client(t *testing.T) {
 	ctx := context.Background()
 
 	tests := []struct {
-		name           string
-		clientLogMode  alpb.AuditLogRequest_LogMode
-		requestLogMode alpb.AuditLogRequest_LogMode
-		err            error
-		wantErr        bool
+		name    string
+		logMode alpb.AuditLogRequest_LogMode
+		err     error
+		wantErr bool
 	}{
 		{
-			name:          "returns_nil_with_err_best_effort",
-			clientLogMode: alpb.AuditLogRequest_BEST_EFFORT,
-			err:           errors.New("test error"),
-			wantErr:       false,
+			name:    "returns_nil_with_err_best_effort",
+			logMode: alpb.AuditLogRequest_BEST_EFFORT,
+			err:     errors.New("test error"),
+			wantErr: false,
 		},
 		{
-			name:          "returns_err_with_err_fail_close",
-			clientLogMode: alpb.AuditLogRequest_FAIL_CLOSE,
-			err:           errors.New("test error"),
-			wantErr:       true,
+			name:    "returns_err_with_err_fail_close",
+			logMode: alpb.AuditLogRequest_FAIL_CLOSE,
+			err:     errors.New("test error"),
+			wantErr: true,
 		},
 		{
-			name:           "returns_nil_with_err_request_is_best_effort",
-			clientLogMode:  alpb.AuditLogRequest_FAIL_CLOSE,
-			requestLogMode: alpb.AuditLogRequest_BEST_EFFORT,
-			err:            errors.New("test error"),
-			wantErr:        false,
-		},
-		{
-			name:           "returns_err_with_err_request_is_fail_close",
-			clientLogMode:  alpb.AuditLogRequest_BEST_EFFORT,
-			requestLogMode: alpb.AuditLogRequest_FAIL_CLOSE,
-			err:            errors.New("test error"),
-			wantErr:        true,
-		},
-		{
-			name:          "returns_nil_no_err",
-			clientLogMode: alpb.AuditLogRequest_FAIL_CLOSE,
-			wantErr:       false,
+			name:    "returns_nil_no_err",
+			logMode: alpb.AuditLogRequest_FAIL_CLOSE,
+			wantErr: false,
 		},
 	}
 	for _, tc := range tests {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			opts := []Option{
-				WithLogMode(tc.clientLogMode),
-			}
-			c, err := NewClient(opts...)
+			c, err := NewClient()
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -252,7 +235,7 @@ func TestHandleReturn_Client(t *testing.T) {
 				}
 			})
 
-			gotErr := c.handleReturn(ctx, tc.err, tc.requestLogMode)
+			gotErr := c.handleReturn(ctx, tc.err, tc.logMode)
 
 			if (gotErr != nil) != tc.wantErr {
 				expected := "an error"

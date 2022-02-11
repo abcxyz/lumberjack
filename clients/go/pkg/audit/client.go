@@ -139,6 +139,11 @@ func (c *Client) Stop() error {
 func (c *Client) Log(ctx context.Context, logReq *alpb.AuditLogRequest) error {
 	logger := zlogger.FromContext(ctx)
 
+	logMode := logReq.Mode
+	if logMode == alpb.AuditLogRequest_LOG_MODE_UNSPECIFIED {
+		logMode = c.logMode
+		logReq.Mode = logMode
+	}
 	for _, p := range c.validators {
 		if err := p.Process(ctx, logReq); err != nil {
 			if errors.Is(err, ErrFailedPrecondition) {
@@ -174,14 +179,8 @@ func (c *Client) handleReturn(ctx context.Context, err error, requestedLogMode a
 	if err == nil {
 		return nil
 	}
-	// Default mode to configuration value
-	mode := c.logMode
-	// If a request specified log mode, overwrite
-	if requestedLogMode != alpb.AuditLogRequest_LOG_MODE_UNSPECIFIED {
-		mode = requestedLogMode
-	}
 	// If there is an error, and we should fail close, return that error.
-	if util.ShouldFailClose(mode) {
+	if util.ShouldFailClose(requestedLogMode) {
 		return err
 	}
 	// If there is an error, and we shouldn't fail close, log and return nil.
