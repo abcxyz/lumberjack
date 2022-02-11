@@ -105,13 +105,8 @@ func (cfg *Config) SetDefault() {
 	}
 }
 
-func (cfg *Config) getLogMode() AuditLogRequest_LogMode {
+func (cfg *Config) GetLogMode() AuditLogRequest_LogMode {
 	return StringToLogMode[cfg.LogMode]
-}
-
-// ShouldFailClose returns true only if FAIL_CLOSE is explicitly configured. On BEST_EFFORT or LOG_MODE_UNSPECIFIED (the default) then return false.
-func (cfg *Config) ShouldFailClose() bool {
-	return cfg.getLogMode() == AuditLogRequest_FAIL_CLOSE
 }
 
 // Backend is the remote backend service to send audit logs to.

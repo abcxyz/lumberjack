@@ -16,6 +16,7 @@ package audit
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"testing"
 
@@ -62,7 +63,7 @@ func TestLog(t *testing.T) {
 			name:   "nil_payload_should_error_from_default_validator",
 			logReq: &alpb.AuditLogRequest{},
 			opts: []Option{
-				WithFailClose(true),
+				WithLogMode(alpb.AuditLogRequest_FAIL_CLOSE),
 			},
 			wantLogReq:    &alpb.AuditLogRequest{},
 			wantErrSubstr: "failed to execute validator",
@@ -110,7 +111,7 @@ func TestLog(t *testing.T) {
 			logReq: testutil.ReqBuilder().Build(),
 			opts: []Option{
 				WithMutator(testOrderProcessor{name: "fake", returnErr: fmt.Errorf("fake error")}),
-				WithFailClose(true),
+				WithLogMode(alpb.AuditLogRequest_FAIL_CLOSE),
 			},
 			wantLogReq: testutil.ReqBuilder().WithLabels(
 				map[string]string{processorOrderKey: "fake, "},
@@ -118,22 +119,22 @@ func TestLog(t *testing.T) {
 			wantErrSubstr: "failed to execute mutator",
 		},
 		{
-			name:   "injected_error_in_mutator_should_return_nil_on_fail_open",
+			name:   "injected_error_in_mutator_should_return_nil_on_best_effort",
 			logReq: testutil.ReqBuilder().Build(),
 			opts: []Option{
 				WithMutator(testOrderProcessor{name: "fake", returnErr: fmt.Errorf("fake error")}),
-				WithFailClose(false),
+				WithLogMode(alpb.AuditLogRequest_BEST_EFFORT),
 			},
 			wantLogReq: testutil.ReqBuilder().WithLabels(
 				map[string]string{processorOrderKey: "fake, "},
 			).Build(),
 		},
 		{
-			name:   "failed_precondition_in_mutator_should_return_nil_on_fail_open",
+			name:   "failed_precondition_in_mutator_should_return_nil_on_best_effort",
 			logReq: testutil.ReqBuilder().Build(),
 			opts: []Option{
 				WithMutator(testOrderProcessor{name: "fake", returnErr: fmt.Errorf("fake error: %w", ErrFailedPrecondition)}),
-				WithFailClose(false),
+				WithLogMode(alpb.AuditLogRequest_BEST_EFFORT),
 			},
 			wantLogReq: testutil.ReqBuilder().WithLabels(
 				map[string]string{processorOrderKey: "fake, "},
@@ -144,7 +145,7 @@ func TestLog(t *testing.T) {
 			logReq: testutil.ReqBuilder().Build(),
 			opts: []Option{
 				WithBackend(testOrderProcessor{name: "fake", returnErr: fmt.Errorf("fake error")}),
-				WithFailClose(true),
+				WithLogMode(alpb.AuditLogRequest_FAIL_CLOSE),
 			},
 			wantLogReq: testutil.ReqBuilder().WithLabels(
 				map[string]string{processorOrderKey: "fake, "},
@@ -156,7 +157,7 @@ func TestLog(t *testing.T) {
 			logReq: testutil.ReqBuilder().Build(),
 			opts: []Option{
 				WithBackend(testOrderProcessor{name: "fake", returnErr: fmt.Errorf("fake error: %w", ErrFailedPrecondition)}),
-				WithFailClose(true),
+				WithLogMode(alpb.AuditLogRequest_FAIL_CLOSE),
 			},
 			wantLogReq: testutil.ReqBuilder().WithLabels(
 				map[string]string{processorOrderKey: "fake, "},
@@ -185,6 +186,80 @@ func TestLog(t *testing.T) {
 			}
 			if diff := cmp.Diff(test.wantLogReq, test.logReq, protocmp.Transform()); diff != "" {
 				t.Errorf("Process(%+v) got diff (-want, +got): %v", test.logReq, diff)
+			}
+		})
+	}
+}
+
+func TestHandleReturn_Client(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+
+	tests := []struct {
+		name           string
+		clientLogMode  alpb.AuditLogRequest_LogMode
+		requestLogMode alpb.AuditLogRequest_LogMode
+		err            error
+		wantErr        bool
+	}{
+		{
+			name:          "returns_nil_with_err_best_effort",
+			clientLogMode: alpb.AuditLogRequest_BEST_EFFORT,
+			err:           errors.New("test error"),
+			wantErr:       false,
+		},
+		{
+			name:          "returns_err_with_err_fail_close",
+			clientLogMode: alpb.AuditLogRequest_FAIL_CLOSE,
+			err:           errors.New("test error"),
+			wantErr:       true,
+		},
+		{
+			name:           "returns_nil_with_err_request_is_best_effort",
+			clientLogMode:  alpb.AuditLogRequest_FAIL_CLOSE,
+			requestLogMode: alpb.AuditLogRequest_BEST_EFFORT,
+			err:            errors.New("test error"),
+			wantErr:        false,
+		},
+		{
+			name:           "returns_err_with_err_request_is_fail_close",
+			clientLogMode:  alpb.AuditLogRequest_BEST_EFFORT,
+			requestLogMode: alpb.AuditLogRequest_FAIL_CLOSE,
+			err:            errors.New("test error"),
+			wantErr:        true,
+		},
+		{
+			name:          "returns_nil_no_err",
+			clientLogMode: alpb.AuditLogRequest_FAIL_CLOSE,
+			wantErr:       false,
+		},
+	}
+	for _, tc := range tests {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			opts := []Option{
+				WithLogMode(tc.clientLogMode),
+			}
+			c, err := NewClient(opts...)
+			if err != nil {
+				t.Fatal(err)
+			}
+			t.Cleanup(func() {
+				err := c.Stop()
+				if err != nil {
+					t.Errorf("failed to stop client: %v", err)
+				}
+			})
+
+			gotErr := c.handleReturn(ctx, tc.err, tc.requestLogMode)
+
+			if (gotErr != nil) != tc.wantErr {
+				expected := "an error"
+				if !tc.wantErr {
+					expected = "nil"
+				}
+				t.Errorf("returned %v, but expected %v", gotErr, expected)
 			}
 		})
 	}

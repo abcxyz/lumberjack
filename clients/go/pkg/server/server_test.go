@@ -116,7 +116,7 @@ func TestAuditLogAgent_ProcessLog(t *testing.T) {
 			s := grpc.NewServer()
 			defer s.Stop()
 
-			ac, err := audit.NewClient(audit.WithBackend(tc.p), audit.WithFailClose(true))
+			ac, err := audit.NewClient(audit.WithBackend(tc.p), audit.WithLogMode(alpb.AuditLogRequest_FAIL_CLOSE))
 			if err != nil {
 				t.Fatalf("Failed to create audit client: %v", err)
 			}

@@ -20,6 +20,7 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/abcxyz/lumberjack/clients/go/pkg/util"
 	"go.uber.org/multierr"
 
 	alpb "github.com/abcxyz/lumberjack/clients/go/apis/v1alpha1"
@@ -31,7 +32,7 @@ type Client struct {
 	validators []LogProcessor
 	mutators   []LogProcessor
 	backends   []LogProcessor
-	FailClose  bool
+	logMode    alpb.AuditLogRequest_LogMode
 }
 
 // LogProcessor is the interface we use to process an AuditLogRequest.
@@ -97,9 +98,9 @@ func WithBackend(p LogProcessor) Option {
 
 // Sets FailClose value. This specifies whether errors should be surfaced
 // or swalled. Can be overridden on a per-request basis.
-func WithFailClose(f bool) Option {
+func WithLogMode(mode alpb.AuditLogRequest_LogMode) Option {
 	return func(o *Client) error {
-		o.FailClose = f
+		o.logMode = mode
 		return nil
 	}
 }
@@ -164,20 +165,25 @@ func (c *Client) Log(ctx context.Context, logReq *alpb.AuditLogRequest) error {
 	return nil
 }
 
+// handleReturn is intended to be a wrapper that handles the LogMode correctly, and returns errors or nil
+// depending on whether the config and request have specified that they want to fail close.
 func (c *Client) handleReturn(ctx context.Context, err error, requestedLogMode alpb.AuditLogRequest_LogMode) error {
 	logger := zlogger.FromContext(ctx)
+	// If there is no error, just return nil.
 	if err == nil {
 		return nil
 	}
 	// Default to configuration value
-	fail := c.FailClose
+	mode := c.logMode
 	// If a request specified log mode, overwrite
 	if requestedLogMode != alpb.AuditLogRequest_LOG_MODE_UNSPECIFIED {
-		fail = requestedLogMode == alpb.AuditLogRequest_FAIL_CLOSE
+		mode = requestedLogMode
 	}
-	if fail {
+	// If there is an error, and we should fail close, return that error.
+	if util.ShouldFailClose(mode) {
 		return err
 	}
+	// If there is an error, and we shouldn't fail close, log and return nil.
 	logger.Warnf("Continuing without audit logging.")
 	return nil
 }

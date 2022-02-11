@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"regexp"
 
+	"github.com/abcxyz/lumberjack/clients/go/pkg/util"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -39,7 +40,7 @@ type Interceptor struct {
 	*Client
 	SecurityContext security.GRPCContext
 	Rules           []*alpb.AuditRule
-	FailClose       bool
+	LogMode         alpb.AuditLogRequest_LogMode
 }
 
 // UnaryInterceptor is a gRPC unary interceptor that automatically emits application audit logs.
@@ -53,7 +54,7 @@ func (i *Interceptor) UnaryInterceptor(ctx context.Context, req interface{}, inf
 		return i.handleReturn(ctx, req, handler, nil)
 	}
 
-	logReq := &alpb.AuditLogRequest{Payload: &calpb.AuditLog{}}
+	logReq := &alpb.AuditLogRequest{Payload: &calpb.AuditLog{}, Mode: i.LogMode}
 
 	// Set log type.
 	logReq.Type = alpb.AuditLogRequest_UNSPECIFIED
@@ -122,8 +123,10 @@ func (i *Interceptor) UnaryInterceptor(ctx context.Context, req interface{}, inf
 	return handlerResp, handlerErr
 }
 
+// handleReturn is intended to be a wrapper that handles the LogMode correctly, and returns errors or the handler
+// depending on whether the config and has specified to fail close.
 func (i *Interceptor) handleReturn(ctx context.Context, req interface{}, handler grpc.UnaryHandler, err error) (interface{}, error) {
-	if i.FailClose && err != nil {
+	if util.ShouldFailClose(i.LogMode) && err != nil {
 		return nil, err
 	} else {
 		if err != nil {
@@ -136,8 +139,11 @@ func (i *Interceptor) handleReturn(ctx context.Context, req interface{}, handler
 	}
 }
 
+// handleReturnWithResponse is intended to be a wrapper that handles the LogMode correctly, and returns errors or a response
+// depending on whether the config and has specified to fail close. Differs from the above, as this is intended to be used
+// after the next handler in the chain has returned, and so we have a response formed already.
 func (i *Interceptor) handleReturnWithResponse(ctx context.Context, handlerResp interface{}, err error) (interface{}, error) {
-	if i.FailClose && err != nil {
+	if util.ShouldFailClose(i.LogMode) && err != nil {
 		return handlerResp, err
 	} else {
 		if err != nil {

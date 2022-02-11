@@ -125,7 +125,7 @@ func WithInterceptorFromConfigFile(path string) (*audit.Interceptor, error) {
 			FromRawJWT: cfg.SecurityContext.FromRawJWT,
 		}
 		interceptor.SecurityContext = fromRawJWT
-		interceptor.FailClose = cfg.ShouldFailClose()
+		interceptor.LogMode = cfg.GetLogMode()
 	default:
 		return nil, fmt.Errorf("no supported security context configured in config %+v", cfg)
 	}
