@@ -91,9 +91,10 @@ public class AuditLoggingModule extends AbstractModule {
   public LoggingClient loggingClient(
       RuntimeInfoProcessor runtimeInfoProcessor,
       ValidationProcessor validationProcessor,
-      RemoteProcessor remoteProcessor) {
+      RemoteProcessor remoteProcessor,
+      AuditLoggingConfiguration auditLoggingConfiguration) {
     return new LoggingClient(
-        List.of(validationProcessor), List.of(runtimeInfoProcessor), List.of(remoteProcessor));
+        List.of(validationProcessor), List.of(runtimeInfoProcessor), List.of(remoteProcessor), auditLoggingConfiguration);
   }
 
   @Override

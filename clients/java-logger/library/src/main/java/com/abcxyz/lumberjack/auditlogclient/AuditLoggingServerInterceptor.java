@@ -20,6 +20,7 @@ import com.abcxyz.lumberjack.auditlogclient.config.AuditLoggingConfiguration;
 import com.abcxyz.lumberjack.auditlogclient.config.Selector;
 import com.abcxyz.lumberjack.auditlogclient.exceptions.AuthorizationException;
 import com.abcxyz.lumberjack.auditlogclient.processor.LogProcessingException;
+import com.abcxyz.lumberjack.auditlogclient.utils.ConfigUtils;
 import com.abcxyz.lumberjack.v1alpha1.AuditLogRequest;
 import com.google.cloud.audit.AuditLog;
 import com.google.cloud.audit.AuthenticationInfo;
@@ -84,8 +85,14 @@ public class AuditLoggingServerInterceptor<ReqT extends Message> implements Serv
     try {
       principal = auditLoggingConfiguration.getSecurityContext().getPrincipal(headers);
     } catch (AuthorizationException e) {
-      log.info("Exception while trying to determine principal..");
-      next.startCall(call, headers);
+      log.warning("Exception while trying to determine principal..");
+      if (ConfigUtils.shouldFailClose(auditLoggingConfiguration.getLogMode())) {
+        throw new IllegalStateException("Unable to determine principal.", e);
+      } else {
+        log.warning("Principal was unable to be determined, "
+            + "continuing without audit logging: " + e.getMessage());
+        next.startCall(call, headers);
+      }
     }
 
     AuditLog.Builder logBuilder = AuditLog.newBuilder();
