@@ -231,6 +231,9 @@ func (ss *serverStreamWrapper) RecvMsg(m interface{}) error {
 	return ss.ServerStream.RecvMsg(m)
 }
 
+// SendMsg wraps the original ServerStream.SendMsg to send audit logs
+// for outgoing responses. If there is a request from last time, we log them
+// together. Otherwise, only the response will be logged.
 func (ss *serverStreamWrapper) SendMsg(m interface{}) error {
 	logReq := proto.Clone(ss.baselineLogReq).(*alpb.AuditLogRequest)
 
