@@ -16,6 +16,7 @@
 
 package com.abcxyz.lumberjack.auditlogclient;
 
+import com.abcxyz.lumberjack.auditlogclient.config.AuditLoggingConfiguration;
 import com.abcxyz.lumberjack.auditlogclient.processor.CloudLoggingProcessor;
 import com.abcxyz.lumberjack.auditlogclient.processor.FilteringProcessor;
 import com.abcxyz.lumberjack.auditlogclient.processor.LogProcessor;
@@ -33,6 +34,7 @@ import lombok.RequiredArgsConstructor;
 /** Builder for {@link LoggingClient}. */
 @RequiredArgsConstructor(onConstructor = @__({@Inject}))
 public class LoggingClientBuilder {
+  private final AuditLoggingConfiguration auditLoggingConfiguration;
 
   private final CloudLoggingProcessor cloudLoggingProcessor;
   private final FilteringProcessor filteringProcessor;
@@ -89,6 +91,6 @@ public class LoggingClientBuilder {
   /** Constructs and returns the {@link LoggingClient}. */
   public LoggingClient build() {
     return new LoggingClient(
-        new ArrayList<>(validators), new ArrayList<>(mutators), new ArrayList<>(backends));
+        new ArrayList<>(validators), new ArrayList<>(mutators), new ArrayList<>(backends), auditLoggingConfiguration);
   }
 }

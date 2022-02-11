@@ -23,4 +23,8 @@ public class LogProcessingException extends IOException {
   public LogProcessingException(Throwable cause) {
     super(cause);
   }
+
+  public LogProcessingException(String message, Throwable cause) {
+    super(message, cause);
+  }
 }
