@@ -14,6 +14,9 @@ const (
 	AuditRuleDirectiveDefault            = "AUDIT"
 	AuditRuleDirectiveRequestOnly        = "AUDIT_REQUEST_ONLY"
 	AuditRuleDirectiveRequestAndResponse = "AUDIT_REQUEST_AND_RESPONSE"
+
+	// FailCloseString is re-defined, as i can't find a better way to get it from AuditLogRequest_LogMode.
+	FailCloseString = "FAIL_CLOSE"
 )
 
 // Config is the full audit client config.
@@ -44,7 +47,7 @@ type Config struct {
 	// LogMode specifies whether the audit logger should fail open or close.
 	// If fail-close is not chosen, the audit logger will try to swallow any
 	// errors that occur, and not impede the application in any way.
-	LogMode AuditLogRequest_LogMode `yaml: "log_mode,omitempty"`
+	LogMode string `yaml:"log_mode,omitempty"`
 }
 
 // Validate checks if the config is valid.
@@ -100,7 +103,8 @@ func (cfg *Config) SetDefault() {
 
 // ShouldFailClose returns true only if FAIL_CLOSE is explicitly configured. On BEST_EFFORT or LOG_MODE_UNSPECIFIED (the default) then return false.
 func (cfg *Config) ShouldFailClose() bool {
-	return cfg.LogMode == AuditLogRequest_FAIL_CLOSE
+	return AuditLogRequest_LogMode_value[cfg.LogMode] ==
+		AuditLogRequest_LogMode_value[FailCloseString]
 }
 
 // Backend is the remote backend service to send audit logs to.

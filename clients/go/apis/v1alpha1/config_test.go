@@ -34,7 +34,8 @@ security_context:
 rules:
 - selector: com.example.*
   directive: AUDIT
-  log_type: ADMIN_ACTIVITY`,
+  log_type: ADMIN_ACTIVITY
+log_mode: BEST_EFFORT`,
 		wantConfig: &Config{
 			Version: "v1alpha1",
 			Backend: &Backend{
@@ -60,6 +61,7 @@ rules:
 				Directive: "AUDIT",
 				LogType:   "ADMIN_ACTIVITY",
 			}},
+			LogMode: "BEST_EFFORT",
 		},
 	}, {
 		name: "minimal_config",
