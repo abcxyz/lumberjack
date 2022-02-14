@@ -17,6 +17,7 @@
 package com.abcxyz.lumberjack.auditlogclient.modules;
 
 import com.abcxyz.lumberjack.auditlogclient.LoggingClient;
+import com.abcxyz.lumberjack.auditlogclient.LoggingClientBuilder;
 import com.abcxyz.lumberjack.auditlogclient.config.AuditLoggingConfiguration;
 import com.abcxyz.lumberjack.auditlogclient.config.BackendContext;
 import com.abcxyz.lumberjack.auditlogclient.config.Filters;
@@ -88,13 +89,8 @@ public class AuditLoggingModule extends AbstractModule {
 
   @Provides
   @Inject
-  public LoggingClient loggingClient(
-      RuntimeInfoProcessor runtimeInfoProcessor,
-      ValidationProcessor validationProcessor,
-      RemoteProcessor remoteProcessor,
-      AuditLoggingConfiguration auditLoggingConfiguration) {
-    return new LoggingClient(
-        List.of(validationProcessor), List.of(runtimeInfoProcessor), List.of(remoteProcessor), auditLoggingConfiguration);
+  public LoggingClient loggingClient(LoggingClientBuilder builder) {
+    return builder.withDefaultProcessors().build();
   }
 
   @Override
