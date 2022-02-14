@@ -21,6 +21,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonSetter;
 import com.fasterxml.jackson.annotation.Nulls;
 import java.util.List;
+import java.util.Map;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
@@ -44,6 +45,8 @@ public class AuditLoggingConfiguration {
   @JsonSetter(nulls = Nulls.FAIL)
   @JsonProperty("security_context")
   private SecurityContext securityContext;
+
+  private Map<String, String> labels;
 
   public Filters getFilters() {
     return conditions == null ? new Filters() : conditions.getFilters();
