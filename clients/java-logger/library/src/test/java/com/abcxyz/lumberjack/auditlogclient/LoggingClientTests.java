@@ -26,6 +26,7 @@ import static org.mockito.Mockito.lenient;
 import com.abcxyz.lumberjack.auditlogclient.config.AuditLoggingConfiguration;
 import com.abcxyz.lumberjack.auditlogclient.processor.CloudLoggingProcessor;
 import com.abcxyz.lumberjack.auditlogclient.processor.FilteringProcessor;
+import com.abcxyz.lumberjack.auditlogclient.processor.LabelProcessor;
 import com.abcxyz.lumberjack.auditlogclient.processor.LogProcessingException;
 import com.abcxyz.lumberjack.auditlogclient.processor.RemoteProcessor;
 import com.abcxyz.lumberjack.auditlogclient.processor.RuntimeInfoProcessor;
@@ -51,6 +52,7 @@ public class LoggingClientTests {
   @Mock FilteringProcessor filteringProcessor;
   @Mock RuntimeInfoProcessor runtimeInfoProcessor;
   @Mock AuditLoggingConfiguration auditLoggingConfiguration;
+  @Mock LabelProcessor labelProcessor;
 
   @InjectMocks LoggingClientBuilder loggingClientBuilder;
 
@@ -63,7 +65,7 @@ public class LoggingClientTests {
   void successfulClientCreate() {
     LoggingClient loggingClient = loggingClientBuilder.withDefaultProcessors().build();
     assertThat(loggingClient.getValidators().size()).isEqualTo(1);
-    assertThat(loggingClient.getMutators().size()).isEqualTo(2);
+    assertThat(loggingClient.getMutators().size()).isEqualTo(3);
     assertThat(loggingClient.getBackends().size()).isEqualTo(1);
 
     // We want filtering to occur before other mutators
