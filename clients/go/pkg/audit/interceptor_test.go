@@ -609,7 +609,7 @@ func TestStreamInterceptor(t *testing.T) {
 			},
 		}},
 	}, {
-		name: "stream_wihtout_logging_req_resp",
+		name: "stream_without_logging_req_resp",
 		ss: &fakeServerStream{
 			incomingCtx: metadata.NewIncomingContext(context.Background(), metadata.New(map[string]string{
 				"authorization": jwt,
@@ -915,7 +915,7 @@ func TestServiceName(t *testing.T) {
 	}
 }
 
-func TestHandleReturn(t *testing.T) {
+func TestHandleReturnUnary(t *testing.T) {
 	t.Parallel()
 	req := "test_request"
 	ctx := context.Background()
@@ -967,7 +967,7 @@ func TestHandleReturn(t *testing.T) {
 
 			i := &Interceptor{LogMode: tc.logMode}
 
-			got, gotErr := i.handleReturn(ctx, req, handler, tc.err)
+			got, gotErr := i.handleReturnUnary(ctx, req, handler, tc.err)
 
 			if (gotErr != nil) != tc.wantErr {
 				expected := "an error"
@@ -983,6 +983,84 @@ func TestHandleReturn(t *testing.T) {
 					expected = "nil"
 				}
 				t.Errorf("returned %v, but expected %v", got, expected)
+			}
+		})
+	}
+}
+
+func TestHandleReturnStream(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+
+	type msg struct {
+		Val string
+	}
+
+	handler := func(srv interface{}, ss grpc.ServerStream) error {
+		logReq, _ := LogReqFromCtx(ss.Context())
+		logReq.Payload.ResourceName = "ExampleResourceName"
+		for _, m := range []*msg{{Val: "req1"}, {Val: "req2"}, {Val: "req3"}} {
+			if err := ss.RecvMsg(m); err != nil {
+				return err
+			}
+		}
+		return ss.SendMsg(&msg{Val: "resp1"})
+	}
+
+	jwt := "Bearer " + testutil.JWTFromClaims(t, map[string]interface{}{
+		"email": "user@example.com",
+	})
+
+	ss := &fakeServerStream{
+		incomingCtx: metadata.NewIncomingContext(context.Background(), metadata.New(map[string]string{
+			"authorization": jwt,
+		})),
+	}
+
+	tests := []struct {
+		name    string
+		logMode alpb.AuditLogRequest_LogMode
+		err     error
+		wantErr bool
+	}{
+		{
+			name:    "returns_nil_no_err_best_effort",
+			logMode: alpb.AuditLogRequest_BEST_EFFORT,
+			wantErr: false,
+		},
+		{
+			name:    "returns_response_no_err_fail_close",
+			logMode: alpb.AuditLogRequest_FAIL_CLOSE,
+			wantErr: false,
+		},
+		{
+			name:    "returns_err_with_err_fail_close",
+			logMode: alpb.AuditLogRequest_FAIL_CLOSE,
+			err:     errors.New("test error"),
+			wantErr: true,
+		},
+		{
+			name:    "returns_nil_with_err_best_effort",
+			logMode: alpb.AuditLogRequest_BEST_EFFORT,
+			err:     errors.New("test error"),
+			wantErr: false,
+		},
+	}
+	for _, tc := range tests {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			i := &Interceptor{LogMode: tc.logMode}
+
+			gotErr := i.handleReturnStream(ctx, ss, handler, tc.err)
+
+			if (gotErr != nil) != tc.wantErr {
+				expected := "an error"
+				if !tc.wantErr {
+					expected = "nil"
+				}
+				t.Errorf("returned %v, but expected %v", gotErr, expected)
 			}
 		})
 	}
