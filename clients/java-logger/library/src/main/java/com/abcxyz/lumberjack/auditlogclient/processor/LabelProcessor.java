@@ -18,12 +18,11 @@ public class LabelProcessor implements LogMutator {
   @Override
   public AuditLogRequest process(AuditLogRequest auditLogRequest) throws LogProcessingException {
     if (config.getLabels() != null) {
-      Map<String, String> labels = new HashMap<>();
       // Make a copy to get around unmodifiable map in auditLogRequest
-      labels.putAll(auditLogRequest.getLabelsMap());
+      Map<String, String> labels = new HashMap<>(auditLogRequest.getLabelsMap());
       for (Map.Entry<String, String> entry : config.getLabels().entrySet()) {
         // Do not overwrite explicitly added labels.
-          labels.putIfAbsent(entry.getKey(), entry.getValue());
+        labels.putIfAbsent(entry.getKey(), entry.getValue());
       }
       return auditLogRequest.toBuilder().putAllLabels(labels).build();
     }
