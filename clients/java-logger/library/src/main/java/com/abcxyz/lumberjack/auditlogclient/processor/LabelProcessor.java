@@ -7,8 +7,10 @@ import com.google.inject.Inject;
 import java.util.HashMap;
 import java.util.Map;
 import lombok.AllArgsConstructor;
-import lombok.RequiredArgsConstructor;
 
+/**
+ * Adds labels from the configuration to the audit log request. Does not overwrite existing labels.
+ */
 @AllArgsConstructor(onConstructor = @__({@Inject}))
 public class LabelProcessor implements LogMutator {
   private AuditLoggingConfiguration config;
