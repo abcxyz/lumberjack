@@ -17,7 +17,7 @@ public class LabelProcessor implements LogMutator {
 
   @Override
   public AuditLogRequest process(AuditLogRequest auditLogRequest) throws LogProcessingException {
-    if (config.getLabels() == null) {
+    if (config.getLabels() == null || config.getLabels().isEmpty()) {
       // shortcut if there are no labels to add
       return auditLogRequest;
     }
