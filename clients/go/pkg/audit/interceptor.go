@@ -61,7 +61,7 @@ func (i *Interceptor) UnaryInterceptor(ctx context.Context, req interface{}, inf
 
 	serviceName, err := serviceName(info.FullMethod)
 	if err != nil {
-		return i.handleReturn(ctx, req, handler, status.Errorf(codes.FailedPrecondition, "audit interceptor: %v", err))
+		return i.handleReturnUnary(ctx, req, handler, status.Errorf(codes.FailedPrecondition, "audit interceptor: %v", err))
 	}
 
 	logReq := &alpb.AuditLogRequest{
@@ -81,7 +81,7 @@ func (i *Interceptor) UnaryInterceptor(ctx context.Context, req interface{}, inf
 	// Autofill `Payload.AuthenticationInfo.PrincipalEmail`.
 	principal, err := i.SecurityContext.RequestPrincipal(ctx)
 	if err != nil {
-		return i.handleReturn(ctx, req, handler, status.Errorf(codes.FailedPrecondition,
+		return i.handleReturnUnary(ctx, req, handler, status.Errorf(codes.FailedPrecondition,
 			"audit interceptor failed to get request principal; this is likely a result of misconfiguration of audit client (security_context): %v %v",
 			zap.Any("security_context", i.SecurityContext), zap.Error(err)))
 	}
@@ -90,7 +90,7 @@ func (i *Interceptor) UnaryInterceptor(ctx context.Context, req interface{}, inf
 	// Autofill `Payload.Request`.
 	if shouldLogReq(r) {
 		if err := setReq(logReq, req); err != nil {
-			return i.handleReturn(ctx, req, handler, status.Errorf(codes.Internal,
+			return i.handleReturnUnary(ctx, req, handler, status.Errorf(codes.Internal,
 				"audit interceptor failed converting req into a Google struct proto: %v", err))
 		}
 	}
@@ -139,7 +139,7 @@ func (i *Interceptor) StreamInterceptor(srv interface{}, ss grpc.ServerStream, i
 
 	serviceName, err := serviceName(info.FullMethod)
 	if err != nil {
-		return status.Errorf(codes.FailedPrecondition, "audit interceptor: %v", err)
+		return i.handleReturnStream(ctx, ss, handler, status.Errorf(codes.FailedPrecondition, "audit interceptor: %v", err))
 	}
 
 	// Build a baseline log request to be shared by all stream calls.
@@ -164,9 +164,9 @@ func (i *Interceptor) StreamInterceptor(srv interface{}, ss grpc.ServerStream, i
 	// Autofill `Payload.AuthenticationInfo.PrincipalEmail`.
 	principal, err := i.SecurityContext.RequestPrincipal(ctx)
 	if err != nil {
-		zlogger.Warn("audit interceptor failed to get request principal; this is likely a result of misconfiguration of audit client (security_context)",
-			zap.Any("security_context", i.SecurityContext), zap.Error(err))
-		return handler(srv, ss)
+		return i.handleReturnStream(ctx, ss, handler, status.Errorf(codes.FailedPrecondition,
+			"audit interceptor failed to get request principal; this is likely a result of misconfiguration of audit client (security_context): %v %v",
+			zap.Any("security_context", i.SecurityContext), zap.Error(err)))
 	}
 	logReq.Payload.AuthenticationInfo = &calpb.AuthenticationInfo{PrincipalEmail: principal}
 
@@ -294,9 +294,9 @@ func shouldLogResp(r *alpb.AuditRule) bool {
 	return r.Directive == alpb.AuditRuleDirectiveRequestAndResponse
 }
 
-// handleReturn is intended to be a wrapper that handles the LogMode correctly, and returns errors or the handler
+// handleReturnUnary is intended to be a wrapper that handles the LogMode correctly, and returns errors or the handler
 // depending on whether the config and has specified to fail close.
-func (i *Interceptor) handleReturn(ctx context.Context, req interface{}, handler grpc.UnaryHandler, err error) (interface{}, error) {
+func (i *Interceptor) handleReturnUnary(ctx context.Context, req interface{}, handler grpc.UnaryHandler, err error) (interface{}, error) {
 	if alpb.ShouldFailClose(i.LogMode) && err != nil {
 		return nil, err
 	}
@@ -307,6 +307,19 @@ func (i *Interceptor) handleReturn(ctx context.Context, req interface{}, handler
 			zap.Error(err))
 	}
 	return handler(ctx, req)
+}
+
+func (i *Interceptor) handleReturnStream(ctx context.Context, ss grpc.ServerStream, handler grpc.StreamHandler, err error) error {
+	if alpb.ShouldFailClose(i.LogMode) && err != nil {
+		return err
+	}
+	if err != nil {
+		// There was an error, but we are failing open.
+		zlogger := zlogger.FromContext(ctx)
+		zlogger.Warn("Error occurred while attempting to audit log, but continuing without audit logging or raising error.",
+			zap.Error(err))
+	}
+	return handler(ctx, ss)
 }
 
 // handleReturnWithResponse is intended to be a wrapper that handles the LogMode correctly, and returns errors or a response
