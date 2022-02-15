@@ -89,12 +89,10 @@ func (i *Interceptor) UnaryInterceptor(ctx context.Context, req interface{}, inf
 
 	// Autofill `Payload.Request`.
 	if shouldLogReq(r) {
-		reqStruct, err := toProtoStruct(req)
-		if err != nil {
+		if err := setReq(logReq, req); err != nil {
 			return i.handleReturn(ctx, req, handler, status.Errorf(codes.Internal,
 				"audit interceptor failed converting req into a Google struct proto: %v", err))
 		}
-		setReq(logReq, reqStruct)
 	}
 
 	// Store our log req in the context to make it accessible
@@ -114,12 +112,10 @@ func (i *Interceptor) UnaryInterceptor(ctx context.Context, req interface{}, inf
 
 	// Autofill `Payload.Response`.
 	if shouldLogResp(r) {
-		respStruct, err := toProtoStruct(resp)
-		if err != nil {
+		if err = setResp(logReq, resp); err != nil {
 			return i.handleReturnWithResponse(ctx, resp, status.Errorf(codes.Internal,
 				"audit interceptor failed converting resp into a Google struct proto: %v", err))
 		}
-		setResp(logReq, respStruct)
 	}
 
 	// TODO(#95): Needs to honor the log mode.
