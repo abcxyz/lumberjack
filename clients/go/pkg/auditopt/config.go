@@ -50,11 +50,8 @@ func MustFromConfigFile(path string) audit.Option {
 		if err != nil {
 			return err
 		}
-		cfg := &alpb.Config{}
-		if err := yaml.Unmarshal(fc, cfg); err != nil {
-			return err
-		}
-		if err := setAndValidate(cfg); err != nil {
+		cfg, err := loadConfig(fc)
+		if err != nil {
 			return err
 		}
 		return clientFromConfig(c, cfg)
@@ -76,11 +73,8 @@ func FromConfigFile(path string) audit.Option {
 		if err != nil && !errors.Is(err, fs.ErrNotExist) {
 			return err
 		}
-		cfg := &alpb.Config{}
-		if err := yaml.Unmarshal(fc, cfg); err != nil {
-			return err
-		}
-		if err := setAndValidate(cfg); err != nil {
+		cfg, err := loadConfig(fc)
+		if err != nil {
 			return err
 		}
 		return clientFromConfig(c, cfg)
@@ -97,14 +91,13 @@ func WithInterceptorFromConfigFile(path string) (*audit.Interceptor, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to read config file: %w", err)
 	}
-	cfg := &alpb.Config{}
-	if err := yaml.Unmarshal(fc, cfg); err != nil {
-		return nil, fmt.Errorf("failed to unmarshall file to yaml: %w", err)
-	}
-	if err := cfg.ValidateSecurityContext(); err != nil {
+	cfg, err := loadConfig(fc)
+	if err != nil {
 		return nil, err
 	}
-	if err := setAndValidate(cfg); err != nil {
+
+	// Interceptor requires security context so we also validate it.
+	if err := cfg.ValidateSecurityContext(); err != nil {
 		return nil, err
 	}
 
@@ -206,27 +199,22 @@ func labelsFromConfig(cfg *alpb.Config) audit.Option {
 	return audit.WithMutator(&lp)
 }
 
-// setAndValidate sets cfg values from env vars and defaults. Additionally,
-// we validate the cfg values.
-func setAndValidate(cfg *alpb.Config) error {
-	// TODO(#123): envconfig.ProcessWith(...) traverses the cfg struct by creating
-	// creating non-nil values for pointers to the nested fields. For example,
-	// after a traversal, the value of `cfg.security_context.from_raw_jwt.key`
-	// will be the empty string "" even if `cfg.security_context` was previously
-	// unset and that `cfg.security_context.from_raw_jwt.key` cannot be set by env
-	// vars. As a result, logic relying on nil values in `cfg` will be problematic.
-	// For example, validating that `cfg.security_context` is set should be done
-	// before calling `envconfig.ProcessWith(...)` because `envconfig.ProcessWith(...)`
-	// sets the value of `cfg.security_context` to a non-nil value `from_raw_jwt`.
+func loadConfig(b []byte) (*alpb.Config, error) {
+	cfg := &alpb.Config{}
+	if err := yaml.Unmarshal(b, cfg); err != nil {
+		return nil, err
+	}
+
+	// Process overrides from env vars.
 	l := envconfig.PrefixLookuper("AUDIT_CLIENT_", envconfig.OsLookuper())
 	if err := envconfig.ProcessWith(context.Background(), cfg, l); err != nil {
-		return err
+		return nil, err
 	}
 
 	cfg.SetDefault()
 	if err := cfg.Validate(); err != nil {
-		return fmt.Errorf("failed validating config %+v: %w", cfg, err)
+		return nil, fmt.Errorf("failed validating config %+v: %w", cfg, err)
 	}
 
-	return nil
+	return cfg, nil
 }

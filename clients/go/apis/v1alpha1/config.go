@@ -23,17 +23,17 @@ type Config struct {
 
 	// Backend specifies what remote backend to send audit logs to.
 	// If a remote backend config is nil, audit logs will be written to stdout.
-	Backend *Backend `yaml:"backend,omitempty"`
+	Backend *Backend `yaml:"backend,omitempty" env:",noinit"`
 
 	// Condition specifies the condition under which an incoming request should be
 	// audit logged. If the condition is nil, the default is to audit log all requests.
-	Condition *Condition `yaml:"condition,omitempty"`
+	Condition *Condition `yaml:"condition,omitempty" env:",noinit"`
 
 	// SecurityContext specifies how to retrieve security context such as
 	// authentication info from the incoming requests.
 	// This config is only used for auto audit logging, and it must not be nil.
 	// When auto audit logging is not used, setting this field has no effect.
-	SecurityContext *SecurityContext `yaml:"security_context,omitempty"`
+	SecurityContext *SecurityContext `yaml:"security_context,omitempty" env:",noinit"`
 
 	// Rules specifies audit logging instructions per matching requests
 	// method/path. If the rules is nil or empty, no audit logs will be collected.
@@ -67,18 +67,24 @@ func (cfg *Config) Validate() error {
 		err = multierr.Append(err, serr)
 	}
 
-	// TODO(#123): Reenable this validation once we stop initiate nil structs.
-	// if cfg.SecurityContext != nil {
-	// 	if serr := cfg.SecurityContext.Validate(); serr != nil {
-	// 		err = multierr.Append(err, serr)
-	// 	}
-	// }
+	if cfg.SecurityContext != nil {
+		if serr := cfg.SecurityContext.Validate(); serr != nil {
+			err = multierr.Append(err, serr)
+		}
+	}
 
 	for _, r := range cfg.Rules {
 		if rerr := r.Validate(); rerr != nil {
 			err = multierr.Append(err, rerr)
 		}
 	}
+
+	if cfg.LogMode != "" {
+		if _, ok := AuditLogRequest_LogMode_value[cfg.LogMode]; !ok {
+			err = multierr.Append(err, fmt.Errorf("invalid LogMode %q", cfg.LogMode))
+		}
+	}
+
 	return err
 }
 
@@ -135,7 +141,7 @@ func (b *Backend) Validate() error {
 // audit logged. Only one condition can be used.
 type Condition struct {
 	// Regex specifies the regular experessions to match request principals.
-	Regex *RegexCondition `yaml:"regex,omitempty"`
+	Regex *RegexCondition `yaml:"regex,omitempty" env:",noinit"`
 }
 
 // RegexCondition matches condition with regular expression.
