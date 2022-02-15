@@ -294,7 +294,7 @@ func shouldLogResp(r *alpb.AuditRule) bool {
 	return r.Directive == alpb.AuditRuleDirectiveRequestAndResponse
 }
 
-// handleReturn is intended to be a wrapper that handles the LogMode correctly, and returns errors or the handler
+// handleReturnUnary is intended to be a wrapper that handles the LogMode correctly, and returns errors or the handler
 // depending on whether the config and has specified to fail close.
 func (i *Interceptor) handleReturnUnary(ctx context.Context, req interface{}, handler grpc.UnaryHandler, err error) (interface{}, error) {
 	if alpb.ShouldFailClose(i.LogMode) && err != nil {
