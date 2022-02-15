@@ -12,12 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package util
+package v1alpha1
 
 import (
 	"testing"
-
-	alpb "github.com/abcxyz/lumberjack/clients/go/apis/v1alpha1"
 )
 
 func TestShouldFailClose(t *testing.T) {
@@ -25,21 +23,21 @@ func TestShouldFailClose(t *testing.T) {
 
 	cases := []struct {
 		name    string
-		logMode alpb.AuditLogRequest_LogMode
+		logMode AuditLogRequest_LogMode
 		wanted  bool
 	}{{
 		name:    "should_return_true_on_fail_close",
-		logMode: alpb.AuditLogRequest_FAIL_CLOSE,
+		logMode: AuditLogRequest_FAIL_CLOSE,
 		wanted:  true,
 	},
 		{
 			name:    "should_return_false_on_best_effort",
-			logMode: alpb.AuditLogRequest_BEST_EFFORT,
+			logMode: AuditLogRequest_BEST_EFFORT,
 			wanted:  false,
 		},
 		{
 			name:    "should_return_false_on_unspecified",
-			logMode: alpb.AuditLogRequest_LOG_MODE_UNSPECIFIED,
+			logMode: AuditLogRequest_LOG_MODE_UNSPECIFIED,
 			wanted:  false,
 		},
 	}

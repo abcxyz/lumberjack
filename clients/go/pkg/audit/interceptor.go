@@ -22,7 +22,6 @@ import (
 	"sync"
 
 	"github.com/abcxyz/lumberjack/clients/go/pkg/security"
-	"github.com/abcxyz/lumberjack/clients/go/pkg/util"
 	"github.com/abcxyz/lumberjack/clients/go/pkg/zlogger"
 	"github.com/google/uuid"
 	"go.uber.org/zap"
@@ -90,12 +89,12 @@ func (i *Interceptor) UnaryInterceptor(ctx context.Context, req interface{}, inf
 
 	// Autofill `Payload.Request`.
 	if shouldLogReq(r) {
-		if reqStruct, err := toProtoStruct(req); err != nil {
+		reqStruct, err := toProtoStruct(req)
+		if err != nil {
 			return i.handleReturn(ctx, req, handler, status.Errorf(codes.Internal,
 				"audit interceptor failed converting req into a Google struct proto: %v", err))
-		} else {
-			logReq.Payload.Request = reqStruct
 		}
+		setReq(logReq, reqStruct)
 	}
 
 	// Store our log req in the context to make it accessible
@@ -115,12 +114,12 @@ func (i *Interceptor) UnaryInterceptor(ctx context.Context, req interface{}, inf
 
 	// Autofill `Payload.Response`.
 	if shouldLogResp(r) {
-		if respStruct, err := toProtoStruct(resp); err != nil {
+		respStruct, err := toProtoStruct(resp)
+		if err != nil {
 			return i.handleReturnWithResponse(ctx, resp, status.Errorf(codes.Internal,
 				"audit interceptor failed converting resp into a Google struct proto: %v", err))
-		} else {
-			logReq.Payload.Response = respStruct
 		}
+		setResp(logReq, respStruct)
 	}
 
 	// TODO(#95): Needs to honor the log mode.
@@ -302,34 +301,32 @@ func shouldLogResp(r *alpb.AuditRule) bool {
 // handleReturn is intended to be a wrapper that handles the LogMode correctly, and returns errors or the handler
 // depending on whether the config and has specified to fail close.
 func (i *Interceptor) handleReturn(ctx context.Context, req interface{}, handler grpc.UnaryHandler, err error) (interface{}, error) {
-	if util.ShouldFailClose(i.LogMode) && err != nil {
+	if alpb.ShouldFailClose(i.LogMode) && err != nil {
 		return nil, err
-	} else {
-		if err != nil {
-			// There was an error, but we are failing open.
-			zlogger := zlogger.FromContext(ctx)
-			zlogger.Warn("Error occurred while attempting to audit log, but continuing without audit logging or raising error.",
-				zap.Error(err))
-		}
-		return handler(ctx, req)
 	}
+	if err != nil {
+		// There was an error, but we are failing open.
+		zlogger := zlogger.FromContext(ctx)
+		zlogger.Warn("Error occurred while attempting to audit log, but continuing without audit logging or raising error.",
+			zap.Error(err))
+	}
+	return handler(ctx, req)
 }
 
 // handleReturnWithResponse is intended to be a wrapper that handles the LogMode correctly, and returns errors or a response
 // depending on whether the config and has specified to fail close. Differs from the above, as this is intended to be used
 // after the next handler in the chain has returned, and so we have a response formed already.
 func (i *Interceptor) handleReturnWithResponse(ctx context.Context, handlerResp interface{}, err error) (interface{}, error) {
-	if util.ShouldFailClose(i.LogMode) && err != nil {
+	if alpb.ShouldFailClose(i.LogMode) && err != nil {
 		return handlerResp, err
-	} else {
-		if err != nil {
-			// There was an error, but we are failing open.
-			zlogger := zlogger.FromContext(ctx)
-			zlogger.Warn("Error occurred while attempting to audit log, but continuing without audit logging or raising error.",
-				zap.Error(err))
-		}
-		return handlerResp, nil
 	}
+	if err != nil {
+		// There was an error, but we are failing open.
+		zlogger := zlogger.FromContext(ctx)
+		zlogger.Warn("Error occurred while attempting to audit log, but continuing without audit logging or raising error.",
+			zap.Error(err))
+	}
+	return handlerResp, nil
 }
 
 var serviceNameRegexp = regexp.MustCompile("^/{1,2}(.*?)/")

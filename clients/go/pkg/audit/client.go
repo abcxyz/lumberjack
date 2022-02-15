@@ -20,7 +20,6 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/abcxyz/lumberjack/clients/go/pkg/util"
 	"go.uber.org/multierr"
 	"go.uber.org/zap"
 
@@ -180,7 +179,7 @@ func (c *Client) handleReturn(ctx context.Context, err error, requestedLogMode a
 		return nil
 	}
 	// If there is an error, and we should fail close, return that error.
-	if util.ShouldFailClose(requestedLogMode) {
+	if alpb.ShouldFailClose(requestedLogMode) {
 		return err
 	}
 	// If there is an error, and we shouldn't fail close, log and return nil.

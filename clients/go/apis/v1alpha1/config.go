@@ -49,9 +49,9 @@ type Config struct {
 	Rules []*AuditRule `yaml:"rules,omitempty"`
 
 	// LogMode specifies whether the audit logger should fail open or close.
-	// If fail-close is not chosen, the audit logger will try to swallow any
-	// errors that occur, and not impede the application in any way.
-	LogMode string `yaml:"log_mode,omitempty"`
+	// If fail-close is not chosen, the audit logger will log errors that occur,
+	// and then continue without impeding the application in any way.
+	LogMode string `yaml:"log_mode,omitempty" env:"LOG_MODE,overwrite"`
 }
 
 // Validate checks if the config is valid.

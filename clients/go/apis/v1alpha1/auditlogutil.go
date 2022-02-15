@@ -13,11 +13,9 @@
 // limitations under the License.
 
 // Package util provides utilities for the audit logger.
-package util
-
-import alpb "github.com/abcxyz/lumberjack/clients/go/apis/v1alpha1"
+package v1alpha1
 
 // ShouldFailClose returns true only if FAIL_CLOSE is explicitly configured. On BEST_EFFORT or LOG_MODE_UNSPECIFIED (the default) then return false.
-func ShouldFailClose(logMode alpb.AuditLogRequest_LogMode) bool {
-	return logMode == alpb.AuditLogRequest_FAIL_CLOSE
+func ShouldFailClose(logMode AuditLogRequest_LogMode) bool {
+	return logMode == AuditLogRequest_FAIL_CLOSE
 }
