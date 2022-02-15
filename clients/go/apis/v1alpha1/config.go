@@ -16,13 +16,6 @@ const (
 	AuditRuleDirectiveRequestAndResponse = "AUDIT_REQUEST_AND_RESPONSE"
 )
 
-// Re-define these strings, as i can't find a better way to map them to AuditLogRequest_LogMode.
-var StringToLogMode = map[string]AuditLogRequest_LogMode{
-	"BEST_EFFORT":          AuditLogRequest_BEST_EFFORT,
-	"FAIL_CLOSE":           AuditLogRequest_FAIL_CLOSE,
-	"LOG_MODE_UNSPECIFIED": AuditLogRequest_LOG_MODE_UNSPECIFIED,
-}
-
 // Config is the full audit client config.
 type Config struct {
 	// Version is the version of the config.
@@ -107,7 +100,7 @@ func (cfg *Config) SetDefault() {
 
 // GetLogMode converts the LogMode string to a AuditLogRequest_LogMode.
 func (cfg *Config) GetLogMode() AuditLogRequest_LogMode {
-	return StringToLogMode[cfg.LogMode]
+	return AuditLogRequest_LogMode(AuditLogRequest_LogMode_value[cfg.LogMode])
 }
 
 // Backend is the remote backend service to send audit logs to.
