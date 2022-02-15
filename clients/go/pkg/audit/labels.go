@@ -30,7 +30,7 @@ type LabelProcessor struct {
 
 func (p *LabelProcessor) Process(ctx context.Context, logReq *alpb.AuditLogRequest) error {
 	if p.DefaultLabels == nil || len(p.DefaultLabels) == 0 {
-		// shortcut if there are no labels to add
+		// short circuit if there are no labels to add
 		return nil
 	}
 	if logReq.Labels == nil {
