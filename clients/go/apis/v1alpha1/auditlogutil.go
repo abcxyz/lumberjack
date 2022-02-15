@@ -15,7 +15,8 @@
 // Package util provides utilities for the audit logger.
 package v1alpha1
 
-// ShouldFailClose returns true only if FAIL_CLOSE is explicitly configured. On BEST_EFFORT or LOG_MODE_UNSPECIFIED (the default) then return false.
+// ShouldFailClose returns true only if FAIL_CLOSE is explicitly configured. On BEST_EFFORT or LOG_MODE_UNSPECIFIED
+// (the default) then return false.
 func ShouldFailClose(logMode AuditLogRequest_LogMode) bool {
 	return logMode == AuditLogRequest_FAIL_CLOSE
 }
