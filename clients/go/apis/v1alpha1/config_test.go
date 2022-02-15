@@ -34,7 +34,10 @@ security_context:
 rules:
 - selector: com.example.*
   directive: AUDIT
-  log_type: ADMIN_ACTIVITY`,
+  log_type: ADMIN_ACTIVITY
+labels:
+  mylabel1: myvalue1
+  mylabel2: myvalue2`,
 		wantConfig: &Config{
 			Version: "v1alpha1",
 			Backend: &Backend{
@@ -60,6 +63,10 @@ rules:
 				Directive: "AUDIT",
 				LogType:   "ADMIN_ACTIVITY",
 			}},
+			Labels: map[string]string{
+				"mylabel1": "myvalue1",
+				"mylabel2": "myvalue2",
+			},
 		},
 	}, {
 		name: "minimal_config",
