@@ -32,6 +32,8 @@ package abcxyz.lumberjack.test.talker;
  */
 
 import com.abcxyz.lumberjack.test.talker.AdditionRequest;
+import com.abcxyz.lumberjack.test.talker.FailRequest;
+import com.abcxyz.lumberjack.test.talker.FailResponse;
 import com.abcxyz.lumberjack.test.talker.FibonacciRequest;
 import com.abcxyz.lumberjack.test.talker.HelloRequest;
 import com.abcxyz.lumberjack.test.talker.HelloResponse;
@@ -96,6 +98,23 @@ public class TalkerClient {
       throw e;
     }
     logger.info("Greeting: " + response.getMessage());
+  }
+
+  /** Test failure. */
+  public void fail(String message, UUID target) {
+    logger.info("Sending message " + message + " ...");
+    FailRequest request =
+        FailRequest.newBuilder().setMessage(message).setTarget(target.toString()).build();
+    FailResponse response;
+    try {
+      response = blockingStub.fail(request);
+      logger.info("Did not receive error: " + response.getMessage());
+      throw new IllegalStateException("Did not receive error from fail api");
+    } catch (StatusRuntimeException e) {
+      logger.log(Level.INFO, "RPC failed: {0}", e.getStatus());
+    } catch (Exception e) {
+      logger.log(Level.INFO, "Got other failure {0}", e.getMessage());
+    }
   }
 
   public void fibonacci(int places) {
@@ -174,6 +193,7 @@ public class TalkerClient {
         client.whisper("This is a secret! Don't audit log this string", target);
         client.fibonacci(5);
         client.addition(3);
+        client.fail("This message should result in failure", target);
         // Sleep and wait for response to addition. Blocking stub doesn't support client streaming.
         TimeUnit.SECONDS.sleep(5);
       } finally {

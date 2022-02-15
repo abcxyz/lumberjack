@@ -34,6 +34,9 @@ service Talker {
   rpc Fibonacci(FibonacciRequest) returns (stream FibonacciResponse);
   rpc Addition(stream AdditionRequest) returns (AdditionResponse);
 
+  // An api that is intended to always throw an error.
+  rpc Fail(FailRequest) returns (FailResponse);
+
   // TODO(#81): Add bi-directional streaming API as well.
   // Something like "Conversation".
 }
@@ -82,4 +85,13 @@ message AdditionRequest {
 
 message AdditionResponse {
   uint64 sum = 1;
+}
+
+message FailRequest {
+  string target = 1;
+  string message = 2;
+}
+
+message FailResponse {
+  string message = 1;
 }

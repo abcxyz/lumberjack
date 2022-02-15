@@ -36,6 +36,8 @@ import com.abcxyz.lumberjack.auditlogclient.AuditLogs;
 import com.abcxyz.lumberjack.auditlogclient.modules.AuditLoggingModule;
 import com.abcxyz.lumberjack.test.talker.AdditionRequest;
 import com.abcxyz.lumberjack.test.talker.AdditionResponse;
+import com.abcxyz.lumberjack.test.talker.FailRequest;
+import com.abcxyz.lumberjack.test.talker.FailResponse;
 import com.abcxyz.lumberjack.test.talker.FibonacciRequest;
 import com.abcxyz.lumberjack.test.talker.FibonacciResponse;
 import com.abcxyz.lumberjack.test.talker.HelloRequest;
@@ -176,6 +178,16 @@ public class TalkerService {
     public StreamObserver<AdditionRequest> addition(
         StreamObserver<AdditionResponse> responseObserver) {
       return new ServerAdditionObserver(responseObserver);
+    }
+
+    /**
+     * This is an api that always fails. It is intended to test the failure modes of our application.
+     */
+    @Override
+    public void fail(FailRequest req, StreamObserver<FailResponse> responseObserver) {
+      AuditLog.Builder auditLogBuilder = AuditLogs.getBuilderFromContext();
+      auditLogBuilder.setResourceName(req.getTarget());
+      throw new RuntimeException(req.getMessage());
     }
   }
 }
