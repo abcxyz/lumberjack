@@ -154,6 +154,9 @@ func clientFromConfig(c *audit.Client, cfg *alpb.Config) error {
 	}
 	opts = append(opts, withBackend)
 
+	withLabels := labelsFromConfig(cfg)
+	opts = append(opts, withLabels)
+
 	for _, o := range opts {
 		if err := o(c); err != nil {
 			return err
@@ -196,6 +199,11 @@ func backendFromConfig(cfg *alpb.Config) (audit.Option, error) {
 		return nil, err
 	}
 	return audit.WithBackend(b), nil
+}
+
+func labelsFromConfig(cfg *alpb.Config) audit.Option {
+	lp := audit.LabelProcessor{DefaultLabels: cfg.Labels}
+	return audit.WithMutator(&lp)
 }
 
 // setAndValidate sets cfg values from env vars and defaults. Additionally,
