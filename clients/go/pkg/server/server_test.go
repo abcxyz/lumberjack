@@ -63,9 +63,9 @@ func TestAuditLogAgent_ProcessLog(t *testing.T) {
 		name:        "success_no_update",
 		req:         testutil.ReqBuilder().Build(),
 		p:           &fakeLogProcessor{},
-		wantSentReq: testutil.ReqBuilder().Build(),
+		wantSentReq: testutil.ReqBuilder().WithMode(alpb.AuditLogRequest_FAIL_CLOSE).Build(),
 		wantResp: &alpb.AuditLogResponse{
-			Result: testutil.ReqBuilder().Build(),
+			Result: testutil.ReqBuilder().WithMode(alpb.AuditLogRequest_FAIL_CLOSE).Build(),
 		},
 	}, {
 		name: "success_with_update",
@@ -73,9 +73,9 @@ func TestAuditLogAgent_ProcessLog(t *testing.T) {
 		p: &fakeLogProcessor{
 			updateReq: testutil.ReqBuilder().WithServiceName("bar").WithMethodName("Do").Build(),
 		},
-		wantSentReq: testutil.ReqBuilder().WithServiceName("test-service").Build(),
+		wantSentReq: testutil.ReqBuilder().WithServiceName("test-service").WithMode(alpb.AuditLogRequest_FAIL_CLOSE).Build(),
 		wantResp: &alpb.AuditLogResponse{
-			Result: testutil.ReqBuilder().WithServiceName("bar").WithMethodName("Do").Build(),
+			Result: testutil.ReqBuilder().WithServiceName("bar").WithMethodName("Do").WithMode(alpb.AuditLogRequest_FAIL_CLOSE).Build(),
 		},
 	}, {
 		name: "internal_failure",
@@ -83,7 +83,7 @@ func TestAuditLogAgent_ProcessLog(t *testing.T) {
 		p: &fakeLogProcessor{
 			returnErr: fmt.Errorf("injected err"),
 		},
-		wantSentReq: testutil.ReqBuilder().WithServiceName("test-service").Build(),
+		wantSentReq: testutil.ReqBuilder().WithServiceName("test-service").WithMode(alpb.AuditLogRequest_FAIL_CLOSE).Build(),
 		wantErr:     status.Error(codes.Internal, "failed to execute backend *server.fakeLogProcessor: injected err"),
 	}, {
 		name: "invaid_argument_failure",
@@ -91,8 +91,20 @@ func TestAuditLogAgent_ProcessLog(t *testing.T) {
 		p: &fakeLogProcessor{
 			returnErr: fmt.Errorf("injected: %w", audit.ErrInvalidRequest),
 		},
-		wantSentReq: testutil.ReqBuilder().WithServiceName("test-service").Build(),
+		wantSentReq: testutil.ReqBuilder().WithServiceName("test-service").WithMode(alpb.AuditLogRequest_FAIL_CLOSE).Build(),
 		wantErr:     status.Error(codes.InvalidArgument, "failed to execute backend *server.fakeLogProcessor: injected: invalid audit log request"),
+	}, {
+		name: "invaid_argument_failure_with_requst_overriding_fail_close",
+		req:  testutil.ReqBuilder().WithServiceName("test-service").WithMode(alpb.AuditLogRequest_BEST_EFFORT).Build(),
+		p: &fakeLogProcessor{
+			returnErr: fmt.Errorf("injected: %w", audit.ErrInvalidRequest),
+		},
+		wantSentReq: testutil.ReqBuilder().WithServiceName("test-service").WithMode(alpb.AuditLogRequest_BEST_EFFORT).Build(),
+		wantResp: &alpb.AuditLogResponse{
+			// TODO: We want to swallow errors in the client on best effort, but that means the server will return
+			// with this output. Do we want any indication in the response that the audit log hasn't ocurred?
+			Result: testutil.ReqBuilder().WithServiceName("test-service").WithMode(alpb.AuditLogRequest_BEST_EFFORT).Build(),
+		},
 	}}
 
 	for _, tc := range cases {
@@ -104,7 +116,7 @@ func TestAuditLogAgent_ProcessLog(t *testing.T) {
 			s := grpc.NewServer()
 			defer s.Stop()
 
-			ac, err := audit.NewClient(audit.WithBackend(tc.p))
+			ac, err := audit.NewClient(audit.WithBackend(tc.p), audit.WithLogMode(alpb.AuditLogRequest_FAIL_CLOSE))
 			if err != nil {
 				t.Fatalf("Failed to create audit client: %v", err)
 			}

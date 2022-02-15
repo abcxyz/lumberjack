@@ -19,6 +19,7 @@ package com.abcxyz.lumberjack.auditlogclient;
 import com.abcxyz.lumberjack.auditlogclient.config.AuditLoggingConfiguration;
 import com.abcxyz.lumberjack.auditlogclient.processor.CloudLoggingProcessor;
 import com.abcxyz.lumberjack.auditlogclient.processor.FilteringProcessor;
+import com.abcxyz.lumberjack.auditlogclient.processor.LabelProcessor;
 import com.abcxyz.lumberjack.auditlogclient.processor.LogProcessor;
 import com.abcxyz.lumberjack.auditlogclient.processor.LogProcessor.LogBackend;
 import com.abcxyz.lumberjack.auditlogclient.processor.LogProcessor.LogMutator;
@@ -41,6 +42,7 @@ public class LoggingClientBuilder {
   private final RemoteProcessor remoteProcessor;
   private final RuntimeInfoProcessor runtimeInfoProcessor;
   private final ValidationProcessor validationProcessor;
+  private final LabelProcessor labelProcessor;
 
   private final LinkedHashSet<LogValidator> validators = new LinkedHashSet<>();
   private final LinkedHashSet<LogMutator> mutators = new LinkedHashSet<>();
@@ -54,8 +56,8 @@ public class LoggingClientBuilder {
     return withValidationProcessor()
         .withFilteringProcessor()
         .withRuntimeInfoProcessor()
-        .withRemoteProcessor();
-
+        .withRemoteProcessor()
+        .withLabelProcessor();
   }
 
   /** Provides a {@link LoggingClientBuilder} with {@link CloudLoggingProcessor}. */
@@ -85,6 +87,12 @@ public class LoggingClientBuilder {
   /** Provides a {@link LoggingClientBuilder} with {@link RemoteProcessor}. */
   public LoggingClientBuilder withRemoteProcessor() {
     backends.add(remoteProcessor);
+    return this;
+  }
+
+  /** Provides a {@link LoggingClientBuilder} with {@link LabelProcessor}. */
+  public LoggingClientBuilder withLabelProcessor() {
+    mutators.add(labelProcessor);
     return this;
   }
 

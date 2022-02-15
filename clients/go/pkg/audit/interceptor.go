@@ -44,6 +44,7 @@ type Interceptor struct {
 	*Client
 	SecurityContext security.GRPCContext
 	Rules           []*alpb.AuditRule
+	LogMode         alpb.AuditLogRequest_LogMode
 }
 
 // UnaryInterceptor is a gRPC unary interceptor that automatically emits application audit logs.
@@ -54,12 +55,13 @@ func (i *Interceptor) UnaryInterceptor(ctx context.Context, req interface{}, inf
 	r := mostRelevantRule(info.FullMethod, i.Rules)
 	if r == nil {
 		zlogger.Debug("no audit rule matching the method name", zap.String("method_name", info.FullMethod), zap.Any("audit_rules", i.Rules))
+		// Interceptor not applied to this method, continue
 		return handler(ctx, req)
 	}
 
 	serviceName, err := serviceName(info.FullMethod)
 	if err != nil {
-		return nil, status.Errorf(codes.FailedPrecondition, "audit interceptor: %v", err)
+		return i.handleReturn(ctx, req, handler, status.Errorf(codes.FailedPrecondition, "audit interceptor: %v", err))
 	}
 
 	logReq := &alpb.AuditLogRequest{
@@ -67,6 +69,7 @@ func (i *Interceptor) UnaryInterceptor(ctx context.Context, req interface{}, inf
 			ServiceName: serviceName,
 			MethodName:  info.FullMethod,
 		},
+		Mode: i.LogMode,
 	}
 
 	// Set log type.
@@ -78,16 +81,17 @@ func (i *Interceptor) UnaryInterceptor(ctx context.Context, req interface{}, inf
 	// Autofill `Payload.AuthenticationInfo.PrincipalEmail`.
 	principal, err := i.SecurityContext.RequestPrincipal(ctx)
 	if err != nil {
-		zlogger.Warn("audit interceptor failed to get request principal; this is likely a result of misconfiguration of audit client (security_context)",
-			zap.Any("security_context", i.SecurityContext), zap.Error(err))
-		return handler(ctx, req)
+		return i.handleReturn(ctx, req, handler, status.Errorf(codes.FailedPrecondition,
+			"audit interceptor failed to get request principal; this is likely a result of misconfiguration of audit client (security_context): %v %v",
+			zap.Any("security_context", i.SecurityContext), zap.Error(err)))
 	}
 	logReq.Payload.AuthenticationInfo = &calpb.AuthenticationInfo{PrincipalEmail: principal}
 
 	// Autofill `Payload.Request`.
 	if shouldLogReq(r) {
 		if err := setReq(logReq, req); err != nil {
-			return nil, err
+			return i.handleReturn(ctx, req, handler, status.Errorf(codes.Internal,
+				"audit interceptor failed converting req into a Google struct proto: %v", err))
 		}
 	}
 
@@ -102,19 +106,21 @@ func (i *Interceptor) UnaryInterceptor(ctx context.Context, req interface{}, inf
 	resp, handlerErr := handler(ctx, req)
 	if handlerErr != nil {
 		// TODO(#96): Consider emitting an audit log when the RPC call fails.
+		// These errors are from outside this interceptor. Therefore, we return the error as-is.
 		return resp, handlerErr
 	}
 
 	// Autofill `Payload.Response`.
 	if shouldLogResp(r) {
 		if err := setResp(logReq, resp); err != nil {
-			return nil, err
+			return i.handleReturnWithResponse(ctx, resp, status.Errorf(codes.Internal,
+				"audit interceptor failed converting resp into a Google struct proto: %v", err))
 		}
 	}
 
 	// TODO(#95): Needs to honor the log mode.
 	if err := i.Log(ctx, logReq); err != nil {
-		return nil, status.Errorf(codes.Internal, "audit interceptor failed to emit log: %v", err)
+		return i.handleReturnWithResponse(ctx, resp, status.Errorf(codes.Internal, "audit interceptor failed to emit log: %v", err))
 	}
 
 	return resp, handlerErr
@@ -286,6 +292,37 @@ func shouldLogReq(r *alpb.AuditRule) bool {
 
 func shouldLogResp(r *alpb.AuditRule) bool {
 	return r.Directive == alpb.AuditRuleDirectiveRequestAndResponse
+}
+
+// handleReturn is intended to be a wrapper that handles the LogMode correctly, and returns errors or the handler
+// depending on whether the config and has specified to fail close.
+func (i *Interceptor) handleReturn(ctx context.Context, req interface{}, handler grpc.UnaryHandler, err error) (interface{}, error) {
+	if alpb.ShouldFailClose(i.LogMode) && err != nil {
+		return nil, err
+	}
+	if err != nil {
+		// There was an error, but we are failing open.
+		zlogger := zlogger.FromContext(ctx)
+		zlogger.Warn("Error occurred while attempting to audit log, but continuing without audit logging or raising error.",
+			zap.Error(err))
+	}
+	return handler(ctx, req)
+}
+
+// handleReturnWithResponse is intended to be a wrapper that handles the LogMode correctly, and returns errors or a response
+// depending on whether the config and has specified to fail close. Differs from the above, as this is intended to be used
+// after the next handler in the chain has returned, and so we have a response formed already.
+func (i *Interceptor) handleReturnWithResponse(ctx context.Context, handlerResp interface{}, err error) (interface{}, error) {
+	if alpb.ShouldFailClose(i.LogMode) && err != nil {
+		return handlerResp, err
+	}
+	if err != nil {
+		// There was an error, but we are failing open.
+		zlogger := zlogger.FromContext(ctx)
+		zlogger.Warn("Error occurred while attempting to audit log, but continuing without audit logging or raising error.",
+			zap.Error(err))
+	}
+	return handlerResp, nil
 }
 
 var serviceNameRegexp = regexp.MustCompile("^/{1,2}(.*?)/")

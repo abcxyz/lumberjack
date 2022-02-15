@@ -68,6 +68,11 @@ func (b *RequestBuilder) WithMetadata(metadata *structpb.Struct) *RequestBuilder
 	return b
 }
 
+func (b *RequestBuilder) WithMode(logMode alpb.AuditLogRequest_LogMode) *RequestBuilder {
+	b.auditLogRequest.Mode = logMode
+	return b
+}
+
 func (b *RequestBuilder) Build() *alpb.AuditLogRequest {
 	return b.auditLogRequest
 }

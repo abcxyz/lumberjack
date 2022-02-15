@@ -13,9 +13,10 @@ func TestConfig(t *testing.T) {
 	t.Parallel()
 
 	cases := []struct {
-		name       string
-		cfg        string
-		wantConfig *Config
+		name        string
+		cfg         string
+		wantConfig  *Config
+		wantLogMode AuditLogRequest_LogMode
 	}{{
 		name: "full_config",
 		cfg: `version: v1alpha1
@@ -38,6 +39,7 @@ rules:
 labels:
   mylabel1: myvalue1
   mylabel2: myvalue2`,
+log_mode: BEST_EFFORT`,
 		wantConfig: &Config{
 			Version: "v1alpha1",
 			Backend: &Backend{
@@ -67,7 +69,9 @@ labels:
 				"mylabel1": "myvalue1",
 				"mylabel2": "myvalue2",
 			},
+			LogMode: "BEST_EFFORT",
 		},
+		wantLogMode: AuditLogRequest_BEST_EFFORT,
 	}, {
 		name: "minimal_config",
 		cfg: `version: v1alpha1
@@ -85,6 +89,7 @@ rules:
 			}},
 			SecurityContext: &SecurityContext{FromRawJWT: []*FromRawJWT{{}}},
 		},
+		wantLogMode: AuditLogRequest_LOG_MODE_UNSPECIFIED,
 	}}
 
 	for _, tc := range cases {
@@ -100,6 +105,10 @@ rules:
 
 			if diff := cmp.Diff(tc.wantConfig, gotConfig); diff != "" {
 				t.Errorf("Config unexpected diff (-want,+got):\n%s", diff)
+			}
+
+			if got, want := gotConfig.GetLogMode(), tc.wantLogMode; got != want {
+				t.Errorf("wanted log mode %v but got %v", want, got)
 			}
 		})
 	}
