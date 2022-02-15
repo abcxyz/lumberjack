@@ -29,7 +29,7 @@ type LabelProcessor struct {
 }
 
 func (p *LabelProcessor) Process(ctx context.Context, logReq *alpb.AuditLogRequest) error {
-	if p.DefaultLabels == nil || len(p.DefaultLabels) == 0 {
+	if len(p.DefaultLabels) == 0 {
 		// short circuit if there are no labels to add
 		return nil
 	}
