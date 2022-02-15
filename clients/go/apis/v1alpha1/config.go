@@ -50,7 +50,6 @@ type Config struct {
 	// If fail-close is not chosen, the audit logger will log errors that occur,
 	// and then continue without impeding the application in any way.
 	LogMode string `yaml:"log_mode,omitempty" env:"LOG_MODE,overwrite"`
-
 }
 
 // Validate checks if the config is valid.

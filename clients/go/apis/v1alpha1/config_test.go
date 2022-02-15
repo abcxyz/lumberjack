@@ -38,7 +38,7 @@ rules:
   log_type: ADMIN_ACTIVITY
 labels:
   mylabel1: myvalue1
-  mylabel2: myvalue2`,
+  mylabel2: myvalue2
 log_mode: BEST_EFFORT`,
 		wantConfig: &Config{
 			Version: "v1alpha1",
