@@ -4,7 +4,6 @@ package talkerpb
 
 import (
 	context "context"
-
 	grpc "google.golang.org/grpc"
 	codes "google.golang.org/grpc/codes"
 	status "google.golang.org/grpc/status"
@@ -29,6 +28,8 @@ type TalkerClient interface {
 	Bye(ctx context.Context, in *ByeRequest, opts ...grpc.CallOption) (*ByeResponse, error)
 	Fibonacci(ctx context.Context, in *FibonacciRequest, opts ...grpc.CallOption) (Talker_FibonacciClient, error)
 	Addition(ctx context.Context, opts ...grpc.CallOption) (Talker_AdditionClient, error)
+	// An api that is intended to always throw an error.
+	Fail(ctx context.Context, in *FailRequest, opts ...grpc.CallOption) (*FailResponse, error)
 }
 
 type talkerClient struct {
@@ -132,6 +133,15 @@ func (x *talkerAdditionClient) CloseAndRecv() (*AdditionResponse, error) {
 	return m, nil
 }
 
+func (c *talkerClient) Fail(ctx context.Context, in *FailRequest, opts ...grpc.CallOption) (*FailResponse, error) {
+	out := new(FailResponse)
+	err := c.cc.Invoke(ctx, "/abcxyz.test.Talker/Fail", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // TalkerServer is the server API for Talker service.
 // All implementations must embed UnimplementedTalkerServer
 // for forward compatibility
@@ -146,6 +156,8 @@ type TalkerServer interface {
 	Bye(context.Context, *ByeRequest) (*ByeResponse, error)
 	Fibonacci(*FibonacciRequest, Talker_FibonacciServer) error
 	Addition(Talker_AdditionServer) error
+	// An api that is intended to always throw an error.
+	Fail(context.Context, *FailRequest) (*FailResponse, error)
 	mustEmbedUnimplementedTalkerServer()
 }
 
@@ -167,6 +179,9 @@ func (UnimplementedTalkerServer) Fibonacci(*FibonacciRequest, Talker_FibonacciSe
 }
 func (UnimplementedTalkerServer) Addition(Talker_AdditionServer) error {
 	return status.Errorf(codes.Unimplemented, "method Addition not implemented")
+}
+func (UnimplementedTalkerServer) Fail(context.Context, *FailRequest) (*FailResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Fail not implemented")
 }
 func (UnimplementedTalkerServer) mustEmbedUnimplementedTalkerServer() {}
 
@@ -282,6 +297,24 @@ func (x *talkerAdditionServer) Recv() (*AdditionRequest, error) {
 	return m, nil
 }
 
+func _Talker_Fail_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(FailRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(TalkerServer).Fail(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/abcxyz.test.Talker/Fail",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(TalkerServer).Fail(ctx, req.(*FailRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // Talker_ServiceDesc is the grpc.ServiceDesc for Talker service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -300,6 +333,10 @@ var Talker_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "Bye",
 			Handler:    _Talker_Bye_Handler,
+		},
+		{
+			MethodName: "Fail",
+			Handler:    _Talker_Fail_Handler,
 		},
 	},
 	Streams: []grpc.StreamDesc{
