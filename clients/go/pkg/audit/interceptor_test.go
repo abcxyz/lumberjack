@@ -991,30 +991,10 @@ func TestHandleReturnUnary(t *testing.T) {
 func TestHandleReturnStream(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
-
-	type msg struct {
-		Val string
-	}
+	ss := &fakeServerStream{}
 
 	handler := func(srv interface{}, ss grpc.ServerStream) error {
-		logReq, _ := LogReqFromCtx(ss.Context())
-		logReq.Payload.ResourceName = "ExampleResourceName"
-		for _, m := range []*msg{{Val: "req1"}, {Val: "req2"}, {Val: "req3"}} {
-			if err := ss.RecvMsg(m); err != nil {
-				return err
-			}
-		}
-		return ss.SendMsg(&msg{Val: "resp1"})
-	}
-
-	jwt := "Bearer " + testutil.JWTFromClaims(t, map[string]interface{}{
-		"email": "user@example.com",
-	})
-
-	ss := &fakeServerStream{
-		incomingCtx: metadata.NewIncomingContext(context.Background(), metadata.New(map[string]string{
-			"authorization": jwt,
-		})),
+		return nil
 	}
 
 	tests := []struct {

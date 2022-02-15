@@ -310,17 +310,16 @@ func (i *Interceptor) handleReturnUnary(ctx context.Context, req interface{}, ha
 }
 
 func (i *Interceptor) handleReturnStream(ctx context.Context, ss grpc.ServerStream, handler grpc.StreamHandler, err error) error {
-	if util.ShouldFailClose(i.LogMode) && err != nil {
+	if alpb.ShouldFailClose(i.LogMode) && err != nil {
 		return err
-	} else {
-		if err != nil {
-			// There was an error, but we are failing open.
-			zlogger := zlogger.FromContext(ctx)
-			zlogger.Warn("Error occurred while attempting to audit log, but continuing without audit logging or raising error.",
-				zap.Error(err))
-		}
-		return handler(ctx, ss)
 	}
+	if err != nil {
+		// There was an error, but we are failing open.
+		zlogger := zlogger.FromContext(ctx)
+		zlogger.Warn("Error occurred while attempting to audit log, but continuing without audit logging or raising error.",
+			zap.Error(err))
+	}
+	return handler(ctx, ss)
 }
 
 // handleReturnWithResponse is intended to be a wrapper that handles the LogMode correctly, and returns errors or a response
