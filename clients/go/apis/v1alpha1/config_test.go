@@ -36,6 +36,9 @@ rules:
 - selector: com.example.*
   directive: AUDIT
   log_type: ADMIN_ACTIVITY
+labels:
+  mylabel1: myvalue1
+  mylabel2: myvalue2
 log_mode: BEST_EFFORT`,
 		wantConfig: &Config{
 			Version: "v1alpha1",
@@ -62,6 +65,10 @@ log_mode: BEST_EFFORT`,
 				Directive: "AUDIT",
 				LogType:   "ADMIN_ACTIVITY",
 			}},
+			Labels: map[string]string{
+				"mylabel1": "myvalue1",
+				"mylabel2": "myvalue2",
+			},
 			LogMode: "BEST_EFFORT",
 		},
 		wantLogMode: AuditLogRequest_BEST_EFFORT,

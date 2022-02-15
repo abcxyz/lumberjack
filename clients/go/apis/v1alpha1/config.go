@@ -41,6 +41,11 @@ type Config struct {
 	// When auto audit logging is not used, setting this field has no effect.
 	Rules []*AuditRule `yaml:"rules,omitempty"`
 
+	// Labels are additional labels that the calling code wants added to each
+	// audit log request. Each label will only be added if it is not already added
+	// in the audit log, and will not overwrite explicitly added labels.
+	Labels map[string]string `yaml:"labels,omitempty"`
+
 	// LogMode specifies whether the audit logger should fail open or close.
 	// If fail-close is not chosen, the audit logger will log errors that occur,
 	// and then continue without impeding the application in any way.
