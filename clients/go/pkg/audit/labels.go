@@ -29,6 +29,9 @@ func (p *LabelProcessor) Process(ctx context.Context, logReq *alpb.AuditLogReque
 		// shortcut if there are no labels to add
 		return nil
 	}
+	if logReq.Labels == nil {
+		logReq.Labels = map[string]string{}
+	}
 
 	for key, val := range p.DefaultLabels {
 		if _, exists := logReq.Labels[key]; !exists {
