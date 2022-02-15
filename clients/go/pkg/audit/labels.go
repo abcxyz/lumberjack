@@ -20,6 +20,10 @@ import (
 	alpb "github.com/abcxyz/lumberjack/clients/go/apis/v1alpha1"
 )
 
+// LabelProcessor is a mutator that adds labels to each AuditLogRequest. These labels
+// are specified through the configuration, and are intended to be defaults. They do
+// not overwrite any labels that are already in the request, and can be overwritten by
+// the server code.
 type LabelProcessor struct {
 	DefaultLabels map[string]string
 }

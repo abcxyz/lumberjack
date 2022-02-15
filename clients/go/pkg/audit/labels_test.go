@@ -30,23 +30,23 @@ func TestProcessLabels(t *testing.T) {
 	ctx := context.Background()
 
 	tests := []struct {
-		name       string
+		name         string
 		configLabels map[string]string
-		logReq     *alpb.AuditLogRequest
-		wantLogReq *alpb.AuditLogRequest
-		wantErr    error
+		logReq       *alpb.AuditLogRequest
+		wantLogReq   *alpb.AuditLogRequest
+		wantErr      error
 	}{
 		{
-			name:       "adds_labels",
+			name:         "adds_labels",
 			configLabels: map[string]string{"label1": "value1"},
-			logReq:     testutil.ReqBuilder().Build(),
-			wantLogReq: testutil.ReqBuilder().WithLabels(map[string]string{"label1": "value1"}).Build(),
+			logReq:       testutil.ReqBuilder().Build(),
+			wantLogReq:   testutil.ReqBuilder().WithLabels(map[string]string{"label1": "value1"}).Build(),
 		},
 		{
-			name:       "adds_labels_without_overwriting",
+			name:         "adds_labels_without_overwriting",
 			configLabels: map[string]string{"label1": "value1", "label2": "value2"},
-			logReq:     testutil.ReqBuilder().WithLabels(map[string]string{"label1": "requestval"}).Build(),
-			wantLogReq: testutil.ReqBuilder().WithLabels(map[string]string{"label1": "requestval", "label2": "value2"}).Build(),
+			logReq:       testutil.ReqBuilder().WithLabels(map[string]string{"label1": "requestval"}).Build(),
+			wantLogReq:   testutil.ReqBuilder().WithLabels(map[string]string{"label1": "requestval", "label2": "value2"}).Build(),
 		},
 		{
 			name:       "adds_nothing_if_nil_labels",
