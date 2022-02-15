@@ -112,7 +112,7 @@ func (i *Interceptor) UnaryInterceptor(ctx context.Context, req interface{}, inf
 
 	// Autofill `Payload.Response`.
 	if shouldLogResp(r) {
-		if err = setResp(logReq, resp); err != nil {
+		if err := setResp(logReq, resp); err != nil {
 			return i.handleReturnWithResponse(ctx, resp, status.Errorf(codes.Internal,
 				"audit interceptor failed converting resp into a Google struct proto: %v", err))
 		}
