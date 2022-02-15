@@ -283,6 +283,23 @@ func TestUnaryInterceptor(t *testing.T) {
 			wantErrSubstr: `audit interceptor failed to get request principal;`,
 		},
 		{
+			name: "unable_to_extract_principal_fail_close",
+			ctx: metadata.NewIncomingContext(context.Background(), metadata.New(map[string]string{
+				"authorization": "bananas",
+			})),
+			auditRules: []*alpb.AuditRule{{
+				Selector: "*",
+			}},
+			logMode: alpb.AuditLogRequest_FAIL_CLOSE,
+			info: &grpc.UnaryServerInfo{
+				FullMethod: "/ExampleService/ExampleMethod",
+			},
+			handler: func(ctx context.Context, req interface{}) (interface{}, error) {
+				return nil, nil
+			},
+			wantErrSubstr: `audit interceptor failed to get request principal;`,
+		},
+		{
 			name: "unable_to_convert_req_to_proto_struct_fail_close",
 			ctx: metadata.NewIncomingContext(context.Background(), metadata.New(map[string]string{
 				"authorization": jwt,
