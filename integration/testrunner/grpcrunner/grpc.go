@@ -86,6 +86,7 @@ func TestGRPCEndpoint(t testing.TB, ctx context.Context, g *GRPC) {
 
 	// TODO(#149): Reenable stream interception tests once Go adds stream handling.
 	if strings.Contains(g.EndpointURL, "java") {
+		g.runFailCheck(t, ctx)
 		g.runFibonacciCheck(t, ctx)
 		g.runAdditionCheck(t, ctx)
 	}
@@ -111,7 +112,7 @@ func (g *GRPC) runFibonacciCheck(t testing.TB, ctx context.Context) {
 		t.Logf("Received value %v", place.Value)
 	}
 	query := g.makeQueryForGRPCStream(u)
-	utils.QueryIfAuditLogsExistWithRetries(t, ctx, query, g.Config, int64(places))
+	utils.QueryIfAuditLogsExistWithRetries(t, ctx, query, g.Config, "fibonacciCheck", int64(places))
 }
 
 // End-to-end test for the addition API, which is a test for client-side streaming.
@@ -137,7 +138,7 @@ func (g *GRPC) runAdditionCheck(t testing.TB, ctx context.Context) {
 	t.Logf("Value returned: %d", reply.Sum)
 
 	query := g.makeQueryForGRPCStream(u)
-	utils.QueryIfAuditLogsExistWithRetries(t, ctx, query, g.Config, int64(totalNumbers))
+	utils.QueryIfAuditLogsExistWithRetries(t, ctx, query, g.Config, "additionCheck", int64(totalNumbers))
 }
 
 // End-to-end test for the hello API, which is a test for unary requests.
@@ -148,7 +149,18 @@ func (g *GRPC) runHelloCheck(t testing.TB, ctx context.Context) {
 		t.Fatalf("could not greet: %v", err)
 	}
 	query := g.makeQueryForGRPCUnary(u)
-	utils.QueryIfAuditLogExistsWithRetries(t, ctx, query, g.Config)
+	utils.QueryIfAuditLogExistsWithRetries(t, ctx, query, g.Config, "helloCheck")
+}
+
+// End-to-end test for the hello API, which is a test for unary requests.
+func (g *GRPC) runFailCheck(t testing.TB, ctx context.Context) {
+	u := uuid.New()
+	_, err := g.TalkerClient.Fail(ctx, &talkerpb.FailRequest{Message: "Some Message", Target: u.String()})
+	if err == nil {
+		t.Fatalf("expected err but did not get one: %v", err)
+	}
+	query := g.makeQueryForGRPCUnary(u)
+	utils.QueryIfAuditLogExistsWithRetries(t, ctx, query, g.Config, "failCheck")
 }
 
 // Server is in cloud run. Example: https://cloud.google.com/run/docs/triggering/grpc#request-auth

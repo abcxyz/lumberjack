@@ -32,6 +32,7 @@ import com.google.protobuf.MessageOrBuilder;
 import com.google.protobuf.Struct;
 import com.google.protobuf.Value;
 import com.google.protobuf.util.JsonFormat;
+import com.google.rpc.Code;
 import io.grpc.Context;
 import io.grpc.Contexts;
 import io.grpc.ForwardingServerCall.SimpleForwardingServerCall;
@@ -130,7 +131,7 @@ public class AuditLoggingServerInterceptor<ReqT extends Message> implements Serv
                 // newest message. returns null if empty.
                 ReqT unloggedRequest = unloggedRequests.pollLast();
 
-                auditLog(selector, unloggedRequest, message, logBuilder, logEntryOperation);
+                auditLog(selector, unloggedRequest, messageToStruct(message), logBuilder, logEntryOperation);
                 super.sendMessage(message);
               }
             },
@@ -158,18 +159,33 @@ public class AuditLoggingServerInterceptor<ReqT extends Message> implements Serv
         unloggedRequests.add(message);
         super.onMessage(message);
       }
+
+      /**
+       * This method is where exceptions will bubble up to. It is used here to audit log those errors.
+       */
+      @Override
+      public void onHalfClose() {
+        try {
+          super.onHalfClose();
+        } catch (Exception e) {
+          log.info("Exception occurred, audit logging it: " + e.getMessage());
+          ReqT unloggedRequest = unloggedRequests.pollFirst(); // try to get the last request
+          logError(selector, unloggedRequest, e, logBuilder, logEntryOperation);
+          throw e;
+        }
+      }
     };
   }
 
-  private <ReqT, RespT> void auditLog(
+  <ReqT, RespT> void auditLog(
       Selector selector,
       ReqT request,
-      RespT response,
+      Struct response,
       AuditLog.Builder logBuilder,
       LogEntryOperation logEntryOperation) {
     AuditLog.Builder logBuilderCopy = logBuilder.build().toBuilder();
     if (selector.getDirective().shouldLogResponse() && response != null) {
-      logBuilderCopy.setResponse(messageToStruct(response));
+      logBuilderCopy.setResponse(response);
     }
     if (selector.getDirective().shouldLogRequest() && request != null) {
       logBuilderCopy.setRequest(messageToStruct(request));
@@ -186,6 +202,30 @@ public class AuditLoggingServerInterceptor<ReqT extends Message> implements Serv
     } catch (LogProcessingException e) {
       throw new RuntimeException(e);
     }
+  }
+
+  /**
+   * Intended to add audit logs when there is an exception thrown in the server. We expect that
+   * there is no response, and instead in the response struct we will add information about the
+   * specific exception that ocurred.
+   */
+  <ReqT, RespT> void logError(
+      Selector selector,
+      ReqT request,
+      Exception e,
+      AuditLog.Builder logBuilder,
+      LogEntryOperation logEntryOperation) {
+    Code code = Code.INTERNAL; // default to internal error
+    if (e instanceof IllegalArgumentException) {
+      code = Code.INVALID_ARGUMENT;
+    }
+    // TODO: identify other types of exceptions that we could add specific codes for
+    Struct exceptionStruct = Struct.newBuilder()
+        .putFields("error_message", Value.newBuilder().setStringValue(e.getMessage()).build())
+        .putFields("error_type", Value.newBuilder().setStringValue(e.getClass().getName()).build())
+        .putFields("error_code", Value.newBuilder().setStringValue(code.toString()).build())
+        .build();
+    auditLog(selector, request, exceptionStruct, logBuilder, logEntryOperation);
   }
 
   /**

@@ -17,7 +17,12 @@
 package com.abcxyz.lumberjack.auditlogclient;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.in;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
@@ -33,6 +38,7 @@ import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -138,5 +144,37 @@ public class AuditLoggingServerInterceptorTests {
     assertThat(chosenSelector.get()).isEqualTo(selector3);
     // We expect the cache to have this method, and therefore rules should not be read again.
     verify(auditLoggingConfiguration, times(2)).getRules();
+  }
+
+  @Test
+  public void logsError() {
+    Selector selector = new Selector("*", null, null);
+    AuditLog.Builder builder = AuditLog.newBuilder();
+    AuditLoggingServerInterceptor interceptorSpy = spy(interceptor);
+    doNothing().when(interceptorSpy).auditLog(any(), any(), any(), any(), any());
+    interceptorSpy.logError(selector, null, new RuntimeException("Test Message"), builder, null);
+
+    Struct expectedStruct = Struct.newBuilder()
+        .putFields("error_message", Value.newBuilder().setStringValue("Test Message").build())
+        .putFields("error_type", Value.newBuilder().setStringValue("java.lang.RuntimeException").build())
+        .putFields("error_code", Value.newBuilder().setStringValue("INTERNAL").build())
+        .build();
+    verify(interceptorSpy).auditLog(eq(selector), eq(null), eq(expectedStruct), eq(builder), eq(null));
+  }
+
+  @Test
+  public void logsError_IllegalArgument() {
+    Selector selector = new Selector("*", null, null);
+    AuditLog.Builder builder = AuditLog.newBuilder();
+    AuditLoggingServerInterceptor interceptorSpy = spy(interceptor);
+    doNothing().when(interceptorSpy).auditLog(any(), any(), any(), any(), any());
+    interceptorSpy.logError(selector, null, new IllegalArgumentException("Test Message"), builder, null);
+
+    Struct expectedStruct = Struct.newBuilder()
+        .putFields("error_message", Value.newBuilder().setStringValue("Test Message").build())
+        .putFields("error_type", Value.newBuilder().setStringValue("java.lang.IllegalArgumentException").build())
+        .putFields("error_code", Value.newBuilder().setStringValue("INVALID_ARGUMENT").build())
+        .build();
+    verify(interceptorSpy).auditLog(eq(selector), eq(null), eq(expectedStruct), eq(builder), eq(null));
   }
 }

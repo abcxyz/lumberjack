@@ -65,7 +65,7 @@ func TestHTTPEndpoint(t testing.TB, ctx context.Context, endpointURL string,
 	}()
 
 	bqQuery := makeQueryForHTTP(*bqClient, u, projectID, datasetQuery)
-	utils.QueryIfAuditLogExistsWithRetries(t, ctx, bqQuery, cfg)
+	utils.QueryIfAuditLogExistsWithRetries(t, ctx, bqQuery, cfg, "httpEndpointTest")
 }
 
 func makeQueryForHTTP(client bigquery.Client, u uuid.UUID, projectID string, datasetQuery string) *bigquery.Query {
