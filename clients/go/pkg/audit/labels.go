@@ -28,6 +28,8 @@ type LabelProcessor struct {
 	DefaultLabels map[string]string
 }
 
+// Process adds the configured labels to each passed in request, without overwriting
+// existing labels.
 func (p *LabelProcessor) Process(ctx context.Context, logReq *alpb.AuditLogRequest) error {
 	if len(p.DefaultLabels) == 0 {
 		// short circuit if there are no labels to add

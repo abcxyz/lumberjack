@@ -91,6 +91,28 @@ rules:
   Directive: AUDIT_REQUEST_AND_RESPONSE # Audit both req and resp
 ```
 
+Config the client to add default labels to each audit log. These labels will be
+added to the labels section of each audit log, and will not overwrite labels
+that are explicitly added elsewhere in code.
+
+```yaml
+version: v1alpha1
+backend:
+  address: audit-logging.example.com:443
+condition:
+  regex:
+    exclude: ".*\\.iam\\.gserviceaccount\\.com$"
+security_context:
+  from_raw_jwt:
+  - key: authorization
+    prefix: "Bearer "
+rules:
+- selector: *
+labels:
+  example_label: "example_value"
+  second_example_label: "second_example_value"
+```
+
 Config the client to also verify the JWT (warning: not implemented).
 
 ```yaml

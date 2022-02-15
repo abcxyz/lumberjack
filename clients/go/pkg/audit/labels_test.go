@@ -62,7 +62,7 @@ func TestProcessLabels(t *testing.T) {
 			l := &LabelProcessor{DefaultLabels: tc.configLabels}
 			err := l.Process(ctx, tc.logReq)
 			if !errors.Is(err, tc.wantErr) {
-				t.Errorf("Process(%+v) error got %T want %T", tc.logReq, err, tc.wantErr)
+				t.Errorf("Process(%+v) error got %v want %v", tc.logReq, err, tc.wantErr)
 			}
 
 			if diff := cmp.Diff(tc.wantLogReq, tc.logReq, protocmp.Transform()); diff != "" {
