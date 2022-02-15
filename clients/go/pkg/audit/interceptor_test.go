@@ -1067,39 +1067,38 @@ func TestHandleReturnWithResponse(t *testing.T) {
 	t.Parallel()
 	response := "test_response"
 	ctx := context.Background()
+	errStr := "test error"
+	testErr := errors.New(errStr)
 
 	tests := []struct {
-		name     string
-		logMode  alpb.AuditLogRequest_LogMode
-		err      error
-		wantResp bool
-		wantErr  bool
+		name       string
+		logMode    alpb.AuditLogRequest_LogMode
+		err        error
+		wantResp   bool
+		wantErrStr string
 	}{
 		{
 			name:     "returns_response_no_err_best_effort",
 			logMode:  alpb.AuditLogRequest_BEST_EFFORT,
 			wantResp: true,
-			wantErr:  false,
 		},
 		{
 			name:     "returns_response_no_err_fail_close",
 			logMode:  alpb.AuditLogRequest_FAIL_CLOSE,
 			wantResp: true,
-			wantErr:  false,
 		},
 		{
-			name:     "returns_err_with_err_fail_close",
-			logMode:  alpb.AuditLogRequest_FAIL_CLOSE,
-			err:      errors.New("test error"),
-			wantResp: true,
-			wantErr:  true,
+			name:       "returns_err_with_err_fail_close",
+			logMode:    alpb.AuditLogRequest_FAIL_CLOSE,
+			err:        testErr,
+			wantResp:   true,
+			wantErrStr: errStr,
 		},
 		{
 			name:     "returns_response_with_err_best_effort",
 			logMode:  alpb.AuditLogRequest_BEST_EFFORT,
-			err:      errors.New("test error"),
+			err:      testErr,
 			wantResp: true,
-			wantErr:  false,
 		},
 	}
 	for _, tc := range tests {
@@ -1111,12 +1110,8 @@ func TestHandleReturnWithResponse(t *testing.T) {
 
 			got, gotErr := i.handleReturnWithResponse(ctx, response, tc.err)
 
-			if (gotErr != nil) != tc.wantErr {
-				expected := "an error"
-				if !tc.wantErr {
-					expected = "nil"
-				}
-				t.Errorf("returned %v, but expected %v", gotErr, expected)
+			if diff := errutil.DiffSubstring(gotErr, tc.wantErrStr); diff != "" {
+				t.Errorf("got unexpected error substring: %v", diff)
 			}
 
 			if (got != nil) != tc.wantResp {
