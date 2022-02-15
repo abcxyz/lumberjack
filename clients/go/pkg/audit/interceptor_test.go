@@ -283,6 +283,23 @@ func TestUnaryInterceptor(t *testing.T) {
 			wantErrSubstr: `audit interceptor failed to get request principal;`,
 		},
 		{
+			name: "unable_to_extract_principal_fail_close",
+			ctx: metadata.NewIncomingContext(context.Background(), metadata.New(map[string]string{
+				"authorization": "bananas",
+			})),
+			auditRules: []*alpb.AuditRule{{
+				Selector: "*",
+			}},
+			logMode: alpb.AuditLogRequest_FAIL_CLOSE,
+			info: &grpc.UnaryServerInfo{
+				FullMethod: "/ExampleService/ExampleMethod",
+			},
+			handler: func(ctx context.Context, req interface{}) (interface{}, error) {
+				return nil, nil
+			},
+			wantErrSubstr: `audit interceptor failed to get request principal;`,
+		},
+		{
 			name: "unable_to_convert_req_to_proto_struct_fail_close",
 			ctx: metadata.NewIncomingContext(context.Background(), metadata.New(map[string]string{
 				"authorization": jwt,
@@ -609,7 +626,7 @@ func TestStreamInterceptor(t *testing.T) {
 			},
 		}},
 	}, {
-		name: "stream_wihtout_logging_req_resp",
+		name: "stream_without_logging_req_resp",
 		ss: &fakeServerStream{
 			incomingCtx: metadata.NewIncomingContext(context.Background(), metadata.New(map[string]string{
 				"authorization": jwt,
@@ -915,7 +932,7 @@ func TestServiceName(t *testing.T) {
 	}
 }
 
-func TestHandleReturn(t *testing.T) {
+func TestHandleReturnUnary(t *testing.T) {
 	t.Parallel()
 	req := "test_request"
 	ctx := context.Background()
@@ -967,7 +984,7 @@ func TestHandleReturn(t *testing.T) {
 
 			i := &Interceptor{LogMode: tc.logMode}
 
-			got, gotErr := i.handleReturn(ctx, req, handler, tc.err)
+			got, gotErr := i.handleReturnUnary(ctx, req, handler, tc.err)
 
 			if (gotErr != nil) != tc.wantErr {
 				expected := "an error"
@@ -988,43 +1005,100 @@ func TestHandleReturn(t *testing.T) {
 	}
 }
 
+func TestHandleReturnStream(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	ss := &fakeServerStream{}
+
+	handler := func(srv interface{}, ss grpc.ServerStream) error {
+		return nil
+	}
+
+	tests := []struct {
+		name    string
+		logMode alpb.AuditLogRequest_LogMode
+		err     error
+		wantErr bool
+	}{
+		{
+			name:    "returns_nil_no_err_best_effort",
+			logMode: alpb.AuditLogRequest_BEST_EFFORT,
+			wantErr: false,
+		},
+		{
+			name:    "returns_response_no_err_fail_close",
+			logMode: alpb.AuditLogRequest_FAIL_CLOSE,
+			wantErr: false,
+		},
+		{
+			name:    "returns_err_with_err_fail_close",
+			logMode: alpb.AuditLogRequest_FAIL_CLOSE,
+			err:     errors.New("test error"),
+			wantErr: true,
+		},
+		{
+			name:    "returns_nil_with_err_best_effort",
+			logMode: alpb.AuditLogRequest_BEST_EFFORT,
+			err:     errors.New("test error"),
+			wantErr: false,
+		},
+	}
+	for _, tc := range tests {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			i := &Interceptor{LogMode: tc.logMode}
+
+			gotErr := i.handleReturnStream(ctx, ss, handler, tc.err)
+
+			if (gotErr != nil) != tc.wantErr {
+				expected := "an error"
+				if !tc.wantErr {
+					expected = "nil"
+				}
+				t.Errorf("returned %v, but expected %v", gotErr, expected)
+			}
+		})
+	}
+}
+
 func TestHandleReturnWithResponse(t *testing.T) {
 	t.Parallel()
 	response := "test_response"
 	ctx := context.Background()
+	errStr := "test error"
+	testErr := errors.New(errStr)
 
 	tests := []struct {
-		name     string
-		logMode  alpb.AuditLogRequest_LogMode
-		err      error
-		wantResp bool
-		wantErr  bool
+		name       string
+		logMode    alpb.AuditLogRequest_LogMode
+		err        error
+		wantResp   bool
+		wantErrStr string
 	}{
 		{
 			name:     "returns_response_no_err_best_effort",
 			logMode:  alpb.AuditLogRequest_BEST_EFFORT,
 			wantResp: true,
-			wantErr:  false,
 		},
 		{
 			name:     "returns_response_no_err_fail_close",
 			logMode:  alpb.AuditLogRequest_FAIL_CLOSE,
 			wantResp: true,
-			wantErr:  false,
 		},
 		{
-			name:     "returns_err_with_err_fail_close",
-			logMode:  alpb.AuditLogRequest_FAIL_CLOSE,
-			err:      errors.New("test error"),
-			wantResp: true,
-			wantErr:  true,
+			name:       "returns_err_with_err_fail_close",
+			logMode:    alpb.AuditLogRequest_FAIL_CLOSE,
+			err:        testErr,
+			wantResp:   true,
+			wantErrStr: errStr,
 		},
 		{
 			name:     "returns_response_with_err_best_effort",
 			logMode:  alpb.AuditLogRequest_BEST_EFFORT,
-			err:      errors.New("test error"),
+			err:      testErr,
 			wantResp: true,
-			wantErr:  false,
 		},
 	}
 	for _, tc := range tests {
@@ -1036,12 +1110,8 @@ func TestHandleReturnWithResponse(t *testing.T) {
 
 			got, gotErr := i.handleReturnWithResponse(ctx, response, tc.err)
 
-			if (gotErr != nil) != tc.wantErr {
-				expected := "an error"
-				if !tc.wantErr {
-					expected = "nil"
-				}
-				t.Errorf("returned %v, but expected %v", gotErr, expected)
+			if diff := errutil.DiffSubstring(gotErr, tc.wantErrStr); diff != "" {
+				t.Errorf("got unexpected error substring: %v", diff)
 			}
 
 			if (got != nil) != tc.wantResp {
