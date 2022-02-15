@@ -4,8 +4,6 @@ import com.abcxyz.lumberjack.auditlogclient.config.AuditLoggingConfiguration;
 import com.abcxyz.lumberjack.auditlogclient.processor.LogProcessor.LogMutator;
 import com.abcxyz.lumberjack.v1alpha1.AuditLogRequest;
 import com.google.inject.Inject;
-import java.util.HashMap;
-import java.util.Map;
 import lombok.AllArgsConstructor;
 
 /**
