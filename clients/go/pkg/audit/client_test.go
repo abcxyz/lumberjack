@@ -228,10 +228,10 @@ func TestHandleReturn_Client(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
+
 			t.Cleanup(func() {
-				err := c.Stop()
-				if err != nil {
-					t.Errorf("failed to stop client: %v", err)
+				if err := c.Stop(); err != nil {
+					t.Errorf("failed to stop: %s", err)
 				}
 			})
 
