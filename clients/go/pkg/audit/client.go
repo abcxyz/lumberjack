@@ -21,6 +21,7 @@ import (
 	"fmt"
 
 	"go.uber.org/multierr"
+	"go.uber.org/zap"
 
 	alpb "github.com/abcxyz/lumberjack/clients/go/apis/v1alpha1"
 	"github.com/abcxyz/lumberjack/clients/go/pkg/zlogger"
@@ -31,6 +32,7 @@ type Client struct {
 	validators []LogProcessor
 	mutators   []LogProcessor
 	backends   []LogProcessor
+	logMode    alpb.AuditLogRequest_LogMode
 }
 
 // LogProcessor is the interface we use to process an AuditLogRequest.
@@ -94,6 +96,15 @@ func WithBackend(p LogProcessor) Option {
 	}
 }
 
+// Sets FailClose value. This specifies whether errors should be surfaced
+// or swalled. Can be overridden on a per-request basis.
+func WithLogMode(mode alpb.AuditLogRequest_LogMode) Option {
+	return func(o *Client) error {
+		o.logMode = mode
+		return nil
+	}
+}
+
 // NewClient initializes a logger with the given options.
 func NewClient(options ...Option) (*Client, error) {
 	client := &Client{
@@ -127,32 +138,51 @@ func (c *Client) Stop() error {
 func (c *Client) Log(ctx context.Context, logReq *alpb.AuditLogRequest) error {
 	logger := zlogger.FromContext(ctx)
 
+	logMode := logReq.Mode
+	if logMode == alpb.AuditLogRequest_LOG_MODE_UNSPECIFIED {
+		logMode = c.logMode
+		logReq.Mode = logMode
+	}
 	for _, p := range c.validators {
 		if err := p.Process(ctx, logReq); err != nil {
 			if errors.Is(err, ErrFailedPrecondition) {
 				logger.Warnf("stopped log request processing as validator %T precondition failed: %v", p, err)
-				return nil
 			}
-			return fmt.Errorf("failed to execute validator %T: %w", p, err)
+			return c.handleReturn(ctx, fmt.Errorf("failed to execute validator %T: %w", p, err), logReq.Mode)
 		}
 	}
 	for _, p := range c.mutators {
 		if err := p.Process(ctx, logReq); err != nil {
 			if errors.Is(err, ErrFailedPrecondition) {
 				logger.Warnf("stopped log request processing as mutator %T precondition failed: %v", p, err)
-				return nil
 			}
-			return fmt.Errorf("failed to execute mutator %T: %w", p, err)
+			return c.handleReturn(ctx, fmt.Errorf("failed to execute mutator %T: %w", p, err), logReq.Mode)
 		}
 	}
 	for _, p := range c.backends {
 		if err := p.Process(ctx, logReq); err != nil {
 			if errors.Is(err, ErrFailedPrecondition) {
 				logger.Warnf("stopped log request processing as backend %T precondition failed: %v", p, err)
-				return nil
 			}
-			return fmt.Errorf("failed to execute backend %T: %w", p, err)
+			return c.handleReturn(ctx, fmt.Errorf("failed to execute backend %T: %w", p, err), logReq.Mode)
 		}
 	}
+	return nil
+}
+
+// handleReturn is intended to be a wrapper that handles the LogMode correctly, and returns errors or
+// nil depending on whether the config and request have specified that they want to fail close.
+func (c *Client) handleReturn(ctx context.Context, err error, requestedLogMode alpb.AuditLogRequest_LogMode) error {
+	logger := zlogger.FromContext(ctx)
+	// If there is no error, just return nil.
+	if err == nil {
+		return nil
+	}
+	// If there is an error, and we should fail close, return that error.
+	if alpb.ShouldFailClose(requestedLogMode) {
+		return err
+	}
+	// If there is an error, and we shouldn't fail close, log and return nil.
+	logger.Warn("Error occurred while attempting to audit log, continuing without audit logging.", zap.Error(err))
 	return nil
 }

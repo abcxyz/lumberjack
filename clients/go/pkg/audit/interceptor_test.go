@@ -16,6 +16,7 @@ package audit
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net"
 	"testing"
@@ -83,6 +84,7 @@ func TestUnaryInterceptor(t *testing.T) {
 		ctx           context.Context
 		auditRules    []*alpb.AuditRule
 		req           interface{}
+		logMode       alpb.AuditLogRequest_LogMode
 		info          *grpc.UnaryServerInfo
 		handler       grpc.UnaryHandler
 		wantLogReq    *alpb.AuditLogRequest
@@ -98,6 +100,7 @@ func TestUnaryInterceptor(t *testing.T) {
 				Directive: alpb.AuditRuleDirectiveRequestAndResponse,
 				LogType:   "ADMIN_ACTIVITY",
 			}},
+			logMode: alpb.AuditLogRequest_BEST_EFFORT,
 			info: &grpc.UnaryServerInfo{
 				FullMethod: "/ExampleService/ExampleMethod",
 			},
@@ -118,6 +121,7 @@ func TestUnaryInterceptor(t *testing.T) {
 					Request:  &structpb.Struct{},
 					Response: &structpb.Struct{},
 				},
+				Mode: alpb.AuditLogRequest_BEST_EFFORT,
 			},
 		},
 		{
@@ -130,6 +134,7 @@ func TestUnaryInterceptor(t *testing.T) {
 				Directive: alpb.AuditRuleDirectiveRequestAndResponse,
 				LogType:   "DATA_ACCESS",
 			}},
+			logMode: alpb.AuditLogRequest_BEST_EFFORT,
 			info: &grpc.UnaryServerInfo{
 				FullMethod: "/ExampleService/ExampleMethod",
 			},
@@ -149,6 +154,7 @@ func TestUnaryInterceptor(t *testing.T) {
 				Selector:  "/ExampleService/ExampleMethod",
 				Directive: alpb.AuditRuleDirectiveDefault,
 			}},
+			logMode: alpb.AuditLogRequest_BEST_EFFORT,
 			info: &grpc.UnaryServerInfo{
 				FullMethod: "/ExampleService/ExampleMethod",
 			},
@@ -166,6 +172,7 @@ func TestUnaryInterceptor(t *testing.T) {
 						PrincipalEmail: "user@example.com",
 					},
 				},
+				Mode: alpb.AuditLogRequest_BEST_EFFORT,
 			},
 		},
 		{
@@ -177,6 +184,7 @@ func TestUnaryInterceptor(t *testing.T) {
 				Selector:  "/ExampleService/ExampleMethod",
 				Directive: alpb.AuditRuleDirectiveRequestOnly,
 			}},
+			logMode: alpb.AuditLogRequest_FAIL_CLOSE,
 			info: &grpc.UnaryServerInfo{
 				FullMethod: "/ExampleService/ExampleMethod",
 			},
@@ -195,6 +203,7 @@ func TestUnaryInterceptor(t *testing.T) {
 					},
 					Request: &structpb.Struct{},
 				},
+				Mode: alpb.AuditLogRequest_FAIL_CLOSE,
 			},
 		},
 		{
@@ -203,6 +212,7 @@ func TestUnaryInterceptor(t *testing.T) {
 			auditRules: []*alpb.AuditRule{{
 				Selector: "/ExampleService/Inapplicable",
 			}},
+			logMode: alpb.AuditLogRequest_BEST_EFFORT,
 			info: &grpc.UnaryServerInfo{
 				FullMethod: "/ExampleService/ExampleMethod",
 			},
@@ -211,11 +221,12 @@ func TestUnaryInterceptor(t *testing.T) {
 			},
 		},
 		{
-			name: "malformed_method_info",
+			name: "malformed_method_info_fail_close",
 			ctx:  context.Background(),
 			auditRules: []*alpb.AuditRule{{
 				Selector: "*",
 			}},
+			logMode: alpb.AuditLogRequest_FAIL_CLOSE,
 			info: &grpc.UnaryServerInfo{
 				FullMethod: "bananas",
 			},
@@ -225,13 +236,28 @@ func TestUnaryInterceptor(t *testing.T) {
 			wantErrSubstr: `audit interceptor: failed capturing non-nil service name with regexp "^/{1,2}(.*?)/" from "bananas"`,
 		},
 		{
-			name: "unable_to_extract_principal",
+			name: "malformed_method_info_best_effort",
+			ctx:  context.Background(),
+			auditRules: []*alpb.AuditRule{{
+				Selector: "*",
+			}},
+			logMode: alpb.AuditLogRequest_BEST_EFFORT,
+			info: &grpc.UnaryServerInfo{
+				FullMethod: "bananas",
+			},
+			handler: func(ctx context.Context, req interface{}) (interface{}, error) {
+				return nil, nil
+			},
+		},
+		{
+			name: "unable_to_extract_principal_best_effort",
 			ctx: metadata.NewIncomingContext(context.Background(), metadata.New(map[string]string{
 				"authorization": "bananas",
 			})),
 			auditRules: []*alpb.AuditRule{{
 				Selector: "*",
 			}},
+			logMode: alpb.AuditLogRequest_BEST_EFFORT,
 			info: &grpc.UnaryServerInfo{
 				FullMethod: "/ExampleService/ExampleMethod",
 			},
@@ -240,7 +266,24 @@ func TestUnaryInterceptor(t *testing.T) {
 			},
 		},
 		{
-			name: "unable_to_convert_req_to_proto_struct",
+			name: "unable_to_extract_principal_fail_close",
+			ctx: metadata.NewIncomingContext(context.Background(), metadata.New(map[string]string{
+				"authorization": "bananas",
+			})),
+			auditRules: []*alpb.AuditRule{{
+				Selector: "*",
+			}},
+			logMode: alpb.AuditLogRequest_FAIL_CLOSE,
+			info: &grpc.UnaryServerInfo{
+				FullMethod: "/ExampleService/ExampleMethod",
+			},
+			handler: func(ctx context.Context, req interface{}) (interface{}, error) {
+				return nil, nil
+			},
+			wantErrSubstr: `audit interceptor failed to get request principal;`,
+		},
+		{
+			name: "unable_to_convert_req_to_proto_struct_fail_close",
 			ctx: metadata.NewIncomingContext(context.Background(), metadata.New(map[string]string{
 				"authorization": jwt,
 			})),
@@ -248,6 +291,7 @@ func TestUnaryInterceptor(t *testing.T) {
 				Selector:  "*",
 				Directive: alpb.AuditRuleDirectiveRequestAndResponse,
 			}},
+			logMode: alpb.AuditLogRequest_FAIL_CLOSE,
 			info: &grpc.UnaryServerInfo{
 				FullMethod: "/ExampleService/ExampleMethod",
 			},
@@ -257,7 +301,27 @@ func TestUnaryInterceptor(t *testing.T) {
 				return nil, nil
 			},
 			req:           "bananas",
-			wantErrSubstr: "audit interceptor failed converting req into a proto struct",
+			wantErrSubstr: "audit interceptor failed converting req into a Google struct",
+		},
+		{
+			name: "unable_to_convert_req_to_proto_struct_best_effort",
+			ctx: metadata.NewIncomingContext(context.Background(), metadata.New(map[string]string{
+				"authorization": jwt,
+			})),
+			auditRules: []*alpb.AuditRule{{
+				Selector:  "*",
+				Directive: alpb.AuditRuleDirectiveRequestAndResponse,
+			}},
+			logMode: alpb.AuditLogRequest_BEST_EFFORT,
+			info: &grpc.UnaryServerInfo{
+				FullMethod: "/ExampleService/ExampleMethod",
+			},
+			handler: func(ctx context.Context, req interface{}) (interface{}, error) {
+				logReq, _ := LogReqFromCtx(ctx)
+				logReq.Payload.ResourceName = "ExampleResourceName"
+				return nil, nil
+			},
+			req: "bananas",
 		},
 	}
 	for _, tc := range tests {
@@ -265,7 +329,7 @@ func TestUnaryInterceptor(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
-			i := &Interceptor{Rules: tc.auditRules}
+			i := &Interceptor{Rules: tc.auditRules, LogMode: tc.logMode}
 
 			r := &fakeServer{}
 			s := grpc.NewServer()
@@ -846,6 +910,146 @@ func TestServiceName(t *testing.T) {
 
 			if got != tc.want {
 				t.Errorf("serviceName(%v) = %v, want %v", tc.fullMethodName, got, tc.want)
+			}
+		})
+	}
+}
+
+func TestHandleReturn(t *testing.T) {
+	t.Parallel()
+	req := "test_request"
+	ctx := context.Background()
+
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		logReq, _ := LogReqFromCtx(ctx)
+		logReq.Payload.ResourceName = "ExampleResourceName"
+		return "test_response", nil
+	}
+
+	tests := []struct {
+		name     string
+		logMode  alpb.AuditLogRequest_LogMode
+		err      error
+		wantResp bool
+		wantErr  bool
+	}{
+		{
+			name:     "returns_response_no_err_best_effort",
+			logMode:  alpb.AuditLogRequest_BEST_EFFORT,
+			wantResp: true,
+			wantErr:  false,
+		},
+		{
+			name:     "returns_response_no_err_fail_close",
+			logMode:  alpb.AuditLogRequest_FAIL_CLOSE,
+			wantResp: true,
+			wantErr:  false,
+		},
+		{
+			name:     "returns_err_with_err_fail_close",
+			logMode:  alpb.AuditLogRequest_FAIL_CLOSE,
+			err:      errors.New("test error"),
+			wantResp: false,
+			wantErr:  true,
+		},
+		{
+			name:     "returns_response_with_err_best_effort",
+			logMode:  alpb.AuditLogRequest_BEST_EFFORT,
+			err:      errors.New("test error"),
+			wantResp: true,
+			wantErr:  false,
+		},
+	}
+	for _, tc := range tests {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			i := &Interceptor{LogMode: tc.logMode}
+
+			got, gotErr := i.handleReturn(ctx, req, handler, tc.err)
+
+			if (gotErr != nil) != tc.wantErr {
+				expected := "an error"
+				if !tc.wantErr {
+					expected = "nil"
+				}
+				t.Errorf("returned %v, but expected %v", gotErr, expected)
+			}
+
+			if (got != nil) != tc.wantResp {
+				expected := "a response"
+				if !tc.wantResp {
+					expected = "nil"
+				}
+				t.Errorf("returned %v, but expected %v", got, expected)
+			}
+		})
+	}
+}
+
+func TestHandleReturnWithResponse(t *testing.T) {
+	t.Parallel()
+	response := "test_response"
+	ctx := context.Background()
+
+	tests := []struct {
+		name     string
+		logMode  alpb.AuditLogRequest_LogMode
+		err      error
+		wantResp bool
+		wantErr  bool
+	}{
+		{
+			name:     "returns_response_no_err_best_effort",
+			logMode:  alpb.AuditLogRequest_BEST_EFFORT,
+			wantResp: true,
+			wantErr:  false,
+		},
+		{
+			name:     "returns_response_no_err_fail_close",
+			logMode:  alpb.AuditLogRequest_FAIL_CLOSE,
+			wantResp: true,
+			wantErr:  false,
+		},
+		{
+			name:     "returns_err_with_err_fail_close",
+			logMode:  alpb.AuditLogRequest_FAIL_CLOSE,
+			err:      errors.New("test error"),
+			wantResp: true,
+			wantErr:  true,
+		},
+		{
+			name:     "returns_response_with_err_best_effort",
+			logMode:  alpb.AuditLogRequest_BEST_EFFORT,
+			err:      errors.New("test error"),
+			wantResp: true,
+			wantErr:  false,
+		},
+	}
+	for _, tc := range tests {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			i := &Interceptor{LogMode: tc.logMode}
+
+			got, gotErr := i.handleReturnWithResponse(ctx, response, tc.err)
+
+			if (gotErr != nil) != tc.wantErr {
+				expected := "an error"
+				if !tc.wantErr {
+					expected = "nil"
+				}
+				t.Errorf("returned %v, but expected %v", gotErr, expected)
+			}
+
+			if (got != nil) != tc.wantResp {
+				expected := "a response"
+				if !tc.wantResp {
+					expected = "nil"
+				}
+				t.Errorf("returned %v, but expected %v", got, expected)
 			}
 		})
 	}
