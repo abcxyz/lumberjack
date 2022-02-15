@@ -173,7 +173,6 @@ func (c *Client) Log(ctx context.Context, logReq *alpb.AuditLogRequest) error {
 // handleReturn is intended to be a wrapper that handles the LogMode correctly, and returns errors or
 // nil depending on whether the config and request have specified that they want to fail close.
 func (c *Client) handleReturn(ctx context.Context, err error, requestedLogMode alpb.AuditLogRequest_LogMode) error {
-	logger := zlogger.FromContext(ctx)
 	// If there is no error, just return nil.
 	if err == nil {
 		return nil
@@ -183,6 +182,7 @@ func (c *Client) handleReturn(ctx context.Context, err error, requestedLogMode a
 		return err
 	}
 	// If there is an error, and we shouldn't fail close, log and return nil.
+	logger := zlogger.FromContext(ctx)
 	logger.Warn("Error occurred while attempting to audit log, continuing without audit logging.", zap.Error(err))
 	return nil
 }

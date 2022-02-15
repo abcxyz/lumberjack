@@ -100,8 +100,8 @@ rules:
 				t.Errorf("Config unexpected diff (-want,+got):\n%s", diff)
 			}
 
-			if tc.wantLogMode != gotConfig.GetLogMode() {
-				t.Errorf("Wanted log mode %v but got %v", tc.wantLogMode, gotConfig.GetLogMode())
+			if got, want := gotConfig.GetLogMode(), tc.wantLogMode; got != want {
+				t.Errorf("wanted log mode %v but got %v", want, got)
 			}
 		})
 	}
