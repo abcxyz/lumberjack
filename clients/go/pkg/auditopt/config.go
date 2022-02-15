@@ -96,12 +96,16 @@ func WithInterceptorFromConfigFile(path string) (*audit.Interceptor, error) {
 		return nil, err
 	}
 
-	// Interceptor requires security context so we also validate it.
-	if err := cfg.ValidateSecurityContext(); err != nil {
-		return nil, err
+	// Interceptor requires security context.
+	if cfg.SecurityContext == nil {
+		return nil, fmt.Errorf("SecurityContext must be provided to use interceptor")
 	}
 
-	interceptor := &audit.Interceptor{}
+	interceptor := &audit.Interceptor{
+		LogMode: cfg.GetLogMode(),
+		Rules:   cfg.Rules,
+	}
+
 	// Add security context to interceptor.
 	switch {
 	case cfg.SecurityContext.FromRawJWT != nil:
@@ -109,13 +113,11 @@ func WithInterceptorFromConfigFile(path string) (*audit.Interceptor, error) {
 			FromRawJWT: cfg.SecurityContext.FromRawJWT,
 		}
 		interceptor.SecurityContext = fromRawJWT
-		interceptor.LogMode = cfg.GetLogMode()
 	default:
+		// This should never happen because already validates the SecurityContext
+		// when loading the config.
 		return nil, fmt.Errorf("no supported security context configured in config %+v", cfg)
 	}
-
-	// Add audit rules to interceptor.
-	interceptor.Rules = cfg.Rules
 
 	// Add audit client to interceptor.
 	auditOpt := func(c *audit.Client) error {

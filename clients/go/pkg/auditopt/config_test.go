@@ -499,7 +499,7 @@ security_context:
 rules:
   - selector: "*"
 `,
-			wantErrSubstr: "SecurityContext is nil",
+			wantErrSubstr: "SecurityContext must be provided to use interceptor",
 		},
 		{
 			name: "invalid_config_due_unset_security_context_again",
@@ -511,7 +511,7 @@ backend:
 rules:
   - selector: "*"
 `,
-			wantErrSubstr: "SecurityContext is nil",
+			wantErrSubstr: "SecurityContext must be provided to use interceptor",
 		},
 		{
 			name: "invalid_config_due_missing_jwt_key",
