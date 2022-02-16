@@ -20,11 +20,14 @@ resource "google_logging_project_sink" "bigquery_sink" {
   project     = var.project_id
   destination = "bigquery.googleapis.com/projects/${each.value.project_id}/datasets/${each.value.name}"
 
-  # TODO(b/203448874): Use updated (finalized) log names.
+  # TODO(b/203448874): Keep both old and new log name before we fully migrate over.
   filter = var.query_overwrite != "" ? var.query_overwrite : <<-EOT
   LOG_ID("auditlog.gcloudsolutions.dev/unspecified") OR
   LOG_ID("auditlog.gcloudsolutions.dev/activity") OR
-  LOG_ID("auditlog.gcloudsolutions.dev/data_access")
+  LOG_ID("auditlog.gcloudsolutions.dev/data_access") OR
+  LOG_ID("audit.abcxyz/unspecified") OR
+  LOG_ID("audit.abcxyz/activity") OR
+  LOG_ID("audit.abcxyz/data_access")
   EOT
 
   unique_writer_identity = true
@@ -51,10 +54,14 @@ resource "google_logging_project_sink" "pubsub_sink" {
   project     = var.project_id
   destination = "pubsub.googleapis.com/projects/${each.value.project_id}/topics/${each.value.name}"
 
+  # TODO(b/203448874): Keep both old and new log name before we fully migrate over.
   filter = var.query_overwrite != "" ? var.query_overwrite : <<-EOT
   LOG_ID("auditlog.gcloudsolutions.dev/unspecified") OR
   LOG_ID("auditlog.gcloudsolutions.dev/activity") OR
-  LOG_ID("auditlog.gcloudsolutions.dev/data_access")
+  LOG_ID("auditlog.gcloudsolutions.dev/data_access") OR
+  LOG_ID("audit.abcxyz/unspecified") OR
+  LOG_ID("audit.abcxyz/activity") OR
+  LOG_ID("audit.abcxyz/data_access")
   EOT
 
   unique_writer_identity = true

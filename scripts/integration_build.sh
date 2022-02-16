@@ -65,7 +65,7 @@ trap clean_up EXIT
 export HTTP_ENDPOINTS=$(terraform -chdir=${TF_CI_WITH_SERVER_DIR} output -json instance_addresses)
 export GRPC_ENDPOINTS=$(terraform -chdir=${TF_CI_WITH_SERVER_DIR} output -json grpc_addresses)
 # TODO(b/203448874): Use updated (finalized) log name.
-BIGQUERY_DATASET_QUERY=${BIGQUERY_DATASET_ID}.auditlog_gcloudsolutions_dev_data_access
+BIGQUERY_DATASET_QUERY=${BIGQUERY_DATASET_ID}.audit_abcxyz_data_access
 
 cd ${ROOT}/integration
 go test github.com/abcxyz/lumberjack/integration/testrunner\
