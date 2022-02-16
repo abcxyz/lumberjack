@@ -47,9 +47,9 @@ import org.mockito.junit.jupiter.MockitoExtension;
 public class CloudLoggingProcessorTests {
 
   public static final String LOG_NAME_UNSPECIFIED =
-      URLEncoder.encode("auditlog.gcloudsolutions.dev/unspecified", StandardCharsets.UTF_8);
+      URLEncoder.encode("audit.abcxyz/unspecified", StandardCharsets.UTF_8);
   public static final String LOG_NAME_DATA_ACCESS =
-      URLEncoder.encode("auditlog.gcloudsolutions.dev/data_access", StandardCharsets.UTF_8);
+      URLEncoder.encode("audit.abcxyz/data_access", StandardCharsets.UTF_8);
 
   @Spy private ObjectMapper mapper;
   @Mock private Logging logging;
