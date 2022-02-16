@@ -90,6 +90,13 @@ rules:
 			SecurityContext: &SecurityContext{FromRawJWT: []*FromRawJWT{{}}},
 		},
 		wantLogMode: AuditLogRequest_LOG_MODE_UNSPECIFIED,
+	}, {
+		name: "config_with_just_version",
+		cfg:  `version: v1alpha1`,
+		wantConfig: &Config{
+			Version: "v1alpha1",
+		},
+		wantLogMode: AuditLogRequest_LOG_MODE_UNSPECIFIED,
 	}}
 
 	for _, tc := range cases {
@@ -207,6 +214,26 @@ func TestValidate(t *testing.T) {
 			Rules:   []*AuditRule{{}},
 		},
 		wantErr: `unexpected Version "random" want "v1alpha1"; backend is nil; audit rule selector is empty`,
+	}, {
+		name: "invalid_security_context",
+		cfg: &Config{
+			Version: "v1alpha1",
+			SecurityContext: &SecurityContext{
+				FromRawJWT: []*FromRawJWT{{
+					Key: "",
+				}},
+			},
+			Backend: &Backend{Address: "foo"},
+		},
+		wantErr: `FromRawJWT[0]: key must be specified`,
+	}, {
+		name: "invalid_log_mode",
+		cfg: &Config{
+			Version: "v1alpha1",
+			Backend: &Backend{Address: "foo"},
+			LogMode: "random",
+		},
+		wantErr: `invalid LogMode "random"`,
 	}}
 
 	for _, tc := range cases {
