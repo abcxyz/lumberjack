@@ -33,6 +33,7 @@ import com.google.protobuf.Struct;
 import com.google.protobuf.Value;
 import com.google.protobuf.util.JsonFormat;
 import com.google.rpc.Code;
+import com.google.rpc.Status;
 import io.grpc.Context;
 import io.grpc.Contexts;
 import io.grpc.ForwardingServerCall.SimpleForwardingServerCall;
@@ -42,6 +43,7 @@ import io.grpc.ServerCall;
 import io.grpc.ServerCall.Listener;
 import io.grpc.ServerCallHandler;
 import io.grpc.ServerInterceptor;
+import io.grpc.StatusRuntimeException;
 import java.util.ArrayList;
 import java.util.Deque;
 import java.util.HashMap;
@@ -216,16 +218,18 @@ public class AuditLoggingServerInterceptor<ReqT extends Message> implements Serv
       AuditLog.Builder logBuilder,
       LogEntryOperation logEntryOperation) {
     Code code = Code.INTERNAL; // default to internal error
-    if (e instanceof IllegalArgumentException) {
+    // TODO: identify other types of exceptions that we could add specific codes for
+    if (e instanceof StatusRuntimeException) {
+      // Audit logs expect an rpc code, however this exception is grpc specific. We have to convert from one to the other.
+      code = Code.forNumber(((StatusRuntimeException) e).getStatus().getCode().value());
+    } else if (e instanceof IllegalArgumentException) {
       code = Code.INVALID_ARGUMENT;
     }
-    // TODO: identify other types of exceptions that we could add specific codes for
-    Struct exceptionStruct = Struct.newBuilder()
-        .putFields("error_message", Value.newBuilder().setStringValue(e.getMessage()).build())
-        .putFields("error_type", Value.newBuilder().setStringValue(e.getClass().getName()).build())
-        .putFields("error_code", Value.newBuilder().setStringValue(code.toString()).build())
-        .build();
-    auditLog(selector, request, exceptionStruct, logBuilder, logEntryOperation);
+    logBuilder.setStatus(Status.newBuilder()
+        .setCode(code.getNumber())
+        .setMessage(code.name())
+        .build());
+    auditLog(selector, request, null, logBuilder, logEntryOperation);
   }
 
   /**
