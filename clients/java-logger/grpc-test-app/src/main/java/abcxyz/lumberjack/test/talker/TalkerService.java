@@ -52,6 +52,8 @@ import com.google.inject.Guice;
 import com.google.inject.Injector;
 import io.grpc.Server;
 import io.grpc.ServerBuilder;
+import io.grpc.Status;
+import io.grpc.StatusRuntimeException;
 import io.grpc.stub.StreamObserver;
 import java.io.IOException;
 import java.util.HashMap;
@@ -189,7 +191,7 @@ public class TalkerService {
     public void fail(FailRequest req, StreamObserver<FailResponse> responseObserver) {
       AuditLog.Builder auditLogBuilder = AuditLogs.getBuilderFromContext();
       auditLogBuilder.setResourceName(req.getTarget());
-      throw new RuntimeException(req.getMessage());
+      throw new StatusRuntimeException(Status.RESOURCE_EXHAUSTED);
     }
 
     /**
