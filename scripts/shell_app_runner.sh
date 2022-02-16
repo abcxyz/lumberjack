@@ -28,7 +28,7 @@ BUILD_COMMAND=$1
 
 SHELL_APP_PROJECT_ID=ci-e2e-app-0
 BACKEND_PROJECT_ID=ci-e2e-server
-BIGQUERY_DATASET_QUERY=audit_logs.auditlog_gcloudsolutions_dev_data_access
+BIGQUERY_DATASET_QUERY=audit_logs.audit_abcxyz_data_access
 AUDIT_CLIENT_BACKEND_ADDRESS=audit-logging-bi4j6tgkkq-uc.a.run.app:443
 
 terraform -chdir=${TF_CI_DIR} init
