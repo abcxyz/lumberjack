@@ -153,7 +153,7 @@ func (g *GRPC) runHelloCheck(t testing.TB, ctx context.Context) {
 	utils.QueryIfAuditLogExistsWithRetries(t, ctx, query, g.Config, "helloCheck")
 }
 
-// End-to-end test for the hello API, which is a test for unary requests.
+// End-to-end test for the fail API, which is a test for unary failures.
 func (g *GRPC) runFailCheck(t testing.TB, ctx context.Context) {
 	u := uuid.New()
 	_, err := g.TalkerClient.Fail(ctx, &talkerpb.FailRequest{Message: "Some Message", Target: u.String()})
@@ -165,7 +165,7 @@ func (g *GRPC) runFailCheck(t testing.TB, ctx context.Context) {
 	utils.QueryIfAuditLogExistsWithRetries(t, ctx, query, g.Config, "failCheck")
 }
 
-// End-to-end test for the addition API, which is a test for client-side streaming.
+// End-to-end test for the failOnFour API, which is a test for failures during client-side streaming.
 func (g *GRPC) runFailOnFourCheck(t testing.TB, ctx context.Context) {
 	u := uuid.New()
 	stream, err := g.TalkerClient.FailOnFour(ctx)
