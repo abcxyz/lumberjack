@@ -38,6 +38,8 @@ import com.abcxyz.lumberjack.test.talker.AdditionRequest;
 import com.abcxyz.lumberjack.test.talker.AdditionResponse;
 import com.abcxyz.lumberjack.test.talker.FailRequest;
 import com.abcxyz.lumberjack.test.talker.FailResponse;
+import com.abcxyz.lumberjack.test.talker.FailOnFourRequest;
+import com.abcxyz.lumberjack.test.talker.FailOnFourResponse;
 import com.abcxyz.lumberjack.test.talker.FibonacciRequest;
 import com.abcxyz.lumberjack.test.talker.FibonacciResponse;
 import com.abcxyz.lumberjack.test.talker.HelloRequest;
@@ -188,6 +190,12 @@ public class TalkerService {
       AuditLog.Builder auditLogBuilder = AuditLogs.getBuilderFromContext();
       auditLogBuilder.setResourceName(req.getTarget());
       throw new RuntimeException(req.getMessage());
+    }
+
+    @Override
+    public StreamObserver<FailOnFourRequest> failOnFour(
+        StreamObserver<FailOnFourResponse> responseObserver) {
+      return new ServerFailOnFourObserver(responseObserver);
     }
   }
 }

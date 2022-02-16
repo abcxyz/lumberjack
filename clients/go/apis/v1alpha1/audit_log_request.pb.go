@@ -23,6 +23,10 @@
 package v1alpha1
 
 import (
+	reflect "reflect"
+	sync "sync"
+
+	"github.com/gogo/protobuf/protoc-gen-gogo/descriptor"
 	audit "google.golang.org/genproto/googleapis/cloud/audit"
 	v2 "google.golang.org/genproto/googleapis/logging/v2"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"

@@ -34,6 +34,8 @@ package abcxyz.lumberjack.test.talker;
 import com.abcxyz.lumberjack.test.talker.AdditionRequest;
 import com.abcxyz.lumberjack.test.talker.FailRequest;
 import com.abcxyz.lumberjack.test.talker.FailResponse;
+import com.abcxyz.lumberjack.test.talker.FailOnFourRequest;
+import com.abcxyz.lumberjack.test.talker.FailOnFourResponse;
 import com.abcxyz.lumberjack.test.talker.FibonacciRequest;
 import com.abcxyz.lumberjack.test.talker.HelloRequest;
 import com.abcxyz.lumberjack.test.talker.HelloResponse;
@@ -151,6 +153,20 @@ public class TalkerClient {
     requestObserver.onCompleted();
   }
 
+  public void failOnFour(int max, UUID target) {
+    StreamObserver<FailOnFourRequest> requestObserver =
+        clientStub.failOnFour(new ClientFailOnFourObserver());
+
+    for (int i = 1; i <= max; i++) {
+      logger.info("Sending: " + i);
+      FailOnFourRequest request = FailOnFourRequest.newBuilder().setValue(i)
+          .setTarget(target.toString()).build();
+      requestObserver.onNext(request);
+    }
+
+    requestObserver.onCompleted();
+  }
+
   /**
    * Greet server. If provided, the first element of {@code args} is the name to use in the
    * greeting. First element can either be a list ( in format '["a", "b"]') or a singular host
@@ -194,6 +210,7 @@ public class TalkerClient {
         client.fibonacci(5);
         client.addition(3);
         client.fail("This message should result in failure", target);
+        client.failOnFour(5, target);
         // Sleep and wait for response to addition. Blocking stub doesn't support client streaming.
         TimeUnit.SECONDS.sleep(5);
       } finally {
