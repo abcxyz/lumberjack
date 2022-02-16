@@ -26,7 +26,7 @@ import io.grpc.stub.StreamObserver;
 import lombok.extern.java.Log;
 
 /**
- * Server-side handler for client streaming.
+ * Server-side handler for client streaming. This one fails if it ever receives the value "4"
  */
 @Log
 public class ServerFailOnFourObserver implements StreamObserver<FailOnFourRequest> {

@@ -133,7 +133,7 @@ public class AuditLoggingServerInterceptor<ReqT extends Message> implements Serv
                 // newest message. returns null if empty.
                 ReqT unloggedRequest = unloggedRequests.pollLast();
 
-                auditLog(selector, unloggedRequest, messageToStruct(message), logBuilder, logEntryOperation);
+                auditLog(selector, unloggedRequest, message, logBuilder, logEntryOperation);
                 super.sendMessage(message);
               }
             },
@@ -182,12 +182,12 @@ public class AuditLoggingServerInterceptor<ReqT extends Message> implements Serv
   <ReqT, RespT> void auditLog(
       Selector selector,
       ReqT request,
-      Struct response,
+      RespT response,
       AuditLog.Builder logBuilder,
       LogEntryOperation logEntryOperation) {
     AuditLog.Builder logBuilderCopy = logBuilder.build().toBuilder();
     if (selector.getDirective().shouldLogResponse() && response != null) {
-      logBuilderCopy.setResponse(response);
+      logBuilderCopy.setResponse(messageToStruct(response));
     }
     if (selector.getDirective().shouldLogRequest() && request != null) {
       logBuilderCopy.setRequest(messageToStruct(request));

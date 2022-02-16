@@ -192,6 +192,9 @@ public class TalkerService {
       throw new RuntimeException(req.getMessage());
     }
 
+    /**
+     * This fails if it receives the value "4". Intended for testing what happens on a failure mid-stream.
+     */
     @Override
     public StreamObserver<FailOnFourRequest> failOnFour(
         StreamObserver<FailOnFourResponse> responseObserver) {
