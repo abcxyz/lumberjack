@@ -17,7 +17,6 @@
 package com.abcxyz.lumberjack.auditlogclient;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.in;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doNothing;
@@ -31,6 +30,9 @@ import com.abcxyz.lumberjack.auditlogclient.config.Selector;
 import com.google.cloud.audit.AuditLog;
 import com.google.protobuf.Struct;
 import com.google.protobuf.Value;
+import com.google.rpc.Code;
+import com.google.rpc.Status;
+import io.grpc.StatusRuntimeException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -154,12 +156,14 @@ public class AuditLoggingServerInterceptorTests {
     doNothing().when(interceptorSpy).auditLog(any(), any(), any(), any(), any());
     interceptorSpy.logError(selector, null, new RuntimeException("Test Message"), builder, null);
 
-    Struct expectedStruct = Struct.newBuilder()
-        .putFields("error_message", Value.newBuilder().setStringValue("Test Message").build())
-        .putFields("error_type", Value.newBuilder().setStringValue("java.lang.RuntimeException").build())
-        .putFields("error_code", Value.newBuilder().setStringValue("INTERNAL").build())
-        .build();
-    verify(interceptorSpy).auditLog(eq(selector), eq(null), eq(expectedStruct), eq(builder), eq(null));
+    AuditLog.Builder expectedBuilder = AuditLog.newBuilder()
+        .setStatus(Status.newBuilder()
+            .setMessage(Code.INTERNAL.name())
+            .setCode(Code.INTERNAL.getNumber())
+            .build());
+    ArgumentCaptor<AuditLog.Builder> captor = ArgumentCaptor.forClass(AuditLog.Builder.class);
+    verify(interceptorSpy).auditLog(eq(selector), eq(null), eq(null), captor.capture(), eq(null));
+    assertThat(captor.getValue().getStatus()).isEqualTo(expectedBuilder.getStatus()).usingRecursiveComparison();
   }
 
   @Test
@@ -170,11 +174,33 @@ public class AuditLoggingServerInterceptorTests {
     doNothing().when(interceptorSpy).auditLog(any(), any(), any(), any(), any());
     interceptorSpy.logError(selector, null, new IllegalArgumentException("Test Message"), builder, null);
 
-    Struct expectedStruct = Struct.newBuilder()
-        .putFields("error_message", Value.newBuilder().setStringValue("Test Message").build())
-        .putFields("error_type", Value.newBuilder().setStringValue("java.lang.IllegalArgumentException").build())
-        .putFields("error_code", Value.newBuilder().setStringValue("INVALID_ARGUMENT").build())
-        .build();
-    verify(interceptorSpy).auditLog(eq(selector), eq(null), eq(expectedStruct), eq(builder), eq(null));
+    AuditLog.Builder expectedBuilder = AuditLog.newBuilder()
+        .setStatus(Status.newBuilder()
+            .setMessage(Code.INVALID_ARGUMENT.name())
+            .setCode(Code.INVALID_ARGUMENT.getNumber())
+            .build());
+    ArgumentCaptor<AuditLog.Builder> captor = ArgumentCaptor.forClass(AuditLog.Builder.class);
+    verify(interceptorSpy).auditLog(eq(selector), eq(null), eq(null), captor.capture(), eq(null));
+    assertThat(captor.getValue().getStatus()).isEqualTo(expectedBuilder.getStatus()).usingRecursiveComparison();
+  }
+
+  @Test
+  public void logsError_GRPC_Code() {
+    Selector selector = new Selector("*", null, null);
+    AuditLog.Builder builder = AuditLog.newBuilder();
+    AuditLoggingServerInterceptor interceptorSpy = spy(interceptor);
+    doNothing().when(interceptorSpy).auditLog(any(), any(), any(), any(), any());
+    interceptorSpy.logError(selector, null,
+        new StatusRuntimeException(io.grpc.Status.FAILED_PRECONDITION),
+        builder, null);
+
+    AuditLog.Builder expectedBuilder = AuditLog.newBuilder()
+        .setStatus(Status.newBuilder()
+            .setMessage(Code.FAILED_PRECONDITION.name())
+            .setCode(Code.FAILED_PRECONDITION.getNumber())
+            .build());
+    ArgumentCaptor<AuditLog.Builder> captor = ArgumentCaptor.forClass(AuditLog.Builder.class);
+    verify(interceptorSpy).auditLog(eq(selector), eq(null), eq(null), captor.capture(), eq(null));
+    assertThat(captor.getValue().getStatus()).isEqualTo(expectedBuilder.getStatus()).usingRecursiveComparison();
   }
 }
