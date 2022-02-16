@@ -208,8 +208,7 @@ public class AuditLoggingServerInterceptor<ReqT extends Message> implements Serv
 
   /**
    * Intended to add audit logs when there is an exception thrown in the server. We expect that
-   * there is no response, and instead in the response struct we will add information about the
-   * specific exception that ocurred.
+   * there is no response, and instead a status code will be added to the audit log.
    */
   <ReqT, RespT> void logError(
       Selector selector,
