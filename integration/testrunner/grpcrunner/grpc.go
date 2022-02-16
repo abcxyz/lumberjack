@@ -160,6 +160,7 @@ func (g *GRPC) runFailCheck(t testing.TB, ctx context.Context) {
 		t.Fatalf("expected err but did not get one: %v", err)
 	}
 	query := g.makeQueryForGRPCUnary(u)
+	t.Logf("querying with: %v", query)
 	utils.QueryIfAuditLogExistsWithRetries(t, ctx, query, g.Config, "failCheck")
 }
 

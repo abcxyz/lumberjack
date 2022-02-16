@@ -20,6 +20,7 @@ package proto;
 import "google/cloud/audit/audit_log.proto";
 import "google/logging/v2/log_entry.proto";
 import "google/protobuf/descriptor.proto";
+import "google/rpc/status.proto";
 
 option go_package = "github.com/abcxyz/lumberjack/clients/go/apis/v1alpha1";
 option java_multiple_files = true;
@@ -79,4 +80,6 @@ message AuditLogRequest {
   // to track a test log. Later, the integration test can query the UUID from a
   // BigQuery sink to ensure that a logging request completed successfully.
   map<string, string> labels = 3;
+
+  google.rpc.Status status = 6;
 }
