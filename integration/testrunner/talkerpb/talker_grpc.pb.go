@@ -31,6 +31,8 @@ type TalkerClient interface {
 	Addition(ctx context.Context, opts ...grpc.CallOption) (Talker_AdditionClient, error)
 	// An api that is intended to always throw an error.
 	Fail(ctx context.Context, in *FailRequest, opts ...grpc.CallOption) (*FailResponse, error)
+	// API for client streaming that throws an error if 4 is sent
+	FailOnFour(ctx context.Context, opts ...grpc.CallOption) (Talker_FailOnFourClient, error)
 }
 
 type talkerClient struct {
@@ -143,6 +145,40 @@ func (c *talkerClient) Fail(ctx context.Context, in *FailRequest, opts ...grpc.C
 	return out, nil
 }
 
+func (c *talkerClient) FailOnFour(ctx context.Context, opts ...grpc.CallOption) (Talker_FailOnFourClient, error) {
+	stream, err := c.cc.NewStream(ctx, &Talker_ServiceDesc.Streams[2], "/abcxyz.test.Talker/FailOnFour", opts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &talkerFailOnFourClient{stream}
+	return x, nil
+}
+
+type Talker_FailOnFourClient interface {
+	Send(*FailOnFourRequest) error
+	CloseAndRecv() (*FailOnFourResponse, error)
+	grpc.ClientStream
+}
+
+type talkerFailOnFourClient struct {
+	grpc.ClientStream
+}
+
+func (x *talkerFailOnFourClient) Send(m *FailOnFourRequest) error {
+	return x.ClientStream.SendMsg(m)
+}
+
+func (x *talkerFailOnFourClient) CloseAndRecv() (*FailOnFourResponse, error) {
+	if err := x.ClientStream.CloseSend(); err != nil {
+		return nil, err
+	}
+	m := new(FailOnFourResponse)
+	if err := x.ClientStream.RecvMsg(m); err != nil {
+		return nil, err
+	}
+	return m, nil
+}
+
 // TalkerServer is the server API for Talker service.
 // All implementations must embed UnimplementedTalkerServer
 // for forward compatibility
@@ -159,6 +195,8 @@ type TalkerServer interface {
 	Addition(Talker_AdditionServer) error
 	// An api that is intended to always throw an error.
 	Fail(context.Context, *FailRequest) (*FailResponse, error)
+	// API for client streaming that throws an error if 4 is sent
+	FailOnFour(Talker_FailOnFourServer) error
 	mustEmbedUnimplementedTalkerServer()
 }
 
@@ -183,6 +221,9 @@ func (UnimplementedTalkerServer) Addition(Talker_AdditionServer) error {
 }
 func (UnimplementedTalkerServer) Fail(context.Context, *FailRequest) (*FailResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Fail not implemented")
+}
+func (UnimplementedTalkerServer) FailOnFour(Talker_FailOnFourServer) error {
+	return status.Errorf(codes.Unimplemented, "method FailOnFour not implemented")
 }
 func (UnimplementedTalkerServer) mustEmbedUnimplementedTalkerServer() {}
 
@@ -316,6 +357,32 @@ func _Talker_Fail_Handler(srv interface{}, ctx context.Context, dec func(interfa
 	return interceptor(ctx, in, info, handler)
 }
 
+func _Talker_FailOnFour_Handler(srv interface{}, stream grpc.ServerStream) error {
+	return srv.(TalkerServer).FailOnFour(&talkerFailOnFourServer{stream})
+}
+
+type Talker_FailOnFourServer interface {
+	SendAndClose(*FailOnFourResponse) error
+	Recv() (*FailOnFourRequest, error)
+	grpc.ServerStream
+}
+
+type talkerFailOnFourServer struct {
+	grpc.ServerStream
+}
+
+func (x *talkerFailOnFourServer) SendAndClose(m *FailOnFourResponse) error {
+	return x.ServerStream.SendMsg(m)
+}
+
+func (x *talkerFailOnFourServer) Recv() (*FailOnFourRequest, error) {
+	m := new(FailOnFourRequest)
+	if err := x.ServerStream.RecvMsg(m); err != nil {
+		return nil, err
+	}
+	return m, nil
+}
+
 // Talker_ServiceDesc is the grpc.ServiceDesc for Talker service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -349,6 +416,11 @@ var Talker_ServiceDesc = grpc.ServiceDesc{
 		{
 			StreamName:    "Addition",
 			Handler:       _Talker_Addition_Handler,
+			ClientStreams: true,
+		},
+		{
+			StreamName:    "FailOnFour",
+			Handler:       _Talker_FailOnFour_Handler,
 			ClientStreams: true,
 		},
 	},

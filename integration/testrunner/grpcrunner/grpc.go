@@ -89,6 +89,7 @@ func TestGRPCEndpoint(t testing.TB, ctx context.Context, g *GRPC) {
 		g.runFailCheck(t, ctx)
 		g.runFibonacciCheck(t, ctx)
 		g.runAdditionCheck(t, ctx)
+		g.runFailOnFourCheck(t, ctx)
 	}
 }
 
@@ -162,6 +163,34 @@ func (g *GRPC) runFailCheck(t testing.TB, ctx context.Context) {
 	query := g.makeQueryForGRPCUnary(u)
 	t.Logf("querying with: %v", query)
 	utils.QueryIfAuditLogExistsWithRetries(t, ctx, query, g.Config, "failCheck")
+}
+
+// End-to-end test for the addition API, which is a test for client-side streaming.
+func (g *GRPC) runFailOnFourCheck(t testing.TB, ctx context.Context) {
+	u := uuid.New()
+	stream, err := g.TalkerClient.FailOnFour(ctx)
+	if err != nil {
+		t.Fatalf("addition call failed: %v", err)
+	}
+	totalNumbers := 5
+	for i := 1; i <= totalNumbers; i++ {
+		if err := stream.Send(&talkerpb.FailOnFourRequest{
+			Value:  uint32(i),
+			Target: u.String(),
+		}); err != nil {
+			t.Fatalf("sending value to addition failed: %v", err)
+		}
+	}
+	reply, err := stream.CloseAndRecv()
+	if err != nil {
+		t.Logf("Got Error as expectd: %v", err)
+	} else {
+		t.Fatalf("Did not get err as expected: %v", reply)
+	}
+
+	query := g.makeQueryForGRPCStream(u)
+	// we expect to have 4 audit logs - the last sent number (5) will be after the err ocurred.
+	utils.QueryIfAuditLogsExistWithRetries(t, ctx, query, g.Config, "failOnFourCheck", int64(4))
 }
 
 // Server is in cloud run. Example: https://cloud.google.com/run/docs/triggering/grpc#request-auth
