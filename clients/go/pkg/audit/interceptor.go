@@ -341,6 +341,8 @@ func (i *Interceptor) handleReturnWithResponse(ctx context.Context, handlerResp 
 	return handlerResp, nil
 }
 
+// logError attempts to emit an audit log for an error that has occurred. errors are logged in
+// rpc Status format, and if a grpc error has occurred, that grpc error is converted to rpc.
 func (i *Interceptor) logError(ctx context.Context, err error, logReq *alpb.AuditLogRequest) {
 	grpcStatus, ok := status.FromError(err)
 	if ok {
