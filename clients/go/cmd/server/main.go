@@ -22,6 +22,7 @@ import (
 	"syscall"
 
 	"cloud.google.com/go/compute/metadata"
+	dlp "cloud.google.com/go/dlp/apiv2"
 	"cloud.google.com/go/logging"
 	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
 	"golang.org/x/sync/errgroup"
@@ -53,6 +54,12 @@ func main() {
 func realMain(ctx context.Context) error {
 	logger := zlogger.FromContext(ctx)
 
+	dlpClient, err := dlp.NewClient(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to init dlp: %w", err)
+	}
+	defer dlpClient.Close()
+
 	cfg, err := server.NewConfig(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to process config: %w", err)
@@ -73,7 +80,7 @@ func realMain(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("failed to create audit client: %w", err)
 	}
-	logAgent, err := server.NewAuditLogAgent(client)
+	logAgent, err := server.NewAuditLogAgent(client, dlpClient)
 	if err != nil {
 		return err
 	}
