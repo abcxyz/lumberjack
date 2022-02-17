@@ -176,7 +176,6 @@ public class AuditLoggingServerInterceptor<ReqT extends Message> implements Serv
           throw e;
         }
       }
-
     };
   }
 
