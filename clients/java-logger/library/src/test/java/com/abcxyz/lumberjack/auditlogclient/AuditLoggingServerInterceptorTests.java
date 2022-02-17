@@ -167,24 +167,6 @@ public class AuditLoggingServerInterceptorTests {
   }
 
   @Test
-  public void logsError_IllegalArgument() {
-    Selector selector = new Selector("*", null, null);
-    AuditLog.Builder builder = AuditLog.newBuilder();
-    AuditLoggingServerInterceptor interceptorSpy = spy(interceptor);
-    doNothing().when(interceptorSpy).auditLog(any(), any(), any(), any(), any());
-    interceptorSpy.logError(selector, null, new IllegalArgumentException("Test Message"), builder, null);
-
-    AuditLog.Builder expectedBuilder = AuditLog.newBuilder()
-        .setStatus(Status.newBuilder()
-            .setMessage(Code.INVALID_ARGUMENT.name())
-            .setCode(Code.INVALID_ARGUMENT.getNumber())
-            .build());
-    ArgumentCaptor<AuditLog.Builder> captor = ArgumentCaptor.forClass(AuditLog.Builder.class);
-    verify(interceptorSpy).auditLog(eq(selector), eq(null), eq(null), captor.capture(), eq(null));
-    assertThat(captor.getValue().getStatus()).isEqualTo(expectedBuilder.getStatus()).usingRecursiveComparison();
-  }
-
-  @Test
   public void logsError_GRPC_Code() {
     Selector selector = new Selector("*", null, null);
     AuditLog.Builder builder = AuditLog.newBuilder();
