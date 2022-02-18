@@ -147,7 +147,7 @@ func (g *GRPC) runAdditionCheck(t testing.TB, ctx context.Context) {
 // End-to-end test for the hello API, which is a test for unary requests.
 func (g *GRPC) runHelloCheck(t testing.TB, ctx context.Context) {
 	u := uuid.New()
-	_, err := g.TalkerClient.Hello(ctx, &talkerpb.HelloRequest{Message: "Some Message", Target: u.String()})
+	_, err := g.TalkerClient.Hello(ctx, &talkerpb.HelloRequest{Message: "me@example.com 3/4/2020", Target: u.String()})
 	if err != nil {
 		t.Errorf("could not greet: %v", err)
 	}

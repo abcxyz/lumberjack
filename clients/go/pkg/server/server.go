@@ -17,18 +17,18 @@ package server
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 
 	"cloud.google.com/go/compute/metadata"
 	dlp "cloud.google.com/go/dlp/apiv2"
+	alpb "github.com/abcxyz/lumberjack/clients/go/apis/v1alpha1"
+	"github.com/abcxyz/lumberjack/clients/go/pkg/audit"
 	"github.com/abcxyz/lumberjack/clients/go/pkg/zlogger"
 	dlp2 "google.golang.org/genproto/googleapis/privacy/dlp/v2"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
-
-	alpb "github.com/abcxyz/lumberjack/clients/go/apis/v1alpha1"
-	"github.com/abcxyz/lumberjack/clients/go/pkg/audit"
 )
 
 // AuditLogAgent is the implementation of the audit log agent server.
@@ -70,15 +70,48 @@ func codifyErr(err error) error {
 func (a *AuditLogAgent) redactUsingDLP(ctx context.Context, logReq *alpb.AuditLogRequest) error {
 	auditLog := *logReq.GetPayload()
 	request := auditLog.GetRequest()
+	if request == nil {
+		return nil
+	}
 
 	projectID, err := metadata.ProjectID()
 	if err != nil {
 		return fmt.Errorf("failed to get project ID from metadata server: %w", err)
 	}
 
+	stringRequest, err := json.Marshal(request);
+	if  err != nil {
+		return fmt.Errorf("err when converting to json: %w", err)
+	}
+
 	req := &dlp2.DeidentifyContentRequest{
 		Parent: fmt.Sprintf("projects/%s", projectID),
-		Item:   &dlp2.ContentItem{DataItem: &dlp2.ContentItem_Value{Value: request.String()}},
+		Item:   &dlp2.ContentItem{DataItem: &dlp2.ContentItem_Value{Value: string(stringRequest)}},
+		DeidentifyConfig: &dlp2.DeidentifyConfig{
+			Transformation: &dlp2.DeidentifyConfig_InfoTypeTransformations{
+				InfoTypeTransformations: &dlp2.InfoTypeTransformations{
+					Transformations: []*dlp2.InfoTypeTransformations_InfoTypeTransformation{
+						{
+							InfoTypes: []*dlp2.InfoType{}, // Match all info types.
+							PrimitiveTransformation: &dlp2.PrimitiveTransformation{
+								Transformation: &dlp2.PrimitiveTransformation_ReplaceWithInfoTypeConfig{},
+							},
+						},
+					},
+				},
+			},
+		},
+		// The InspectConfig is used to identify the DATE fields.
+		InspectConfig: &dlp2.InspectConfig{
+			InfoTypes: []*dlp2.InfoType{
+				{
+					Name: "DATE",
+				},
+				{
+					Name: "EMAIL_ADDRESS",
+				},
+			},
+		},
 	}
 	resp, err := a.dlpClient.DeidentifyContent(ctx, req)
 	if err != nil {
@@ -87,10 +120,19 @@ func (a *AuditLogAgent) redactUsingDLP(ctx context.Context, logReq *alpb.AuditLo
 	// TODO: Use resp.
 	_ = resp
 	deIdentifiedRequest := resp.GetItem().GetDataItem()
+	trimmed := trimFirstRune(fmt.Sprintf("%v", deIdentifiedRequest))
+
 
 	zlogger := zlogger.FromContext(ctx)
-	zlogger.Warnf("Response before dlp: %s", request.String())
-	zlogger.Warnf("Response after dlp: %s", deIdentifiedRequest)
+	zlogger.Warnf("Response before dlp: %s", stringRequest)
+	zlogger.Warnf("Response after dlp: %s", trimmed)
+	if logReq.Payload.Request, err = audit.ToProtoStruct(trimmed); err != nil {
+		return fmt.Errorf("err when converting %v to struct: %w", request.String(), err)
+	}
 
 	return nil
+}
+
+func trimFirstRune(s string) string {
+	return s[2:len(s)-1]
 }

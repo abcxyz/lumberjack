@@ -269,7 +269,7 @@ func (ss *serverStreamWrapper) SendMsg(m interface{}) error {
 }
 
 func setReq(logReq *alpb.AuditLogRequest, m interface{}) error {
-	ms, err := toProtoStruct(m)
+	ms, err := ToProtoStruct(m)
 	if err != nil {
 		return status.Errorf(codes.Internal, "audit interceptor failed converting req into a proto struct: %v", err)
 	}
@@ -278,7 +278,7 @@ func setReq(logReq *alpb.AuditLogRequest, m interface{}) error {
 }
 
 func setResp(logReq *alpb.AuditLogRequest, m interface{}) error {
-	ms, err := toProtoStruct(m)
+	ms, err := ToProtoStruct(m)
 	if err != nil {
 		return status.Errorf(codes.Internal, "audit interceptor failed converting resp into a proto struct: %v", err)
 	}
@@ -366,7 +366,7 @@ func LogReqFromCtx(ctx context.Context) (*alpb.AuditLogRequest, bool) {
 // into a proto struct.
 // This method is inspired from the Google Cloud Logging Client.
 // https://github.com/googleapis/google-cloud-go/blob/main/logging/logging.go#L650
-func toProtoStruct(v interface{}) (*structpb.Struct, error) {
+func ToProtoStruct(v interface{}) (*structpb.Struct, error) {
 	// Fast path: if v is already a *structpb.Struct, nothing to do.
 	if s, ok := v.(*structpb.Struct); ok {
 		return s, nil
