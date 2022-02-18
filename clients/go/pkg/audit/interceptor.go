@@ -358,7 +358,10 @@ func (i *Interceptor) logError(ctx context.Context, err error, logReq *alpb.Audi
 	}
 
 	// Best effort log the error.
-	_ = i.Log(ctx, logReq)
+	if err = i.Log(ctx, logReq); err != nil {
+		zlogger := zlogger.FromContext(ctx)
+		zlogger.Error("unable to audit log error", zap.Error(err))
+	}
 }
 
 var serviceNameRegexp = regexp.MustCompile("^/{1,2}(.*?)/")
