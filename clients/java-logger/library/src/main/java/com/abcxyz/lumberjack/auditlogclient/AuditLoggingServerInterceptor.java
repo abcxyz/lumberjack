@@ -221,8 +221,6 @@ public class AuditLoggingServerInterceptor<ReqT extends Message> implements Serv
     if (e instanceof StatusRuntimeException) {
       // Audit logs expect an rpc code, however this exception is grpc specific. We have to convert from one to the other.
       code = Code.forNumber(((StatusRuntimeException) e).getStatus().getCode().value());
-    } else if (e instanceof IllegalArgumentException) {
-      code = Code.INVALID_ARGUMENT;
     }
     logBuilder.setStatus(Status.newBuilder()
         .setCode(code.getNumber())
