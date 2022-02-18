@@ -68,9 +68,11 @@ func codifyErr(err error) error {
 }
 
 func (a *AuditLogAgent) redactUsingDLP(ctx context.Context, logReq *alpb.AuditLogRequest) error {
+	zlogger := zlogger.FromContext(ctx)
 	auditLog := *logReq.GetPayload()
 	request := auditLog.GetRequest()
 	if request == nil {
+		zlogger.Debug("Request was nil, not calling DLP.")
 		return nil
 	}
 
@@ -122,8 +124,6 @@ func (a *AuditLogAgent) redactUsingDLP(ctx context.Context, logReq *alpb.AuditLo
 	deIdentifiedRequest := resp.GetItem().GetDataItem()
 	trimmed := trimFirstRune(fmt.Sprintf("%v", deIdentifiedRequest))
 
-
-	zlogger := zlogger.FromContext(ctx)
 	zlogger.Warnf("Response before dlp: %s", stringRequest)
 	zlogger.Warnf("Response after dlp: %s", trimmed)
 	if logReq.Payload.Request, err = audit.ToProtoStruct(trimmed); err != nil {
