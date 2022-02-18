@@ -26,7 +26,7 @@ import (
 	reflect "reflect"
 	sync "sync"
 
-	descriptor "github.com/golang/protobuf/protoc-gen-go/descriptor"
+	"github.com/gogo/protobuf/protoc-gen-gogo/descriptor"
 	audit "google.golang.org/genproto/googleapis/cloud/audit"
 	v2 "google.golang.org/genproto/googleapis/logging/v2"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
