@@ -107,7 +107,12 @@ func (i *Interceptor) UnaryInterceptor(ctx context.Context, req interface{}, inf
 	//   - fill the field `Payload.ResourceName`
 	resp, handlerErr := handler(ctx, req)
 	if handlerErr != nil {
-		i.logError(ctx, handlerErr, *logReq)
+		i.setErrorStatus(handlerErr, logReq)
+
+		// Best effort log the error.
+		if err := i.Log(ctx, logReq); err != nil {
+			zlogger.Error("unable to audit log error", zap.Error(err))
+		}
 		return resp, handlerErr
 	}
 
@@ -178,7 +183,12 @@ func (i *Interceptor) StreamInterceptor(srv interface{}, ss grpc.ServerStream, i
 		ServerStream:   ss,
 	})
 	if handlerErr != nil {
-		i.logError(ctx, handlerErr, *logReq)
+		i.setErrorStatus(handlerErr, logReq)
+
+		// Best effort log the error.
+		if err := i.Log(ctx, logReq); err != nil {
+			zlogger.Error("unable to audit log error", zap.Error(err))
+		}
 	}
 	return handlerErr
 }
@@ -343,7 +353,7 @@ func (i *Interceptor) handleReturnWithResponse(ctx context.Context, handlerResp 
 
 // logError attempts to emit an audit log for an error that has occurred. Errors are logged in
 // rpc Status format, and if a grpc error has occurred, that grpc error is converted to rpc.
-func (i *Interceptor) logError(ctx context.Context, err error, logReq alpb.AuditLogRequest) {
+func (i *Interceptor) setErrorStatus(err error, logReq *alpb.AuditLogRequest) {
 	grpcStatus, ok := status.FromError(err)
 	if ok {
 		logReq.Payload.Status = &rpcstatus.Status{
@@ -357,11 +367,6 @@ func (i *Interceptor) logError(ctx context.Context, err error, logReq alpb.Audit
 		}
 	}
 
-	// Best effort log the error.
-	if logErr := i.Log(ctx, &logReq); logErr != nil {
-		zlogger := zlogger.FromContext(ctx)
-		zlogger.Error("unable to audit log error", zap.Error(logErr))
-	}
 }
 
 var serviceNameRegexp = regexp.MustCompile("^/{1,2}(.*?)/")
