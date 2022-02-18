@@ -36,6 +36,10 @@ import com.abcxyz.lumberjack.auditlogclient.AuditLogs;
 import com.abcxyz.lumberjack.auditlogclient.modules.AuditLoggingModule;
 import com.abcxyz.lumberjack.test.talker.AdditionRequest;
 import com.abcxyz.lumberjack.test.talker.AdditionResponse;
+import com.abcxyz.lumberjack.test.talker.FailRequest;
+import com.abcxyz.lumberjack.test.talker.FailResponse;
+import com.abcxyz.lumberjack.test.talker.FailOnFourRequest;
+import com.abcxyz.lumberjack.test.talker.FailOnFourResponse;
 import com.abcxyz.lumberjack.test.talker.FibonacciRequest;
 import com.abcxyz.lumberjack.test.talker.FibonacciResponse;
 import com.abcxyz.lumberjack.test.talker.HelloRequest;
@@ -48,6 +52,8 @@ import com.google.inject.Guice;
 import com.google.inject.Injector;
 import io.grpc.Server;
 import io.grpc.ServerBuilder;
+import io.grpc.Status;
+import io.grpc.StatusRuntimeException;
 import io.grpc.stub.StreamObserver;
 import java.io.IOException;
 import java.util.HashMap;
@@ -176,6 +182,30 @@ public class TalkerService {
     public StreamObserver<AdditionRequest> addition(
         StreamObserver<AdditionResponse> responseObserver) {
       return new ServerAdditionObserver(responseObserver);
+    }
+
+    /**
+     * This is an api that always fails. It is intended to test the failure modes of our application.
+     */
+    @Override
+    public void fail(FailRequest req, StreamObserver<FailResponse> responseObserver) {
+      AuditLog.Builder auditLogBuilder = AuditLogs.getBuilderFromContext();
+      auditLogBuilder.setResourceName(req.getTarget());
+
+      StatusRuntimeException e = new StatusRuntimeException(Status.RESOURCE_EXHAUSTED);
+      // Send the error to the client
+      responseObserver.onError(e);
+      // Throw the error from the server's perspective
+      throw e;
+    }
+
+    /**
+     * This fails if it receives the value "4". Intended for testing what happens on a failure mid-stream.
+     */
+    @Override
+    public StreamObserver<FailOnFourRequest> failOnFour(
+        StreamObserver<FailOnFourResponse> responseObserver) {
+      return new ServerFailOnFourObserver(responseObserver);
     }
   }
 }

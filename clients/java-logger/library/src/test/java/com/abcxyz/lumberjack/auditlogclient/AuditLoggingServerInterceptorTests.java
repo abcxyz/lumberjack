@@ -17,7 +17,11 @@
 package com.abcxyz.lumberjack.auditlogclient;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
@@ -26,6 +30,9 @@ import com.abcxyz.lumberjack.auditlogclient.config.Selector;
 import com.google.cloud.audit.AuditLog;
 import com.google.protobuf.Struct;
 import com.google.protobuf.Value;
+import com.google.rpc.Code;
+import com.google.rpc.Status;
+import io.grpc.StatusRuntimeException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -33,6 +40,7 @@ import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -138,5 +146,43 @@ public class AuditLoggingServerInterceptorTests {
     assertThat(chosenSelector.get()).isEqualTo(selector3);
     // We expect the cache to have this method, and therefore rules should not be read again.
     verify(auditLoggingConfiguration, times(2)).getRules();
+  }
+
+  @Test
+  public void logsError() {
+    Selector selector = new Selector("*", null, null);
+    AuditLog.Builder builder = AuditLog.newBuilder();
+    AuditLoggingServerInterceptor interceptorSpy = spy(interceptor);
+    doNothing().when(interceptorSpy).auditLog(any(), any(), any(), any(), any());
+    interceptorSpy.logError(selector, null, new RuntimeException("Test Message"), builder, null);
+
+    AuditLog.Builder expectedBuilder = AuditLog.newBuilder()
+        .setStatus(Status.newBuilder()
+            .setMessage(Code.INTERNAL.name())
+            .setCode(Code.INTERNAL.getNumber())
+            .build());
+    ArgumentCaptor<AuditLog.Builder> captor = ArgumentCaptor.forClass(AuditLog.Builder.class);
+    verify(interceptorSpy).auditLog(eq(selector), eq(null), eq(null), captor.capture(), eq(null));
+    assertThat(captor.getValue().getStatus()).isEqualTo(expectedBuilder.getStatus()).usingRecursiveComparison();
+  }
+
+  @Test
+  public void logsError_GRPC_Code() {
+    Selector selector = new Selector("*", null, null);
+    AuditLog.Builder builder = AuditLog.newBuilder();
+    AuditLoggingServerInterceptor interceptorSpy = spy(interceptor);
+    doNothing().when(interceptorSpy).auditLog(any(), any(), any(), any(), any());
+    interceptorSpy.logError(selector, null,
+        new StatusRuntimeException(io.grpc.Status.FAILED_PRECONDITION),
+        builder, null);
+
+    AuditLog.Builder expectedBuilder = AuditLog.newBuilder()
+        .setStatus(Status.newBuilder()
+            .setMessage(Code.FAILED_PRECONDITION.name())
+            .setCode(Code.FAILED_PRECONDITION.getNumber())
+            .build());
+    ArgumentCaptor<AuditLog.Builder> captor = ArgumentCaptor.forClass(AuditLog.Builder.class);
+    verify(interceptorSpy).auditLog(eq(selector), eq(null), eq(null), captor.capture(), eq(null));
+    assertThat(captor.getValue().getStatus()).isEqualTo(expectedBuilder.getStatus()).usingRecursiveComparison();
   }
 }
