@@ -166,7 +166,6 @@ public class AuditLoggingServerInterceptorTests {
     assertThat(captor.getValue().getStatus()).isEqualTo(expectedBuilder.getStatus()).usingRecursiveComparison();
   }
 
-  @Test
   public void logsError_GRPC_Code() {
     Selector selector = new Selector("*", null, null);
     AuditLog.Builder builder = AuditLog.newBuilder();

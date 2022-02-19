@@ -191,7 +191,6 @@ public class TalkerService {
     public void fail(FailRequest req, StreamObserver<FailResponse> responseObserver) {
       AuditLog.Builder auditLogBuilder = AuditLogs.getBuilderFromContext();
       auditLogBuilder.setResourceName(req.getTarget());
-
       StatusRuntimeException e = new StatusRuntimeException(Status.RESOURCE_EXHAUSTED);
       // Send the error to the client
       responseObserver.onError(e);
