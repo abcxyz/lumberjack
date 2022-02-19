@@ -26,6 +26,7 @@ import (
 	"github.com/abcxyz/lumberjack/clients/go/pkg/security"
 	"github.com/abcxyz/lumberjack/clients/go/pkg/testutil"
 	"github.com/google/go-cmp/cmp"
+	rpcstatus "google.golang.org/genproto/googleapis/rpc/status"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
@@ -141,9 +142,64 @@ func TestUnaryInterceptor(t *testing.T) {
 			handler: func(ctx context.Context, req interface{}) (interface{}, error) {
 				logReq, _ := LogReqFromCtx(ctx)
 				logReq.Payload.ResourceName = "ExampleResourceName"
-				return nil, grpcstatus.Error(codes.Internal, "fake error")
+				return nil, grpcstatus.Error(codes.FailedPrecondition, "fake error")
 			},
 			wantErrSubstr: "fake error",
+			wantLogReq: &alpb.AuditLogRequest{
+				Type: alpb.AuditLogRequest_DATA_ACCESS,
+				Payload: &calpb.AuditLog{
+					ServiceName:  "ExampleService",
+					MethodName:   "/ExampleService/ExampleMethod",
+					ResourceName: "ExampleResourceName",
+					AuthenticationInfo: &calpb.AuthenticationInfo{
+						PrincipalEmail: "user@example.com",
+					},
+					Request: &structpb.Struct{},
+					Status: &rpcstatus.Status{
+						Code:    int32(codes.FailedPrecondition),
+						Message: "fake error",
+					},
+				},
+				Mode: alpb.AuditLogRequest_BEST_EFFORT,
+			},
+		},
+		{
+			name: "interceptor_autofills_failed_rpc_unknown_err",
+			ctx: metadata.NewIncomingContext(context.Background(), metadata.New(map[string]string{
+				"authorization": jwt,
+			})),
+			auditRules: []*alpb.AuditRule{{
+				Selector:  "*",
+				Directive: alpb.AuditRuleDirectiveRequestAndResponse,
+				LogType:   "DATA_ACCESS",
+			}},
+			logMode: alpb.AuditLogRequest_BEST_EFFORT,
+			info: &grpc.UnaryServerInfo{
+				FullMethod: "/ExampleService/ExampleMethod",
+			},
+			handler: func(ctx context.Context, req interface{}) (interface{}, error) {
+				logReq, _ := LogReqFromCtx(ctx)
+				logReq.Payload.ResourceName = "ExampleResourceName"
+				return nil, errors.New("fake error")
+			},
+			wantErrSubstr: "fake error",
+			wantLogReq: &alpb.AuditLogRequest{
+				Type: alpb.AuditLogRequest_DATA_ACCESS,
+				Payload: &calpb.AuditLog{
+					ServiceName:  "ExampleService",
+					MethodName:   "/ExampleService/ExampleMethod",
+					ResourceName: "ExampleResourceName",
+					AuthenticationInfo: &calpb.AuthenticationInfo{
+						PrincipalEmail: "user@example.com",
+					},
+					Request: &structpb.Struct{},
+					Status: &rpcstatus.Status{
+						Code:    int32(codes.Internal),
+						Message: "fake error",
+					},
+				},
+				Mode: alpb.AuditLogRequest_BEST_EFFORT,
+			},
 		},
 		{
 			name: "default_audit_rule_directive_omits_req_and_resp",
@@ -800,14 +856,28 @@ func TestStreamInterceptor(t *testing.T) {
 			FullMethod: "/ExampleService/ExampleMethod",
 		},
 		auditRules: []*alpb.AuditRule{{
-			Selector:  "/ExampleService/OtherMethod",
-			Directive: alpb.AuditRuleDirectiveDefault,
+			Selector:  "/ExampleService/ExampleMethod",
+			Directive: alpb.AuditRuleDirectiveRequestAndResponse,
 			LogType:   "DATA_ACCESS",
 		}},
 		handler: func(srv interface{}, ss grpc.ServerStream) error {
 			return status.Error(codes.Internal, "something is wrong")
 		},
 		wantErrSubstr: "something is wrong",
+		wantLogReqs: []*alpb.AuditLogRequest{{
+			Type: alpb.AuditLogRequest_DATA_ACCESS,
+			Payload: &calpb.AuditLog{
+				ServiceName: "ExampleService",
+				MethodName:  "/ExampleService/ExampleMethod",
+				AuthenticationInfo: &calpb.AuthenticationInfo{
+					PrincipalEmail: "user@example.com",
+				},
+				Status: &rpcstatus.Status{
+					Code:    int32(codes.Internal),
+					Message: "something is wrong",
+				},
+			},
+		}},
 	}}
 
 	for _, tc := range cases {

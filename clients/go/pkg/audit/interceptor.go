@@ -26,6 +26,8 @@ import (
 	"github.com/google/uuid"
 	"go.uber.org/zap"
 	"google.golang.org/genproto/googleapis/logging/v2"
+	rpccode "google.golang.org/genproto/googleapis/rpc/code"
+	rpcstatus "google.golang.org/genproto/googleapis/rpc/status"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -105,8 +107,12 @@ func (i *Interceptor) UnaryInterceptor(ctx context.Context, req interface{}, inf
 	//   - fill the field `Payload.ResourceName`
 	resp, handlerErr := handler(ctx, req)
 	if handlerErr != nil {
-		// TODO(#96): Consider emitting an audit log when the RPC call fails.
-		// These errors are from outside this interceptor. Therefore, we return the error as-is.
+		i.setErrorStatus(handlerErr, logReq)
+
+		// Best effort log the error.
+		if err := i.Log(ctx, logReq); err != nil {
+			zlogger.Error("unable to audit log error", zap.Error(err))
+		}
 		return resp, handlerErr
 	}
 
@@ -170,12 +176,21 @@ func (i *Interceptor) StreamInterceptor(srv interface{}, ss grpc.ServerStream, i
 	}
 	logReq.Payload.AuthenticationInfo = &calpb.AuthenticationInfo{PrincipalEmail: principal}
 
-	return handler(srv, &serverStreamWrapper{
+	handlerErr := handler(srv, &serverStreamWrapper{
 		c:              i.Client,
 		baselineLogReq: logReq,
 		rule:           r,
 		ServerStream:   ss,
 	})
+	if handlerErr != nil {
+		i.setErrorStatus(handlerErr, logReq)
+
+		// Best effort log the error.
+		if err := i.Log(ctx, logReq); err != nil {
+			zlogger.Error("unable to audit log error", zap.Error(err))
+		}
+	}
+	return handlerErr
 }
 
 type serverStreamWrapper struct {
@@ -233,7 +248,6 @@ func (ss *serverStreamWrapper) RecvMsg(m interface{}) error {
 		}
 	}
 
-	// TODO(#96): Consider emitting an audit log when the RPC call fails.
 	return ss.ServerStream.RecvMsg(m)
 }
 
@@ -264,7 +278,6 @@ func (ss *serverStreamWrapper) SendMsg(m interface{}) error {
 		return status.Errorf(codes.Internal, "audit interceptor failed to emit log: %v", err)
 	}
 
-	// TODO(#96): Consider emitting an audit log when the RPC call fails.
 	return ss.ServerStream.SendMsg(m)
 }
 
@@ -336,6 +349,24 @@ func (i *Interceptor) handleReturnWithResponse(ctx context.Context, handlerResp 
 			zap.Error(err))
 	}
 	return handlerResp, nil
+}
+
+// logError attempts to emit an audit log for an error that has occurred. Errors are logged in
+// rpc Status format, and if a grpc error has occurred, that grpc error is converted to rpc.
+func (i *Interceptor) setErrorStatus(err error, logReq *alpb.AuditLogRequest) {
+	grpcStatus, ok := status.FromError(err)
+	if ok {
+		logReq.Payload.Status = &rpcstatus.Status{
+			Code:    int32(grpcStatus.Code()),
+			Message: grpcStatus.Message(),
+		}
+	} else {
+		logReq.Payload.Status = &rpcstatus.Status{
+			Code:    int32(rpccode.Code_INTERNAL),
+			Message: err.Error(),
+		}
+	}
+
 }
 
 var serviceNameRegexp = regexp.MustCompile("^/{1,2}(.*?)/")
