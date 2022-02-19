@@ -81,8 +81,8 @@ func (a *AuditLogAgent) redactUsingDLP(ctx context.Context, logReq *alpb.AuditLo
 		return fmt.Errorf("failed to get project ID from metadata server: %w", err)
 	}
 
-	stringRequest, err := json.Marshal(request);
-	if  err != nil {
+	stringRequest, err := json.Marshal(request)
+	if err != nil {
 		return fmt.Errorf("err when converting to json: %w", err)
 	}
 
@@ -126,7 +126,14 @@ func (a *AuditLogAgent) redactUsingDLP(ctx context.Context, logReq *alpb.AuditLo
 
 	zlogger.Warnf("Response before dlp: %s", stringRequest)
 	zlogger.Warnf("Response after dlp: %s", trimmed)
-	if logReq.Payload.Request, err = audit.ToProtoStruct(trimmed); err != nil {
+
+	var m map[string]interface{}
+	if err := json.Unmarshal([]byte(trimmed), &m); err != nil {
+		zlogger.Warnf("Unmarshal failed: %v", err)
+	}
+
+	if logReq.Payload.Request, err = audit.ToProtoStruct(m); err != nil {
+		zlogger.Warnf("Err converting: %v", err)
 		return fmt.Errorf("err when converting %v to struct: %w", request.String(), err)
 	}
 
@@ -134,5 +141,5 @@ func (a *AuditLogAgent) redactUsingDLP(ctx context.Context, logReq *alpb.AuditLo
 }
 
 func trimFirstRune(s string) string {
-	return s[2:len(s)-1]
+	return s[2 : len(s)-1]
 }
