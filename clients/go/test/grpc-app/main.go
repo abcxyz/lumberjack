@@ -50,7 +50,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("failed to setup audit interceptor: %v", err)
 	}
-	s := grpc.NewServer(grpc.UnaryInterceptor(interceptor.UnaryInterceptor))
+	s := grpc.NewServer(grpc.UnaryInterceptor(interceptor.UnaryInterceptor), grpc.StreamInterceptor(interceptor.StreamInterceptor))
 	talkerpb.RegisterTalkerServer(s, &server{})
 	// Register the reflection service makes it easier for some clients.
 	reflection.Register(s)
