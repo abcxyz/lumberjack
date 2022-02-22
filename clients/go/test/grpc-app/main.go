@@ -97,15 +97,19 @@ func (s *server) Fibonacci(req *talkerpb.FibonacciRequest, svr talkerpb.Talker_F
 	}
 
 	p := req.Places
-	svr.Send(&talkerpb.FibonacciResponse{
+	if err := svr.Send(&talkerpb.FibonacciResponse{
 		Position: 1,
 		Value:    0,
-	})
+	}); err != nil {
+		return err
+	}
 	if p > 1 {
-		svr.Send(&talkerpb.FibonacciResponse{
+		if err := svr.Send(&talkerpb.FibonacciResponse{
 			Position: 2,
 			Value:    1,
-		})
+		}); err != nil {
+			return err
+		}
 	}
 
 	var x, y uint32 = 0, 1
@@ -113,10 +117,12 @@ func (s *server) Fibonacci(req *talkerpb.FibonacciRequest, svr talkerpb.Talker_F
 		z := x + y
 		x = y
 		y = z
-		svr.Send(&talkerpb.FibonacciResponse{
+		if err := svr.Send(&talkerpb.FibonacciResponse{
 			Position: i,
 			Value:    z,
-		})
+		}); err != nil {
+			return err
+		}
 	}
 
 	return nil
