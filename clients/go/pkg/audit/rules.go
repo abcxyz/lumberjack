@@ -53,6 +53,9 @@ func isRuleApplicable(rule *alpb.AuditRule, methodName string) bool {
 	if sel == wildcard {
 		return true
 	}
+	// Ignore any leading slashes when check rules.
+	sel = strings.TrimLeft(sel, "/")
+	methodName = strings.TrimLeft(methodName, "/")
 	if strings.HasSuffix(sel, wildcard) {
 		return strings.HasPrefix(methodName, sel[:len(sel)-1])
 	}
