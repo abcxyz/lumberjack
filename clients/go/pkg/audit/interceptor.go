@@ -236,6 +236,7 @@ func (ss *serverStreamWrapper) Context() context.Context {
 func (ss *serverStreamWrapper) RecvMsg(m interface{}) error {
 	logReq := proto.Clone(ss.baselineLogReq).(*alpb.AuditLogRequest)
 
+	// RecvMsg is a blocking call until the next message is received into 'm'.
 	if err := ss.ServerStream.RecvMsg(m); err != nil {
 		return err
 	}
@@ -252,7 +253,6 @@ func (ss *serverStreamWrapper) RecvMsg(m interface{}) error {
 		}
 	}
 
-	// return ss.ServerStream.RecvMsg(m)
 	return nil
 }
 

@@ -96,27 +96,17 @@ func (s *server) Fibonacci(req *talkerpb.FibonacciRequest, svr talkerpb.Talker_F
 		logReq.Payload.ResourceName = req.Target
 	}
 
-	p := req.Places
-	if err := svr.Send(&talkerpb.FibonacciResponse{
-		Position: 1,
-		Value:    0,
-	}); err != nil {
-		return err
-	}
-	if p > 1 {
-		if err := svr.Send(&talkerpb.FibonacciResponse{
-			Position: 2,
-			Value:    1,
-		}); err != nil {
-			return err
-		}
-	}
-
 	var x, y uint32 = 0, 1
-	for i := uint32(3); i <= p; i++ {
-		z := x + y
-		x = y
-		y = z
+	for i := uint32(1); i <= req.Places; i++ {
+		z := uint32(0)
+		if i == 2 {
+			z = 1
+		} else if i > 2 {
+			z = x + y
+			x = y
+			y = z
+		}
+
 		if err := svr.Send(&talkerpb.FibonacciResponse{
 			Position: i,
 			Value:    z,
@@ -166,7 +156,6 @@ func (s *server) FailOnFour(svr talkerpb.Talker_FailOnFourServer) error {
 	for {
 		req, err := svr.Recv()
 		if err == io.EOF {
-			// End of stream. Send the sum.
 			svr.SendAndClose(&talkerpb.FailOnFourResponse{
 				Message: "closing...",
 			})
