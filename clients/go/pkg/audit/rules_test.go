@@ -24,12 +24,14 @@ func TestMostRelevantRule(t *testing.T) {
 	t.Parallel()
 
 	ruleBySelector := map[string]*alpb.AuditRule{
-		"a.b.c": {Selector: "a.b.c"},
-		"a.b.*": {Selector: "a.b.*"},
-		"a.*":   {Selector: "a.*"},
-		"*":     {Selector: "*"},
-		"a.b.d": {Selector: "a.b.d"},
-		"foo*":  {Selector: "foo*"},
+		"a.b.c":   {Selector: "a.b.c"},
+		"a.b.*":   {Selector: "a.b.*"},
+		"a.*":     {Selector: "a.*"},
+		"*":       {Selector: "*"},
+		"a.b.d":   {Selector: "a.b.d"},
+		"foo*":    {Selector: "foo*"},
+		"//a.b.c": {Selector: "//a.b.c"},
+		"/a.b.*":  {Selector: "/a.b.*"},
 	}
 
 	tests := []struct {
@@ -94,6 +96,16 @@ func TestMostRelevantRule(t *testing.T) {
 				ruleBySelector["a.*"],
 			},
 			methodName: "d.e.f",
+		},
+		{
+			name: "match_ignore_leading_slashes",
+			rules: []*alpb.AuditRule{
+				ruleBySelector["//a.b.c"],
+				ruleBySelector["/a.b.*"],
+				ruleBySelector["a.*"],
+			},
+			methodName: "//a.b.z",
+			wantRule:   ruleBySelector["/a.b.*"],
 		},
 	}
 	for _, tc := range tests {
