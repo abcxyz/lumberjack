@@ -111,7 +111,7 @@ func (g *GRPC) runFibonacciCheck(t testing.TB, ctx context.Context) {
 		t.Logf("Received value %v", place.Value)
 	}
 	query := g.makeQueryForGRPCStream(u)
-	utils.QueryIfAuditLogsExistWithRetries(t, ctx, query, g.Config, "fibonacciCheck", int64(places))
+	utils.QueryIfAuditLogsExistWithRetries(t, ctx, query, g.Config, "server_stream_fibonacci", int64(places))
 }
 
 // End-to-end test for the addition API, which is a test for client-side streaming.
@@ -137,7 +137,7 @@ func (g *GRPC) runAdditionCheck(t testing.TB, ctx context.Context) {
 	t.Logf("Value returned: %d", reply.Sum)
 
 	query := g.makeQueryForGRPCStream(u)
-	utils.QueryIfAuditLogsExistWithRetries(t, ctx, query, g.Config, "additionCheck", int64(totalNumbers))
+	utils.QueryIfAuditLogsExistWithRetries(t, ctx, query, g.Config, "client_stream_addition", int64(totalNumbers))
 }
 
 // End-to-end test for the hello API, which is a test for unary requests.
@@ -148,7 +148,7 @@ func (g *GRPC) runHelloCheck(t testing.TB, ctx context.Context) {
 		t.Errorf("could not greet: %v", err)
 	}
 	query := g.makeQueryForGRPCUnary(u)
-	utils.QueryIfAuditLogExistsWithRetries(t, ctx, query, g.Config, "helloCheck")
+	utils.QueryIfAuditLogExistsWithRetries(t, ctx, query, g.Config, "unary_hello")
 }
 
 // End-to-end test for the fail API, which is a test for unary failures.
@@ -171,7 +171,7 @@ func (g *GRPC) runFailCheck(t testing.TB, ctx context.Context) {
 	}
 
 	query := g.makeQueryForGRPCUnary(u)
-	utils.QueryIfAuditLogExistsWithRetries(t, ctx, query, g.Config, "failCheck")
+	utils.QueryIfAuditLogExistsWithRetries(t, ctx, query, g.Config, "unary_fail")
 }
 
 // End-to-end test for the failOnFour API, which is a test for failures during client-side streaming.
@@ -207,7 +207,7 @@ func (g *GRPC) runFailOnFourCheck(t testing.TB, ctx context.Context) {
 
 	query := g.makeQueryForGRPCStream(u)
 	// we expect to have 4 audit logs - the last sent number (5) will be after the err ocurred.
-	utils.QueryIfAuditLogsExistWithRetries(t, ctx, query, g.Config, "failOnFourCheck", int64(4))
+	utils.QueryIfAuditLogsExistWithRetries(t, ctx, query, g.Config, "stream_fail_on_four", int64(4))
 }
 
 // Server is in cloud run. Example: https://cloud.google.com/run/docs/triggering/grpc#request-auth
