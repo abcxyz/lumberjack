@@ -17,11 +17,14 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"io"
 	"log"
 	"net"
 
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/reflection"
+	"google.golang.org/grpc/status"
 
 	"github.com/abcxyz/lumberjack/clients/go/pkg/audit"
 	"github.com/abcxyz/lumberjack/clients/go/pkg/auditopt"
@@ -47,7 +50,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("failed to setup audit interceptor: %v", err)
 	}
-	s := grpc.NewServer(grpc.UnaryInterceptor(interceptor.UnaryInterceptor))
+	s := grpc.NewServer(grpc.UnaryInterceptor(interceptor.UnaryInterceptor), grpc.StreamInterceptor(interceptor.StreamInterceptor))
 	talkerpb.RegisterTalkerServer(s, &server{})
 	// Register the reflection service makes it easier for some clients.
 	reflection.Register(s)
@@ -86,4 +89,89 @@ func (s *server) Bye(ctx context.Context, req *talkerpb.ByeRequest) (*talkerpb.B
 	return &talkerpb.ByeResponse{
 		Message: "Bye!",
 	}, nil
+}
+
+func (s *server) Fibonacci(req *talkerpb.FibonacciRequest, svr talkerpb.Talker_FibonacciServer) error {
+	if logReq, ok := audit.LogReqFromCtx(svr.Context()); ok {
+		logReq.Payload.ResourceName = req.Target
+	}
+
+	var x, y uint32 = 0, 1
+	for i := uint32(1); i <= req.Places; i++ {
+		z := uint32(0)
+		if i == 2 {
+			z = 1
+		} else if i > 2 {
+			z = x + y
+			x = y
+			y = z
+		}
+
+		if err := svr.Send(&talkerpb.FibonacciResponse{
+			Position: i,
+			Value:    z,
+		}); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (s *server) Addition(svr talkerpb.Talker_AdditionServer) error {
+	sum := 0
+
+	for {
+		req, err := svr.Recv()
+		if err == io.EOF {
+			// End of stream. Send the sum.
+			if err := svr.SendAndClose(&talkerpb.AdditionResponse{
+				Sum: uint64(sum),
+			}); err != nil {
+				return err
+			}
+			break
+		}
+		if err != nil {
+			return err
+		}
+
+		if logReq, ok := audit.LogReqFromCtx(svr.Context()); ok {
+			logReq.Payload.ResourceName = req.Target
+		}
+		sum += int(req.Addend)
+	}
+
+	return nil
+}
+
+func (s *server) Fail(ctx context.Context, req *talkerpb.FailRequest) (*talkerpb.FailResponse, error) {
+	if logReq, ok := audit.LogReqFromCtx(ctx); ok {
+		logReq.Payload.ResourceName = req.Target
+	}
+	return nil, status.Errorf(codes.ResourceExhausted, "this call will always fail")
+}
+
+func (s *server) FailOnFour(svr talkerpb.Talker_FailOnFourServer) error {
+	for {
+		req, err := svr.Recv()
+		if err == io.EOF {
+			svr.SendAndClose(&talkerpb.FailOnFourResponse{
+				Message: "closing...",
+			})
+			break
+		}
+		if err != nil {
+			return err
+		}
+
+		if logReq, ok := audit.LogReqFromCtx(svr.Context()); ok {
+			logReq.Payload.ResourceName = req.Target
+		}
+
+		if req.Value == 4 {
+			return status.Errorf(codes.InvalidArgument, "this call will always fail on four")
+		}
+	}
+	return nil
 }
