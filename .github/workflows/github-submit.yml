@@ -9,6 +9,7 @@ on:
 
 env:
   GOMAXPROCS: 7
+  PROJECT_ID: 'lumberjack-dev-infra'
   REGISTRY: 'us-docker.pkg.dev'
   REPO: 'us-docker.pkg.dev/lumberjack-dev-infra/images/lumberjack'
   TAG: "${{ github.ref_type == 'branch' && github.sha || github.ref_name }}"
