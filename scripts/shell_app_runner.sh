@@ -16,10 +16,6 @@
 
 set -eEuo pipefail
 
-# Issue currently with Mac OS X 12.0.1 that requires setting MallocNanoZone
-# b/206135512
-export MallocNanoZone=0
-
 ROOT="$(cd "$(dirname "$0")/.." &>/dev/null; pwd -P)"
 
 TF_CI_DIR=${ROOT}/terraform/ci-run
