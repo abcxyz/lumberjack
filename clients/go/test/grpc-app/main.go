@@ -41,7 +41,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("failed to listen: %v", err)
 	}
-	interceptor, err := auditopt.WithInterceptorFromConfigFile(auditopt.DefaultConfigFilePath)
+	interceptor, err := audit.NewInterceptor(auditopt.InterceptorFromConfigFile(auditopt.DefaultConfigFilePath))
 	defer func() {
 		if err := interceptor.Stop(); err != nil {
 			log.Fatalf("failed to stop interceptor: %v", err)
