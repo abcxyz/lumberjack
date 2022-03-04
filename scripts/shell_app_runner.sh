@@ -18,7 +18,7 @@ set -eEuo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." &>/dev/null; pwd -P)"
 
-TF_CI_DIR=${ROOT}/terraform/ci-run
+TF_CI_DIR=${ROOT}/terraform/modules/ci-run
 SERVICE_NAME=shell-app-${RANDOM}
 BUILD_COMMAND=$1
 

@@ -50,7 +50,7 @@ variable "renew_random_tag" {
 
 
 module "e2e" {
-  source        = "../../e2e"
+  source        = "../../modules/e2e"
   folder_parent = "folders/316290568068"
   top_folder_id = "dev-e2e"
 

@@ -18,7 +18,7 @@
 
 module "cal_project_sources" {
   for_each   = toset(["fake-proj1", "fake-proj2", "fake-proj3"])
-  source     = "../cal-source-project"
+  source     = "../modules/cal-source-project"
   project_id = each.key
   destination_log_sinks = [
     {
@@ -36,7 +36,7 @@ module "cal_project_sources" {
 
 module "cal_folder_sources" {
   for_each  = toset(["fake-folder1", "fake-folder2"])
-  source    = "../cal-source-folder"
+  source    = "../modules/cal-source-folder"
   folder_id = each.key
   destination_log_sinks = [
     {
@@ -53,7 +53,7 @@ module "cal_folder_sources" {
 }
 
 module "server-sink" {
-  source     = "../server-sink"
+  source     = "../modules/server-sink"
   project_id = "lumberjack-server"
   destination_log_sinks = [
     {
@@ -65,18 +65,18 @@ module "server-sink" {
 }
 
 module "server-service" {
-  source       = "../server-service"
+  source       = "../modules/server-service"
   project_id   = "lumberjack-server"
   server_image = "gcr.io/lumberjack-server/lumberjack/server:fake"
 }
 
 module "bigquery-destination" {
-  source     = "../bigquery-destination"
+  source     = "../modules/bigquery-destination"
   project_id = "bigquery-destination"
 }
 
 module "pubsub-destination" {
-  source     = "../pubsub-destination"
+  source     = "../modules/pubsub-destination"
   project_id = "pubsub-destination"
 }
 

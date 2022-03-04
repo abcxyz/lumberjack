@@ -22,7 +22,14 @@ variable "region" {
 
 variable "project_id" {
   type        = string
-  description = "The GCP project to host the shell apps."
+  description = "The GCP project to host the shell app."
+}
+
+variable "env_vars" {
+  type    = map(string)
+  default = {}
+
+  description = "Shell app service environment variables."
 }
 
 variable "tag" {
@@ -45,17 +52,10 @@ variable "artifact_registry_location" {
 
 variable "service_name" {
   type        = string
-  description = "Name of the service."
+  description = "Name of the service, e.g. go-shell-app or java-shell-app."
 }
 
-variable "env_vars" {
-  type    = map(string)
-  default = {}
-
-  description = "Shell app environment variables."
-}
-
-variable "build_commands" {
-  type        = map(string)
-  description = "List of name/command pairs to call the shell app build script via the relative path to this terraform module, e.g. ../../clients/go/test/shell/build.sh"
+variable "build_command" {
+  type        = string
+  description = "Command to call the shell app build script via the relative path to this terraform module, e.g. ../../../clients/java-logger/scripts/build_shell.sh"
 }
