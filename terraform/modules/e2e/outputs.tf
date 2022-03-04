@@ -14,13 +14,21 @@
  * limitations under the License.
  */
 
-resource "google_bigquery_dataset" "dataset" {
-  dataset_id = var.dataset_id
-  location   = var.region
-  project    = var.project_id
-
-  depends_on = [
-    google_project_service.services["bigquery.googleapis.com"],
-  ]
+output "audit_log_server_url" {
+  value = module.server_service.audit_log_server_url
 }
 
+output "app_projects" {
+  # value = google_project.app_project.project_id
+  value = toset([
+    for p in google_project.app_project : p.project_id
+  ])
+}
+
+output "server_project" {
+  value = google_project.server_project.project_id
+}
+
+output "bigquery_dataset_id" {
+  value = module.log_storage.destination_log_sink.name
+}

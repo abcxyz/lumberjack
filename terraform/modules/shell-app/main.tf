@@ -73,7 +73,3 @@ resource "google_cloud_run_service" "shell_app_service" {
     null_resource.shell_app_build,
   ]
 }
-
-output "instance_address" {
-  value = google_cloud_run_service.shell_app_service.status.0.url
-}

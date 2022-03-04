@@ -14,6 +14,31 @@
  * limitations under the License.
  */
 
+locals {
+  tag = var.renew_random_tag ? uuid() : var.tag
+  app_projects_editors = flatten([
+    for i in range(var.apps_count) : [
+      for e in var.projects_editors : {
+        index  = i
+        editor = e
+      }
+    ]
+  ])
+  app_projects_services = flatten([
+    for i in range(var.apps_count) : [
+      for s in toset([
+        "run.googleapis.com",
+        "compute.googleapis.com",
+        "artifactregistry.googleapis.com",
+        "iamcredentials.googleapis.com",
+        ]) : {
+        index   = i
+        service = s
+      }
+    ]
+  ])
+}
+
 resource "google_folder" "top_folder" {
   display_name = var.top_folder_id
   parent       = var.folder_parent
@@ -74,33 +99,6 @@ resource "google_project" "app_project" {
   project_id      = "${var.top_folder_id}-app-${count.index}"
   folder_id       = google_folder.apps_folder.name
   billing_account = var.billing_account
-}
-
-locals {
-  app_projects_editors = flatten([
-    for i in range(var.apps_count) : [
-      for e in var.projects_editors : {
-        index  = i
-        editor = e
-      }
-    ]
-  ])
-}
-
-locals {
-  app_projects_services = flatten([
-    for i in range(var.apps_count) : [
-      for s in toset([
-        "run.googleapis.com",
-        "compute.googleapis.com",
-        "artifactregistry.googleapis.com",
-        "iamcredentials.googleapis.com",
-        ]) : {
-        index   = i
-        service = s
-      }
-    ]
-  ])
 }
 
 resource "google_project_iam_member" "app_project_editor" {
@@ -283,23 +281,4 @@ module "folder_sink" {
     [module.log_storage.destination_log_sink],
     module.pubsub_sink[*].destination_log_sink,
   )
-}
-
-output "audit_log_server_url" {
-  value = module.server_service.audit_log_server_url
-}
-
-output "app_projects" {
-  # value = google_project.app_project.project_id
-  value = toset([
-    for p in google_project.app_project : p.project_id
-  ])
-}
-
-output "server_project" {
-  value = google_project.server_project.project_id
-}
-
-output "bigquery_dataset_id" {
-  value = module.log_storage.destination_log_sink.name
 }

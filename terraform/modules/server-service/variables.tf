@@ -48,39 +48,6 @@ variable "disable_dedicated_sa" {
   description = "Whether to create a dedicated service account to run the audit logging server."
 }
 
-resource "google_project_service" "resourcemanager" {
-  project            = var.project_id
-  service            = "cloudresourcemanager.googleapis.com"
-  disable_on_destroy = false
-}
-
-resource "google_project_service" "services" {
-  project = var.project_id
-  for_each = toset([
-    "containerregistry.googleapis.com",
-    "monitoring.googleapis.com",
-    "run.googleapis.com",
-    "stackdriver.googleapis.com",
-  ])
-  service            = each.value
-  disable_on_destroy = false
-
-  depends_on = [
-    google_project_service.resourcemanager,
-  ]
-}
-
-locals {
-  default_server_revision_annotations = {
-    "autoscaling.knative.dev/maxScale" : "10",
-    "run.googleapis.com/sandbox" : "gvisor"
-  }
-  default_server_service_annotations = {
-    "run.googleapis.com/ingress" : "all"
-    "run.googleapis.com/launch-stage" : "BETA"
-  }
-}
-
 variable "server_service_annotations_overrides" {
   type    = map(string)
   default = {}
@@ -93,12 +60,6 @@ variable "server_revision_annotations_overrides" {
   default = {}
 
   description = "Annotations that applies to all services. Can be used to override default_server_revision_annotations."
-}
-
-locals {
-  default_server_env_vars = {
-    # At the moment we don't have any default env vars.
-  }
 }
 
 variable "server_env_vars" {
