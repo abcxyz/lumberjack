@@ -14,19 +14,10 @@
  * limitations under the License.
  */
 
-variable "region" {
-  type        = string
-  default     = "us-central1"
-  description = "The default region for resources in the project; individual resources could have more specific variables defined to specify their region/location"
+output "instance_addresses" {
+  value = [for key, _ in var.build_commands : module.shell_app[key].instance_address]
 }
 
-variable "project_id" {
-  type        = string
-  description = "The destination GCP project ID that stores the audit logs."
-}
-
-variable "dataset_id" {
-  type        = string
-  default     = "audit_logs"
-  description = "The dataset id used to create the BigQuery dataset as the audit log storage."
+output "grpc_addresses" {
+  value = [for key, _ in var.grpc_build_commands : module.grpc_app[key].instance_address]
 }

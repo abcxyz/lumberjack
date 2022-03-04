@@ -65,10 +65,6 @@ variable "renew_random_tag" {
   description = "Whether to renew a random tag. If set a new random tag will be assigned and trigger a new build."
 }
 
-locals {
-  tag = var.renew_random_tag ? uuid() : var.tag
-}
-
 variable "registry_location" {
   type        = string
   default     = "us"

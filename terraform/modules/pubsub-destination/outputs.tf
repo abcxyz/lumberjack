@@ -14,19 +14,10 @@
  * limitations under the License.
  */
 
-variable "region" {
-  type        = string
-  default     = "us-central1"
-  description = "The default region for resources in the project; individual resources could have more specific variables defined to specify their region/location"
-}
-
-variable "project_id" {
-  type        = string
-  description = "The destination GCP project ID that stores the audit logs."
-}
-
-variable "dataset_id" {
-  type        = string
-  default     = "audit_logs"
-  description = "The dataset id used to create the BigQuery dataset as the audit log storage."
+output "destination_log_sink" {
+  value = {
+    kind       = "pubsub"
+    project_id = var.project_id
+    name       = google_pubsub_topic.audit_logs_topic.name
+  }
 }

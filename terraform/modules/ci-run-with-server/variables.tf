@@ -44,9 +44,8 @@ variable "service_name" {
 }
 
 variable "env_vars" {
-  type    = map(string)
-  default = {}
-
+  type        = map(string)
+  default     = {}
   description = "Shell app environment variables."
 }
 

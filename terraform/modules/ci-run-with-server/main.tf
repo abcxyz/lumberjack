@@ -17,6 +17,9 @@
 locals {
   tag  = var.use_random_tag ? uuid() : var.tag
   repo = "${var.artifact_registry_location}-docker.pkg.dev/${var.server_project_id}/images/lumberjack"
+  env_vars = {
+    "AUDIT_CLIENT_BACKEND_ADDRESS" : "${trimprefix(module.server_service.audit_log_server_url, "https://")}:443",
+  }
 }
 
 resource "null_resource" "server_build" {
@@ -51,12 +54,6 @@ module "server_service" {
   ]
 }
 
-locals {
-  env_vars = {
-    "AUDIT_CLIENT_BACKEND_ADDRESS" : "${trimprefix(module.server_service.audit_log_server_url, "https://")}:443",
-  }
-}
-
 module "shell_app" {
   source = "../shell-app"
 
@@ -85,12 +82,4 @@ module "grpc_app" {
   use_random_tag             = var.use_random_tag
   region                     = var.region
   artifact_registry_location = var.artifact_registry_location
-}
-
-output "instance_addresses" {
-  value = [for key, _ in var.build_commands : module.shell_app[key].instance_address]
-}
-
-output "grpc_addresses" {
-  value = [for key, _ in var.grpc_build_commands : module.grpc_app[key].instance_address]
 }
