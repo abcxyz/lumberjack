@@ -14,6 +14,25 @@
  * limitations under the License.
  */
 
+resource "google_project_service" "resourcemanager" {
+  project            = var.project_id
+  service            = "cloudresourcemanager.googleapis.com"
+  disable_on_destroy = false
+}
+
+resource "google_project_service" "services" {
+  project = var.project_id
+  for_each = toset([
+    "pubsub.googleapis.com",
+  ])
+  service            = each.value
+  disable_on_destroy = false
+
+  depends_on = [
+    google_project_service.resourcemanager,
+  ]
+}
+
 resource "google_pubsub_topic" "audit_logs_topic" {
   name    = var.topic_id
   project = var.project_id

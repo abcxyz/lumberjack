@@ -14,21 +14,39 @@
  * limitations under the License.
  */
 
+resource "google_project_service" "resourcemanager" {
+  project            = var.project_id
+  service            = "cloudresourcemanager.googleapis.com"
+  disable_on_destroy = false
+}
+
+resource "google_project_service" "services" {
+  project = var.project_id
+  for_each = toset([
+    "logging.googleapis.com",
+  ])
+  service            = each.value
+  disable_on_destroy = false
+
+  depends_on = [
+    google_project_service.resourcemanager,
+  ]
+}
+
 resource "google_logging_project_sink" "bigquery_sink" {
   for_each    = { for dest in var.destination_log_sinks : dest.name => dest if dest.kind == "bigquery" }
   name        = format("%s-%s", var.log_sink_name, each.value.name)
   project     = var.project_id
   destination = "bigquery.googleapis.com/projects/${each.value.project_id}/datasets/${each.value.name}"
 
+  # TODO(b/203448874): Keep both old and new log name before we fully migrate over.
   filter = var.query_overwrite != "" ? var.query_overwrite : <<-EOT
-  LOG_ID("cloudaudit.googleapis.com/activity") OR
-  LOG_ID("externalaudit.googleapis.com/activity") OR
-  LOG_ID("cloudaudit.googleapis.com/system_event") OR
-  LOG_ID("externalaudit.googleapis.com/system_event") OR
-  LOG_ID("cloudaudit.googleapis.com/access_transparency") OR
-  LOG_ID("externalaudit.googleapis.com/access_transparency") OR
-  LOG_ID("cloudaudit.googleapis.com/data_access") OR
-  LOG_ID("externalaudit.googleapis.com/data_access")
+  LOG_ID("auditlog.gcloudsolutions.dev/unspecified") OR
+  LOG_ID("auditlog.gcloudsolutions.dev/activity") OR
+  LOG_ID("auditlog.gcloudsolutions.dev/data_access") OR
+  LOG_ID("audit.abcxyz/unspecified") OR
+  LOG_ID("audit.abcxyz/activity") OR
+  LOG_ID("audit.abcxyz/data_access")
   EOT
 
   unique_writer_identity = true
@@ -55,15 +73,14 @@ resource "google_logging_project_sink" "pubsub_sink" {
   project     = var.project_id
   destination = "pubsub.googleapis.com/projects/${each.value.project_id}/topics/${each.value.name}"
 
+  # TODO(b/203448874): Keep both old and new log name before we fully migrate over.
   filter = var.query_overwrite != "" ? var.query_overwrite : <<-EOT
-  LOG_ID("cloudaudit.googleapis.com/activity") OR
-  LOG_ID("externalaudit.googleapis.com/activity") OR
-  LOG_ID("cloudaudit.googleapis.com/system_event") OR
-  LOG_ID("externalaudit.googleapis.com/system_event") OR
-  LOG_ID("cloudaudit.googleapis.com/access_transparency") OR
-  LOG_ID("externalaudit.googleapis.com/access_transparency") OR
-  LOG_ID("cloudaudit.googleapis.com/data_access") OR
-  LOG_ID("externalaudit.googleapis.com/data_access")
+  LOG_ID("auditlog.gcloudsolutions.dev/unspecified") OR
+  LOG_ID("auditlog.gcloudsolutions.dev/activity") OR
+  LOG_ID("auditlog.gcloudsolutions.dev/data_access") OR
+  LOG_ID("audit.abcxyz/unspecified") OR
+  LOG_ID("audit.abcxyz/activity") OR
+  LOG_ID("audit.abcxyz/data_access")
   EOT
 
   unique_writer_identity = true

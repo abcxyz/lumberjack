@@ -42,30 +42,3 @@ variable "subscribers" {
   default     = []
   description = "List of IAM entities that are allowed to subscribe audit logs."
 }
-
-resource "google_project_service" "resourcemanager" {
-  project            = var.project_id
-  service            = "cloudresourcemanager.googleapis.com"
-  disable_on_destroy = false
-}
-
-resource "google_project_service" "services" {
-  project = var.project_id
-  for_each = toset([
-    "pubsub.googleapis.com",
-  ])
-  service            = each.value
-  disable_on_destroy = false
-
-  depends_on = [
-    google_project_service.resourcemanager,
-  ]
-}
-
-output "destination_log_sink" {
-  value = {
-    kind       = "pubsub"
-    project_id = var.project_id
-    name       = google_pubsub_topic.audit_logs_topic.name
-  }
-}
