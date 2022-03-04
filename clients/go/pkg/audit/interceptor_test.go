@@ -402,7 +402,7 @@ func TestUnaryInterceptor(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
-			i := &Interceptor{Rules: tc.auditRules, LogMode: tc.logMode}
+			i := &Interceptor{rules: tc.auditRules, logMode: tc.logMode}
 
 			r := &fakeServer{}
 			s := grpc.NewServer()
@@ -436,7 +436,7 @@ func TestUnaryInterceptor(t *testing.T) {
 					Prefix: "Bearer ",
 				}},
 			}
-			i.SecurityContext = fromRawJWT
+			i.sc = fromRawJWT
 
 			_, gotErr := i.UnaryInterceptor(tc.ctx, tc.req, tc.info, tc.handler)
 			if diff := errutil.DiffSubstring(gotErr, tc.wantErrSubstr); diff != "" {
@@ -885,7 +885,7 @@ func TestStreamInterceptor(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
-			i := &Interceptor{Rules: tc.auditRules}
+			i := &Interceptor{rules: tc.auditRules}
 
 			r := &fakeServer{}
 			s := grpc.NewServer()
@@ -919,7 +919,7 @@ func TestStreamInterceptor(t *testing.T) {
 					Prefix: "Bearer ",
 				}},
 			}
-			i.SecurityContext = fromRawJWT
+			i.sc = fromRawJWT
 
 			gotErr := i.StreamInterceptor(nil, tc.ss, tc.info, tc.handler)
 			if diff := errutil.DiffSubstring(gotErr, tc.wantErrSubstr); diff != "" {
@@ -1052,7 +1052,7 @@ func TestHandleReturnUnary(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
-			i := &Interceptor{LogMode: tc.logMode}
+			i := &Interceptor{logMode: tc.logMode}
 
 			got, gotErr := i.handleReturnUnary(ctx, req, handler, tc.err)
 
@@ -1118,7 +1118,7 @@ func TestHandleReturnStream(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
-			i := &Interceptor{LogMode: tc.logMode}
+			i := &Interceptor{logMode: tc.logMode}
 
 			gotErr := i.handleReturnStream(ctx, ss, handler, tc.err)
 
@@ -1176,7 +1176,7 @@ func TestHandleReturnWithResponse(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
-			i := &Interceptor{LogMode: tc.logMode}
+			i := &Interceptor{logMode: tc.logMode}
 
 			got, gotErr := i.handleReturnWithResponse(ctx, response, tc.err)
 

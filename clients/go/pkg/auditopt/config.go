@@ -81,55 +81,61 @@ func FromConfigFile(path string) audit.Option {
 	}
 }
 
-// WithInterceptorFromConfigFile returns a gRPC server option that adds a unary interceptor
-// to a gRPC server. This interceptor autofills and emits audit logs for gRPC unary
-// calls. WithInterceptorFromConfigFile also returns the audit client that the interceptor
-// uses. This allows the caller to close the client when shutting down the gRPC server.
-// TODO(#152): Refactor this to separate option loading from construction of the interceptor.
-func WithInterceptorFromConfigFile(path string) (*audit.Interceptor, error) {
-	fc, err := ioutil.ReadFile(path)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read config file: %w", err)
-	}
-	cfg, err := loadConfig(fc)
-	if err != nil {
-		return nil, err
-	}
-
-	// Interceptor requires security context.
-	if cfg.SecurityContext == nil {
-		return nil, fmt.Errorf("SecurityContext must be provided to use interceptor")
-	}
-
-	interceptor := &audit.Interceptor{
-		LogMode: cfg.GetLogMode(),
-		Rules:   cfg.Rules,
-	}
-
-	// Add security context to interceptor.
-	switch {
-	case cfg.SecurityContext.FromRawJWT != nil:
-		fromRawJWT := &security.FromRawJWT{
-			FromRawJWT: cfg.SecurityContext.FromRawJWT,
+// InterceptorFromConfigFile returns an interceptor option from the given
+// config file. The returned option can be used to create an interceptor
+// to add capability to gRPC server.
+func InterceptorFromConfigFile(path string) audit.InterceptorOption {
+	return func(i *audit.Interceptor) error {
+		fc, err := ioutil.ReadFile(path)
+		if err != nil {
+			return fmt.Errorf("failed to read config file: %w", err)
 		}
-		interceptor.SecurityContext = fromRawJWT
-	default:
-		// This should never happen because already validates the SecurityContext
-		// when loading the config.
-		return nil, fmt.Errorf("no supported security context configured in config %+v", cfg)
-	}
+		cfg, err := loadConfig(fc)
+		if err != nil {
+			return err
+		}
 
-	// Add audit client to interceptor.
-	auditOpt := func(c *audit.Client) error {
-		return clientFromConfig(c, cfg)
-	}
-	auditClient, err := audit.NewClient(auditOpt)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create audit client from config %+v: %w", cfg, err)
-	}
-	interceptor.Client = auditClient
+		// Interceptor requires security context.
+		if cfg.SecurityContext == nil {
+			return fmt.Errorf("SecurityContext must be provided to use interceptor")
+		}
 
-	return interceptor, nil
+		opts := []audit.InterceptorOption{
+			audit.WithInterceptorLogMode(cfg.GetLogMode()),
+			audit.WithAuditRules(cfg.Rules...),
+		}
+
+		// Add security context to interceptor.
+		switch {
+		case cfg.SecurityContext.FromRawJWT != nil:
+			fromRawJWT := &security.FromRawJWT{
+				FromRawJWT: cfg.SecurityContext.FromRawJWT,
+			}
+			opts = append(opts, audit.WithSecurityContext(fromRawJWT))
+		default:
+			// This should never happen because already validates the SecurityContext
+			// when loading the config.
+			return fmt.Errorf("no supported security context configured in config %+v", cfg)
+		}
+
+		// Add audit client to interceptor.
+		auditOpt := func(c *audit.Client) error {
+			return clientFromConfig(c, cfg)
+		}
+		auditClient, err := audit.NewClient(auditOpt)
+		if err != nil {
+			return fmt.Errorf("failed to create audit client from config %+v: %w", cfg, err)
+		}
+		opts = append(opts, audit.WithAuditClient(auditClient))
+
+		// Apply all options.
+		for _, o := range opts {
+			if err := o(i); err != nil {
+				return err
+			}
+		}
+		return nil
+	}
 }
 
 func clientFromConfig(c *audit.Client, cfg *alpb.Config) error {

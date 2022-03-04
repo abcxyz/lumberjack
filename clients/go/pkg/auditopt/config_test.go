@@ -464,7 +464,7 @@ condition:
 	}
 }
 
-func TestWithInterceptorFromConfigFile(t *testing.T) {
+func TestInterceptorFromConfigFile(t *testing.T) {
 	t.Parallel()
 	cases := []struct {
 		name          string
@@ -576,7 +576,7 @@ rules:
 				t.Fatal(err)
 			}
 
-			_, err := WithInterceptorFromConfigFile(path)
+			_, err := audit.NewInterceptor(InterceptorFromConfigFile(path))
 			if diff := errutil.DiffSubstring(err, tc.wantErrSubstr); diff != "" {
 				t.Errorf("WithInterceptorFromConfigFile(path) got unexpected error substring: %v", diff)
 			}
