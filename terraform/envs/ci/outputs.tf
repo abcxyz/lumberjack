@@ -14,14 +14,18 @@
  * limitations under the License.
  */
 
-module "e2e" {
-  source        = "../../modules/e2e"
-  folder_parent = "folders/316290568068"
-  top_folder_id = "dev-e2e"
+output "audit_log_server_url" {
+  value = module.e2e.audit_log_server_url
+}
 
-  // The billing account 'Gong Test'.
-  billing_account = "016242-61A3FB-F92462"
+output "server_project" {
+  value = module.e2e.server_project
+}
 
-  tag              = var.tag
-  renew_random_tag = var.renew_random_tag
+output "app_project" {
+  value = tolist(module.e2e.app_projects).0
+}
+
+output "bigquery_dataset_id" {
+  value = module.e2e.bigquery_dataset_id
 }

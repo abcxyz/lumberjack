@@ -14,41 +14,6 @@
  * limitations under the License.
  */
 
-terraform {
-  backend "gcs" {
-    # Bucket is in project "lumberjack-dev-infra"
-    # We can reuse this project for CI and sandbox envs with a different prefix.
-    bucket = "lumberjack-dev-terraform"
-    prefix = "github-ci"
-  }
-}
-
-provider "google" {
-  user_project_override = true
-}
-
-provider "google-beta" {
-  user_project_override = true
-}
-
-# If we want to release a new image for the audit logging server,
-# we can provide a tag, e.g. -var="tag=v1"
-variable "tag" {
-  type        = string
-  default     = "init"
-  description = "The server container image tag. Changing the tag will trigger a new build."
-}
-
-# When set to true, it will ignore the given tag.
-# Instead, it will generate a random UUID as the image tag.
-# This is handy and only meant for testing only (e.g. in CI).
-variable "renew_random_tag" {
-  type        = bool
-  default     = false
-  description = "Whether to renew a random tag. If set a new random tag will be assigned and trigger a new build."
-}
-
-
 module "e2e" {
   source        = "../../modules/e2e"
   folder_parent = "folders/316290568068"
@@ -59,20 +24,4 @@ module "e2e" {
 
   tag              = var.tag
   renew_random_tag = var.renew_random_tag
-}
-
-output "audit_log_server_url" {
-  value = module.e2e.audit_log_server_url
-}
-
-output "server_project" {
-  value = module.e2e.server_project
-}
-
-output "app_project" {
-  value = tolist(module.e2e.app_projects).0
-}
-
-output "bigquery_dataset_id" {
-  value = module.e2e.bigquery_dataset_id
 }
