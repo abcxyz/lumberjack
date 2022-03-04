@@ -28,7 +28,3 @@ module "shell_app" {
   region                     = var.region
   artifact_registry_location = var.artifact_registry_location
 }
-
-output "instance_addresses" {
-  value = [for key, _ in var.build_commands : module.shell_app[key].instance_address]
-}
