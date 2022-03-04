@@ -79,11 +79,3 @@ module "pubsub-destination" {
   source     = "../modules/pubsub-destination"
   project_id = "pubsub-destination"
 }
-
-provider "google" {
-  user_project_override = true
-}
-
-provider "google-beta" {
-  user_project_override = true
-}
