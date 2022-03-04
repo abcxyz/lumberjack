@@ -17,7 +17,7 @@
 set -eEuo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." &>/dev/null; pwd -P)"
-TF_CI_WITH_SERVER_DIR=${ROOT}/terraform/ci-run-with-server
+TF_CI_WITH_SERVER_DIR=${ROOT}/terraform/modules/ci-run-with-server
 SERVICE_NAME=ci-with-server-${RANDOM}
 GO_BUILD_COMMAND=${ROOT}/clients/go/test/shell/build.sh
 GO_GRPC_BUILD_COMMAND=${ROOT}/clients/go/test/grpc-app/build.sh

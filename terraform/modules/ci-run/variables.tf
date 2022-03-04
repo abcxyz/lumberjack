@@ -20,6 +20,11 @@ variable "region" {
   description = "The default region for resources in the project; individual resources could have more specific variables defined to specify their region/location"
 }
 
+variable "project_id" {
+  type        = string
+  description = "The GCP project to host the shell apps."
+}
+
 variable "tag" {
   type        = string
   default     = "init"
@@ -52,20 +57,5 @@ variable "env_vars" {
 
 variable "build_commands" {
   type        = map(string)
-  description = "List of name/command pairs to call the shell app build script via the relative path to this terraform module, e.g. ../../clients/go/test/shell/build.sh"
-}
-
-variable "grpc_build_commands" {
-  type        = map(string)
-  description = "List of name/command pairs to call the test gRPC app build script via the relative path to this terraform module, e.g. ../../clients/go/test/shell/build.sh"
-}
-
-variable "server_project_id" {
-  type        = string
-  description = "Project ID for the Cloud project where the audit logging backend service is deployed."
-}
-
-variable "app_project_id" {
-  type        = string
-  description = "Project ID for the Cloud project where the audit logging shell app is deployed."
+  description = "List of name/command pairs to call the shell app build script via the relative path to this terraform module, e.g. ../../../clients/go/test/shell/build.sh"
 }
