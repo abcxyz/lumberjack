@@ -14,14 +14,11 @@
  * limitations under the License.
  */
 
-module "e2e" {
-  source        = "../../modules/e2e"
-  folder_parent = "folders/316290568068"
-  top_folder_id = "dev-e2e"
-
-  // The billing account 'Gong Test'.
-  billing_account = "016242-61A3FB-F92462"
-
-  tag              = var.tag
-  renew_random_tag = var.renew_random_tag
+terraform {
+  backend "gcs" {
+    # Bucket is in project "lumberjack-dev-infra"
+    # We can reuse this project for CI and sandbox envs with a different prefix.
+    bucket = "lumberjack-dev-terraform"
+    prefix = "dev"
+  }
 }

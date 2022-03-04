@@ -14,14 +14,19 @@
  * limitations under the License.
  */
 
-module "e2e" {
-  source        = "../../modules/e2e"
-  folder_parent = "folders/316290568068"
-  top_folder_id = "dev-e2e"
+# If we want to release a new image for the audit logging server,
+# we can provide a tag, e.g. -var="tag=v1"
+variable "tag" {
+  type        = string
+  default     = "init"
+  description = "The server container image tag. Changing the tag will trigger a new build."
+}
 
-  // The billing account 'Gong Test'.
-  billing_account = "016242-61A3FB-F92462"
-
-  tag              = var.tag
-  renew_random_tag = var.renew_random_tag
+# When set to true, it will ignore the given tag.
+# Instead, it will generate a random UUID as the image tag.
+# This is handy and only meant for testing only (e.g. in CI).
+variable "renew_random_tag" {
+  type        = bool
+  default     = false
+  description = "Whether to renew a random tag. If set a new random tag will be assigned and trigger a new build."
 }
