@@ -17,6 +17,7 @@
 package com.abcxyz.lumberjack.auditlogclient.config;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.google.api.client.util.Strings;
 import lombok.Data;
 
 /**
@@ -29,6 +30,7 @@ public class BackendContext {
   private static final String AUTH_AUDIENCE_ENV_KEY = "AUDIT_CLIENT_BACKEND_AUTH_AUDIENCE";
   private static final String IMPERSONATE_ACC_ENV_KEY = "AUDIT_CLIENT_BACKEND_IMPERSONATE_ACCOUNT";
   private static final String INSECURE_ENABLED_ENV_KEY = "AUDIT_CLIENT_BACKEND_INSECURE_ENABLED";
+  private static final String LOCAL_LOGGIN_ENABLED_ENV_KEY = "AUDIT_CLIENT_LOCAL_LOGGING_ENABLED";
 
   private String address;
 
@@ -40,6 +42,23 @@ public class BackendContext {
 
   @JsonProperty("insecure_enabled")
   private boolean insecureEnabled; // meant for use in unit tests only
+
+  @JsonProperty("local_logging_enabled")
+  private boolean localLoggingEnabled;
+
+  /**
+   * If address has been set, then we should log to the remote processor at that address.
+   */
+  public boolean remoteEnabled() {
+    return !Strings.isNullOrEmpty(getAddress());
+  }
+
+  public boolean localLoggingEnabled() {
+    if (System.getenv().containsKey(LOCAL_LOGGIN_ENABLED_ENV_KEY)) {
+      return Boolean.valueOf(System.getenv().get(LOCAL_LOGGIN_ENABLED_ENV_KEY));
+    }
+    return localLoggingEnabled;
+  }
 
   public String getAddress() {
     return System.getenv().getOrDefault(ADDRESS_ENV_KEY, address);

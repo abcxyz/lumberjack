@@ -24,6 +24,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.lenient;
 
 import com.abcxyz.lumberjack.auditlogclient.config.AuditLoggingConfiguration;
+import com.abcxyz.lumberjack.auditlogclient.config.BackendContext;
 import com.abcxyz.lumberjack.auditlogclient.processor.CloudLoggingProcessor;
 import com.abcxyz.lumberjack.auditlogclient.processor.FilteringProcessor;
 import com.abcxyz.lumberjack.auditlogclient.processor.LabelProcessor;
@@ -53,12 +54,18 @@ public class LoggingClientTests {
   @Mock RuntimeInfoProcessor runtimeInfoProcessor;
   @Mock AuditLoggingConfiguration auditLoggingConfiguration;
   @Mock LabelProcessor labelProcessor;
+  @Mock BackendContext backendContext;
 
   @InjectMocks LoggingClientBuilder loggingClientBuilder;
 
   @BeforeEach
   void setup() {
     lenient().doReturn(LogMode.LOG_MODE_UNSPECIFIED).when(auditLoggingConfiguration).getLogMode();
+
+    // Ensure backend context set to log to remote
+    lenient().doReturn(false).when(backendContext).localLoggingEnabled();
+    lenient().doReturn(true).when(backendContext).remoteEnabled();
+    lenient().doReturn(backendContext).when(auditLoggingConfiguration).getBackend();
   }
 
   @Test
