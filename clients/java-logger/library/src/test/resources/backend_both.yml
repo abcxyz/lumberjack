@@ -1,0 +1,3 @@
+backend:
+  address: example.com
+  local_logging_enabled: true

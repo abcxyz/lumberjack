@@ -1,0 +1,2 @@
+backend:
+  local_logging_enabled: true

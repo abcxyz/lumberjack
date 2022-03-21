@@ -18,6 +18,9 @@ package com.abcxyz.lumberjack.auditlogclient.config;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
+import java.io.IOException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -25,17 +28,44 @@ import org.mockito.junit.jupiter.MockitoExtension;
 @ExtendWith(MockitoExtension.class)
 public class BackendContextTest {
   @Test
-  public void remoteIsEnabled() {
-    BackendContext backendContext = new BackendContext();
-    backendContext.setAddress("example.com");
+  public void remoteBackend() throws IOException {
+    ObjectMapper mapper = new ObjectMapper(new YAMLFactory());
+    BackendContext backendContext=
+        mapper
+            .readValue(
+                this.getClass().getClassLoader().getResourceAsStream("backend_remote.yml"),
+                AuditLoggingConfiguration.class)
+            .getBackend();
+
     assertThat(backendContext.remoteEnabled()).isTrue();
+    assertThat(backendContext.localLoggingEnabled()).isFalse();
   }
 
   @Test
-  public void remoteIsDisabled() {
-    BackendContext backendContext = new BackendContext();
+  public void localBackend() throws IOException {
+    ObjectMapper mapper = new ObjectMapper(new YAMLFactory());
+    BackendContext backendContext=
+        mapper
+            .readValue(
+                this.getClass().getClassLoader().getResourceAsStream("backend_local.yml"),
+                AuditLoggingConfiguration.class)
+            .getBackend();
+
     assertThat(backendContext.remoteEnabled()).isFalse();
-    backendContext.setAddress("");
-    assertThat(backendContext.remoteEnabled()).isFalse();
+    assertThat(backendContext.localLoggingEnabled()).isTrue();
+  }
+
+  @Test
+  public void bothAsBackend() throws IOException {
+    ObjectMapper mapper = new ObjectMapper(new YAMLFactory());
+    BackendContext backendContext=
+        mapper
+            .readValue(
+                this.getClass().getClassLoader().getResourceAsStream("backend_both.yml"),
+                AuditLoggingConfiguration.class)
+            .getBackend();
+
+    assertThat(backendContext.remoteEnabled()).isTrue();
+    assertThat(backendContext.localLoggingEnabled()).isTrue();
   }
 }
