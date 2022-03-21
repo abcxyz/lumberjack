@@ -34,6 +34,7 @@ require (
 require (
 	github.com/GoogleCloudPlatform/opentelemetry-operations-go v1.0.0
 	github.com/GoogleCloudPlatform/opentelemetry-operations-go/exporter/trace v1.0.0
+	github.com/gogo/protobuf v1.3.2
 	github.com/golang-jwt/jwt v3.2.2+incompatible
 	github.com/google/uuid v1.3.0
 	go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc v0.27.0

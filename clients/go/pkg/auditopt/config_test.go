@@ -27,7 +27,6 @@ import (
 	calpb "google.golang.org/genproto/googleapis/cloud/audit"
 	"google.golang.org/grpc"
 	"google.golang.org/protobuf/testing/protocmp"
-	"gopkg.in/yaml.v2"
 
 	"github.com/abcxyz/lumberjack/clients/go/apis/v1alpha1"
 	alpb "github.com/abcxyz/lumberjack/clients/go/apis/v1alpha1"
@@ -154,6 +153,8 @@ security_context:
 			},
 			fileContent: `
 version: v1alpha1
+backend:
+  address:
 noop: %s
 `,
 			wantErrSubstr: "backend address is nil",
@@ -342,16 +343,15 @@ backend:
 	}
 }
 
-func TestSetAndValidate(t *testing.T) {
+func TestLoadConfig(t *testing.T) {
 	t.Parallel()
 	cases := []struct {
-		name          string
-		fileContent   string
-		wantCfg       *v1alpha1.Config
-		wantErrSubstr string
+		name        string
+		fileContent string
+		wantCfg     *v1alpha1.Config
 	}{
 		{
-			name: "raw_jwt_with_default_value_due_to_braces",
+			name: "raw_jwt_with_just_key",
 			fileContent: `
 version: v1alpha1
 backend:
@@ -364,12 +364,11 @@ security_context:
 			wantCfg: &v1alpha1.Config{
 				Version:         "v1alpha1",
 				Backend:         &v1alpha1.Backend{Address: "foo:443", InsecureEnabled: true},
-				Condition:       &v1alpha1.Condition{Regex: &v1alpha1.RegexCondition{PrincipalExclude: ""}},
 				SecurityContext: &v1alpha1.SecurityContext{FromRawJWT: []*v1alpha1.FromRawJWT{{Key: "authorization"}}},
 			},
 		},
 		{
-			name: "raw_jwt_with_user-defined_values_fully_set",
+			name: "raw_jwt_with_user_defined_values_fully_set",
 			fileContent: `
 version: v1alpha1
 backend:
@@ -383,12 +382,11 @@ security_context:
 			wantCfg: &v1alpha1.Config{
 				Version:         "v1alpha1",
 				Backend:         &v1alpha1.Backend{Address: "foo:443", InsecureEnabled: true},
-				Condition:       &v1alpha1.Condition{Regex: &v1alpha1.RegexCondition{PrincipalExclude: ""}},
 				SecurityContext: &v1alpha1.SecurityContext{FromRawJWT: []*v1alpha1.FromRawJWT{{Key: "x-jwt-assertion", Prefix: "somePrefix"}}},
 			},
 		},
 		{
-			name: "raw_jwt_with_user-defined_values_partially_set",
+			name: "raw_jwt_with_user_defined_values_partially_set",
 			fileContent: `
 version: v1alpha1
 backend:
@@ -402,7 +400,6 @@ security_context:
 			wantCfg: &v1alpha1.Config{
 				Version:         "v1alpha1",
 				Backend:         &v1alpha1.Backend{Address: "foo:443", InsecureEnabled: true},
-				Condition:       &v1alpha1.Condition{Regex: &v1alpha1.RegexCondition{PrincipalExclude: ""}},
 				SecurityContext: &v1alpha1.SecurityContext{FromRawJWT: []*v1alpha1.FromRawJWT{{Key: "x-jwt-assertion"}}},
 			},
 		},
@@ -420,8 +417,24 @@ security_context:
 			wantCfg: &v1alpha1.Config{
 				Version:         "v1alpha1",
 				Backend:         &v1alpha1.Backend{Address: "foo:443", InsecureEnabled: true},
-				Condition:       &v1alpha1.Condition{Regex: &v1alpha1.RegexCondition{PrincipalExclude: ""}},
 				SecurityContext: &v1alpha1.SecurityContext{FromRawJWT: []*v1alpha1.FromRawJWT{{Key: "x-jwt-assertion"}}},
+			},
+		},
+		{
+			name: "condition_defined",
+			fileContent: `
+version: v1alpha1
+backend:
+  address: foo:443
+  insecure_enabled: true
+condition:
+  regex:
+    principal_include: "user@example.com"
+`,
+			wantCfg: &v1alpha1.Config{
+				Version:   "v1alpha1",
+				Backend:   &v1alpha1.Backend{Address: "foo:443", InsecureEnabled: true},
+				Condition: &alpb.Condition{Regex: &alpb.RegexCondition{PrincipalInclude: "user@example.com"}},
 			},
 		},
 	}
@@ -440,25 +453,18 @@ security_context:
 			if err != nil {
 				t.Fatal(err)
 			}
-			cfg := &alpb.Config{}
-			if err := yaml.Unmarshal(fc, cfg); err != nil {
-				t.Fatal(err)
-			}
-			if err := setAndValidate(cfg); err != nil {
-				t.Fatal(err)
-			}
-
-			if diff := errutil.DiffSubstring(err, tc.wantErrSubstr); diff != "" {
-				t.Errorf("setAndValidate() got unexpected error substring: %v", diff)
+			cfg, err := loadConfig(fc)
+			if err != nil {
+				t.Errorf("loadConfig() got unexpected error: %v", err)
 			}
 			if diff := cmp.Diff(tc.wantCfg, cfg); diff != "" {
-				t.Errorf("unexpected diff in setAndValidate() (-want,+got):\n%s", diff)
+				t.Errorf("unexpected diff in loadConfig() (-want,+got):\n%s", diff)
 			}
 		})
 	}
 }
 
-func TestWithInterceptorFromConfigFile(t *testing.T) {
+func TestInterceptorFromConfigFile(t *testing.T) {
 	t.Parallel()
 	cases := []struct {
 		name          string
@@ -493,7 +499,7 @@ security_context:
 rules:
   - selector: "*"
 `,
-			wantErrSubstr: "SecurityContext is nil",
+			wantErrSubstr: "SecurityContext must be provided to use interceptor",
 		},
 		{
 			name: "invalid_config_due_unset_security_context_again",
@@ -505,7 +511,7 @@ backend:
 rules:
   - selector: "*"
 `,
-			wantErrSubstr: "SecurityContext is nil",
+			wantErrSubstr: "SecurityContext must be provided to use interceptor",
 		},
 		{
 			name: "invalid_config_due_missing_jwt_key",
@@ -570,7 +576,7 @@ rules:
 				t.Fatal(err)
 			}
 
-			_, err := WithInterceptorFromConfigFile(path)
+			_, err := audit.NewInterceptor(InterceptorFromConfigFile(path))
 			if diff := errutil.DiffSubstring(err, tc.wantErrSubstr); diff != "" {
 				t.Errorf("WithInterceptorFromConfigFile(path) got unexpected error substring: %v", diff)
 			}

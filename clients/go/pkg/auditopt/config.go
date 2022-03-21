@@ -50,11 +50,8 @@ func MustFromConfigFile(path string) audit.Option {
 		if err != nil {
 			return err
 		}
-		cfg := &alpb.Config{}
-		if err := yaml.Unmarshal(fc, cfg); err != nil {
-			return err
-		}
-		if err := setAndValidate(cfg); err != nil {
+		cfg, err := loadConfig(fc)
+		if err != nil {
 			return err
 		}
 		return clientFromConfig(c, cfg)
@@ -76,65 +73,69 @@ func FromConfigFile(path string) audit.Option {
 		if err != nil && !errors.Is(err, fs.ErrNotExist) {
 			return err
 		}
-		cfg := &alpb.Config{}
-		if err := yaml.Unmarshal(fc, cfg); err != nil {
-			return err
-		}
-		if err := setAndValidate(cfg); err != nil {
+		cfg, err := loadConfig(fc)
+		if err != nil {
 			return err
 		}
 		return clientFromConfig(c, cfg)
 	}
 }
 
-// WithInterceptorFromConfigFile returns a gRPC server option that adds a unary interceptor
-// to a gRPC server. This interceptor autofills and emits audit logs for gRPC unary
-// calls. WithInterceptorFromConfigFile also returns the audit client that the interceptor
-// uses. This allows the caller to close the client when shutting down the gRPC server.
-// TODO(#152): Refactor this to separate option loading from construction of the interceptor.
-func WithInterceptorFromConfigFile(path string) (*audit.Interceptor, error) {
-	fc, err := ioutil.ReadFile(path)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read config file: %w", err)
-	}
-	cfg := &alpb.Config{}
-	if err := yaml.Unmarshal(fc, cfg); err != nil {
-		return nil, fmt.Errorf("failed to unmarshall file to yaml: %w", err)
-	}
-	if err := cfg.ValidateSecurityContext(); err != nil {
-		return nil, err
-	}
-	if err := setAndValidate(cfg); err != nil {
-		return nil, err
-	}
-
-	interceptor := &audit.Interceptor{}
-	// Add security context to interceptor.
-	switch {
-	case cfg.SecurityContext.FromRawJWT != nil:
-		fromRawJWT := &security.FromRawJWT{
-			FromRawJWT: cfg.SecurityContext.FromRawJWT,
+// InterceptorFromConfigFile returns an interceptor option from the given
+// config file. The returned option can be used to create an interceptor
+// to add capability to gRPC server.
+func InterceptorFromConfigFile(path string) audit.InterceptorOption {
+	return func(i *audit.Interceptor) error {
+		fc, err := ioutil.ReadFile(path)
+		if err != nil {
+			return fmt.Errorf("failed to read config file: %w", err)
 		}
-		interceptor.SecurityContext = fromRawJWT
-		interceptor.LogMode = cfg.GetLogMode()
-	default:
-		return nil, fmt.Errorf("no supported security context configured in config %+v", cfg)
-	}
+		cfg, err := loadConfig(fc)
+		if err != nil {
+			return err
+		}
 
-	// Add audit rules to interceptor.
-	interceptor.Rules = cfg.Rules
+		// Interceptor requires security context.
+		if cfg.SecurityContext == nil {
+			return fmt.Errorf("SecurityContext must be provided to use interceptor")
+		}
 
-	// Add audit client to interceptor.
-	auditOpt := func(c *audit.Client) error {
-		return clientFromConfig(c, cfg)
-	}
-	auditClient, err := audit.NewClient(auditOpt)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create audit client from config %+v: %w", cfg, err)
-	}
-	interceptor.Client = auditClient
+		opts := []audit.InterceptorOption{
+			audit.WithInterceptorLogMode(cfg.GetLogMode()),
+			audit.WithAuditRules(cfg.Rules...),
+		}
 
-	return interceptor, nil
+		// Add security context to interceptor.
+		switch {
+		case cfg.SecurityContext.FromRawJWT != nil:
+			fromRawJWT := &security.FromRawJWT{
+				FromRawJWT: cfg.SecurityContext.FromRawJWT,
+			}
+			opts = append(opts, audit.WithSecurityContext(fromRawJWT))
+		default:
+			// This should never happen because already validates the SecurityContext
+			// when loading the config.
+			return fmt.Errorf("no supported security context configured in config %+v", cfg)
+		}
+
+		// Add audit client to interceptor.
+		auditOpt := func(c *audit.Client) error {
+			return clientFromConfig(c, cfg)
+		}
+		auditClient, err := audit.NewClient(auditOpt)
+		if err != nil {
+			return fmt.Errorf("failed to create audit client from config %+v: %w", cfg, err)
+		}
+		opts = append(opts, audit.WithAuditClient(auditClient))
+
+		// Apply all options.
+		for _, o := range opts {
+			if err := o(i); err != nil {
+				return err
+			}
+		}
+		return nil
+	}
 }
 
 func clientFromConfig(c *audit.Client, cfg *alpb.Config) error {
@@ -153,6 +154,9 @@ func clientFromConfig(c *audit.Client, cfg *alpb.Config) error {
 		return err
 	}
 	opts = append(opts, withBackend)
+
+	withLabels := labelsFromConfig(cfg)
+	opts = append(opts, withLabels)
 
 	for _, o := range opts {
 		if err := o(c); err != nil {
@@ -198,27 +202,27 @@ func backendFromConfig(cfg *alpb.Config) (audit.Option, error) {
 	return audit.WithBackend(b), nil
 }
 
-// setAndValidate sets cfg values from env vars and defaults. Additionally,
-// we validate the cfg values.
-func setAndValidate(cfg *alpb.Config) error {
-	// TODO(#123): envconfig.ProcessWith(...) traverses the cfg struct by creating
-	// creating non-nil values for pointers to the nested fields. For example,
-	// after a traversal, the value of `cfg.security_context.from_raw_jwt.key`
-	// will be the empty string "" even if `cfg.security_context` was previously
-	// unset and that `cfg.security_context.from_raw_jwt.key` cannot be set by env
-	// vars. As a result, logic relying on nil values in `cfg` will be problematic.
-	// For example, validating that `cfg.security_context` is set should be done
-	// before calling `envconfig.ProcessWith(...)` because `envconfig.ProcessWith(...)`
-	// sets the value of `cfg.security_context` to a non-nil value `from_raw_jwt`.
+func labelsFromConfig(cfg *alpb.Config) audit.Option {
+	lp := audit.LabelProcessor{DefaultLabels: cfg.Labels}
+	return audit.WithMutator(&lp)
+}
+
+func loadConfig(b []byte) (*alpb.Config, error) {
+	cfg := &alpb.Config{}
+	if err := yaml.Unmarshal(b, cfg); err != nil {
+		return nil, err
+	}
+
+	// Process overrides from env vars.
 	l := envconfig.PrefixLookuper("AUDIT_CLIENT_", envconfig.OsLookuper())
 	if err := envconfig.ProcessWith(context.Background(), cfg, l); err != nil {
-		return err
+		return nil, err
 	}
 
 	cfg.SetDefault()
 	if err := cfg.Validate(); err != nil {
-		return fmt.Errorf("failed validating config %+v: %w", cfg, err)
+		return nil, fmt.Errorf("failed validating config %+v: %w", cfg, err)
 	}
 
-	return nil
+	return cfg, nil
 }

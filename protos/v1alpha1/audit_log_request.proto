@@ -39,14 +39,14 @@ message AuditLogRequest {
   // the LogType enum to a Cloud Logging log name using the `log_name`
   // option.
   enum LogType {
-    UNSPECIFIED = 0 [(log_name) = "auditlog.gcloudsolutions.dev/unspecified"];
+    UNSPECIFIED = 0 [(log_name) = "audit.abcxyz/unspecified"];
 
     // Administrative actions or changes to configuration through public APIs.
-    ADMIN_ACTIVITY = 1 [(log_name) = "auditlog.gcloudsolutions.dev/activity"];
+    ADMIN_ACTIVITY = 1 [(log_name) = "audit.abcxyz/activity"];
 
     // Reads of configuration data and all access to user data through public
     // APIs.
-    DATA_ACCESS = 2 [(log_name) = "auditlog.gcloudsolutions.dev/data_access"];
+    DATA_ACCESS = 2 [(log_name) = "audit.abcxyz/data_access"];
   }
 
   LogType type = 1;

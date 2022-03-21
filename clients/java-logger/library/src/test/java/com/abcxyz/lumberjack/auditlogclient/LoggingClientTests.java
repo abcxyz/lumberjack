@@ -17,6 +17,7 @@
 package com.abcxyz.lumberjack.auditlogclient;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.when;
@@ -193,7 +194,7 @@ public class LoggingClientTests {
             List.of(cloudLoggingProcessor, remoteProcessor),
             auditLoggingConfiguration);
     AuditLogRequest logRequest = AuditLogRequest.newBuilder().getDefaultInstanceForType();
-    when(validationProcessor.process(logRequest))
+    when(validationProcessor.process(any()))
         .thenThrow(new IllegalArgumentException());
 
     // No exception is thrown

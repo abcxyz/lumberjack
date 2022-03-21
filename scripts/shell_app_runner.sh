@@ -16,19 +16,15 @@
 
 set -eEuo pipefail
 
-# Issue currently with Mac OS X 12.0.1 that requires setting MallocNanoZone
-# b/206135512
-export MallocNanoZone=0
-
 ROOT="$(cd "$(dirname "$0")/.." &>/dev/null; pwd -P)"
 
-TF_CI_DIR=${ROOT}/terraform/ci-run
+TF_CI_DIR=${ROOT}/terraform/modules/ci-run
 SERVICE_NAME=shell-app-${RANDOM}
 BUILD_COMMAND=$1
 
 SHELL_APP_PROJECT_ID=ci-e2e-app-0
 BACKEND_PROJECT_ID=ci-e2e-server
-BIGQUERY_DATASET_QUERY=audit_logs.auditlog_gcloudsolutions_dev_data_access
+BIGQUERY_DATASET_QUERY=audit_logs.audit_abcxyz_data_access
 AUDIT_CLIENT_BACKEND_ADDRESS=audit-logging-bi4j6tgkkq-uc.a.run.app:443
 
 terraform -chdir=${TF_CI_DIR} init

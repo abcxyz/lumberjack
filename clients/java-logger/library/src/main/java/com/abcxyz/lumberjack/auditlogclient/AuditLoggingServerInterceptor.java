@@ -32,6 +32,8 @@ import com.google.protobuf.MessageOrBuilder;
 import com.google.protobuf.Struct;
 import com.google.protobuf.Value;
 import com.google.protobuf.util.JsonFormat;
+import com.google.rpc.Code;
+import com.google.rpc.Status;
 import io.grpc.Context;
 import io.grpc.Contexts;
 import io.grpc.ForwardingServerCall.SimpleForwardingServerCall;
@@ -41,6 +43,7 @@ import io.grpc.ServerCall;
 import io.grpc.ServerCall.Listener;
 import io.grpc.ServerCallHandler;
 import io.grpc.ServerInterceptor;
+import io.grpc.StatusRuntimeException;
 import java.util.ArrayList;
 import java.util.Deque;
 import java.util.HashMap;
@@ -158,10 +161,25 @@ public class AuditLoggingServerInterceptor<ReqT extends Message> implements Serv
         unloggedRequests.add(message);
         super.onMessage(message);
       }
+
+      /**
+       * This method is where exceptions will bubble up to. It is used here to audit log those errors.
+       */
+      @Override
+      public void onHalfClose() {
+        try {
+          super.onHalfClose();
+        } catch (Exception e) {
+          log.info("Exception occurred, audit logging it: " + e.getMessage());
+          ReqT unloggedRequest = unloggedRequests.pollFirst(); // try to get the last request
+          logError(selector, unloggedRequest, e, logBuilder, logEntryOperation);
+          throw e;
+        }
+      }
     };
   }
 
-  private <ReqT, RespT> void auditLog(
+  <ReqT, RespT> void auditLog(
       Selector selector,
       ReqT request,
       RespT response,
@@ -186,6 +204,29 @@ public class AuditLoggingServerInterceptor<ReqT extends Message> implements Serv
     } catch (LogProcessingException e) {
       throw new RuntimeException(e);
     }
+  }
+
+  /**
+   * Intended to add audit logs when there is an exception thrown in the server. We expect that
+   * there is no response, and instead a status code will be added to the audit log.
+   */
+  <ReqT, RespT> void logError(
+      Selector selector,
+      ReqT request,
+      Exception e,
+      AuditLog.Builder logBuilder,
+      LogEntryOperation logEntryOperation) {
+    Code code = Code.INTERNAL; // default to internal error
+    // TODO: identify other types of exceptions that we could add specific codes for
+    if (e instanceof StatusRuntimeException) {
+      // Audit logs expect an rpc code, however this exception is grpc specific. We have to convert from one to the other.
+      code = Code.forNumber(((StatusRuntimeException) e).getStatus().getCode().value());
+    }
+    logBuilder.setStatus(Status.newBuilder()
+        .setCode(code.getNumber())
+        .setMessage(code.name())
+        .build());
+    auditLog(selector, request, null, logBuilder, logEntryOperation);
   }
 
   /**

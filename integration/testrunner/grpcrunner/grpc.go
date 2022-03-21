@@ -27,9 +27,11 @@ import (
 	"github.com/abcxyz/lumberjack/integration/testrunner/utils"
 	"github.com/google/uuid"
 	"golang.org/x/oauth2"
+	rpccode "google.golang.org/genproto/googleapis/rpc/code"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/credentials/oauth"
+	"google.golang.org/grpc/status"
 )
 
 type GRPC struct {
@@ -72,7 +74,7 @@ func TestGRPCEndpoint(t testing.TB, ctx context.Context, g *GRPC) {
 	if g.BigQueryClient == nil {
 		bqClient, err := utils.MakeClient(ctx, g.ProjectID)
 		if err != nil {
-			t.Fatalf("BigQuery request failed: %v", err)
+			t.Errorf("BigQuery request failed: %v", err)
 		}
 		t.Cleanup(func() {
 			if err := bqClient.Close(); err != nil {
@@ -83,12 +85,10 @@ func TestGRPCEndpoint(t testing.TB, ctx context.Context, g *GRPC) {
 	}
 
 	g.runHelloCheck(t, ctx)
-
-	// TODO(#149): Reenable stream interception tests once Go adds stream handling.
-	if strings.Contains(g.EndpointURL, "java") {
-		g.runFibonacciCheck(t, ctx)
-		g.runAdditionCheck(t, ctx)
-	}
+	g.runFailCheck(t, ctx)
+	g.runFibonacciCheck(t, ctx)
+	g.runAdditionCheck(t, ctx)
+	g.runFailOnFourCheck(t, ctx)
 }
 
 // End-to-end test for the fibonacci API, which is a test for server-side streaming.
@@ -97,7 +97,7 @@ func (g *GRPC) runFibonacciCheck(t testing.TB, ctx context.Context) {
 	places := 5
 	stream, err := g.TalkerClient.Fibonacci(ctx, &talkerpb.FibonacciRequest{Places: uint32(places), Target: u.String()})
 	if err != nil {
-		t.Fatalf("fibonacci call failed: %v", err)
+		t.Errorf("fibonacci call failed: %v", err)
 	}
 	for {
 		place, err := stream.Recv()
@@ -106,12 +106,12 @@ func (g *GRPC) runFibonacciCheck(t testing.TB, ctx context.Context) {
 			break
 		}
 		if err != nil {
-			t.Fatalf("Err while reading fibonacci stream: %v", err)
+			t.Errorf("Err while reading fibonacci stream: %v", err)
 		}
 		t.Logf("Received value %v", place.Value)
 	}
 	query := g.makeQueryForGRPCStream(u)
-	utils.QueryIfAuditLogsExistWithRetries(t, ctx, query, g.Config, int64(places))
+	utils.QueryIfAuditLogsExistWithRetries(t, ctx, query, g.Config, "server_stream_fibonacci", int64(places))
 }
 
 // End-to-end test for the addition API, which is a test for client-side streaming.
@@ -119,7 +119,7 @@ func (g *GRPC) runAdditionCheck(t testing.TB, ctx context.Context) {
 	u := uuid.New()
 	stream, err := g.TalkerClient.Addition(ctx)
 	if err != nil {
-		t.Fatalf("addition call failed: %v", err)
+		t.Errorf("addition call failed: %v", err)
 	}
 	totalNumbers := 5
 	for i := 0; i < totalNumbers; i++ {
@@ -127,17 +127,17 @@ func (g *GRPC) runAdditionCheck(t testing.TB, ctx context.Context) {
 			Addend: uint32(i),
 			Target: u.String(),
 		}); err != nil {
-			t.Fatalf("sending value to addition failed: %v", err)
+			t.Errorf("sending value to addition failed: %v", err)
 		}
 	}
 	reply, err := stream.CloseAndRecv()
 	if err != nil {
-		t.Fatalf("failed getting result from addition: %v", err)
+		t.Errorf("failed getting result from addition: %v", err)
 	}
 	t.Logf("Value returned: %d", reply.Sum)
 
 	query := g.makeQueryForGRPCStream(u)
-	utils.QueryIfAuditLogsExistWithRetries(t, ctx, query, g.Config, int64(totalNumbers))
+	utils.QueryIfAuditLogsExistWithRetries(t, ctx, query, g.Config, "client_stream_addition", int64(totalNumbers))
 }
 
 // End-to-end test for the hello API, which is a test for unary requests.
@@ -145,10 +145,69 @@ func (g *GRPC) runHelloCheck(t testing.TB, ctx context.Context) {
 	u := uuid.New()
 	_, err := g.TalkerClient.Hello(ctx, &talkerpb.HelloRequest{Message: "Some Message", Target: u.String()})
 	if err != nil {
-		t.Fatalf("could not greet: %v", err)
+		t.Errorf("could not greet: %v", err)
 	}
 	query := g.makeQueryForGRPCUnary(u)
-	utils.QueryIfAuditLogExistsWithRetries(t, ctx, query, g.Config)
+	utils.QueryIfAuditLogExistsWithRetries(t, ctx, query, g.Config, "unary_hello")
+}
+
+// End-to-end test for the fail API, which is a test for unary failures.
+func (g *GRPC) runFailCheck(t testing.TB, ctx context.Context) {
+	u := uuid.New()
+	reply, err := g.TalkerClient.Fail(ctx, &talkerpb.FailRequest{Message: "Some Message", Target: u.String()})
+
+	if err != nil {
+		returnStatus, ok := status.FromError(err)
+		if !ok {
+			t.Errorf("Could not convert err to status %v", err)
+		}
+		if int32(returnStatus.Code()) != int32(rpccode.Code_RESOURCE_EXHAUSTED) {
+			t.Errorf("Got unexpected Err. Got code %d but expected %d", int32(returnStatus.Code()),
+				int32(rpccode.Code_RESOURCE_EXHAUSTED))
+		}
+		t.Logf("Got Error as expected: %v", err)
+	} else {
+		t.Errorf("Did not get err as expected. Instead got reply: %v", reply)
+	}
+
+	query := g.makeQueryForGRPCUnary(u)
+	utils.QueryIfAuditLogExistsWithRetries(t, ctx, query, g.Config, "unary_fail")
+}
+
+// End-to-end test for the failOnFour API, which is a test for failures during client-side streaming.
+func (g *GRPC) runFailOnFourCheck(t testing.TB, ctx context.Context) {
+	u := uuid.New()
+	stream, err := g.TalkerClient.FailOnFour(ctx)
+	if err != nil {
+		t.Errorf("addition call failed: %v", err)
+	}
+	totalNumbers := 5
+	for i := 1; i <= totalNumbers; i++ {
+		if err := stream.Send(&talkerpb.FailOnFourRequest{
+			Value:  uint32(i),
+			Target: u.String(),
+		}); err != nil {
+			t.Errorf("sending value to addition failed: %v", err)
+		}
+	}
+	reply, err := stream.CloseAndRecv()
+	if err != nil {
+		returnStatus, ok := status.FromError(err)
+		if !ok {
+			t.Errorf("Could not convert err to status %v", err)
+		}
+		if int32(returnStatus.Code()) != int32(rpccode.Code_INVALID_ARGUMENT) {
+			t.Errorf("Got unexpected Err. Got code %d but expected %d", int32(returnStatus.Code()),
+				int32(rpccode.Code_INVALID_ARGUMENT))
+		}
+		t.Logf("Got Error as expected: %v", err)
+	} else {
+		t.Errorf("Did not get err as expected. Instead got reply: %v", reply)
+	}
+
+	query := g.makeQueryForGRPCStream(u)
+	// we expect to have 4 audit logs - the last sent number (5) will be after the err ocurred.
+	utils.QueryIfAuditLogsExistWithRetries(t, ctx, query, g.Config, "stream_fail_on_four", int64(4))
 }
 
 // Server is in cloud run. Example: https://cloud.google.com/run/docs/triggering/grpc#request-auth

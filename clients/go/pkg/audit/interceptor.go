@@ -26,6 +26,8 @@ import (
 	"github.com/google/uuid"
 	"go.uber.org/zap"
 	"google.golang.org/genproto/googleapis/logging/v2"
+	rpccode "google.golang.org/genproto/googleapis/rpc/code"
+	rpcstatus "google.golang.org/genproto/googleapis/rpc/status"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -38,23 +40,71 @@ import (
 
 type auditLogReqKey struct{}
 
+// InterceptorOption defines the option func to configure an interceptor.
+type InterceptorOption func(i *Interceptor) error
+
+// WithAuditClient configures the interceptor to use the given audit client
+// to send audit logs.
+func WithAuditClient(c *Client) InterceptorOption {
+	return func(i *Interceptor) error {
+		i.Client = c
+		return nil
+	}
+}
+
+// WithSecurityContext configures the interceptor to use the given security
+// context to retrieve authentication info.
+func WithSecurityContext(sc security.GRPCContext) InterceptorOption {
+	return func(i *Interceptor) error {
+		i.sc = sc
+		return nil
+	}
+}
+
+// WithAuditRules configures the interceptor to use the given rules to match
+// methods and instruct audit logging.
+func WithAuditRules(rs ...*alpb.AuditRule) InterceptorOption {
+	return func(i *Interceptor) error {
+		i.rules = rs
+		return nil
+	}
+}
+
+// WithInterceptorLogMode configures the interceptor to honor the given log mode.
+func WithInterceptorLogMode(m alpb.AuditLogRequest_LogMode) InterceptorOption {
+	return func(i *Interceptor) error {
+		i.logMode = m
+		return nil
+	}
+}
+
 // Interceptor contains the fields required for an interceptor
 // to autofill and emit audit logs.
 type Interceptor struct {
 	*Client
-	SecurityContext security.GRPCContext
-	Rules           []*alpb.AuditRule
-	LogMode         alpb.AuditLogRequest_LogMode
+	sc      security.GRPCContext
+	rules   []*alpb.AuditRule
+	logMode alpb.AuditLogRequest_LogMode
+}
+
+// NewInterceptor creates a new interceptor with the given options.
+func NewInterceptor(options ...InterceptorOption) (*Interceptor, error) {
+	it := &Interceptor{}
+	for _, o := range options {
+		if err := o(it); err != nil {
+			return nil, fmt.Errorf("failed to apply interceptor option: %w", err)
+		}
+	}
+	return it, nil
 }
 
 // UnaryInterceptor is a gRPC unary interceptor that automatically emits application audit logs.
 // The interceptor is currently implemented in fail-close mode.
-// TODO(#95): add support for fail-close/best-effort logging.
 func (i *Interceptor) UnaryInterceptor(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error) {
 	zlogger := zlogger.FromContext(ctx)
-	r := mostRelevantRule(info.FullMethod, i.Rules)
+	r := mostRelevantRule(info.FullMethod, i.rules)
 	if r == nil {
-		zlogger.Debug("no audit rule matching the method name", zap.String("method_name", info.FullMethod), zap.Any("audit_rules", i.Rules))
+		zlogger.Debug("no audit rule matching the method name", zap.String("method_name", info.FullMethod), zap.Any("audit_rules", i.rules))
 		// Interceptor not applied to this method, continue
 		return handler(ctx, req)
 	}
@@ -69,7 +119,7 @@ func (i *Interceptor) UnaryInterceptor(ctx context.Context, req interface{}, inf
 			ServiceName: serviceName,
 			MethodName:  info.FullMethod,
 		},
-		Mode: i.LogMode,
+		Mode: i.logMode,
 	}
 
 	// Set log type.
@@ -79,11 +129,11 @@ func (i *Interceptor) UnaryInterceptor(ctx context.Context, req interface{}, inf
 	}
 
 	// Autofill `Payload.AuthenticationInfo.PrincipalEmail`.
-	principal, err := i.SecurityContext.RequestPrincipal(ctx)
+	principal, err := i.sc.RequestPrincipal(ctx)
 	if err != nil {
 		return i.handleReturnUnary(ctx, req, handler, status.Errorf(codes.FailedPrecondition,
 			"audit interceptor failed to get request principal; this is likely a result of misconfiguration of audit client (security_context): %v %v",
-			zap.Any("security_context", i.SecurityContext), zap.Error(err)))
+			zap.Any("security_context", i.sc), zap.Error(err)))
 	}
 	logReq.Payload.AuthenticationInfo = &calpb.AuthenticationInfo{PrincipalEmail: principal}
 
@@ -105,8 +155,12 @@ func (i *Interceptor) UnaryInterceptor(ctx context.Context, req interface{}, inf
 	//   - fill the field `Payload.ResourceName`
 	resp, handlerErr := handler(ctx, req)
 	if handlerErr != nil {
-		// TODO(#96): Consider emitting an audit log when the RPC call fails.
-		// These errors are from outside this interceptor. Therefore, we return the error as-is.
+		i.setErrorStatus(handlerErr, logReq)
+
+		// Best effort log the error.
+		if err := i.Log(ctx, logReq); err != nil {
+			zlogger.Error("unable to audit log error", zap.Error(err))
+		}
 		return resp, handlerErr
 	}
 
@@ -118,7 +172,6 @@ func (i *Interceptor) UnaryInterceptor(ctx context.Context, req interface{}, inf
 		}
 	}
 
-	// TODO(#95): Needs to honor the log mode.
 	if err := i.Log(ctx, logReq); err != nil {
 		return i.handleReturnWithResponse(ctx, resp, status.Errorf(codes.Internal, "audit interceptor failed to emit log: %v", err))
 	}
@@ -131,9 +184,9 @@ func (i *Interceptor) StreamInterceptor(srv interface{}, ss grpc.ServerStream, i
 	ctx := ss.Context()
 	zlogger := zlogger.FromContext(ctx)
 
-	r := mostRelevantRule(info.FullMethod, i.Rules)
+	r := mostRelevantRule(info.FullMethod, i.rules)
 	if r == nil {
-		zlogger.Debug("no audit rule matching the method name", zap.String("method_name", info.FullMethod), zap.Any("audit_rules", i.Rules))
+		zlogger.Debug("no audit rule matching the method name", zap.String("method_name", info.FullMethod), zap.Any("audit_rules", i.rules))
 		return handler(srv, ss)
 	}
 
@@ -162,20 +215,29 @@ func (i *Interceptor) StreamInterceptor(srv interface{}, ss grpc.ServerStream, i
 	}
 
 	// Autofill `Payload.AuthenticationInfo.PrincipalEmail`.
-	principal, err := i.SecurityContext.RequestPrincipal(ctx)
+	principal, err := i.sc.RequestPrincipal(ctx)
 	if err != nil {
 		return i.handleReturnStream(ctx, ss, handler, status.Errorf(codes.FailedPrecondition,
 			"audit interceptor failed to get request principal; this is likely a result of misconfiguration of audit client (security_context): %v %v",
-			zap.Any("security_context", i.SecurityContext), zap.Error(err)))
+			zap.Any("security_context", i.sc), zap.Error(err)))
 	}
 	logReq.Payload.AuthenticationInfo = &calpb.AuthenticationInfo{PrincipalEmail: principal}
 
-	return handler(srv, &serverStreamWrapper{
+	handlerErr := handler(srv, &serverStreamWrapper{
 		c:              i.Client,
 		baselineLogReq: logReq,
 		rule:           r,
 		ServerStream:   ss,
 	})
+	if handlerErr != nil {
+		i.setErrorStatus(handlerErr, logReq)
+
+		// Best effort log the error.
+		if err := i.Log(ctx, logReq); err != nil {
+			zlogger.Error("unable to audit log error", zap.Error(err))
+		}
+	}
+	return handlerErr
 }
 
 type serverStreamWrapper struct {
@@ -221,6 +283,11 @@ func (ss *serverStreamWrapper) Context() context.Context {
 func (ss *serverStreamWrapper) RecvMsg(m interface{}) error {
 	logReq := proto.Clone(ss.baselineLogReq).(*alpb.AuditLogRequest)
 
+	// RecvMsg is a blocking call until the next message is received into 'm'.
+	if err := ss.ServerStream.RecvMsg(m); err != nil {
+		return err
+	}
+
 	lr := ss.swapLastReq(m)
 	if lr != nil {
 		if shouldLogReq(ss.rule) {
@@ -233,8 +300,7 @@ func (ss *serverStreamWrapper) RecvMsg(m interface{}) error {
 		}
 	}
 
-	// TODO(#96): Consider emitting an audit log when the RPC call fails.
-	return ss.ServerStream.RecvMsg(m)
+	return nil
 }
 
 // SendMsg wraps the original ServerStream.SendMsg to send audit logs
@@ -264,7 +330,6 @@ func (ss *serverStreamWrapper) SendMsg(m interface{}) error {
 		return status.Errorf(codes.Internal, "audit interceptor failed to emit log: %v", err)
 	}
 
-	// TODO(#96): Consider emitting an audit log when the RPC call fails.
 	return ss.ServerStream.SendMsg(m)
 }
 
@@ -297,7 +362,7 @@ func shouldLogResp(r *alpb.AuditRule) bool {
 // handleReturnUnary is intended to be a wrapper that handles the LogMode correctly, and returns errors or the handler
 // depending on whether the config and has specified to fail close.
 func (i *Interceptor) handleReturnUnary(ctx context.Context, req interface{}, handler grpc.UnaryHandler, err error) (interface{}, error) {
-	if alpb.ShouldFailClose(i.LogMode) && err != nil {
+	if alpb.ShouldFailClose(i.logMode) && err != nil {
 		return nil, err
 	}
 	if err != nil {
@@ -310,7 +375,7 @@ func (i *Interceptor) handleReturnUnary(ctx context.Context, req interface{}, ha
 }
 
 func (i *Interceptor) handleReturnStream(ctx context.Context, ss grpc.ServerStream, handler grpc.StreamHandler, err error) error {
-	if alpb.ShouldFailClose(i.LogMode) && err != nil {
+	if alpb.ShouldFailClose(i.logMode) && err != nil {
 		return err
 	}
 	if err != nil {
@@ -326,7 +391,7 @@ func (i *Interceptor) handleReturnStream(ctx context.Context, ss grpc.ServerStre
 // depending on whether the config and has specified to fail close. Differs from the above, as this is intended to be used
 // after the next handler in the chain has returned, and so we have a response formed already.
 func (i *Interceptor) handleReturnWithResponse(ctx context.Context, handlerResp interface{}, err error) (interface{}, error) {
-	if alpb.ShouldFailClose(i.LogMode) && err != nil {
+	if alpb.ShouldFailClose(i.logMode) && err != nil {
 		return handlerResp, err
 	}
 	if err != nil {
@@ -336,6 +401,24 @@ func (i *Interceptor) handleReturnWithResponse(ctx context.Context, handlerResp 
 			zap.Error(err))
 	}
 	return handlerResp, nil
+}
+
+// logError attempts to emit an audit log for an error that has occurred. Errors are logged in
+// rpc Status format, and if a grpc error has occurred, that grpc error is converted to rpc.
+func (i *Interceptor) setErrorStatus(err error, logReq *alpb.AuditLogRequest) {
+	grpcStatus, ok := status.FromError(err)
+	if ok {
+		logReq.Payload.Status = &rpcstatus.Status{
+			Code:    int32(grpcStatus.Code()),
+			Message: grpcStatus.Message(),
+		}
+	} else {
+		logReq.Payload.Status = &rpcstatus.Status{
+			Code:    int32(rpccode.Code_INTERNAL),
+			Message: err.Error(),
+		}
+	}
+
 }
 
 var serviceNameRegexp = regexp.MustCompile("^/{1,2}(.*?)/")
