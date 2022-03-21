@@ -67,9 +67,7 @@ public class AuditLoggingModule extends AbstractModule {
 
   @Provides
   public BackendContext backendContext(AuditLoggingConfiguration auditLoggingConfiguration) {
-    return auditLoggingConfiguration.getBackend() == null
-        ? new BackendContext()
-        : auditLoggingConfiguration.getBackend();
+      return auditLoggingConfiguration.getBackend();
   }
 
   @Provides

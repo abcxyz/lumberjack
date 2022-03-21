@@ -19,18 +19,24 @@ package com.abcxyz.lumberjack.auditlogclient.processor;
 import com.abcxyz.lumberjack.auditlogclient.processor.LogProcessor.LogBackend;
 import com.abcxyz.lumberjack.v1alpha1.AuditLogRequest;
 import com.google.inject.Inject;
+import com.google.protobuf.InvalidProtocolBufferException;
+import com.google.protobuf.util.JsonFormat;
 import lombok.AllArgsConstructor;
 import lombok.extern.java.Log;
 
-/** Logs the {@link AuditLogRequest} using the standard logger.. */
+/** Logs the {@link AuditLogRequest} using the standard logger. */
 @Log
 @AllArgsConstructor(onConstructor = @__({@Inject}))
 public class LocalLogProcessor implements LogBackend {
 
   @Override
   public AuditLogRequest process(AuditLogRequest auditLogRequest) {
-    // TODO: Do we want system.out or log here?
-    log.info("Lumberjack audit log: " + auditLogRequest.toString());
+    try {
+      String jsonString = JsonFormat.printer().print(auditLogRequest);
+      log.info("Lumberjack log: " + jsonString.replace("\n", "").replace("\r", ""));
+    } catch (InvalidProtocolBufferException e) {
+      throw new RuntimeException(e);
+    }
     return auditLogRequest;
   }
 }

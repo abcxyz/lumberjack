@@ -61,4 +61,15 @@ public class AuditLoggingConfiguration {
     @JsonProperty("regex")
     private Filters filters;
   }
+
+  public BackendContext getBackend() {
+    if (backend != null) {
+      return backend;
+    }
+
+    // if no backend context is specified, default to local logging.
+    BackendContext backendContext = new BackendContext();
+    backendContext.setLocalLoggingEnabled(true);
+    return backendContext;
+  }
 }
