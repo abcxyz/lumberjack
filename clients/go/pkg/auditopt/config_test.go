@@ -66,8 +66,9 @@ security_context:
   from_raw_jwt:
   - key: authorization
 backend:
-  address: %s
-  insecure_enabled: true
+  remote:
+    address: %s
+    insecure_enabled: true
 `,
 			req:     testutil.ReqBuilder().WithPrincipal("abc@project.iam.gserviceaccount.com").Build(),
 			wantReq: testutil.ReqBuilder().WithPrincipal("abc@project.iam.gserviceaccount.com").Build(),
@@ -80,8 +81,9 @@ security_context:
   from_raw_jwt:
   - key: authorization
 backend:
-  address: %s
-  insecure_enabled: true
+  remote:
+    address: %s
+    insecure_enabled: true
 `,
 			req:     testutil.ReqBuilder().WithPrincipal("abc@project.iam.gserviceaccount.com").Build(),
 			wantReq: testutil.ReqBuilder().WithPrincipal("abc@project.iam.gserviceaccount.com").Build(),
@@ -97,8 +99,9 @@ condition:
   regex:
     principal_exclude: abc@project.iam.gserviceaccount.com$
 backend:
-  address: %s
-  insecure_enabled: true
+  remote:
+    address: %s
+    insecure_enabled: true
 security_context:
   from_raw_jwt:
   - key: authorization
@@ -115,8 +118,9 @@ condition:
     principal_include: abc@project.iam.gserviceaccount.com
     principal_exclude: .iam.gserviceaccount.com$
 backend:
-  address: %s
-  insecure_enabled: true
+  remote:
+    address: %s
+    insecure_enabled: true
 security_context:
   from_raw_jwt:
   - key: authorization
@@ -133,8 +137,9 @@ condition:
     principal_include: ""
     principal_exclude: .iam.gserviceaccount.com$
 backend:
-  address: %s
-  insecure_enabled: true
+  remote:
+    address: %s
+    insecure_enabled: true
 security_context:
   from_raw_jwt:
   - key: authorization
@@ -149,12 +154,13 @@ security_context:
 		{
 			name: "nil_backend_address_should_error",
 			envs: map[string]string{
-				"AUDIT_CLIENT_BACKEND_ADDRESS": "",
+				"AUDIT_CLIENT_BACKEND_REMOTE_ADDRESS": "",
 			},
 			fileContent: `
 version: v1alpha1
 backend:
-  address:
+  remote:
+    address:
 noop: %s
 `,
 			wantErrSubstr: "backend address is nil",
@@ -168,8 +174,9 @@ condition:
     principal_include: ""
     principal_exclude: .iam.gserviceaccount.com$
 backend:
-  address: %s
-  insecure_enabled: true
+  remote:
+    address: %s
+    insecure_enabled: true
 security_context:
   from_raw_jwt:
   - key: authorization
@@ -241,8 +248,9 @@ condition:
   regex:
     principal_exclude: user@example.com$
 backend:
-  # we set the backend address as env var below
-  insecure_enabled: true
+  remote:
+    # we set the backend address as env var below
+    insecure_enabled: true
 `,
 		"invalid.yaml": `bananas`,
 	}
@@ -272,9 +280,9 @@ backend:
 			name: "use_env_var_when_config_file_not_found",
 			path: path.Join(dir, "inexistent.yaml"),
 			envs: map[string]string{
-				"AUDIT_CLIENT_CONDITION_REGEX_PRINCIPAL_EXCLUDE": "user@example.com$",
-				"AUDIT_CLIENT_BACKEND_INSECURE_ENABLED":          "true",
-				"AUDIT_CLIENT_BACKEND_IMPERSONATE_ACCOUNT":       "example@test.iam.gserviceaccount.com",
+				"AUDIT_CLIENT_CONDITION_REGEX_PRINCIPAL_EXCLUDE":  "user@example.com$",
+				"AUDIT_CLIENT_BACKEND_REMOTE_INSECURE_ENABLED":    "true",
+				"AUDIT_CLIENT_BACKEND_REMOTE_IMPERSONATE_ACCOUNT": "example@test.iam.gserviceaccount.com",
 			},
 			req:     testutil.ReqBuilder().WithPrincipal("abc@project.iam.gserviceaccount.com").Build(),
 			wantReq: testutil.ReqBuilder().WithPrincipal("abc@project.iam.gserviceaccount.com").Build(),
@@ -283,8 +291,8 @@ backend:
 			name: "use_defaults_when_config_file_not_found",
 			path: path.Join(dir, "inexistent.yaml"),
 			envs: map[string]string{
-				"AUDIT_CLIENT_BACKEND_INSECURE_ENABLED":    "true",
-				"AUDIT_CLIENT_BACKEND_IMPERSONATE_ACCOUNT": "example@test.iam.gserviceaccount.com",
+				"AUDIT_CLIENT_BACKEND_REMOTE_INSECURE_ENABLED":    "true",
+				"AUDIT_CLIENT_BACKEND_REMOTE_IMPERSONATE_ACCOUNT": "example@test.iam.gserviceaccount.com",
 			},
 			req:     testutil.ReqBuilder().WithPrincipal("abc@project.iam.gserviceaccount.com").Build(),
 			wantReq: testutil.ReqBuilder().WithPrincipal("abc@project.iam.gserviceaccount.com").Build(),
@@ -314,7 +322,7 @@ backend:
 				}
 			}(t, s, lis)
 
-			t.Setenv("AUDIT_CLIENT_BACKEND_ADDRESS", lis.Addr().String())
+			t.Setenv("AUDIT_CLIENT_BACKEND_REMOTE_ADDRESS", lis.Addr().String())
 			for k, v := range tc.envs {
 				t.Setenv(k, v)
 			}
@@ -355,15 +363,16 @@ func TestLoadConfig(t *testing.T) {
 			fileContent: `
 version: v1alpha1
 backend:
-  address: foo:443
-  insecure_enabled: true
+  remote:
+    address: foo:443
+    insecure_enabled: true
 security_context:
   from_raw_jwt:
   - key: authorization
 `,
 			wantCfg: &v1alpha1.Config{
 				Version:         "v1alpha1",
-				Backend:         &v1alpha1.Backend{Address: "foo:443", InsecureEnabled: true},
+				Backend:         &v1alpha1.Backend{Remote: &v1alpha1.Remote{Address: "foo:443", InsecureEnabled: true}},
 				SecurityContext: &v1alpha1.SecurityContext{FromRawJWT: []*v1alpha1.FromRawJWT{{Key: "authorization"}}},
 			},
 		},
@@ -372,8 +381,9 @@ security_context:
 			fileContent: `
 version: v1alpha1
 backend:
-  address: foo:443
-  insecure_enabled: true
+  remote:
+    address: foo:443
+    insecure_enabled: true
 security_context:
   from_raw_jwt:
   - key: x-jwt-assertion
@@ -381,7 +391,7 @@ security_context:
 `,
 			wantCfg: &v1alpha1.Config{
 				Version:         "v1alpha1",
-				Backend:         &v1alpha1.Backend{Address: "foo:443", InsecureEnabled: true},
+				Backend:         &v1alpha1.Backend{Remote: &v1alpha1.Remote{Address: "foo:443", InsecureEnabled: true}},
 				SecurityContext: &v1alpha1.SecurityContext{FromRawJWT: []*v1alpha1.FromRawJWT{{Key: "x-jwt-assertion", Prefix: "somePrefix"}}},
 			},
 		},
@@ -390,8 +400,9 @@ security_context:
 			fileContent: `
 version: v1alpha1
 backend:
-  address: foo:443
-  insecure_enabled: true
+  remote:
+    address: foo:443
+    insecure_enabled: true
 security_context:
   from_raw_jwt:
   - key: x-jwt-assertion
@@ -399,7 +410,7 @@ security_context:
 `,
 			wantCfg: &v1alpha1.Config{
 				Version:         "v1alpha1",
-				Backend:         &v1alpha1.Backend{Address: "foo:443", InsecureEnabled: true},
+				Backend:         &v1alpha1.Backend{Remote: &v1alpha1.Remote{Address: "foo:443", InsecureEnabled: true}},
 				SecurityContext: &v1alpha1.SecurityContext{FromRawJWT: []*v1alpha1.FromRawJWT{{Key: "x-jwt-assertion"}}},
 			},
 		},
@@ -408,15 +419,16 @@ security_context:
 			fileContent: `
 version: v1alpha1
 backend:
-  address: foo:443
-  insecure_enabled: true
+  remote:
+    address: foo:443
+    insecure_enabled: true
 security_context:
   from_raw_jwt:
   - key: x-jwt-assertion
 `,
 			wantCfg: &v1alpha1.Config{
 				Version:         "v1alpha1",
-				Backend:         &v1alpha1.Backend{Address: "foo:443", InsecureEnabled: true},
+				Backend:         &v1alpha1.Backend{Remote: &v1alpha1.Remote{Address: "foo:443", InsecureEnabled: true}},
 				SecurityContext: &v1alpha1.SecurityContext{FromRawJWT: []*v1alpha1.FromRawJWT{{Key: "x-jwt-assertion"}}},
 			},
 		},
@@ -425,15 +437,16 @@ security_context:
 			fileContent: `
 version: v1alpha1
 backend:
-  address: foo:443
-  insecure_enabled: true
+  remote:
+    address: foo:443
+    insecure_enabled: true
 condition:
   regex:
     principal_include: "user@example.com"
 `,
 			wantCfg: &v1alpha1.Config{
 				Version:   "v1alpha1",
-				Backend:   &v1alpha1.Backend{Address: "foo:443", InsecureEnabled: true},
+				Backend:   &v1alpha1.Backend{Remote: &v1alpha1.Remote{Address: "foo:443", InsecureEnabled: true}},
 				Condition: &alpb.Condition{Regex: &alpb.RegexCondition{PrincipalInclude: "user@example.com"}},
 			},
 		},
@@ -476,8 +489,9 @@ func TestInterceptorFromConfigFile(t *testing.T) {
 			fileContent: `
 version: v1alpha1
 backend:
-  address: foo:443
-  insecure_enabled: true
+  remote:
+    address: foo:443
+    insecure_enabled: true
 security_context:
   from_raw_jwt:
   - key: "authorization"
@@ -493,8 +507,9 @@ rules:
 			fileContent: `
 version: v1alpha1
 backend:
-  address: foo:443
-  insecure_enabled: true
+  remote:
+    address: foo:443
+    insecure_enabled: true
 security_context:
 rules:
   - selector: "*"
@@ -506,8 +521,9 @@ rules:
 			fileContent: `
 version: v1alpha1
 backend:
-  address: foo:443
-  insecure_enabled: true
+  remote:
+    address: foo:443
+    insecure_enabled: true
 rules:
   - selector: "*"
 `,
@@ -518,8 +534,9 @@ rules:
 			fileContent: `
 version: v1alpha1
 backend:
-  address: foo:443
-  insecure_enabled: true
+  remote:
+    address: foo:443
+    insecure_enabled: true
 security_context:
   from_raw_jwt:
   - {}
@@ -533,8 +550,9 @@ rules:
 			fileContent: `
 version: v1alpha1
 backend:
-  address:
-  insecure_enabled: true
+  remote:
+    address:
+    insecure_enabled: true
 security_context:
   from_raw_jwt:
   - key: authorization
@@ -548,8 +566,9 @@ rules:
 			fileContent: `
 version: v1alpha1
 backend:
-  address: foo:443
-  insecure_enabled: true
+  remote:
+    address: foo:443
+    insecure_enabled: true
 security_context:
   from_raw_jwt:
   - key: authorization
