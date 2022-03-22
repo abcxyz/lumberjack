@@ -185,10 +185,10 @@ func principalFilterFromConfig(cfg *alpb.Config) (audit.Option, error) {
 
 func backendFromConfig(cfg *alpb.Config) (audit.Option, error) {
 	// TODO(#74): Fall back to stdout logging if address is missing.
-	addr := cfg.Backend.Address
+	addr := cfg.Backend.Remote.Address
 	authopts := []remote.Option{}
-	if !cfg.Backend.InsecureEnabled {
-		impersonate := cfg.Backend.ImpersonateAccount
+	if !cfg.Backend.Remote.InsecureEnabled {
+		impersonate := cfg.Backend.Remote.ImpersonateAccount
 		if impersonate == "" {
 			authopts = append(authopts, remote.WithDefaultAuth())
 		} else {

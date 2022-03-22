@@ -21,8 +21,9 @@ func TestConfig(t *testing.T) {
 		name: "full_config",
 		cfg: `version: v1alpha1
 backend:
-  address: service:80
-  impersonate_account: "foo@example.com"
+  remote:
+		address: service:80
+		impersonate_account: "foo@example.com"
 condition:
   regex:
     principal_include: "@example.com$"
@@ -43,8 +44,10 @@ log_mode: BEST_EFFORT`,
 		wantConfig: &Config{
 			Version: "v1alpha1",
 			Backend: &Backend{
-				Address:            "service:80",
-				ImpersonateAccount: "foo@example.com",
+				Remote: &Remote{
+					Address:            "service:80",
+					ImpersonateAccount: "foo@example.com",
+				},
 			},
 			Condition: &Condition{
 				Regex: &RegexCondition{
@@ -137,7 +140,11 @@ func TestValidate(t *testing.T) {
 					Key: "authorization",
 				}},
 			},
-			Backend: &Backend{Address: "foo"},
+			Backend: &Backend{
+				Remote: &Remote{
+					Address: "foo",
+				},
+			},
 			Condition: &Condition{
 				Regex: &RegexCondition{},
 			},
@@ -223,14 +230,22 @@ func TestValidate(t *testing.T) {
 					Key: "",
 				}},
 			},
-			Backend: &Backend{Address: "foo"},
+			Backend: &Backend{
+				Remote: &Remote{
+					Address: "foo",
+				},
+			},
 		},
 		wantErr: `FromRawJWT[0]: key must be specified`,
 	}, {
 		name: "invalid_log_mode",
 		cfg: &Config{
 			Version: "v1alpha1",
-			Backend: &Backend{Address: "foo"},
+			Backend: &Backend{
+				Remote: &Remote{
+					Address: "foo",
+				},
+			},
 			LogMode: "random",
 		},
 		wantErr: `invalid LogMode "random"`,

@@ -17,6 +17,7 @@
 package com.abcxyz.lumberjack.auditlogclient.modules;
 
 import com.abcxyz.lumberjack.auditlogclient.config.BackendContext;
+import com.abcxyz.lumberjack.auditlogclient.config.RemoteConfiguration;
 import com.abcxyz.lumberjack.v1alpha1.AuditLogAgentGrpc;
 import com.google.auth.oauth2.GoogleCredentials;
 import com.google.auth.oauth2.IdTokenCredentials;
@@ -36,14 +37,14 @@ import java.util.List;
 public class RemoteProcessorModule extends AbstractModule {
   @Provides
   @Inject
-  AuditLogAgentGrpc.AuditLogAgentBlockingStub blockingStub(BackendContext backendContext)
+  AuditLogAgentGrpc.AuditLogAgentBlockingStub blockingStub(RemoteConfiguration remoteConfiguration)
       throws IOException {
-    if (backendContext.getInsecureEnabled()) {
+    if (remoteConfiguration.getInsecureEnabled()) {
       return AuditLogAgentGrpc.newBlockingStub(
-          ManagedChannelBuilder.forTarget(backendContext.getAddress()).usePlaintext().build());
+          ManagedChannelBuilder.forTarget(remoteConfiguration.getAddress()).usePlaintext().build());
     }
 
-    if (backendContext.getAddress() == null || backendContext.getAddress().isBlank()) {
+    if (remoteConfiguration.getAddress() == null || remoteConfiguration.getAddress().isBlank()) {
       throw new IllegalArgumentException("AUDIT_CLIENT_BACKEND_ADDRESS must be set.");
     }
 
@@ -53,14 +54,14 @@ public class RemoteProcessorModule extends AbstractModule {
       throw new IllegalArgumentException(credentials + " not valid as ID token provider.");
     }
     String remoteAudience =
-        backendContext.getAuthAudience() == null || backendContext.getAuthAudience().isBlank()
-            ? "https://" + urlWithoutPort(backendContext.getAddress())
-            : backendContext.getAuthAudience();
+        remoteConfiguration.getAuthAudience() == null || remoteConfiguration.getAuthAudience().isBlank()
+            ? "https://" + urlWithoutPort(remoteConfiguration.getAddress())
+            : remoteConfiguration.getAuthAudience();
 
     OAuth2Credentials tokenCredential;
 
-    if (backendContext.getImpersonateAccount() == null
-        || backendContext.getImpersonateAccount().isBlank()) {
+    if (remoteConfiguration.getImpersonateAccount() == null
+        || remoteConfiguration.getImpersonateAccount().isBlank()) {
       tokenCredential =
           IdTokenCredentials.newBuilder()
               .setIdTokenProvider((IdTokenProvider) credentials)
@@ -70,7 +71,7 @@ public class RemoteProcessorModule extends AbstractModule {
       ImpersonatedCredentials impersonatedCredentials =
           ImpersonatedCredentials.create(
               credentials,
-              backendContext.getImpersonateAccount(),
+              remoteConfiguration.getImpersonateAccount(),
               /* delegates= */ null,
               /* scopes= */ Collections.emptyList(),
               /* lifetime= */ 0);
@@ -83,7 +84,7 @@ public class RemoteProcessorModule extends AbstractModule {
     }
 
     return AuditLogAgentGrpc.newBlockingStub(
-            ManagedChannelBuilder.forTarget(backendContext.getAddress()).build())
+            ManagedChannelBuilder.forTarget(remoteConfiguration.getAddress()).build())
         .withCallCredentials(MoreCallCredentials.from(tokenCredential));
   }
 

@@ -60,10 +60,10 @@ func (cfg *Config) Validate() error {
 		err = multierr.Append(err, fmt.Errorf("unexpected Version %q want %q", cfg.Version, Version))
 	}
 
-	if cfg.Backend == nil {
+	if cfg.Backend.Remote == nil {
 		// TODO(#74): Fall back to stdout logging if backend is nil.
 		err = multierr.Append(err, fmt.Errorf("backend is nil"))
-	} else if serr := cfg.Backend.Validate(); serr != nil {
+	} else if serr := cfg.Backend.Remote.Validate(); serr != nil {
 		err = multierr.Append(err, serr)
 	}
 
@@ -114,9 +114,14 @@ func (cfg *Config) GetLogMode() AuditLogRequest_LogMode {
 	return AuditLogRequest_LogMode(AuditLogRequest_LogMode_value[cfg.LogMode])
 }
 
-// Backend is the remote backend service to send audit logs to.
-// The backend must be a gRPC service that implements protos/v1alpha1/audit_log_agent.proto.
+// Backend holds information on the backends to send logs to.
 type Backend struct {
+	Remote *Remote `yaml:"remote,omitempty" env:",noinit"`
+}
+
+// Remote is the remote backend service to send audit logs to.
+// The backend must be a gRPC service that implements protos/v1alpha1/audit_log_agent.proto.
+type Remote struct {
 	// Address is the remote backend address. It must be set.
 	Address string `yaml:"address,omitempty" env:"BACKEND_ADDRESS,overwrite"`
 
@@ -130,7 +135,7 @@ type Backend struct {
 }
 
 // Validate validates the backend.
-func (b *Backend) Validate() error {
+func (b *Remote) Validate() error {
 	if b.Address == "" {
 		return fmt.Errorf("backend address is nil")
 	}
