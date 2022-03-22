@@ -4,6 +4,7 @@ condition:
     principal_include:
     principal_exclude:
 backend:
-  address:
-  insecure_enabled: false
-  impersonate_account:
+  remote:
+    address:
+    insecure_enabled: false
+    impersonate_account:
