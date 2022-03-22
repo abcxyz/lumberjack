@@ -152,7 +152,7 @@ security_context:
 			wantErrSubstr: "cannot unmarshal",
 		},
 		{
-			name: "nil_BACKEND_REMOTE_ADDRESS_should_error",
+			name: "nil_backend_address_should_error",
 			envs: map[string]string{
 				"AUDIT_CLIENT_BACKEND_REMOTE_ADDRESS": "",
 			},
