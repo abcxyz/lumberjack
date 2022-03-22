@@ -1,2 +1,3 @@
 backend:
-  address: example.com
+  remote:
+    address: example.com

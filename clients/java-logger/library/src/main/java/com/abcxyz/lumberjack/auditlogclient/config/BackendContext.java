@@ -26,17 +26,17 @@ import lombok.Data;
  */
 @Data
 public class BackendContext {
-  private static final String LOCAL_LOGGING_ENABLED_ENV_KEY = "AUDIT_CLIENT_LOCAL_LOGGING_ENABLED";
-
   RemoteConfiguration remote;
+  LocalConfiguration local;
 
   @JsonProperty("local_logging_enabled")
   private boolean localLoggingEnabled;
 
+  public boolean remoteEnabled() {
+    return !(remote == null) && !Strings.isNullOrEmpty(remote.getAddress());
+  }
+
   public boolean localLoggingEnabled() {
-    if (System.getenv().containsKey(LOCAL_LOGGING_ENABLED_ENV_KEY)) {
-      return Boolean.valueOf(System.getenv().get(LOCAL_LOGGING_ENABLED_ENV_KEY));
-    }
-    return localLoggingEnabled;
+    return !(local == null) && local.logOutEnabled();
   }
 }

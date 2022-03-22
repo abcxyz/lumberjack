@@ -1,2 +1,3 @@
 backend:
-  local_logging_enabled: true
+  local:
+    log_out_enabled: true
