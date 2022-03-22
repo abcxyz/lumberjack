@@ -63,13 +63,12 @@ public class AuditLoggingConfiguration {
   }
 
   public BackendContext getBackend() {
-    if (backend != null) {
-      return backend;
+    if (backend == null) {
+      // if no backend context is specified, default to local logging.
+      backend = new BackendContext();
+      backend.setLocalLoggingEnabled(true);
     }
 
-    // if no backend context is specified, default to local logging.
-    BackendContext backendContext = new BackendContext();
-    backendContext.setLocalLoggingEnabled(true);
-    return backendContext;
+    return backend;
   }
 }
