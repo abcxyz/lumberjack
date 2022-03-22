@@ -123,15 +123,15 @@ type Backend struct {
 // The backend must be a gRPC service that implements protos/v1alpha1/audit_log_agent.proto.
 type Remote struct {
 	// Address is the remote backend address. It must be set.
-	Address string `yaml:"address,omitempty" env:"BACKEND_ADDRESS,overwrite"`
+	Address string `yaml:"address,omitempty" env:"BACKEND_REMOTE_ADDRESS,overwrite"`
 
 	// InsecureEnabled indicates whether to insecurely connect to the backend.
 	// This should be set to false for production usage.
-	InsecureEnabled bool `yaml:"insecure_enabled,omitempty" env:"BACKEND_INSECURE_ENABLED,overwrite"`
+	InsecureEnabled bool `yaml:"insecure_enabled,omitempty" env:"BACKEND_REMOTE_INSECURE_ENABLED,overwrite"`
 
 	// ImpersonateAccount specifies which service account to impersonate to call the backend.
 	// If empty, there will be no impersonation.
-	ImpersonateAccount string `yaml:"impersonate_account,omitempty" env:"BACKEND_IMPERSONATE_ACCOUNT,overwrite"`
+	ImpersonateAccount string `yaml:"impersonate_account,omitempty" env:"BACKEND_REMOTE_IMPERSONATE_ACCOUNT,overwrite"`
 }
 
 // Validate validates the backend.

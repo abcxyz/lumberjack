@@ -143,9 +143,9 @@ rules:
 
 The following configs can be overwritten with env vars.
 
--   `AUDIT_CLIENT_BACKEND_ADDRESS` - to overwrite backend address
--   `AUDIT_CLIENT_BACKEND_INSECURE_ENABLED` - to force using insecure connection
--   `AUDIT_CLIENT_BACKEND_IMPERSONATE_ACCOUNT` - to impersonate a service
+-   `AUDIT_CLIENT_BACKEND_REMOTE_ADDRESS` - to overwrite backend address
+-   `AUDIT_CLIENT_BACKEND_REMOTE_INSECURE_ENABLED` - to force using insecure connection
+-   `AUDIT_CLIENT_BACKEND_REMOTE_IMPERSONATE_ACCOUNT` - to impersonate a service
 
 # Auto Audit Logging Behavior
 

@@ -45,7 +45,7 @@ public class RemoteProcessorModule extends AbstractModule {
     }
 
     if (remoteConfiguration.getAddress() == null || remoteConfiguration.getAddress().isBlank()) {
-      throw new IllegalArgumentException("AUDIT_CLIENT_BACKEND_ADDRESS must be set.");
+      throw new IllegalArgumentException("AUDIT_CLIENT_BACKEND_REMOTE_ADDRESS must be set.");
     }
 
     GoogleCredentials credentials = GoogleCredentials.getApplicationDefault();

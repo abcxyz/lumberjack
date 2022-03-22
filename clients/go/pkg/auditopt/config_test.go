@@ -152,9 +152,9 @@ security_context:
 			wantErrSubstr: "cannot unmarshal",
 		},
 		{
-			name: "nil_backend_address_should_error",
+			name: "nil_BACKEND_REMOTE_ADDRESS_should_error",
 			envs: map[string]string{
-				"AUDIT_CLIENT_BACKEND_ADDRESS": "",
+				"AUDIT_CLIENT_BACKEND_REMOTE_ADDRESS": "",
 			},
 			fileContent: `
 version: v1alpha1
@@ -281,8 +281,8 @@ backend:
 			path: path.Join(dir, "inexistent.yaml"),
 			envs: map[string]string{
 				"AUDIT_CLIENT_CONDITION_REGEX_PRINCIPAL_EXCLUDE": "user@example.com$",
-				"AUDIT_CLIENT_BACKEND_INSECURE_ENABLED":          "true",
-				"AUDIT_CLIENT_BACKEND_IMPERSONATE_ACCOUNT":       "example@test.iam.gserviceaccount.com",
+				"AUDIT_CLIENT_BACKEND_REMOTE_INSECURE_ENABLED":          "true",
+				"AUDIT_CLIENT_BACKEND_REMOTE_IMPERSONATE_ACCOUNT":       "example@test.iam.gserviceaccount.com",
 			},
 			req:     testutil.ReqBuilder().WithPrincipal("abc@project.iam.gserviceaccount.com").Build(),
 			wantReq: testutil.ReqBuilder().WithPrincipal("abc@project.iam.gserviceaccount.com").Build(),
@@ -291,8 +291,8 @@ backend:
 			name: "use_defaults_when_config_file_not_found",
 			path: path.Join(dir, "inexistent.yaml"),
 			envs: map[string]string{
-				"AUDIT_CLIENT_BACKEND_INSECURE_ENABLED":    "true",
-				"AUDIT_CLIENT_BACKEND_IMPERSONATE_ACCOUNT": "example@test.iam.gserviceaccount.com",
+				"AUDIT_CLIENT_BACKEND_REMOTE_INSECURE_ENABLED":    "true",
+				"AUDIT_CLIENT_BACKEND_REMOTE_IMPERSONATE_ACCOUNT": "example@test.iam.gserviceaccount.com",
 			},
 			req:     testutil.ReqBuilder().WithPrincipal("abc@project.iam.gserviceaccount.com").Build(),
 			wantReq: testutil.ReqBuilder().WithPrincipal("abc@project.iam.gserviceaccount.com").Build(),
@@ -322,7 +322,7 @@ backend:
 				}
 			}(t, s, lis)
 
-			t.Setenv("AUDIT_CLIENT_BACKEND_ADDRESS", lis.Addr().String())
+			t.Setenv("AUDIT_CLIENT_BACKEND_REMOTE_ADDRESS", lis.Addr().String())
 			for k, v := range tc.envs {
 				t.Setenv(k, v)
 			}
@@ -546,7 +546,7 @@ rules:
 			wantErrSubstr: "FromRawJWT[0]: key must be specified",
 		},
 		{
-			name: "invalid_config_because_backend_address_is_nil",
+			name: "invalid_config_because_BACKEND_REMOTE_ADDRESS_is_nil",
 			fileContent: `
 version: v1alpha1
 backend:
