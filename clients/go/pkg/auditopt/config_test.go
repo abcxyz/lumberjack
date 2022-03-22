@@ -546,7 +546,7 @@ rules:
 			wantErrSubstr: "FromRawJWT[0]: key must be specified",
 		},
 		{
-			name: "invalid_config_because_BACKEND_REMOTE_ADDRESS_is_nil",
+			name: "invalid_config_because_backend_address_is_nil",
 			fileContent: `
 version: v1alpha1
 backend:
