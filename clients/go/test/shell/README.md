@@ -66,7 +66,7 @@ automated and manual testing.
     --memory=512Mi \
     --region=us-west1 \
     --project=${APP_PROJECT} \
-    --set-env-vars="AUDIT_CLIENT_FILTER_REGEX_PRINCIPAL_INCLUDE=.iam.gserviceaccount.com$,AUDIT_CLIENT_BACKEND_ADDRESS=${SERVER_URL}"
+    --set-env-vars="AUDIT_CLIENT_FILTER_REGEX_PRINCIPAL_INCLUDE=.iam.gserviceaccount.com$,AUDIT_CLIENT_BACKEND_REMOTE_ADDRESS=${SERVER_URL}"
     ```
 
 1.  Create a log with a trace ID by triggering the deployed service:

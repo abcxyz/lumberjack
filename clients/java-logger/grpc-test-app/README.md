@@ -21,7 +21,7 @@ gcloud run deploy $APP_NAME \
 --region=us-west1 \
 --project=${APP_PROJECT} \
 --platform=managed \
---set-env-vars="AUDIT_CLIENT_BACKEND_ADDRESS=${SERVER_URL}"
+--set-env-vars="AUDIT_CLIENT_BACKEND_REMOTE_ADDRESS=${SERVER_URL}"
 ```
 
 In another terminal, send requests from the client:
