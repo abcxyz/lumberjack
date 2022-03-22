@@ -33,7 +33,7 @@ public class BackendContextTest {
     BackendContext backendContext=
         mapper
             .readValue(
-                this.getClass().getClassLoader().getResourceAsStream("backend_remote.yml"),
+                getClass().getClassLoader().getResourceAsStream("backend_remote.yml"),
                 AuditLoggingConfiguration.class)
             .getBackend();
 
@@ -47,7 +47,7 @@ public class BackendContextTest {
     BackendContext backendContext=
         mapper
             .readValue(
-                this.getClass().getClassLoader().getResourceAsStream("backend_local.yml"),
+                getClass().getClassLoader().getResourceAsStream("backend_local.yml"),
                 AuditLoggingConfiguration.class)
             .getBackend();
 
@@ -61,7 +61,7 @@ public class BackendContextTest {
     BackendContext backendContext=
         mapper
             .readValue(
-                this.getClass().getClassLoader().getResourceAsStream("backend_both.yml"),
+                getClass().getClassLoader().getResourceAsStream("backend_both.yml"),
                 AuditLoggingConfiguration.class)
             .getBackend();
 

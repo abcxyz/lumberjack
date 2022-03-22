@@ -58,7 +58,7 @@ public class LoggingClientBuilder {
     return withValidationProcessor()
         .withFilteringProcessor()
         .withRuntimeInfoProcessor()
-        .withLogBackends()
+        .withDefaultLogBackends()
         .withLabelProcessor();
   }
 
@@ -87,7 +87,7 @@ public class LoggingClientBuilder {
   }
 
   /** Provides a {@link LoggingClientBuilder} with {@link LogBackend}s. */
-  public LoggingClientBuilder withLogBackends() {
+  public LoggingClientBuilder withDefaultLogBackends() {
     if (auditLoggingConfiguration.getBackend().remoteEnabled()) {
       this.withRemoteProcessor();
     }

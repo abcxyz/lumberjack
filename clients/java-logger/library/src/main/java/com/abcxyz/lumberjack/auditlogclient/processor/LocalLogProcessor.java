@@ -32,8 +32,8 @@ public class LocalLogProcessor implements LogBackend {
   @Override
   public AuditLogRequest process(AuditLogRequest auditLogRequest) {
     try {
-      String jsonString = JsonFormat.printer().print(auditLogRequest);
-      log.info("Lumberjack log: " + jsonString.replace("\n", "").replace("\r", ""));
+      String jsonString = JsonFormat.printer().omittingInsignificantWhitespace().print(auditLogRequest);
+      log.info("Lumberjack log: " + jsonString);
     } catch (InvalidProtocolBufferException e) {
       throw new RuntimeException(e);
     }

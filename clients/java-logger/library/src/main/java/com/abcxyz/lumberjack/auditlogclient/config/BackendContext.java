@@ -30,7 +30,7 @@ public class BackendContext {
   private static final String AUTH_AUDIENCE_ENV_KEY = "AUDIT_CLIENT_BACKEND_AUTH_AUDIENCE";
   private static final String IMPERSONATE_ACC_ENV_KEY = "AUDIT_CLIENT_BACKEND_IMPERSONATE_ACCOUNT";
   private static final String INSECURE_ENABLED_ENV_KEY = "AUDIT_CLIENT_BACKEND_INSECURE_ENABLED";
-  private static final String LOCAL_LOGGIN_ENABLED_ENV_KEY = "AUDIT_CLIENT_LOCAL_LOGGING_ENABLED";
+  private static final String LOCAL_LOGGING_ENABLED_ENV_KEY = "AUDIT_CLIENT_LOCAL_LOGGING_ENABLED";
 
   private String address;
 
@@ -54,8 +54,8 @@ public class BackendContext {
   }
 
   public boolean localLoggingEnabled() {
-    if (System.getenv().containsKey(LOCAL_LOGGIN_ENABLED_ENV_KEY)) {
-      return Boolean.valueOf(System.getenv().get(LOCAL_LOGGIN_ENABLED_ENV_KEY));
+    if (System.getenv().containsKey(LOCAL_LOGGING_ENABLED_ENV_KEY)) {
+      return Boolean.valueOf(System.getenv().get(LOCAL_LOGGING_ENABLED_ENV_KEY));
     }
     return localLoggingEnabled;
   }
