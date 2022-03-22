@@ -280,9 +280,9 @@ backend:
 			name: "use_env_var_when_config_file_not_found",
 			path: path.Join(dir, "inexistent.yaml"),
 			envs: map[string]string{
-				"AUDIT_CLIENT_CONDITION_REGEX_PRINCIPAL_EXCLUDE": "user@example.com$",
-				"AUDIT_CLIENT_BACKEND_REMOTE_INSECURE_ENABLED":          "true",
-				"AUDIT_CLIENT_BACKEND_REMOTE_IMPERSONATE_ACCOUNT":       "example@test.iam.gserviceaccount.com",
+				"AUDIT_CLIENT_CONDITION_REGEX_PRINCIPAL_EXCLUDE":  "user@example.com$",
+				"AUDIT_CLIENT_BACKEND_REMOTE_INSECURE_ENABLED":    "true",
+				"AUDIT_CLIENT_BACKEND_REMOTE_IMPERSONATE_ACCOUNT": "example@test.iam.gserviceaccount.com",
 			},
 			req:     testutil.ReqBuilder().WithPrincipal("abc@project.iam.gserviceaccount.com").Build(),
 			wantReq: testutil.ReqBuilder().WithPrincipal("abc@project.iam.gserviceaccount.com").Build(),
