@@ -22,8 +22,8 @@ func TestConfig(t *testing.T) {
 		cfg: `version: v1alpha1
 backend:
   remote:
-		address: service:80
-		impersonate_account: "foo@example.com"
+    address: service:80
+    impersonate_account: "foo@example.com"
 condition:
   regex:
     principal_include: "@example.com$"
@@ -220,7 +220,7 @@ func TestValidate(t *testing.T) {
 			Version: "random",
 			Rules:   []*AuditRule{{}},
 		},
-		wantErr: `unexpected Version "random" want "v1alpha1"; backend is nil; audit rule selector is empty`,
+		wantErr: `unexpected Version "random" want "v1alpha1"; remote backend is nil; audit rule selector is empty`,
 	}, {
 		name: "invalid_security_context",
 		cfg: &Config{

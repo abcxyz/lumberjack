@@ -60,9 +60,9 @@ func (cfg *Config) Validate() error {
 		err = multierr.Append(err, fmt.Errorf("unexpected Version %q want %q", cfg.Version, Version))
 	}
 
-	if cfg.Backend.Remote == nil {
+	if cfg.Backend == nil || cfg.Backend.Remote == nil {
 		// TODO(#74): Fall back to stdout logging if backend is nil.
-		err = multierr.Append(err, fmt.Errorf("backend is nil"))
+		err = multierr.Append(err, fmt.Errorf("remote backend is nil"))
 	} else if serr := cfg.Backend.Remote.Validate(); serr != nil {
 		err = multierr.Append(err, serr)
 	}
