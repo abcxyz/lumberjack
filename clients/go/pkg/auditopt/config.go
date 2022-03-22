@@ -29,13 +29,16 @@ import (
 	"io/fs"
 	"io/ioutil"
 
+	"cloud.google.com/go/logging"
 	"github.com/abcxyz/lumberjack/clients/go/pkg/audit"
+	"github.com/abcxyz/lumberjack/clients/go/pkg/cloudlogging"
 	"github.com/abcxyz/lumberjack/clients/go/pkg/filtering"
 	"github.com/abcxyz/lumberjack/clients/go/pkg/remote"
 	"github.com/abcxyz/lumberjack/clients/go/pkg/security"
 	"github.com/sethvargo/go-envconfig"
 	"gopkg.in/yaml.v2"
 
+	"github.com/abcxyz/lumberjack/clients/go/apis/v1alpha1"
 	alpb "github.com/abcxyz/lumberjack/clients/go/apis/v1alpha1"
 )
 
@@ -149,11 +152,11 @@ func clientFromConfig(c *audit.Client, cfg *alpb.Config) error {
 		opts = append(opts, withPrincipalFilter)
 	}
 
-	withBackend, err := backendFromConfig(cfg)
+	withBackends, err := backendsFromConfig(cfg)
 	if err != nil {
 		return err
 	}
-	opts = append(opts, withBackend)
+	opts = append(opts, withBackends...)
 
 	withLabels := labelsFromConfig(cfg)
 	opts = append(opts, withLabels)
@@ -183,23 +186,54 @@ func principalFilterFromConfig(cfg *alpb.Config) (audit.Option, error) {
 	return audit.WithValidator(m), nil
 }
 
-func backendFromConfig(cfg *alpb.Config) (audit.Option, error) {
-	// TODO(#74): Fall back to stdout logging if address is missing.
-	addr := cfg.Backend.Remote.Address
-	authopts := []remote.Option{}
-	if !cfg.Backend.Remote.InsecureEnabled {
-		impersonate := cfg.Backend.Remote.ImpersonateAccount
-		if impersonate == "" {
-			authopts = append(authopts, remote.WithDefaultAuth())
-		} else {
-			authopts = append(authopts, remote.WithImpersonatedIDTokenAuth(context.Background(), impersonate))
+func backendsFromConfig(cfg *alpb.Config) ([]audit.Option, error) {
+	var backendOpts []audit.Option
+
+	if cfg.Backend.Remote != nil {
+		addr := cfg.Backend.Remote.Address
+		authopts := []remote.Option{}
+		if !cfg.Backend.Remote.InsecureEnabled {
+			impersonate := cfg.Backend.Remote.ImpersonateAccount
+			if impersonate == "" {
+				authopts = append(authopts, remote.WithDefaultAuth())
+			} else {
+				authopts = append(authopts, remote.WithImpersonatedIDTokenAuth(context.Background(), impersonate))
+			}
 		}
+		b, err := remote.NewProcessor(addr, authopts...)
+		if err != nil {
+			return nil, err
+		}
+		backendOpts = append(backendOpts, audit.WithBackend(b))
 	}
-	b, err := remote.NewProcessor(addr, authopts...)
-	if err != nil {
-		return nil, err
+
+	if cfg.Backend.CloudLogging != nil {
+		var opts []cloudlogging.Option
+		if cfg.GetLogMode() == v1alpha1.AuditLogRequest_BEST_EFFORT {
+			opts = append(opts, cloudlogging.WithDefaultBestEffort())
+		}
+
+		var p *cloudlogging.Processor
+		var err error
+
+		if cfg.Backend.CloudLogging.DefaultProject {
+			p, err = cloudlogging.NewProcessor(context.TODO(), opts...)
+		} else {
+			clc, err := logging.NewClient(context.TODO(), cfg.Backend.CloudLogging.Project)
+			if err != nil {
+				return nil, fmt.Errorf("failed to create cloud logging client: %w", err)
+			}
+			opts = append(opts, cloudlogging.WithLoggingClient(clc))
+			p, err = cloudlogging.NewProcessor(context.TODO(), opts...)
+		}
+
+		if err != nil {
+			return nil, err
+		}
+		backendOpts = append(backendOpts, audit.WithBackend(p))
 	}
-	return audit.WithBackend(b), nil
+
+	return backendOpts, nil
 }
 
 func labelsFromConfig(cfg *alpb.Config) audit.Option {
