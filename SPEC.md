@@ -26,7 +26,8 @@ Config the client to send audit logs
 ```yaml
 version: v1alpha1
 backend:
-  address: audit-logging.example.com:443
+  remote:
+    address: audit-logging.example.com:443
 condition:
   regex:
     exclude: ".*\\.iam\\.gserviceaccount\\.com$"
@@ -38,7 +39,8 @@ logging server.
 ```yaml
 version: v1alpha1
 backend:
-  address: audit-logging.example.com:443
+  remote:
+    address: audit-logging.example.com:443
 # No condition means audit log all requests.
 ```
 
@@ -57,7 +59,8 @@ Config the client to
 ```yaml
 version: v1alpha1
 backend:
-  address: audit-logging.example.com:443
+  remote:
+    address: audit-logging.example.com:443
 condition:
   regex:
     exclude: ".*\\.iam\\.gserviceaccount\\.com$"
@@ -77,7 +80,8 @@ Config the client to
 ```yaml
 version: v1alpha1
 backend:
-  address: audit-logging.example.com:443
+  remote:
+    address: audit-logging.example.com:443
 condition:
   regex:
     exclude: ".*\\.iam\\.gserviceaccount\\.com$"
@@ -98,7 +102,8 @@ that are explicitly added elsewhere in code.
 ```yaml
 version: v1alpha1
 backend:
-  address: audit-logging.example.com:443
+  remote:
+    address: audit-logging.example.com:443
 condition:
   regex:
     exclude: ".*\\.iam\\.gserviceaccount\\.com$"
@@ -118,7 +123,8 @@ Config the client to also verify the JWT (warning: not implemented).
 ```yaml
 version: v1alpha1
 backend:
-  address: audit-logging.example.com:443
+  remote:
+    address: audit-logging.example.com:443
 condition:
   regex:
     exclude: ".*\\.iam\\.gserviceaccount\\.com$"
@@ -137,9 +143,9 @@ rules:
 
 The following configs can be overwritten with env vars.
 
--   `AUDIT_CLIENT_BACKEND_ADDRESS` - to overwrite backend address
--   `AUDIT_CLIENT_BACKEND_INSECURE_ENABLED` - to force using insecure connection
--   `AUDIT_CLIENT_BACKEND_IMPERSONATE_ACCOUNT` - to impersonate a service
+-   `AUDIT_CLIENT_BACKEND_REMOTE_ADDRESS` - to overwrite backend address
+-   `AUDIT_CLIENT_BACKEND_REMOTE_INSECURE_ENABLED` - to force using insecure connection
+-   `AUDIT_CLIENT_BACKEND_REMOTE_IMPERSONATE_ACCOUNT` - to impersonate a service
 
 # Auto Audit Logging Behavior
 

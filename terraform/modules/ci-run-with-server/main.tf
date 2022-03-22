@@ -18,7 +18,7 @@ locals {
   tag  = var.use_random_tag ? uuid() : var.tag
   repo = "${var.artifact_registry_location}-docker.pkg.dev/${var.server_project_id}/images/lumberjack"
   env_vars = {
-    "AUDIT_CLIENT_BACKEND_ADDRESS" : "${trimprefix(module.server_service.audit_log_server_url, "https://")}:443",
+    "AUDIT_CLIENT_BACKEND_REMOTE_ADDRESS" : "${trimprefix(module.server_service.audit_log_server_url, "https://")}:443",
   }
 }
 
