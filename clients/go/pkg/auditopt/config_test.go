@@ -372,7 +372,7 @@ security_context:
 `,
 			wantCfg: &v1alpha1.Config{
 				Version:         "v1alpha1",
-				Backend:         &v1alpha1.Backend{&v1alpha1.Remote{Address: "foo:443", InsecureEnabled: true}},
+				Backend:         &v1alpha1.Backend{Remote: &v1alpha1.Remote{Address: "foo:443", InsecureEnabled: true}},
 				SecurityContext: &v1alpha1.SecurityContext{FromRawJWT: []*v1alpha1.FromRawJWT{{Key: "authorization"}}},
 			},
 		},
@@ -391,7 +391,7 @@ security_context:
 `,
 			wantCfg: &v1alpha1.Config{
 				Version:         "v1alpha1",
-				Backend:         &v1alpha1.Backend{&v1alpha1.Remote{Address: "foo:443", InsecureEnabled: true}},
+				Backend:         &v1alpha1.Backend{Remote: &v1alpha1.Remote{Address: "foo:443", InsecureEnabled: true}},
 				SecurityContext: &v1alpha1.SecurityContext{FromRawJWT: []*v1alpha1.FromRawJWT{{Key: "x-jwt-assertion", Prefix: "somePrefix"}}},
 			},
 		},
@@ -410,7 +410,7 @@ security_context:
 `,
 			wantCfg: &v1alpha1.Config{
 				Version:         "v1alpha1",
-				Backend:         &v1alpha1.Backend{&v1alpha1.Remote{Address: "foo:443", InsecureEnabled: true}},
+				Backend:         &v1alpha1.Backend{Remote: &v1alpha1.Remote{Address: "foo:443", InsecureEnabled: true}},
 				SecurityContext: &v1alpha1.SecurityContext{FromRawJWT: []*v1alpha1.FromRawJWT{{Key: "x-jwt-assertion"}}},
 			},
 		},
@@ -428,7 +428,7 @@ security_context:
 `,
 			wantCfg: &v1alpha1.Config{
 				Version:         "v1alpha1",
-				Backend:         &v1alpha1.Backend{&v1alpha1.Remote{Address: "foo:443", InsecureEnabled: true}},
+				Backend:         &v1alpha1.Backend{Remote: &v1alpha1.Remote{Address: "foo:443", InsecureEnabled: true}},
 				SecurityContext: &v1alpha1.SecurityContext{FromRawJWT: []*v1alpha1.FromRawJWT{{Key: "x-jwt-assertion"}}},
 			},
 		},
@@ -446,7 +446,7 @@ condition:
 `,
 			wantCfg: &v1alpha1.Config{
 				Version:   "v1alpha1",
-				Backend:   &v1alpha1.Backend{&v1alpha1.Remote{Address: "foo:443", InsecureEnabled: true}},
+				Backend:   &v1alpha1.Backend{Remote: &v1alpha1.Remote{Address: "foo:443", InsecureEnabled: true}},
 				Condition: &alpb.Condition{Regex: &alpb.RegexCondition{PrincipalInclude: "user@example.com"}},
 			},
 		},
