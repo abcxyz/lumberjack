@@ -16,7 +16,9 @@ public class AuditLoggingConfigurationTest {
     AuditLoggingConfiguration config = module.auditLoggingConfiguration("minimal.yml");
 
     BackendContext expectedBackendContext = new BackendContext();
-    expectedBackendContext.setLocalLoggingEnabled(true);
+    LocalConfiguration local = new LocalConfiguration();
+    local.setLogOutEnabled(true);
+    expectedBackendContext.setLocal(local);
     assertThat(config.getBackend()).isEqualTo(expectedBackendContext);
 
     assertThat(config.getConditions()).isNull();
@@ -33,7 +35,9 @@ public class AuditLoggingConfigurationTest {
     AuditLoggingConfiguration config = module.auditLoggingConfiguration("minimal_with_labels.yml");
 
     BackendContext expectedBackendContext = new BackendContext();
-    expectedBackendContext.setLocalLoggingEnabled(true);
+    LocalConfiguration local = new LocalConfiguration();
+    local.setLogOutEnabled(true);
+    expectedBackendContext.setLocal(local);
     assertThat(config.getBackend()).isEqualTo(expectedBackendContext);
 
     assertThat(config.getConditions()).isNull();

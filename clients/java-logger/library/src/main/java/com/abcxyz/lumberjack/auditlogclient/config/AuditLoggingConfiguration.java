@@ -66,7 +66,9 @@ public class AuditLoggingConfiguration {
     if (backend == null) {
       // if no backend context is specified, default to local logging.
       backend = new BackendContext();
-      backend.setLocalLoggingEnabled(true);
+      LocalConfiguration local = new LocalConfiguration();
+      local.setLogOutEnabled(true);
+      backend.setLocal(local);
     }
 
     return backend;

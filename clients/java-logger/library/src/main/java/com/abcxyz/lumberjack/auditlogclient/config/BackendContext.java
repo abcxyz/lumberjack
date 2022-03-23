@@ -29,11 +29,15 @@ public class BackendContext {
   RemoteConfiguration remote;
   LocalConfiguration local;
 
-  @JsonProperty("local_logging_enabled")
-  private boolean localLoggingEnabled;
+  public RemoteConfiguration getRemote() {
+    if (remote == null) {
+      remote = new RemoteConfiguration();
+    }
+    return remote;
+  }
 
   public boolean remoteEnabled() {
-    return !(remote == null) && !Strings.isNullOrEmpty(remote.getAddress());
+    return !Strings.isNullOrEmpty(getRemote().getAddress());
   }
 
   public boolean localLoggingEnabled() {

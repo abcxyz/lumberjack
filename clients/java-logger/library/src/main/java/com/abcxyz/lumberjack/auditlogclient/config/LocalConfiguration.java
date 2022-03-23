@@ -17,7 +17,9 @@
 package com.abcxyz.lumberjack.auditlogclient.config;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import lombok.Data;
 
+@Data
 public class LocalConfiguration {
   private static final String LOG_OUT_ENABLED_KEY = "AUDIT_CLIENT_LOG_OUT_ENABLED";
 
