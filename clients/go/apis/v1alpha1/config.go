@@ -60,10 +60,9 @@ func (cfg *Config) Validate() error {
 		err = multierr.Append(err, fmt.Errorf("unexpected Version %q want %q", cfg.Version, Version))
 	}
 
-	if cfg.Backend == nil || cfg.Backend.Remote == nil {
-		// TODO(#74): Fall back to stdout logging if backend is nil.
-		err = multierr.Append(err, fmt.Errorf("remote backend is nil"))
-	} else if serr := cfg.Backend.Remote.Validate(); serr != nil {
+	if cfg.Backend == nil {
+		err = multierr.Append(err, fmt.Errorf("backend is nil"))
+	} else if serr := cfg.Backend.Validate(); serr != nil {
 		err = multierr.Append(err, serr)
 	}
 
@@ -102,6 +101,12 @@ func (cfg *Config) SetDefault() {
 	if cfg.Version == "" {
 		cfg.Version = Version
 	}
+
+	// TODO(#74): set default backend to logging to stdout.
+	if cfg.Backend != nil {
+		cfg.Backend.SetDefault()
+	}
+
 	// TODO: set defaults for SecurityContext and Condition
 	// once we have any such logic.
 	for _, r := range cfg.Rules {
@@ -116,7 +121,37 @@ func (cfg *Config) GetLogMode() AuditLogRequest_LogMode {
 
 // Backend holds information on the backends to send logs to.
 type Backend struct {
-	Remote *Remote `yaml:"remote,omitempty" env:",noinit"`
+	Remote       *Remote       `yaml:"remote,omitempty" env:",noinit"`
+	CloudLogging *CloudLogging `yaml:"cloudlogging,omitempty" env:",noinit"`
+}
+
+// SetDefault sets default for the Backend.
+func (b *Backend) SetDefault() {
+	if b.CloudLogging != nil {
+		b.CloudLogging.SetDefault()
+	}
+}
+
+// Validate validates the Backend.
+func (b *Backend) Validate() error {
+	backendSet := false
+	var merr error
+	if b.Remote != nil {
+		backendSet = true
+		if err := b.Remote.Validate(); err != nil {
+			merr = multierr.Append(merr, err)
+		}
+	}
+	if b.CloudLogging != nil {
+		backendSet = true
+		if err := b.CloudLogging.Validate(); err != nil {
+			merr = multierr.Append(merr, err)
+		}
+	}
+	if !backendSet {
+		merr = multierr.Append(merr, fmt.Errorf("no backend is set"))
+	}
+	return merr
 }
 
 // Remote is the remote backend service to send audit logs to.
@@ -138,6 +173,34 @@ type Remote struct {
 func (b *Remote) Validate() error {
 	if b.Address == "" {
 		return fmt.Errorf("backend address is nil")
+	}
+	return nil
+}
+
+// CloudLogging is the GCP cloud logging backend to send audit logs to.
+type CloudLogging struct {
+	// DefaultProject indicates whether to use the project where the client runs.
+	DefaultProject bool `yaml:"default_project,omitempty" env:"BACKEND_CLOUDLOGGING_DEFAULT_PROJECT,overwrite"`
+
+	// Project allows overriding the project where to send the audit logs.
+	// The client must be run with a service account that has log writer role on the project.
+	Project string `yaml:"project,omitempty" env:"BACKEND_CLOUDLOGGING_PROJECT,overwrite"`
+}
+
+// SetDefault sets default on the CloudLogging backend.
+func (cl *CloudLogging) SetDefault() {
+	if cl.Project == "" && !cl.DefaultProject {
+		cl.DefaultProject = true
+	}
+}
+
+// Validate validates the CloudLogging backend.
+func (cl *CloudLogging) Validate() error {
+	if cl.Project == "" && !cl.DefaultProject {
+		return fmt.Errorf("backend cloudlogging no project or using default project is set")
+	}
+	if cl.Project != "" && cl.DefaultProject {
+		return fmt.Errorf("backend cloudlogging project is set while using default project")
 	}
 	return nil
 }
