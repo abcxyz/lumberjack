@@ -144,6 +144,9 @@ func TestValidate(t *testing.T) {
 				Remote: &Remote{
 					Address: "foo",
 				},
+				CloudLogging: &CloudLogging{
+					DefaultProject: true,
+				},
 			},
 			Condition: &Condition{
 				Regex: &RegexCondition{},
@@ -218,9 +221,12 @@ func TestValidate(t *testing.T) {
 		name: "combination_of_errors",
 		cfg: &Config{
 			Version: "random",
-			Rules:   []*AuditRule{{}},
+			Backend: &Backend{
+				Remote: &Remote{Address: "fake"},
+			},
+			Rules: []*AuditRule{{}},
 		},
-		wantErr: `unexpected Version "random" want "v1alpha1"; remote backend is nil; audit rule selector is empty`,
+		wantErr: `unexpected Version "random" want "v1alpha1"; audit rule selector is empty`,
 	}, {
 		name: "invalid_security_context",
 		cfg: &Config{
@@ -249,6 +255,55 @@ func TestValidate(t *testing.T) {
 			LogMode: "random",
 		},
 		wantErr: `invalid LogMode "random"`,
+	}, {
+		name: "invalid_backend_cloudlogging_use_default",
+		cfg: &Config{
+			Version: "v1alpha1",
+			SecurityContext: &SecurityContext{
+				FromRawJWT: []*FromRawJWT{{
+					Key: "authorization",
+				}},
+			},
+			Backend: &Backend{
+				CloudLogging: &CloudLogging{
+					DefaultProject: true,
+					Project:        "my-other-proj",
+				},
+			},
+			Condition: &Condition{
+				Regex: &RegexCondition{},
+			},
+			Rules: []*AuditRule{{
+				Selector:  "*",
+				Directive: "AUDIT_REQUEST_ONLY",
+				LogType:   "DATA_ACCESS",
+			}},
+		},
+		wantErr: `backend cloudlogging project is set while using default project`,
+	}, {
+		name: "invalid_backend_cloudlogging_no_default",
+		cfg: &Config{
+			Version: "v1alpha1",
+			SecurityContext: &SecurityContext{
+				FromRawJWT: []*FromRawJWT{{
+					Key: "authorization",
+				}},
+			},
+			Backend: &Backend{
+				CloudLogging: &CloudLogging{
+					DefaultProject: false,
+				},
+			},
+			Condition: &Condition{
+				Regex: &RegexCondition{},
+			},
+			Rules: []*AuditRule{{
+				Selector:  "*",
+				Directive: "AUDIT_REQUEST_ONLY",
+				LogType:   "DATA_ACCESS",
+			}},
+		},
+		wantErr: `backend cloudlogging no project or using default project is set`,
 	}}
 
 	for _, tc := range cases {
@@ -293,6 +348,22 @@ func TestSetDefault(t *testing.T) {
 				Directive: "AUDIT",
 				LogType:   "DATA_ACCESS",
 			}},
+		},
+	}, {
+		name: "default_backend_cloudlogging",
+		cfg: &Config{
+			Version: "v1alpha1",
+			Backend: &Backend{
+				CloudLogging: &CloudLogging{},
+			},
+		},
+		wantCfg: &Config{
+			Version: "v1alpha1",
+			Backend: &Backend{
+				CloudLogging: &CloudLogging{
+					DefaultProject: true,
+				},
+			},
 		},
 	}}
 
