@@ -26,6 +26,7 @@ import com.abcxyz.lumberjack.auditlogclient.processor.RuntimeInfoProcessor;
 import com.abcxyz.lumberjack.auditlogclient.processor.ValidationProcessor;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
+import com.google.api.client.util.Strings;
 import com.google.cloud.logging.Logging;
 import com.google.cloud.logging.LoggingOptions;
 import com.google.inject.AbstractModule;
@@ -76,8 +77,18 @@ public class AuditLoggingModule extends AbstractModule {
   }
 
   @Provides
-  Logging logging() {
-    return LoggingOptions.getDefaultInstance().getService();
+  Logging logging(AuditLoggingConfiguration configuration) {
+    LoggingOptions loggingOptions = LoggingOptions.getDefaultInstance();
+    if (configuration.getBackend().cloudLoggingEnabled()
+        && !Strings.isNullOrEmpty(configuration.getBackend().getCloudlogging().getProject())) {
+      if (configuration.getBackend().getCloudlogging().isDefaultProject()){
+        throw new IllegalStateException("Cannot set cloud logging project if default is enabled.");
+      }
+      loggingOptions = loggingOptions.toBuilder()
+          .setProjectId(configuration.getBackend().getCloudlogging().getProject())
+          .build();
+    }
+    return loggingOptions.getService();
   }
 
   @Provides

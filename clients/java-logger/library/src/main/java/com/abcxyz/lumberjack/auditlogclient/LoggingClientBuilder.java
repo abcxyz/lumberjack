@@ -94,6 +94,9 @@ public class LoggingClientBuilder {
     if (auditLoggingConfiguration.getBackend().localLoggingEnabled()) {
       this.withLocalLogProcessor();
     }
+    if (auditLoggingConfiguration.getBackend().cloudLoggingEnabled()) {
+      this.withCloudLoggingProcessor();
+    }
     return this;
   }
 

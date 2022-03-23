@@ -28,6 +28,7 @@ import lombok.Data;
 public class BackendContext {
   RemoteConfiguration remote;
   LocalConfiguration local;
+  CloudLoggingConfiguration cloudlogging;
 
   public RemoteConfiguration getRemote() {
     if (remote == null) {
@@ -42,5 +43,11 @@ public class BackendContext {
 
   public boolean localLoggingEnabled() {
     return !(local == null) && local.logOutEnabled();
+  }
+
+  public boolean cloudLoggingEnabled() {
+    // Check that cloud logging config exists. If it does, make sure either project is set or default is enabled.
+    return !(cloudlogging == null)
+        && (cloudlogging.isDefaultProject() || !Strings.isNullOrEmpty(cloudlogging.getProject()));
   }
 }
