@@ -25,9 +25,11 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.lenient;
 
 import com.abcxyz.lumberjack.auditlogclient.config.AuditLoggingConfiguration;
+import com.abcxyz.lumberjack.auditlogclient.config.BackendContext;
 import com.abcxyz.lumberjack.auditlogclient.processor.CloudLoggingProcessor;
 import com.abcxyz.lumberjack.auditlogclient.processor.FilteringProcessor;
 import com.abcxyz.lumberjack.auditlogclient.processor.LabelProcessor;
+import com.abcxyz.lumberjack.auditlogclient.processor.LocalLogProcessor;
 import com.abcxyz.lumberjack.auditlogclient.processor.LogProcessingException;
 import com.abcxyz.lumberjack.auditlogclient.processor.RemoteProcessor;
 import com.abcxyz.lumberjack.auditlogclient.processor.RuntimeInfoProcessor;
@@ -50,16 +52,23 @@ public class LoggingClientTests {
   @Mock ValidationProcessor validationProcessor;
   @Mock CloudLoggingProcessor cloudLoggingProcessor;
   @Mock RemoteProcessor remoteProcessor;
+  @Mock LocalLogProcessor localLogProcessor;
   @Mock FilteringProcessor filteringProcessor;
   @Mock RuntimeInfoProcessor runtimeInfoProcessor;
   @Mock AuditLoggingConfiguration auditLoggingConfiguration;
   @Mock LabelProcessor labelProcessor;
+  @Mock BackendContext backendContext;
 
   @InjectMocks LoggingClientBuilder loggingClientBuilder;
 
   @BeforeEach
   void setup() {
     lenient().doReturn(LogMode.LOG_MODE_UNSPECIFIED).when(auditLoggingConfiguration).getLogMode();
+
+    // Ensure backend context set to log to remote
+    lenient().doReturn(false).when(backendContext).localLoggingEnabled();
+    lenient().doReturn(true).when(backendContext).remoteEnabled();
+    lenient().doReturn(backendContext).when(auditLoggingConfiguration).getBackend();
   }
 
   @Test
@@ -68,6 +77,46 @@ public class LoggingClientTests {
     assertThat(loggingClient.getValidators().size()).isEqualTo(1);
     assertThat(loggingClient.getMutators().size()).isEqualTo(3);
     assertThat(loggingClient.getBackends().size()).isEqualTo(1);
+
+    // We want filtering to occur before other mutators
+    assertThat(loggingClient.getMutators().get(0).equals(filteringProcessor));
+    assertThat(loggingClient.getMutators().get(1).equals(runtimeInfoProcessor));
+
+    // If local is disabled and remote is enabled, only backend processor should be remote.
+    assertThat(loggingClient.getBackends().get(0).equals(remoteProcessor));
+  }
+
+  @Test
+  void successfulClientCreate_LocalBackend() {
+    // Ensure backend context set to log to local
+    doReturn(true).when(backendContext).localLoggingEnabled();
+    doReturn(false).when(backendContext).remoteEnabled();
+
+    LoggingClient loggingClient = loggingClientBuilder.withDefaultProcessors().build();
+    assertThat(loggingClient.getValidators().size()).isEqualTo(1);
+    assertThat(loggingClient.getMutators().size()).isEqualTo(3);
+    assertThat(loggingClient.getBackends().size()).isEqualTo(1);
+
+    // We want filtering to occur before other mutators
+    assertThat(loggingClient.getMutators().get(0).equals(filteringProcessor));
+    assertThat(loggingClient.getMutators().get(1).equals(runtimeInfoProcessor));
+
+    // If remote is disabled and local is enabled, only backend processor should be local.
+    assertThat(loggingClient.getBackends().get(0).equals(localLogProcessor));
+  }
+
+  @Test
+  void successfulClientCreate_LocalAndRemoteBackends() {
+    // Ensure backend context set to log to local
+    doReturn(true).when(backendContext).localLoggingEnabled();
+    doReturn(true).when(backendContext).remoteEnabled();
+
+    LoggingClient loggingClient = loggingClientBuilder.withDefaultProcessors().build();
+    assertThat(loggingClient.getValidators().size()).isEqualTo(1);
+    assertThat(loggingClient.getMutators().size()).isEqualTo(3);
+
+    // Both backends should be added
+    assertThat(loggingClient.getBackends().size()).isEqualTo(2);
 
     // We want filtering to occur before other mutators
     assertThat(loggingClient.getMutators().get(0).equals(filteringProcessor));

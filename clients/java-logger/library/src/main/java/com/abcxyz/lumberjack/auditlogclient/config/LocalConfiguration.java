@@ -1,5 +1,5 @@
 /*
- * Copyright 2021 Lumberjack authors (see AUTHORS file)
+ * Copyright 2022 Lumberjack authors (see AUTHORS file)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,30 +17,19 @@
 package com.abcxyz.lumberjack.auditlogclient.config;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.google.api.client.util.Strings;
 import lombok.Data;
 
-/**
- * Contains configuration pertaining to RemoteProcessors. Each value defaults to the value in YAML
- * configuration, but may be overridden using environment variables.
- */
 @Data
-public class BackendContext {
-  RemoteConfiguration remote;
-  LocalConfiguration local;
+public class LocalConfiguration {
+  private static final String LOG_OUT_ENABLED_KEY = "AUDIT_CLIENT_LOG_OUT_ENABLED";
 
-  public RemoteConfiguration getRemote() {
-    if (remote == null) {
-      remote = new RemoteConfiguration();
+  @JsonProperty("log_out_enabled")
+  private boolean logOutEnabled;
+
+  public boolean logOutEnabled() {
+    if (System.getenv().containsKey(LOG_OUT_ENABLED_KEY)) {
+      return Boolean.valueOf(System.getenv().get(LOG_OUT_ENABLED_KEY));
     }
-    return remote;
-  }
-
-  public boolean remoteEnabled() {
-    return !Strings.isNullOrEmpty(getRemote().getAddress());
-  }
-
-  public boolean localLoggingEnabled() {
-    return !(local == null) && local.logOutEnabled();
+    return logOutEnabled;
   }
 }

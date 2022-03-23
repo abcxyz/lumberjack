@@ -1,0 +1,3 @@
+backend:
+  local:
+    log_out_enabled: true

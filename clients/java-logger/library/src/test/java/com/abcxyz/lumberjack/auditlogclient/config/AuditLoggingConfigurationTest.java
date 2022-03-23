@@ -14,12 +14,18 @@ public class AuditLoggingConfigurationTest {
   public void testMinimalConfiguration() throws IOException {
     AuditLoggingModule module = new AuditLoggingModule();
     AuditLoggingConfiguration config = module.auditLoggingConfiguration("minimal.yml");
-    assertThat(config.getBackend()).isNull();
+
+    BackendContext expectedBackendContext = new BackendContext();
+    LocalConfiguration local = new LocalConfiguration();
+    local.setLogOutEnabled(true);
+    expectedBackendContext.setLocal(local);
+    assertThat(config.getBackend()).isEqualTo(expectedBackendContext);
+
     assertThat(config.getConditions()).isNull();
     assertThat(config.getRules().size()).isEqualTo(1);
     assertThat(config.getLogMode()).isEqualTo(LogMode.LOG_MODE_UNSPECIFIED);
 
-    assertThat(module.backendContext(config)).isEqualTo(new BackendContext());
+    assertThat(module.backendContext(config)).isEqualTo(expectedBackendContext);
     assertThat(module.filters(config)).isEqualTo(new Filters());
   }
 
@@ -27,12 +33,18 @@ public class AuditLoggingConfigurationTest {
   public void testMinimalConfiguration_Labels() throws IOException {
     AuditLoggingModule module = new AuditLoggingModule();
     AuditLoggingConfiguration config = module.auditLoggingConfiguration("minimal_with_labels.yml");
-    assertThat(config.getBackend()).isNull();
+
+    BackendContext expectedBackendContext = new BackendContext();
+    LocalConfiguration local = new LocalConfiguration();
+    local.setLogOutEnabled(true);
+    expectedBackendContext.setLocal(local);
+    assertThat(config.getBackend()).isEqualTo(expectedBackendContext);
+
     assertThat(config.getConditions()).isNull();
     assertThat(config.getRules().size()).isEqualTo(1);
     assertThat(config.getLogMode()).isEqualTo(LogMode.LOG_MODE_UNSPECIFIED);
 
-    assertThat(module.backendContext(config)).isEqualTo(new BackendContext());
+    assertThat(module.backendContext(config)).isEqualTo(expectedBackendContext);
     assertThat(module.filters(config)).isEqualTo(new Filters());
 
     Map<String, String> expectedLabels = new HashMap<>();

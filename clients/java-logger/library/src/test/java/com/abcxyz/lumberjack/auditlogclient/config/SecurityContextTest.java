@@ -59,7 +59,7 @@ public class SecurityContextTest {
     SecurityContext securityContext =
         mapper
             .readValue(
-                this.getClass().getClassLoader().getResourceAsStream("jwt_context.yml"),
+                getClass().getClassLoader().getResourceAsStream("jwt_context.yml"),
                 AuditLoggingConfiguration.class)
             .getSecurityContext();
     SecurityContext expectedSecurityContext = new SecurityContext();
@@ -81,7 +81,7 @@ public class SecurityContextTest {
     SecurityContext securityContext =
         mapper
             .readValue(
-                this.getClass().getClassLoader().getResourceAsStream("jwt_default.yml"),
+                getClass().getClassLoader().getResourceAsStream("jwt_default.yml"),
                 AuditLoggingConfiguration.class)
             .getSecurityContext();
     assertThat(securityContext.getJwtSpecifications()).isEmpty();
@@ -89,7 +89,7 @@ public class SecurityContextTest {
     securityContext =
         mapper
             .readValue(
-                this.getClass().getClassLoader().getResourceAsStream("jwt_default_2.yml"),
+                getClass().getClassLoader().getResourceAsStream("jwt_default_2.yml"),
                 AuditLoggingConfiguration.class)
             .getSecurityContext();
     assertThat(securityContext.getJwtSpecifications()).isEmpty();
@@ -102,7 +102,7 @@ public class SecurityContextTest {
         JsonMappingException.class,
         () ->
             mapper.readValue(
-                this.getClass().getClassLoader().getResourceAsStream("no_security_context.yml"),
+                getClass().getClassLoader().getResourceAsStream("no_security_context.yml"),
                 AuditLoggingConfiguration.class));
   }
 

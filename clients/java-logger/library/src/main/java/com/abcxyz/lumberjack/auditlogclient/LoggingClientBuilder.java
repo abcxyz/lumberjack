@@ -20,6 +20,7 @@ import com.abcxyz.lumberjack.auditlogclient.config.AuditLoggingConfiguration;
 import com.abcxyz.lumberjack.auditlogclient.processor.CloudLoggingProcessor;
 import com.abcxyz.lumberjack.auditlogclient.processor.FilteringProcessor;
 import com.abcxyz.lumberjack.auditlogclient.processor.LabelProcessor;
+import com.abcxyz.lumberjack.auditlogclient.processor.LocalLogProcessor;
 import com.abcxyz.lumberjack.auditlogclient.processor.LogProcessor;
 import com.abcxyz.lumberjack.auditlogclient.processor.LogProcessor.LogBackend;
 import com.abcxyz.lumberjack.auditlogclient.processor.LogProcessor.LogMutator;
@@ -43,6 +44,7 @@ public class LoggingClientBuilder {
   private final RuntimeInfoProcessor runtimeInfoProcessor;
   private final ValidationProcessor validationProcessor;
   private final LabelProcessor labelProcessor;
+  private final LocalLogProcessor localLogProcessor;
 
   private final LinkedHashSet<LogValidator> validators = new LinkedHashSet<>();
   private final LinkedHashSet<LogMutator> mutators = new LinkedHashSet<>();
@@ -56,7 +58,7 @@ public class LoggingClientBuilder {
     return withValidationProcessor()
         .withFilteringProcessor()
         .withRuntimeInfoProcessor()
-        .withRemoteProcessor()
+        .withDefaultLogBackends()
         .withLabelProcessor();
   }
 
@@ -84,9 +86,26 @@ public class LoggingClientBuilder {
     return this;
   }
 
+  /** Provides a {@link LoggingClientBuilder} with {@link LogBackend}s. */
+  public LoggingClientBuilder withDefaultLogBackends() {
+    if (auditLoggingConfiguration.getBackend().remoteEnabled()) {
+      this.withRemoteProcessor();
+    }
+    if (auditLoggingConfiguration.getBackend().localLoggingEnabled()) {
+      this.withLocalLogProcessor();
+    }
+    return this;
+  }
+
   /** Provides a {@link LoggingClientBuilder} with {@link RemoteProcessor}. */
   public LoggingClientBuilder withRemoteProcessor() {
     backends.add(remoteProcessor);
+    return this;
+  }
+
+  /** Provides a {@link LoggingClientBuilder} with {@link LocalLogProcessor}. */
+  public LoggingClientBuilder withLocalLogProcessor() {
+    backends.add(localLogProcessor);
     return this;
   }
 
