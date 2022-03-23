@@ -214,21 +214,21 @@ func backendsFromConfig(cfg *alpb.Config) ([]audit.Option, error) {
 		}
 
 		var p *cloudlogging.Processor
-		var err error
+		var perr error
 
 		if cfg.Backend.CloudLogging.DefaultProject {
-			p, err = cloudlogging.NewProcessor(context.TODO(), opts...)
+			p, perr = cloudlogging.NewProcessor(context.TODO(), opts...)
 		} else {
 			clc, err := logging.NewClient(context.TODO(), cfg.Backend.CloudLogging.Project)
 			if err != nil {
 				return nil, fmt.Errorf("failed to create cloud logging client: %w", err)
 			}
 			opts = append(opts, cloudlogging.WithLoggingClient(clc))
-			p, err = cloudlogging.NewProcessor(context.TODO(), opts...)
+			p, perr = cloudlogging.NewProcessor(context.TODO(), opts...)
 		}
 
-		if err != nil {
-			return nil, err
+		if perr != nil {
+			return nil, perr
 		}
 		backendOpts = append(backendOpts, audit.WithBackend(p))
 	}
