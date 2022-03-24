@@ -8,8 +8,6 @@ backend:
     address:
     insecure_enabled: false
     impersonate_account:
-  cloudlogging:
-    default_project: true
 security_context:
   from_raw_jwt:
   - key: "Authorization"
