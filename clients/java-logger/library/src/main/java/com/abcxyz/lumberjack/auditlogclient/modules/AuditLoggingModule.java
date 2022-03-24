@@ -81,7 +81,7 @@ public class AuditLoggingModule extends AbstractModule {
     LoggingOptions loggingOptions = LoggingOptions.getDefaultInstance();
     if (configuration.getBackend().cloudLoggingEnabled()
         && !Strings.isNullOrEmpty(configuration.getBackend().getCloudlogging().getProject())) {
-      if (configuration.getBackend().getCloudlogging().isDefaultProject()){
+      if (configuration.getBackend().getCloudlogging().useDefaultProject()){
         throw new IllegalStateException("Cannot set cloud logging project if default is enabled.");
       }
       loggingOptions = loggingOptions.toBuilder()

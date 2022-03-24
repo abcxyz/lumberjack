@@ -16,15 +16,16 @@
 
 package com.abcxyz.lumberjack.auditlogclient.config;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
 import com.google.api.client.util.Strings;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
 
 /**
  * Contains configuration pertaining to RemoteProcessors. Each value defaults to the value in YAML
  * configuration, but may be overridden using environment variables.
  */
 @Data
+@EqualsAndHashCode
 public class BackendContext {
   RemoteConfiguration remote;
   LocalConfiguration local;
@@ -37,6 +38,14 @@ public class BackendContext {
     return remote;
   }
 
+  public CloudLoggingConfiguration getCloudlogging() {
+    if (cloudlogging == null) {
+      cloudlogging = new CloudLoggingConfiguration();
+      cloudlogging.setDefaultProject(false);
+    }
+    return cloudlogging;
+  }
+
   public boolean remoteEnabled() {
     return !Strings.isNullOrEmpty(getRemote().getAddress());
   }
@@ -47,7 +56,6 @@ public class BackendContext {
 
   public boolean cloudLoggingEnabled() {
     // Check that cloud logging config exists. If it does, make sure either project is set or default is enabled.
-    return !(cloudlogging == null)
-        && (cloudlogging.isDefaultProject() || !Strings.isNullOrEmpty(cloudlogging.getProject()));
+    return getCloudlogging().useDefaultProject() || !Strings.isNullOrEmpty(getCloudlogging().getProject());
   }
 }
