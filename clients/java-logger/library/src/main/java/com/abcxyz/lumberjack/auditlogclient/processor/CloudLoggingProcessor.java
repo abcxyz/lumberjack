@@ -62,9 +62,6 @@ public class CloudLoggingProcessor implements LogBackend {
   @Override
   public AuditLogRequest process(AuditLogRequest auditLogRequest) throws LogProcessingException {
     try {
-      // TODO: remove, debug log
-      log.info("Writing entry to cloud loggin");
-
       LogEntry entry =
           LogEntry.newBuilder(
                   Payload.JsonPayload.of(
