@@ -67,6 +67,7 @@ public class LoggingClientTests {
 
     // Ensure backend context set to log to remote
     lenient().doReturn(false).when(backendContext).localLoggingEnabled();
+    lenient().doReturn(false).when(backendContext).cloudLoggingEnabled();
     lenient().doReturn(true).when(backendContext).remoteEnabled();
     lenient().doReturn(backendContext).when(auditLoggingConfiguration).getBackend();
   }
@@ -91,6 +92,26 @@ public class LoggingClientTests {
     // Ensure backend context set to log to local
     doReturn(true).when(backendContext).localLoggingEnabled();
     doReturn(false).when(backendContext).remoteEnabled();
+
+    LoggingClient loggingClient = loggingClientBuilder.withDefaultProcessors().build();
+    assertThat(loggingClient.getValidators().size()).isEqualTo(1);
+    assertThat(loggingClient.getMutators().size()).isEqualTo(3);
+    assertThat(loggingClient.getBackends().size()).isEqualTo(1);
+
+    // We want filtering to occur before other mutators
+    assertThat(loggingClient.getMutators().get(0).equals(filteringProcessor));
+    assertThat(loggingClient.getMutators().get(1).equals(runtimeInfoProcessor));
+
+    // If remote is disabled and local is enabled, only backend processor should be local.
+    assertThat(loggingClient.getBackends().get(0).equals(localLogProcessor));
+  }
+
+  @Test
+  void successfulClientCreate_CloudLoggingBackend() {
+    // Ensure backend context set to log to local
+    doReturn(false).when(backendContext).localLoggingEnabled();
+    doReturn(false).when(backendContext).remoteEnabled();
+    doReturn(true).when(backendContext).cloudLoggingEnabled();
 
     LoggingClient loggingClient = loggingClientBuilder.withDefaultProcessors().build();
     assertThat(loggingClient.getValidators().size()).isEqualTo(1);

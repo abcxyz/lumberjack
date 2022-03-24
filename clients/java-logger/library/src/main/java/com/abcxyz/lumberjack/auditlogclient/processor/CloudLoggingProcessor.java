@@ -39,8 +39,10 @@ import java.util.Collections;
 import java.util.Map;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
+import lombok.extern.java.Log;
 
 /** Cloud logging processor to write logs to google cloud */
+@Log
 @AllArgsConstructor(access = AccessLevel.PRIVATE, onConstructor = @__({@Inject}))
 public class CloudLoggingProcessor implements LogBackend {
 
