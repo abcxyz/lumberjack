@@ -23,8 +23,8 @@ import lombok.Setter;
 @Setter
 @EqualsAndHashCode
 public class CloudLoggingConfiguration {
-  private static final String CLOUD_LOG_DEFAULT_KEY = "AUDIT_CLIENT_CLOUD_LOG_DEFAULT_ENABLED";
-  private static final String CLOUD_LOG_PROJECT_KEY = "AUDIT_CLIENT_CLOUD_LOG_PROJECT";
+  private static final String CLOUD_LOG_DEFAULT_KEY = "BACKEND_CLOUDLOGGING_DEFAULT_PROJECT";
+  private static final String CLOUD_LOG_PROJECT_KEY = "BACKEND_CLOUDLOGGING_PROJECT";
 
   @JsonProperty("default_project")
   private boolean defaultProject;
