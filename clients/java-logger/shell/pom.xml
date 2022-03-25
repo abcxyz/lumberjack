@@ -59,6 +59,16 @@
       <artifactId>snakeyaml</artifactId>
       <version>1.29</version>
     </dependency>
+    <dependency>
+      <groupId>ch.qos.logback</groupId>
+      <artifactId>logback-classic</artifactId>
+      <version>1.2.3</version>
+    </dependency>
+    <dependency>
+      <groupId>io.grpc</groupId>
+      <artifactId>grpc-auth</artifactId>
+      <version>1.45.0</version>
+    </dependency>
   </dependencies>
 
   <build>

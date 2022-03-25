@@ -38,13 +38,12 @@ public class ServerFailOnFourObserver implements StreamObserver<FailOnFourReques
 
   @Override
   public void onNext(FailOnFourRequest request) {
-    log.info("TESTY2");
     AuditLog.Builder auditLogBuilder = AuditLogs.getBuilderFromContext();
     auditLogBuilder.setResourceName(request.getTarget());
     if (request.getValue() == 4) {
       onError(new StatusRuntimeException(Status.INVALID_ARGUMENT));
     } else {
-      log.info("Got %d which isn't 4.", request.getValue());
+      log.info("Got {} which isn't 4.", request.getValue());
     }
   }
 

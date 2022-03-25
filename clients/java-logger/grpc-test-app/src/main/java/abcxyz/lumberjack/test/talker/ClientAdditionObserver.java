@@ -29,7 +29,7 @@ public class ClientAdditionObserver implements StreamObserver<AdditionResponse> 
 
   @Override
   public void onNext(AdditionResponse response) {
-    log.info("Sum was %d", response.getSum());
+    log.info("Sum was " + response.getSum());
   }
 
   @Override

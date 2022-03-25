@@ -76,7 +76,6 @@ public class AuditLoggingServerInterceptor<ReqT extends Message> implements Serv
   @Override
   public <ReqT, RespT> Listener<ReqT> interceptCall(
       ServerCall<ReqT, RespT> call, Metadata headers, ServerCallHandler<ReqT, RespT> next) {
-    log.info("TESTY");
     String methodName = call.getMethodDescriptor().getFullMethodName();
     Optional<Selector> selectorOption = getRelevantSelector(methodName);
     if (selectorOption.isEmpty()) {
