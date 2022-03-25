@@ -36,19 +36,25 @@ var (
 )
 
 func main() {
+	if err := realMain(); err != nil {
+		log.Fatal(err)
+	}
+}
+
+func realMain() (outErr error) {
 	flag.Parse()
 	lis, err := net.Listen("tcp", fmt.Sprintf(":%d", *port))
 	if err != nil {
-		log.Fatalf("failed to listen: %v", err)
+		return fmt.Errorf("failed to listen: %v", err)
 	}
 	interceptor, err := audit.NewInterceptor(auditopt.InterceptorFromConfigFile(auditopt.DefaultConfigFilePath))
 	defer func() {
 		if err := interceptor.Stop(); err != nil {
-			log.Fatalf("failed to stop interceptor: %v", err)
+			outErr = fmt.Errorf("failed to stop interceptor: %v", err)
 		}
 	}()
 	if err != nil {
-		log.Fatalf("failed to setup audit interceptor: %v", err)
+		return fmt.Errorf("failed to setup audit interceptor: %v", err)
 	}
 	s := grpc.NewServer(grpc.UnaryInterceptor(interceptor.UnaryInterceptor), grpc.StreamInterceptor(interceptor.StreamInterceptor))
 	talkerpb.RegisterTalkerServer(s, &server{})
@@ -56,8 +62,10 @@ func main() {
 	reflection.Register(s)
 	log.Printf("server listening at %v", lis.Addr())
 	if err := s.Serve(lis); err != nil {
-		log.Fatalf("failed to serve: %v", err)
+		return fmt.Errorf("failed to serve: %v", err)
 	}
+
+	return nil
 }
 
 type server struct {
