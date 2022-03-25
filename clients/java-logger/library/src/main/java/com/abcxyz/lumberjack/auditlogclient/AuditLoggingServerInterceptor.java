@@ -53,11 +53,11 @@ import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentLinkedDeque;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.java.Log;
+import lombok.extern.slf4j.Slf4j;
 
 /** This is intended to allow automatic audit logging for calls from a wrapped server. */
 @RequiredArgsConstructor(onConstructor = @__({@Inject}))
-@Log
+@Slf4j
 public class AuditLoggingServerInterceptor<ReqT extends Message> implements ServerInterceptor {
   public static final Context.Key<AuditLog.Builder> AUDIT_LOG_CTX_KEY = Context.key("audit-log");
   public static final String UNSPECIFIED_RESORCE = "GRPC_STREAM_RESOURCE_NAME_PLACEHOLDER";
@@ -76,10 +76,11 @@ public class AuditLoggingServerInterceptor<ReqT extends Message> implements Serv
   @Override
   public <ReqT, RespT> Listener<ReqT> interceptCall(
       ServerCall<ReqT, RespT> call, Metadata headers, ServerCallHandler<ReqT, RespT> next) {
+    log.info("TESTY");
     String methodName = call.getMethodDescriptor().getFullMethodName();
     Optional<Selector> selectorOption = getRelevantSelector(methodName);
     if (selectorOption.isEmpty()) {
-      log.info("No selector found for method {}" + methodName);
+      log.info("No selector found for method {}", methodName);
       return next.startCall(call, headers);
     }
     Selector selector = selectorOption.get();
@@ -88,12 +89,12 @@ public class AuditLoggingServerInterceptor<ReqT extends Message> implements Serv
     try {
       principal = auditLoggingConfiguration.getSecurityContext().getPrincipal(headers);
     } catch (AuthorizationException e) {
-      log.warning("Exception while trying to determine principal..");
+      log.warn("Exception while trying to determine principal..");
       if (ConfigUtils.shouldFailClose(auditLoggingConfiguration.getLogMode())) {
         throw new IllegalStateException("Unable to determine principal.", e);
       } else {
-        log.warning("Principal was unable to be determined, "
-            + "continuing without audit logging: " + e.getMessage());
+        log.error("Principal was unable to be determined, "
+            + "continuing without audit logging.", e);
         next.startCall(call, headers);
       }
     }
@@ -170,7 +171,7 @@ public class AuditLoggingServerInterceptor<ReqT extends Message> implements Serv
         try {
           super.onHalfClose();
         } catch (Exception e) {
-          log.info("Exception occurred, audit logging it: " + e.getMessage());
+          log.info("Exception occurred, audit logging it: {}", e.getMessage());
           ReqT unloggedRequest = unloggedRequests.pollFirst(); // try to get the last request
           logError(selector, unloggedRequest, e, logBuilder, logEntryOperation);
           throw e;

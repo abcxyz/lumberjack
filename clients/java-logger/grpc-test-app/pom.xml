@@ -68,7 +68,8 @@
     </dependency>
     <dependency>
       <groupId>com.google.cloud</groupId>
-      <artifactId>google-cloud-logging</artifactId>
+      <artifactId>google-cloud-logging-logback</artifactId>
+      <version>0.123.6-alpha</version>
     </dependency>
     <dependency>
       <groupId>org.yaml</groupId>
@@ -114,7 +115,7 @@
     <dependency>
       <groupId>org.slf4j</groupId>
       <artifactId>slf4j-api</artifactId>
-      <version>1.7.32</version>
+      <version>1.7.26</version>
     </dependency>
     <dependency>
       <groupId>com.auth0</groupId>
@@ -137,7 +138,18 @@
       <version>2.5.5</version>
       <scope>compile</scope>
     </dependency>
+    <dependency>
+      <groupId>ch.qos.logback</groupId>
+      <artifactId>logback-classic</artifactId>
+      <version>1.2.3</version>
+    </dependency>
+    <dependency>
+      <groupId>io.grpc</groupId>
+      <artifactId>grpc-auth</artifactId>
+      <version>1.45.0</version>
+    </dependency>
   </dependencies>
+
 
   <build>
     <pluginManagement>

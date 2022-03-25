@@ -53,13 +53,9 @@ import java.io.IOException;
 import java.util.Calendar;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 
 /** A simple client that requests a greeting from the {@link TalkerService} with TLS. */
 public class TalkerClient {
-  private static final Logger logger = Logger.getLogger(TalkerClient.class.getName());
-
   private final TalkerGrpc.TalkerBlockingStub blockingStub;
   private final TalkerGrpc.TalkerStub clientStub;
 
@@ -74,48 +70,48 @@ public class TalkerClient {
 
   /** Say hello to server. */
   public void greet(String name, UUID target) {
-    logger.info("Will try to greet " + name + " ...");
+    System.out.println("Will try to greet " + name + " ...");
     HelloRequest request =
         HelloRequest.newBuilder().setMessage(name).setTarget(target.toString()).build();
     HelloResponse response;
     try {
       response = blockingStub.hello(request);
     } catch (StatusRuntimeException e) {
-      logger.log(Level.WARNING, "RPC failed: {0}", e.getStatus());
+      System.out.println("RPC failed: " +  e.getStatus());
       throw e;
     }
-    logger.info("Greeting: " + response.getMessage());
+    System.out.println("Greeting: " + response.getMessage());
   }
 
   /** Whisper secrets to server. */
   public void whisper(String secret, UUID target) {
-    logger.info("Will try to whisper " + secret + " ...");
+    System.out.println("Will try to whisper " + secret + " ...");
     WhisperRequest request =
         WhisperRequest.newBuilder().setMessage(secret).setTarget(target.toString()).build();
     WhisperResponse response;
     try {
       response = blockingStub.whisper(request);
     } catch (StatusRuntimeException e) {
-      logger.log(Level.WARNING, "RPC failed: {0}", e.getStatus());
+      System.out.println("RPC failed: " + e.getStatus());
       throw e;
     }
-    logger.info("Greeting: " + response.getMessage());
+    System.out.println("Greeting: " + response.getMessage());
   }
 
   /** Test failure. */
   public void fail(String message, UUID target) {
-    logger.info("Sending message " + message + " ...");
+    System.out.println("Sending message " + message + " ...");
     FailRequest request =
         FailRequest.newBuilder().setMessage(message).setTarget(target.toString()).build();
     FailResponse response;
     try {
       response = blockingStub.fail(request);
-      logger.info("Did not receive error: " + response.getMessage());
+      System.out.println("Did not receive error: " + response.getMessage());
       throw new IllegalStateException("Did not receive error from fail api");
     } catch (StatusRuntimeException e) {
-      logger.log(Level.INFO, "RPC failed: {0}", e.getStatus());
+      System.out.println("RPC failed: " + e.getStatus());
     } catch (Exception e) {
-      logger.log(Level.INFO, "Got other failure {0}", e.getMessage());
+      System.out.println("Got other failure " +  e.getMessage());
     }
   }
 
@@ -123,19 +119,19 @@ public class TalkerClient {
     FibonacciRequest request = FibonacciRequest.newBuilder().setPlaces(places).build();
 
     try {
-      logger.info("Fibonacci sequence for places " + places);
+      System.out.println("Fibonacci sequence for places " + places);
       blockingStub
           .fibonacci(request)
           .forEachRemaining(
               fibonacciResponse -> {
-                logger.info(
+                System.out.println(
                     "Position: "
                         + fibonacciResponse.getPosition()
                         + " Value: "
                         + fibonacciResponse.getValue());
               });
     } catch (StatusRuntimeException e) {
-      logger.log(Level.WARNING, "RPC failed: {0}", e.getStatus());
+      System.out.println("RPC failed: " + e.getStatus());
       throw e;
     }
   }
@@ -145,7 +141,7 @@ public class TalkerClient {
         clientStub.addition(new ClientAdditionObserver());
 
     for (int i = 1; i <= max; i++) {
-      logger.info("Adding: " + i);
+      System.out.println("Adding: " + i);
       AdditionRequest request = AdditionRequest.newBuilder().setAddend(i).build();
       requestObserver.onNext(request);
     }
@@ -158,7 +154,7 @@ public class TalkerClient {
         clientStub.failOnFour(new ClientFailOnFourObserver());
 
     for (int i = 1; i <= max; i++) {
-      logger.info("Sending: " + i);
+      System.out.println("Sending: " + i);
       FailOnFourRequest request = FailOnFourRequest.newBuilder().setValue(i)
           .setTarget(target.toString()).build();
       requestObserver.onNext(request);
@@ -188,13 +184,13 @@ public class TalkerClient {
     GoogleCredentials credentials;
     if (args.length >= 3) {
       // token explicitly added to args, use that.
-      logger.info("Using explicit token");
+      System.out.println("Using explicit token");
       String token = args[2];
       Calendar currentTime = Calendar.getInstance();
       currentTime.add(Calendar.MINUTE, 15);
       credentials = GoogleCredentials.create(new AccessToken(token, currentTime.getTime()));
     } else {
-      logger.info("Attempting to use default credentials");
+      System.out.println("Attempting to use default credentials");
       // try to use the application default credentials if no token is specified.
       credentials = GoogleCredentials.getApplicationDefault();
     }
