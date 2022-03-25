@@ -20,6 +20,8 @@ import (
 	"io"
 	"log"
 	"net"
+	"os"
+	"os/signal"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -60,10 +62,22 @@ func realMain() (outErr error) {
 	talkerpb.RegisterTalkerServer(s, &server{})
 	// Register the reflection service makes it easier for some clients.
 	reflection.Register(s)
+
+	// Gracefully stop the server on ctrl-c.
+	intrCh := make(chan os.Signal, 1)
+	signal.Notify(intrCh, os.Interrupt)
+	go func() {
+		<-intrCh
+		log.Print("gracefully stopping...")
+		s.GracefulStop()
+	}()
+
 	log.Printf("server listening at %v", lis.Addr())
 	if err := s.Serve(lis); err != nil {
 		return fmt.Errorf("failed to serve: %v", err)
 	}
+
+	log.Print("server stopped.")
 
 	return nil
 }
