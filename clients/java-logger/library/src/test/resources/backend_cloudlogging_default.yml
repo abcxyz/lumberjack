@@ -1,0 +1,3 @@
+backend:
+  cloudlogging:
+    default_project: true

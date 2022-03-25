@@ -1,0 +1,3 @@
+backend:
+  cloudlogging:
+    project: my-other-project
