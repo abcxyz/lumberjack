@@ -39,6 +39,7 @@ public class BackendContextTest {
 
     assertThat(backendContext.remoteEnabled()).isTrue();
     assertThat(backendContext.localLoggingEnabled()).isFalse();
+    assertThat(backendContext.cloudLoggingEnabled()).isFalse();
   }
 
   @Test
@@ -53,19 +54,51 @@ public class BackendContextTest {
 
     assertThat(backendContext.remoteEnabled()).isFalse();
     assertThat(backendContext.localLoggingEnabled()).isTrue();
+    assertThat(backendContext.cloudLoggingEnabled()).isFalse();
   }
 
   @Test
-  public void bothAsBackend() throws IOException {
+  public void cloudLoggingBackend_Default() throws IOException {
     ObjectMapper mapper = new ObjectMapper(new YAMLFactory());
     BackendContext backendContext=
         mapper
             .readValue(
-                getClass().getClassLoader().getResourceAsStream("backend_both.yml"),
+                getClass().getClassLoader().getResourceAsStream("backend_cloudlogging_default.yml"),
+                AuditLoggingConfiguration.class)
+            .getBackend();
+
+    assertThat(backendContext.remoteEnabled()).isFalse();
+    assertThat(backendContext.localLoggingEnabled()).isFalse();
+    assertThat(backendContext.cloudLoggingEnabled()).isTrue();
+  }
+
+  @Test
+  public void cloudLoggingBackend_CustomProject() throws IOException {
+    ObjectMapper mapper = new ObjectMapper(new YAMLFactory());
+    BackendContext backendContext=
+        mapper
+            .readValue(
+                getClass().getClassLoader().getResourceAsStream("backend_cloudlogging_custom.yml"),
+                AuditLoggingConfiguration.class)
+            .getBackend();
+
+    assertThat(backendContext.remoteEnabled()).isFalse();
+    assertThat(backendContext.localLoggingEnabled()).isFalse();
+    assertThat(backendContext.cloudLoggingEnabled()).isTrue();
+  }
+
+  @Test
+  public void allAsBackend() throws IOException {
+    ObjectMapper mapper = new ObjectMapper(new YAMLFactory());
+    BackendContext backendContext=
+        mapper
+            .readValue(
+                getClass().getClassLoader().getResourceAsStream("backend_all.yml"),
                 AuditLoggingConfiguration.class)
             .getBackend();
 
     assertThat(backendContext.remoteEnabled()).isTrue();
     assertThat(backendContext.localLoggingEnabled()).isTrue();
+    assertThat(backendContext.cloudLoggingEnabled()).isTrue();
   }
 }
