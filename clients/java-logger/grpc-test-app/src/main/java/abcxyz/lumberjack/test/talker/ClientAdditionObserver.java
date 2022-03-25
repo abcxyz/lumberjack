@@ -18,7 +18,6 @@ package abcxyz.lumberjack.test.talker;
 
 import com.abcxyz.lumberjack.test.talker.AdditionResponse;
 import io.grpc.stub.StreamObserver;
-import lombok.extern.log4j.Log4j2;
 import lombok.extern.slf4j.Slf4j;
 
 /**

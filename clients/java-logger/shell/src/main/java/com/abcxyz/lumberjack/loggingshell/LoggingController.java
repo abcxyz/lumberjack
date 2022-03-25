@@ -23,7 +23,7 @@ import com.abcxyz.lumberjack.v1alpha1.AuditLogRequest.LogType;
 import com.google.cloud.audit.AuditLog;
 import com.google.cloud.audit.AuthenticationInfo;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.log4j.Log4j2;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestAttribute;
@@ -32,7 +32,7 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 /** Endpoints for the shell app that imports/uses the Audit Logging client library. */
-@Log4j2
+@Slf4j
 @RequiredArgsConstructor
 @RestController
 public class LoggingController {
