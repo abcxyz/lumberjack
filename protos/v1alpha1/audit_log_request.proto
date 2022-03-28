@@ -54,8 +54,11 @@ message AuditLogRequest {
   // The Cloud audit log payload.
   google.cloud.audit.AuditLog payload = 2;
 
-  // Standard object used for correlating logs across streams
-  google.logging.v2.LogEntryOperation operation = 5;
+  // A map of key, value pairs that provides additional information about the
+  // log entry. For example, an integration test can store a UUID in this field
+  // to track a test log. Later, the integration test can query the UUID from a
+  // BigQuery sink to ensure that a logging request completed successfully.
+  map<string, string> labels = 3;
 
   // LogMode specifies the logging mode for the individual log request.
   enum LogMode {
@@ -74,9 +77,8 @@ message AuditLogRequest {
 
   LogMode mode = 4;
 
-  // A map of key, value pairs that provides additional information about the
-  // log entry. For example, an integration test can store a UUID in this field
-  // to track a test log. Later, the integration test can query the UUID from a
-  // BigQuery sink to ensure that a logging request completed successfully.
-  map<string, string> labels = 3;
+  // Standard object used for correlating logs across streams
+  google.logging.v2.LogEntryOperation operation = 5;
+
+  Timestamp timestamp = 6;
 }
