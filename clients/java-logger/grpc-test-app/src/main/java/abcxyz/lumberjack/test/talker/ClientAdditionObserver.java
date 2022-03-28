@@ -18,13 +18,12 @@ package abcxyz.lumberjack.test.talker;
 
 import com.abcxyz.lumberjack.test.talker.AdditionResponse;
 import io.grpc.stub.StreamObserver;
-import java.util.logging.Logger;
-import lombok.extern.java.Log;
+import lombok.extern.slf4j.Slf4j;
 
 /**
  * Client-side handler for client streaming.
  */
-@Log
+@Slf4j
 public class ClientAdditionObserver implements StreamObserver<AdditionResponse> {
 
   @Override
