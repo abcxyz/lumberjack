@@ -17,6 +17,7 @@ package cloudlogging
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"cloud.google.com/go/compute/metadata"
 	"cloud.google.com/go/logging"
@@ -127,6 +128,7 @@ func (p *Processor) Process(ctx context.Context, logReq *alpb.AuditLogRequest) e
 		Payload:   logReq.Payload,
 		Labels:    logReq.Labels,
 		Operation: logReq.Operation,
+		Timestamp: time.UnixMilli(int64(logReq.Timestamp)),
 	}
 
 	bestEffort := p.bestEffort

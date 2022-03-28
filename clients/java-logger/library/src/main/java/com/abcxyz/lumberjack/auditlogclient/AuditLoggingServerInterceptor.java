@@ -44,6 +44,7 @@ import io.grpc.ServerCall.Listener;
 import io.grpc.ServerCallHandler;
 import io.grpc.ServerInterceptor;
 import io.grpc.StatusRuntimeException;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Deque;
 import java.util.HashMap;
@@ -197,6 +198,7 @@ public class AuditLoggingServerInterceptor<ReqT extends Message> implements Serv
     builder.setPayload(logBuilderCopy.build());
     builder.setType(selector.getLogType());
     builder.setOperation(logEntryOperation);
+    builder.setTimestamp(Instant.now().toEpochMilli());
 
     try {
       log.info("Audit logging...");
