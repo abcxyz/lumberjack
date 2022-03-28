@@ -80,5 +80,5 @@ message AuditLogRequest {
   // Standard object used for correlating logs across streams
   google.logging.v2.LogEntryOperation operation = 5;
 
-  Timestamp timestamp = 6;
+  uint64 timestamp = 6;
 }
