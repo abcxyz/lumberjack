@@ -60,11 +60,12 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.logging.Logger;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
 /** Server that manages startup/shutdown of a {@code Talker} server with TLS enabled. */
 @RequiredArgsConstructor
+@Slf4j
 public class TalkerService {
-  private static final Logger logger = Logger.getLogger(TalkerService.class.getName());
   private static final Map<Integer, Integer> fibonacciMemo = new HashMap<>();
 
   private Server server;
@@ -78,13 +79,13 @@ public class TalkerService {
             .intercept(interceptor)
             .build()
             .start();
-    logger.info("Server started, listening on " + port);
+    log.info("Server started, listening on " + port);
     Runtime.getRuntime()
         .addShutdownHook(
             new Thread() {
               @Override
               public void run() {
-                // Use stderr here since the logger may have been reset by its JVM shutdown hook.
+                // Use stderr here since the log may have been reset by its JVM shutdown hook.
                 System.err.println("*** shutting down gRPC server since JVM is shutting down");
                 TalkerService.this.stop();
                 System.err.println("*** server shut down");
@@ -125,7 +126,7 @@ public class TalkerService {
       AuditLog.Builder auditLogBuilder = AuditLogs.getBuilderFromContext();
       auditLogBuilder.setResourceName(req.getTarget());
 
-      logger.info("replying");
+      log.info("replying");
       responseObserver.onNext(reply);
       responseObserver.onCompleted();
     }
@@ -138,7 +139,7 @@ public class TalkerService {
       AuditLog.Builder auditLogBuilder = AuditLogs.getBuilderFromContext();
       auditLogBuilder.setResourceName(req.getTarget());
 
-      logger.info("replying");
+      log.info("replying");
       responseObserver.onNext(reply);
       responseObserver.onCompleted();
     }
