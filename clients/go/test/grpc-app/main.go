@@ -20,6 +20,8 @@ import (
 	"io"
 	"log"
 	"net"
+	"os"
+	"os/signal"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -36,28 +38,48 @@ var (
 )
 
 func main() {
+	if err := realMain(); err != nil {
+		log.Fatal(err)
+	}
+}
+
+func realMain() (outErr error) {
 	flag.Parse()
 	lis, err := net.Listen("tcp", fmt.Sprintf(":%d", *port))
 	if err != nil {
-		log.Fatalf("failed to listen: %v", err)
+		return fmt.Errorf("failed to listen: %w", err)
 	}
 	interceptor, err := audit.NewInterceptor(auditopt.InterceptorFromConfigFile(auditopt.DefaultConfigFilePath))
 	defer func() {
 		if err := interceptor.Stop(); err != nil {
-			log.Fatalf("failed to stop interceptor: %v", err)
+			outErr = fmt.Errorf("failed to stop interceptor: %w", err)
 		}
 	}()
 	if err != nil {
-		log.Fatalf("failed to setup audit interceptor: %v", err)
+		return fmt.Errorf("failed to setup audit interceptor: %w", err)
 	}
 	s := grpc.NewServer(grpc.UnaryInterceptor(interceptor.UnaryInterceptor), grpc.StreamInterceptor(interceptor.StreamInterceptor))
 	talkerpb.RegisterTalkerServer(s, &server{})
 	// Register the reflection service makes it easier for some clients.
 	reflection.Register(s)
-	log.Printf("server listening at %v", lis.Addr())
+
+	// Gracefully stop the server on ctrl-c.
+	intrCh := make(chan os.Signal, 1)
+	signal.Notify(intrCh, os.Interrupt)
+	go func() {
+		<-intrCh
+		log.Println("gracefully stopping...")
+		s.GracefulStop()
+	}()
+
+	log.Printf("server listening at %v\n", lis.Addr())
 	if err := s.Serve(lis); err != nil {
-		log.Fatalf("failed to serve: %v", err)
+		return fmt.Errorf("failed to serve: %w", err)
 	}
+
+	log.Println("server stopped.")
+
+	return nil
 }
 
 type server struct {
