@@ -47,7 +47,7 @@ func realMain() (outErr error) {
 	flag.Parse()
 	lis, err := net.Listen("tcp", fmt.Sprintf(":%d", *port))
 	if err != nil {
-		return fmt.Errorf("failed to listen: %v", err)
+		return fmt.Errorf("failed to listen: %w", err)
 	}
 	interceptor, err := audit.NewInterceptor(auditopt.InterceptorFromConfigFile(auditopt.DefaultConfigFilePath))
 	defer func() {
