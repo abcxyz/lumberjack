@@ -52,11 +52,11 @@ func realMain() (outErr error) {
 	interceptor, err := audit.NewInterceptor(auditopt.InterceptorFromConfigFile(auditopt.DefaultConfigFilePath))
 	defer func() {
 		if err := interceptor.Stop(); err != nil {
-			outErr = fmt.Errorf("failed to stop interceptor: %v", err)
+			outErr = fmt.Errorf("failed to stop interceptor: %w", err)
 		}
 	}()
 	if err != nil {
-		return fmt.Errorf("failed to setup audit interceptor: %v", err)
+		return fmt.Errorf("failed to setup audit interceptor: %w", err)
 	}
 	s := grpc.NewServer(grpc.UnaryInterceptor(interceptor.UnaryInterceptor), grpc.StreamInterceptor(interceptor.StreamInterceptor))
 	talkerpb.RegisterTalkerServer(s, &server{})
@@ -74,7 +74,7 @@ func realMain() (outErr error) {
 
 	log.Printf("server listening at %v\n", lis.Addr())
 	if err := s.Serve(lis); err != nil {
-		return fmt.Errorf("failed to serve: %v", err)
+		return fmt.Errorf("failed to serve: %w", err)
 	}
 
 	log.Println("server stopped.")
