@@ -68,16 +68,16 @@ func realMain() (outErr error) {
 	signal.Notify(intrCh, os.Interrupt)
 	go func() {
 		<-intrCh
-		log.Print("gracefully stopping...")
+		log.Println("gracefully stopping...")
 		s.GracefulStop()
 	}()
 
-	log.Printf("server listening at %v", lis.Addr())
+	log.Printf("server listening at %v\n", lis.Addr())
 	if err := s.Serve(lis); err != nil {
 		return fmt.Errorf("failed to serve: %v", err)
 	}
 
-	log.Print("server stopped.")
+	log.Println("server stopped.")
 
 	return nil
 }
