@@ -18,17 +18,17 @@ package abcxyz.lumberjack.test.talker;
 
 import com.abcxyz.lumberjack.test.talker.FailOnFourResponse;
 import io.grpc.stub.StreamObserver;
-import lombok.extern.java.Log;
+import lombok.extern.slf4j.Slf4j;
 
 /**
  * Client-side handler for client streaming.
  */
-@Log
+@Slf4j
 public class ClientFailOnFourObserver implements StreamObserver<FailOnFourResponse> {
 
   @Override
   public void onNext(FailOnFourResponse response) {
-    log.info("Message was " + response.getMessage());
+    log.info("Message was {}", response.getMessage());
   }
 
   @Override

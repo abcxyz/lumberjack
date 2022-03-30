@@ -23,12 +23,12 @@ import com.google.cloud.audit.AuditLog;
 import io.grpc.Status;
 import io.grpc.StatusRuntimeException;
 import io.grpc.stub.StreamObserver;
-import lombok.extern.java.Log;
+import lombok.extern.slf4j.Slf4j;
 
 /**
  * Server-side handler for client streaming. This one fails if it ever receives the value "4"
  */
-@Log
+@Slf4j
 public class ServerFailOnFourObserver implements StreamObserver<FailOnFourRequest> {
   private final StreamObserver<FailOnFourResponse> responseStream;
 
@@ -43,7 +43,7 @@ public class ServerFailOnFourObserver implements StreamObserver<FailOnFourReques
     if (request.getValue() == 4) {
       onError(new StatusRuntimeException(Status.INVALID_ARGUMENT));
     } else {
-      log.info("Got " + request.getValue() + " which isn't 4.");
+      log.info("Got {} which isn't 4.", request.getValue());
     }
   }
 
