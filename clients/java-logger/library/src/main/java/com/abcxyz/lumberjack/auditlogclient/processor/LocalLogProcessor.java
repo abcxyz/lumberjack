@@ -22,10 +22,10 @@ import com.google.inject.Inject;
 import com.google.protobuf.InvalidProtocolBufferException;
 import com.google.protobuf.util.JsonFormat;
 import lombok.AllArgsConstructor;
-import lombok.extern.java.Log;
+import lombok.extern.slf4j.Slf4j;
 
 /** Logs the {@link AuditLogRequest} using the standard logger. */
-@Log
+@Slf4j
 @AllArgsConstructor(onConstructor = @__({@Inject}))
 public class LocalLogProcessor implements LogBackend {
 
@@ -33,7 +33,7 @@ public class LocalLogProcessor implements LogBackend {
   public AuditLogRequest process(AuditLogRequest auditLogRequest) {
     try {
       String jsonString = JsonFormat.printer().omittingInsignificantWhitespace().print(auditLogRequest);
-      log.info("Lumberjack log: " + jsonString);
+      log.info("Lumberjack log: {}", jsonString);
     } catch (InvalidProtocolBufferException e) {
       throw new RuntimeException(e);
     }

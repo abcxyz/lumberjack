@@ -29,12 +29,12 @@ import java.util.List;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
-import lombok.extern.java.Log;
+import lombok.extern.slf4j.Slf4j;
 
 /** Logging client for lumberjack audit logging */
 @Getter(AccessLevel.PROTECTED)
 @AllArgsConstructor
-@Log
+@Slf4j
 public class LoggingClient {
   private final List<LogValidator> validators;
   private final List<LogMutator> mutators;
@@ -74,8 +74,8 @@ public class LoggingClient {
       if (ConfigUtils.shouldFailClose(logMode)) {
         throw new LogProcessingException("Fail close enabled and ran into exception while audit logging.", e);
       } else {
-        log.warning("Exception occurred while attempting to audit log, "
-            + "continuing without audit logging: " + e.getMessage());
+        log.error("Exception occurred while attempting to audit log, "
+            + "continuing without audit logging.", e);
       }
     }
   }
