@@ -108,7 +108,7 @@ public class CloudLoggingProcessorTests {
   }
 
   @Test
-  void setsSynchronicityToAsyncWhenLogModeIsNotFailClose() throws LogProcessingException {
+  void keepsSynchronicityAtAsyncWhenLogModeIsNotFailClose() throws LogProcessingException {
     cloudLoggingProcessor.process(AuditLogRequest.getDefaultInstance());
     // By default, should be async.
     verify(logging, never()).setWriteSynchronicity(Synchronicity.SYNC);
