@@ -22,6 +22,7 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.verify;
 
+import com.abcxyz.lumberjack.auditlogclient.config.AuditLoggingConfiguration;
 import com.abcxyz.lumberjack.v1alpha1.AuditLogRequest;
 import com.abcxyz.lumberjack.v1alpha1.AuditLogRequest.LogType;
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -53,6 +54,7 @@ public class CloudLoggingProcessorTests {
 
   @Spy private ObjectMapper mapper;
   @Mock private Logging logging;
+  @Mock private AuditLoggingConfiguration auditLoggingConfiguration;
   @Captor private ArgumentCaptor<Set<LogEntry>> logEntryCaptor;
   @InjectMocks private CloudLoggingProcessor cloudLoggingProcessor;
 
@@ -60,6 +62,7 @@ public class CloudLoggingProcessorTests {
   void shouldInvokeCloudLoggerWithLumberjackLogName() throws LogProcessingException {
     cloudLoggingProcessor.process(AuditLogRequest.getDefaultInstance());
     verify(logging).write(logEntryCaptor.capture());
+    verify(logging).flush();
     LogEntry logEntry =
         logEntryCaptor.getValue().stream()
             .findFirst()
@@ -75,6 +78,7 @@ public class CloudLoggingProcessorTests {
             .setType(LogType.DATA_ACCESS)
             .build());
     verify(logging).write(logEntryCaptor.capture());
+    verify(logging).flush();
     LogEntry logEntry =
         logEntryCaptor.getValue().stream()
             .findFirst()
@@ -90,5 +94,6 @@ public class CloudLoggingProcessorTests {
     assertThrows(
         LogProcessingException.class,
         () -> cloudLoggingProcessor.process(AuditLogRequest.getDefaultInstance()));
+    verify(logging).flush();
   }
 }
