@@ -16,9 +16,7 @@
 
 package com.abcxyz.lumberjack.auditlogclient.processor;
 
-import com.abcxyz.lumberjack.auditlogclient.config.AuditLoggingConfiguration;
 import com.abcxyz.lumberjack.auditlogclient.processor.LogProcessor.LogBackend;
-import com.abcxyz.lumberjack.auditlogclient.utils.ConfigUtils;
 import com.abcxyz.lumberjack.v1alpha1.AuditLogRequest;
 import com.abcxyz.lumberjack.v1alpha1.AuditLogRequest.LogType;
 import com.abcxyz.lumberjack.v1alpha1.AuditLogRequestProto;
@@ -30,7 +28,6 @@ import com.google.cloud.logging.LogEntry;
 import com.google.cloud.logging.Logging;
 import com.google.cloud.logging.LoggingException;
 import com.google.cloud.logging.Payload;
-import com.google.cloud.logging.Synchronicity;
 import com.google.inject.Inject;
 import com.google.protobuf.InvalidProtocolBufferException;
 import com.google.protobuf.util.JsonFormat;
@@ -50,7 +47,6 @@ public class CloudLoggingProcessor implements LogBackend {
   private static final String MONITORED_RESOURCE_TYPE = "global";
   private final ObjectMapper mapper;
   private final Logging logging;
-  private final AuditLoggingConfiguration config;
 
   /**
    * Sends the {@link AuditLogRequest} to the google cloud logging
@@ -72,9 +68,6 @@ public class CloudLoggingProcessor implements LogBackend {
               .setLogName(getLogNameFromLogType(auditLogRequest.getType()))
               .setResource(MonitoredResource.newBuilder(MONITORED_RESOURCE_TYPE).build())
               .build();
-      if (ConfigUtils.shouldFailClose(config.getLogMode())) {
-        logging.setWriteSynchronicity(Synchronicity.SYNC);
-      }
       logging.write(Collections.singleton(entry));
       return auditLogRequest;
     } catch (InvalidProtocolBufferException

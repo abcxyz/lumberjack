@@ -20,13 +20,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.doThrow;
-import static org.mockito.Mockito.lenient;
-import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
 import com.abcxyz.lumberjack.auditlogclient.config.AuditLoggingConfiguration;
 import com.abcxyz.lumberjack.v1alpha1.AuditLogRequest;
-import com.abcxyz.lumberjack.v1alpha1.AuditLogRequest.LogMode;
 import com.abcxyz.lumberjack.v1alpha1.AuditLogRequest.LogType;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -34,11 +31,9 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.cloud.logging.LogEntry;
 import com.google.cloud.logging.Logging;
 import com.google.cloud.logging.Payload;
-import com.google.cloud.logging.Synchronicity;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.Set;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -62,11 +57,6 @@ public class CloudLoggingProcessorTests {
   @Mock private AuditLoggingConfiguration auditLoggingConfiguration;
   @Captor private ArgumentCaptor<Set<LogEntry>> logEntryCaptor;
   @InjectMocks private CloudLoggingProcessor cloudLoggingProcessor;
-
-  @BeforeEach
-  void setup() {
-    lenient().doReturn(LogMode.LOG_MODE_UNSPECIFIED).when(auditLoggingConfiguration).getLogMode();
-  }
 
   @Test
   void shouldInvokeCloudLoggerWithLumberjackLogName() throws LogProcessingException {
@@ -104,23 +94,6 @@ public class CloudLoggingProcessorTests {
     assertThrows(
         LogProcessingException.class,
         () -> cloudLoggingProcessor.process(AuditLogRequest.getDefaultInstance()));
-    verify(logging).flush();
-  }
-
-  @Test
-  void keepsSynchronicityAtAsyncWhenLogModeIsNotFailClose() throws LogProcessingException {
-    cloudLoggingProcessor.process(AuditLogRequest.getDefaultInstance());
-    // By default, should be async.
-    verify(logging, never()).setWriteSynchronicity(Synchronicity.SYNC);
-    verify(logging).flush();
-  }
-
-  @Test
-  void setsSynchronicityToSyncWhenLogModeIsFailClose() throws LogProcessingException {
-    lenient().doReturn(LogMode.FAIL_CLOSE).when(auditLoggingConfiguration).getLogMode();
-    cloudLoggingProcessor.process(AuditLogRequest.getDefaultInstance());
-    // Fail close should make the calls sync.
-    verify(logging).setWriteSynchronicity(Synchronicity.SYNC);
     verify(logging).flush();
   }
 }

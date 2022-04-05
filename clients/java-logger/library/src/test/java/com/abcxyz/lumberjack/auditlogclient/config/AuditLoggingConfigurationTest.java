@@ -2,6 +2,7 @@ package com.abcxyz.lumberjack.auditlogclient.config;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.abcxyz.lumberjack.auditlogclient.modules.AuditLoggingConfigurationModule;
 import com.abcxyz.lumberjack.auditlogclient.modules.AuditLoggingModule;
 import com.abcxyz.lumberjack.v1alpha1.AuditLogRequest.LogMode;
 import java.io.IOException;
@@ -12,8 +13,9 @@ import org.junit.jupiter.api.Test;
 public class AuditLoggingConfigurationTest {
   @Test
   public void testMinimalConfiguration() throws IOException {
+    AuditLoggingConfigurationModule configModule = new AuditLoggingConfigurationModule();
+    AuditLoggingConfiguration config = configModule.auditLoggingConfiguration("minimal.yml");
     AuditLoggingModule module = new AuditLoggingModule();
-    AuditLoggingConfiguration config = module.auditLoggingConfiguration("minimal.yml");
 
     BackendContext expectedBackendContext = new BackendContext();
     LocalConfiguration local = new LocalConfiguration();
@@ -31,8 +33,10 @@ public class AuditLoggingConfigurationTest {
 
   @Test
   public void testMinimalConfiguration_Labels() throws IOException {
+    AuditLoggingConfigurationModule configModule = new AuditLoggingConfigurationModule();
     AuditLoggingModule module = new AuditLoggingModule();
-    AuditLoggingConfiguration config = module.auditLoggingConfiguration("minimal_with_labels.yml");
+    AuditLoggingConfiguration config =
+        configModule.auditLoggingConfiguration("minimal_with_labels.yml");
 
     BackendContext expectedBackendContext = new BackendContext();
     LocalConfiguration local = new LocalConfiguration();
@@ -52,5 +56,4 @@ public class AuditLoggingConfigurationTest {
     expectedLabels.put("mylabel2", "myvalue2");
     assertThat(config.getLabels()).isEqualTo(expectedLabels);
   }
-
 }
