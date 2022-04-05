@@ -38,6 +38,7 @@ class CloudLoggingModuleTest {
     @Provides
     public AuditLoggingConfiguration auditLoggingConfiguration() {
       AuditLoggingConfiguration config = new AuditLoggingConfiguration();
+      config.getBackend().getCloudlogging().setProject("foo");
       config.setLogMode(logMode);
       return config;
     }
