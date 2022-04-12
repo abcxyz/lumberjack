@@ -327,4 +327,22 @@ public class LoggingClientTests {
     verify(cloudLoggingProcessor, times(0)).process(logRequest);
     verify(remoteProcessor, times(0)).process(logRequest);
   }
+
+  @Test
+  void onlyUsedProcessorIsInjected() {
+    LoggingClient loggingClient = loggingClientBuilder.withCloudLoggingProcessor().build();
+    verify(injector).getInstance(CloudLoggingProcessor.class);
+    verify(injector, times(0)).getInstance(RemoteProcessor.class);
+    assertThat(loggingClient.getBackends().size()).isEqualTo(1);
+    assertThat(loggingClient.getBackends().get(0).equals(cloudLoggingProcessor));
+  }
+
+  @Test
+  void multipleCallsOnlyInjectsOneUniqueProcessor() {
+    LoggingClient loggingClient =
+        loggingClientBuilder.withCloudLoggingProcessor().withCloudLoggingProcessor().build();
+    verify(injector, times(1)).getInstance(CloudLoggingProcessor.class);
+    assertThat(loggingClient.getBackends().size()).isEqualTo(1);
+    assertThat(loggingClient.getBackends().get(0).equals(cloudLoggingProcessor));
+  }
 }
