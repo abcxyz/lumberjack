@@ -36,6 +36,7 @@ import com.abcxyz.lumberjack.auditlogclient.processor.RuntimeInfoProcessor;
 import com.abcxyz.lumberjack.auditlogclient.processor.ValidationProcessor;
 import com.abcxyz.lumberjack.v1alpha1.AuditLogRequest;
 import com.abcxyz.lumberjack.v1alpha1.AuditLogRequest.LogMode;
+import com.google.inject.Injector;
 import java.util.Collections;
 import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
@@ -48,7 +49,6 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 @ExtendWith(MockitoExtension.class)
 public class LoggingClientTests {
-
   @Mock ValidationProcessor validationProcessor;
   @Mock CloudLoggingProcessor cloudLoggingProcessor;
   @Mock RemoteProcessor remoteProcessor;
@@ -58,6 +58,7 @@ public class LoggingClientTests {
   @Mock AuditLoggingConfiguration auditLoggingConfiguration;
   @Mock LabelProcessor labelProcessor;
   @Mock BackendContext backendContext;
+  @Mock Injector injector;
 
   @InjectMocks LoggingClientBuilder loggingClientBuilder;
 
@@ -70,6 +71,19 @@ public class LoggingClientTests {
     lenient().doReturn(false).when(backendContext).cloudLoggingEnabled();
     lenient().doReturn(true).when(backendContext).remoteEnabled();
     lenient().doReturn(backendContext).when(auditLoggingConfiguration).getBackend();
+
+    lenient().doReturn(validationProcessor).when(injector).getInstance(ValidationProcessor.class);
+    lenient()
+        .doReturn(cloudLoggingProcessor)
+        .when(injector)
+        .getInstance(CloudLoggingProcessor.class);
+    lenient().doReturn(remoteProcessor).when(injector).getInstance(RemoteProcessor.class);
+    lenient().doReturn(localLogProcessor).when(injector).getInstance(LocalLogProcessor.class);
+    lenient().doReturn(filteringProcessor).when(injector).getInstance(FilteringProcessor.class);
+    lenient().doReturn(runtimeInfoProcessor).when(injector).getInstance(RuntimeInfoProcessor.class);
+    lenient().doReturn(labelProcessor).when(injector).getInstance(LabelProcessor.class);
+
+    injector.injectMembers(this);
   }
 
   @Test
@@ -160,9 +174,7 @@ public class LoggingClientTests {
 
   @Test
   void logMethodCallsValidateProcessorTest() throws LogProcessingException {
-    LoggingClient loggingClient =
-        new LoggingClient(
-            List.of(validationProcessor), Collections.emptyList(), Collections.emptyList(), auditLoggingConfiguration);
+    LoggingClient loggingClient = loggingClientBuilder.withValidationProcessor().build();
     AuditLogRequest logRequest = AuditLogRequest.newBuilder().getDefaultInstanceForType();
     loggingClient.log(logRequest);
     verify(validationProcessor).process(logRequest);
@@ -170,9 +182,7 @@ public class LoggingClientTests {
 
   @Test
   void logMethodCallsRemoteServiceLoggingProcessorTest() throws LogProcessingException {
-    LoggingClient loggingClient =
-        new LoggingClient(
-            Collections.emptyList(), Collections.emptyList(), List.of(remoteProcessor), auditLoggingConfiguration);
+    LoggingClient loggingClient = loggingClientBuilder.withRemoteProcessor().build();
     AuditLogRequest logRequest = AuditLogRequest.newBuilder().getDefaultInstanceForType();
     loggingClient.log(logRequest);
     verify(remoteProcessor).process(logRequest);
@@ -180,9 +190,7 @@ public class LoggingClientTests {
 
   @Test
   void logMethodCallsFilteringProcessorTest() throws LogProcessingException {
-    LoggingClient loggingClient =
-        new LoggingClient(
-            Collections.emptyList(), List.of(filteringProcessor), Collections.emptyList(), auditLoggingConfiguration);
+    LoggingClient loggingClient = loggingClientBuilder.withFilteringProcessor().build();
     AuditLogRequest logRequest = AuditLogRequest.newBuilder().getDefaultInstanceForType();
     loggingClient.log(logRequest);
     verify(filteringProcessor).process(logRequest);
@@ -190,9 +198,7 @@ public class LoggingClientTests {
 
   @Test
   void logMethodCallsRuntimeInfoProcessorTest() throws LogProcessingException {
-    LoggingClient loggingClient =
-        new LoggingClient(
-            Collections.emptyList(), List.of(runtimeInfoProcessor), Collections.emptyList(), auditLoggingConfiguration);
+    LoggingClient loggingClient = loggingClientBuilder.withRuntimeInfoProcessor().build();
     AuditLogRequest logRequest = AuditLogRequest.newBuilder().getDefaultInstanceForType();
     loggingClient.log(logRequest);
     verify(runtimeInfoProcessor).process(logRequest);
@@ -200,9 +206,7 @@ public class LoggingClientTests {
 
   @Test
   void logMethodCallsCloudLoggingProcessorTest() throws LogProcessingException {
-    LoggingClient loggingClient =
-        new LoggingClient(
-            Collections.emptyList(), Collections.emptyList(), List.of(cloudLoggingProcessor), auditLoggingConfiguration);
+    LoggingClient loggingClient = loggingClientBuilder.withCloudLoggingProcessor().build();
     AuditLogRequest logRequest = AuditLogRequest.newBuilder().getDefaultInstanceForType();
     loggingClient.log(logRequest);
     verify(cloudLoggingProcessor).process(logRequest);
@@ -211,10 +215,11 @@ public class LoggingClientTests {
   @Test
   void logCallsMultipleProcessorsWhenClientHasMultiple() throws LogProcessingException {
     LoggingClient loggingClient =
-        new LoggingClient(
-            List.of(validationProcessor),
-            Collections.emptyList(),
-            List.of(cloudLoggingProcessor, remoteProcessor), auditLoggingConfiguration);
+        loggingClientBuilder
+            .withValidationProcessor()
+            .withCloudLoggingProcessor()
+            .withRemoteProcessor()
+            .build();
     AuditLogRequest logRequest = AuditLogRequest.newBuilder().getDefaultInstanceForType();
     doReturn(logRequest).when(validationProcessor).process(logRequest);
     doReturn(logRequest).when(cloudLoggingProcessor).process(logRequest);
@@ -228,11 +233,13 @@ public class LoggingClientTests {
   void logCallsMultipleProcessorsInCorrectOrderWhenClientHasMultiple()
       throws LogProcessingException {
     LoggingClient loggingClient =
-        new LoggingClient(
-            List.of(validationProcessor),
-            List.of(filteringProcessor, runtimeInfoProcessor),
-            List.of(cloudLoggingProcessor, remoteProcessor),
-            auditLoggingConfiguration);
+        loggingClientBuilder
+            .withValidationProcessor()
+            .withFilteringProcessor()
+            .withRuntimeInfoProcessor()
+            .withCloudLoggingProcessor()
+            .withRemoteProcessor()
+            .build();
     AuditLogRequest logRequest = AuditLogRequest.newBuilder().getDefaultInstanceForType();
     doReturn(logRequest).when(validationProcessor).process(logRequest);
     doReturn(logRequest).when(filteringProcessor).process(logRequest);
@@ -251,14 +258,15 @@ public class LoggingClientTests {
     // Set config to fail open
     doReturn(LogMode.BEST_EFFORT).when(auditLoggingConfiguration).getLogMode();
     LoggingClient loggingClient =
-        new LoggingClient(
-            List.of(validationProcessor),
-            List.of(filteringProcessor, runtimeInfoProcessor),
-            List.of(cloudLoggingProcessor, remoteProcessor),
-            auditLoggingConfiguration);
+        loggingClientBuilder
+            .withValidationProcessor()
+            .withFilteringProcessor()
+            .withRuntimeInfoProcessor()
+            .withCloudLoggingProcessor()
+            .withRemoteProcessor()
+            .build();
     AuditLogRequest logRequest = AuditLogRequest.newBuilder().getDefaultInstanceForType();
-    when(validationProcessor.process(any()))
-        .thenThrow(new IllegalArgumentException());
+    when(validationProcessor.process(any())).thenThrow(new IllegalArgumentException());
 
     // No exception is thrown
     Assertions.assertDoesNotThrow(() -> loggingClient.log(logRequest));
@@ -275,14 +283,15 @@ public class LoggingClientTests {
     // Set config to fail close
     doReturn(LogMode.FAIL_CLOSE).when(auditLoggingConfiguration).getLogMode();
     LoggingClient loggingClient =
-        new LoggingClient(
-            List.of(validationProcessor),
-            List.of(filteringProcessor, runtimeInfoProcessor),
-            List.of(cloudLoggingProcessor, remoteProcessor),
-            auditLoggingConfiguration);
+        loggingClientBuilder
+            .withValidationProcessor()
+            .withFilteringProcessor()
+            .withRuntimeInfoProcessor()
+            .withCloudLoggingProcessor()
+            .withRemoteProcessor()
+            .build();
     AuditLogRequest logRequest = AuditLogRequest.newBuilder().getDefaultInstanceForType();
-    when(validationProcessor.process(logRequest))
-        .thenThrow(new IllegalArgumentException());
+    when(validationProcessor.process(logRequest)).thenThrow(new IllegalArgumentException());
 
     // Exception is thrown
     Assertions.assertThrows(LogProcessingException.class, () -> loggingClient.log(logRequest));
@@ -299,14 +308,15 @@ public class LoggingClientTests {
     // Set config to fail open. We use lenient() here, as we don't expect this value to be used.
     lenient().doReturn(LogMode.BEST_EFFORT).when(auditLoggingConfiguration).getLogMode();
     LoggingClient loggingClient =
-        new LoggingClient(
-            List.of(validationProcessor),
-            List.of(filteringProcessor, runtimeInfoProcessor),
-            List.of(cloudLoggingProcessor, remoteProcessor),
-            auditLoggingConfiguration);
+        loggingClientBuilder
+            .withValidationProcessor()
+            .withFilteringProcessor()
+            .withRuntimeInfoProcessor()
+            .withCloudLoggingProcessor()
+            .withRemoteProcessor()
+            .build();
     AuditLogRequest logRequest = AuditLogRequest.newBuilder().setMode(LogMode.FAIL_CLOSE).build();
-    when(validationProcessor.process(logRequest))
-        .thenThrow(new IllegalArgumentException());
+    when(validationProcessor.process(logRequest)).thenThrow(new IllegalArgumentException());
 
     // Exception is thrown
     Assertions.assertThrows(LogProcessingException.class, () -> loggingClient.log(logRequest));
