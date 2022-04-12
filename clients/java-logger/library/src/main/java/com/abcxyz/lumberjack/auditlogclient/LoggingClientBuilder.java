@@ -29,26 +29,48 @@ import com.abcxyz.lumberjack.auditlogclient.processor.RemoteProcessor;
 import com.abcxyz.lumberjack.auditlogclient.processor.RuntimeInfoProcessor;
 import com.abcxyz.lumberjack.auditlogclient.processor.ValidationProcessor;
 import com.google.inject.Inject;
+import com.google.inject.Injector;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
+import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 
 /** Builder for {@link LoggingClient}. */
 @RequiredArgsConstructor(onConstructor = @__({@Inject}))
 public class LoggingClientBuilder {
   private final AuditLoggingConfiguration auditLoggingConfiguration;
+  private final Injector injector;
 
-  private final CloudLoggingProcessor cloudLoggingProcessor;
-  private final FilteringProcessor filteringProcessor;
-  private final RemoteProcessor remoteProcessor;
-  private final RuntimeInfoProcessor runtimeInfoProcessor;
-  private final ValidationProcessor validationProcessor;
-  private final LabelProcessor labelProcessor;
-  private final LocalLogProcessor localLogProcessor;
+  @Getter(lazy = true)
+  private final CloudLoggingProcessor cloudLoggingProcessor =
+      getProcessor(CloudLoggingProcessor.class);
+
+  @Getter(lazy = true)
+  private final FilteringProcessor filteringProcessor = getProcessor(FilteringProcessor.class);
+
+  @Getter(lazy = true)
+  private final RemoteProcessor remoteProcessor = getProcessor(RemoteProcessor.class);
+
+  @Getter(lazy = true)
+  private final RuntimeInfoProcessor runtimeInfoProcessor =
+      getProcessor(RuntimeInfoProcessor.class);
+
+  @Getter(lazy = true)
+  private final ValidationProcessor validationProcessor = getProcessor(ValidationProcessor.class);
+
+  @Getter(lazy = true)
+  private final LabelProcessor labelProcessor = getProcessor(LabelProcessor.class);
+
+  @Getter(lazy = true)
+  private final LocalLogProcessor localLogProcessor = getProcessor(LocalLogProcessor.class);
 
   private final LinkedHashSet<LogValidator> validators = new LinkedHashSet<>();
   private final LinkedHashSet<LogMutator> mutators = new LinkedHashSet<>();
   private final LinkedHashSet<LogBackend> backends = new LinkedHashSet<>();
+
+  private <T> T getProcessor(Class<T> clazz) {
+    return injector.getInstance(clazz);
+  }
 
   /**
    * Provides a {@link LoggingClientBuilder} with default {@link LogProcessor}s; {@link
@@ -64,25 +86,25 @@ public class LoggingClientBuilder {
 
   /** Provides a {@link LoggingClientBuilder} with {@link CloudLoggingProcessor}. */
   public LoggingClientBuilder withCloudLoggingProcessor() {
-    backends.add(cloudLoggingProcessor);
+    backends.add(getCloudLoggingProcessor());
     return this;
   }
 
   /** Provides a {@link LoggingClientBuilder} with {@link FilteringProcessor}. */
   public LoggingClientBuilder withFilteringProcessor() {
-    mutators.add(filteringProcessor);
+    mutators.add(getFilteringProcessor());
     return this;
   }
 
   /** Provides a {@link LoggingClientBuilder} with {@link RuntimeInfoProcessor}. */
   public LoggingClientBuilder withRuntimeInfoProcessor() {
-    mutators.add(runtimeInfoProcessor);
+    mutators.add(getRuntimeInfoProcessor());
     return this;
   }
 
   /** Provides a {@link LoggingClientBuilder} with {@link ValidationProcessor}. */
   public LoggingClientBuilder withValidationProcessor() {
-    validators.add(validationProcessor);
+    validators.add(getValidationProcessor());
     return this;
   }
 
@@ -102,25 +124,28 @@ public class LoggingClientBuilder {
 
   /** Provides a {@link LoggingClientBuilder} with {@link RemoteProcessor}. */
   public LoggingClientBuilder withRemoteProcessor() {
-    backends.add(remoteProcessor);
+    backends.add(getRemoteProcessor());
     return this;
   }
 
   /** Provides a {@link LoggingClientBuilder} with {@link LocalLogProcessor}. */
   public LoggingClientBuilder withLocalLogProcessor() {
-    backends.add(localLogProcessor);
+    backends.add(getLocalLogProcessor());
     return this;
   }
 
   /** Provides a {@link LoggingClientBuilder} with {@link LabelProcessor}. */
   public LoggingClientBuilder withLabelProcessor() {
-    mutators.add(labelProcessor);
+    mutators.add(getLabelProcessor());
     return this;
   }
 
   /** Constructs and returns the {@link LoggingClient}. */
   public LoggingClient build() {
     return new LoggingClient(
-        new ArrayList<>(validators), new ArrayList<>(mutators), new ArrayList<>(backends), auditLoggingConfiguration);
+        new ArrayList<>(validators),
+        new ArrayList<>(mutators),
+        new ArrayList<>(backends),
+        auditLoggingConfiguration);
   }
 }
