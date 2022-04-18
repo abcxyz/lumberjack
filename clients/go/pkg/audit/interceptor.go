@@ -122,7 +122,7 @@ func (i *Interceptor) UnaryInterceptor(ctx context.Context, req interface{}, inf
 			MethodName:  info.FullMethod,
 		},
 		Mode:      i.logMode,
-		Timestamp: uint64(i.time.Now().UTC().UnixMilli()),
+		Timestamp: uint64(i.time.Now().UnixMilli()),
 	}
 
 	// Set log type.
