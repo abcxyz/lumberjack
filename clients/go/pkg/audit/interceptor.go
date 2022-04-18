@@ -209,7 +209,7 @@ func (i *Interceptor) StreamInterceptor(srv interface{}, ss grpc.ServerStream, i
 			Producer: info.FullMethod,
 			Id:       uuid.New().String(),
 		},
-		Timestamp: uint64(i.time.Now().UTC().UnixMilli()),
+		Timestamp: uint64(i.time.Now().UnixMilli()),
 	}
 
 	// Set log type.
