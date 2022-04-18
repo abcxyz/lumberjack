@@ -35,6 +35,7 @@ import (
 	"google.golang.org/protobuf/types/known/structpb"
 
 	alpb "github.com/abcxyz/lumberjack/clients/go/apis/v1alpha1"
+	"github.com/abcxyz/lumberjack/clients/go/pkg/timeutil"
 	calpb "google.golang.org/genproto/googleapis/cloud/audit"
 )
 
@@ -85,11 +86,12 @@ type Interceptor struct {
 	sc      security.GRPCContext
 	rules   []*alpb.AuditRule
 	logMode alpb.AuditLogRequest_LogMode
+	time    timeutil.TimeInterface
 }
 
 // NewInterceptor creates a new interceptor with the given options.
 func NewInterceptor(options ...InterceptorOption) (*Interceptor, error) {
-	it := &Interceptor{}
+	it := &Interceptor{time: timeutil.NewRealTime()}
 	for _, o := range options {
 		if err := o(it); err != nil {
 			return nil, fmt.Errorf("failed to apply interceptor option: %w", err)
@@ -119,7 +121,8 @@ func (i *Interceptor) UnaryInterceptor(ctx context.Context, req interface{}, inf
 			ServiceName: serviceName,
 			MethodName:  info.FullMethod,
 		},
-		Mode: i.logMode,
+		Mode:      i.logMode,
+		Timestamp: uint64(i.time.Now().UTC().UnixMilli()),
 	}
 
 	// Set log type.
@@ -206,6 +209,7 @@ func (i *Interceptor) StreamInterceptor(srv interface{}, ss grpc.ServerStream, i
 			Producer: info.FullMethod,
 			Id:       uuid.New().String(),
 		},
+		Timestamp: uint64(i.time.Now().UTC().UnixMilli()),
 	}
 
 	// Set log type.
