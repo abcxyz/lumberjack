@@ -18,6 +18,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net"
+	"testing"
+
 	"github.com/abcxyz/lumberjack/clients/go/pkg/errutil"
 	"github.com/abcxyz/lumberjack/clients/go/pkg/remote"
 	"github.com/abcxyz/lumberjack/clients/go/pkg/security"
@@ -31,8 +34,6 @@ import (
 	grpcstatus "google.golang.org/grpc/status"
 	"google.golang.org/protobuf/testing/protocmp"
 	"google.golang.org/protobuf/types/known/structpb"
-	"net"
-	"testing"
 
 	alpb "github.com/abcxyz/lumberjack/clients/go/apis/v1alpha1"
 	calpb "google.golang.org/genproto/googleapis/cloud/audit"
