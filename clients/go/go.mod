@@ -47,7 +47,11 @@ require (
 	gopkg.in/check.v1 v1.0.0-20190902080502-41f04d3bba15 // indirect
 )
 
-require go.uber.org/atomic v1.9.0 // indirect
+require (
+	go.uber.org/atomic v1.9.0 // indirect
+	golang.org/x/mod v0.6.0-dev.0.20220106191415-9b9b3d81d5e3 // indirect
+	golang.org/x/tools v0.1.10 // indirect
+)
 
 require (
 	cloud.google.com/go/trace v1.0.0 // indirect
