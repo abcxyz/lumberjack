@@ -55,7 +55,7 @@ public class AuditLoggingModule extends AbstractModule {
 
   @Provides
   Clock clock() {
-    return Clock.systemDefaultZone();
+    return Clock.systemUTC();
   }
 
   @Override

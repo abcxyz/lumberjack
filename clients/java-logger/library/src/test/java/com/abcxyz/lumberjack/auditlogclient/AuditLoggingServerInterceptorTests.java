@@ -149,7 +149,7 @@ public class AuditLoggingServerInterceptorTests {
   public void logsError() throws LogProcessingException {
     Selector selector = new Selector("*", null, null);
     AuditLog.Builder builder = AuditLog.newBuilder();
-    doReturn(Clock.systemDefaultZone().instant()).when(clock).instant();
+    doReturn(Clock.systemUTC().instant()).when(clock).instant();
     interceptor.logError(
         selector,
         null,
@@ -173,7 +173,7 @@ public class AuditLoggingServerInterceptorTests {
   public void logsError_GRPC_Code() throws LogProcessingException {
     Selector selector = new Selector("*", null, null);
     AuditLog.Builder builder = AuditLog.newBuilder();
-    doReturn(Clock.systemDefaultZone().instant()).when(clock).instant();
+    doReturn(Clock.systemUTC().instant()).when(clock).instant();
     interceptor.logError(
         selector,
         null,
