@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"regexp"
 	"sync"
+	"time"
 
 	"github.com/abcxyz/lumberjack/clients/go/pkg/security"
 	"github.com/abcxyz/lumberjack/clients/go/pkg/zlogger"
@@ -33,6 +34,7 @@ import (
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/structpb"
+	"google.golang.org/protobuf/types/known/timestamppb"
 
 	alpb "github.com/abcxyz/lumberjack/clients/go/apis/v1alpha1"
 	calpb "google.golang.org/genproto/googleapis/cloud/audit"
@@ -119,7 +121,8 @@ func (i *Interceptor) UnaryInterceptor(ctx context.Context, req interface{}, inf
 			ServiceName: serviceName,
 			MethodName:  info.FullMethod,
 		},
-		Mode: i.logMode,
+		Mode:      i.logMode,
+		Timestamp: timestamppb.New(time.Now().UTC()),
 	}
 
 	// Set log type.
@@ -206,6 +209,7 @@ func (i *Interceptor) StreamInterceptor(srv interface{}, ss grpc.ServerStream, i
 			Producer: info.FullMethod,
 			Id:       uuid.New().String(),
 		},
+		Timestamp: timestamppb.New(time.Now().UTC()),
 	}
 
 	// Set log type.
