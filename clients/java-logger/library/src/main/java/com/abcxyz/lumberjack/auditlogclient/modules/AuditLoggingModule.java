@@ -25,6 +25,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.inject.AbstractModule;
 import com.google.inject.Inject;
 import com.google.inject.Provides;
+import java.time.Clock;
 
 /**
  * This is the larger module intended to be consumed. It pulls in all related modules, and should
@@ -50,6 +51,11 @@ public class AuditLoggingModule extends AbstractModule {
   @Inject
   public LoggingClient loggingClient(LoggingClientBuilder builder) {
     return builder.withDefaultProcessors().build();
+  }
+
+  @Provides
+  Clock clock() {
+    return Clock.systemUTC();
   }
 
   @Override

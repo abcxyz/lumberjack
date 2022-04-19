@@ -20,6 +20,7 @@ package proto;
 import "google/cloud/audit/audit_log.proto";
 import "google/logging/v2/log_entry.proto";
 import "google/protobuf/descriptor.proto";
+import "google/protobuf/timestamp.proto";
 
 option go_package = "github.com/abcxyz/lumberjack/clients/go/apis/v1alpha1";
 option java_multiple_files = true;
@@ -80,5 +81,5 @@ message AuditLogRequest {
   // Standard object used for correlating logs across streams
   google.logging.v2.LogEntryOperation operation = 5;
 
-  uint64 timestamp = 6;
+  google.protobuf.Timestamp timestamp = 6;
 }
