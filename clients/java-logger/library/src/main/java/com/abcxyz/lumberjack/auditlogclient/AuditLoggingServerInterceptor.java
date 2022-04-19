@@ -30,6 +30,7 @@ import com.google.protobuf.InvalidProtocolBufferException;
 import com.google.protobuf.Message;
 import com.google.protobuf.MessageOrBuilder;
 import com.google.protobuf.Struct;
+import com.google.protobuf.Timestamp;
 import com.google.protobuf.Value;
 import com.google.protobuf.util.JsonFormat;
 import com.google.rpc.Code;
@@ -44,6 +45,7 @@ import io.grpc.ServerCall.Listener;
 import io.grpc.ServerCallHandler;
 import io.grpc.ServerInterceptor;
 import io.grpc.StatusRuntimeException;
+import java.time.Clock;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Deque;
@@ -73,6 +75,7 @@ public class AuditLoggingServerInterceptor<ReqT extends Message> implements Serv
 
   private final AuditLoggingConfiguration auditLoggingConfiguration;
   private final LoggingClient client;
+  private final Clock clock;
 
   @Override
   public <ReqT, RespT> Listener<ReqT> interceptCall(
@@ -198,7 +201,9 @@ public class AuditLoggingServerInterceptor<ReqT extends Message> implements Serv
     builder.setPayload(logBuilderCopy.build());
     builder.setType(selector.getLogType());
     builder.setOperation(logEntryOperation);
-    builder.setTimestamp(Instant.now().toEpochMilli());
+    Instant now = clock.instant();
+    builder.setTimestamp(Timestamp.newBuilder().setSeconds(now.getEpochSecond())
+        .setNanos(now.getNano()));
 
     try {
       log.info("Audit logging...");
