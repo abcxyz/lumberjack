@@ -18,15 +18,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"net"
-	"testing"
-	"time"
-
 	"github.com/abcxyz/lumberjack/clients/go/pkg/errutil"
 	"github.com/abcxyz/lumberjack/clients/go/pkg/remote"
 	"github.com/abcxyz/lumberjack/clients/go/pkg/security"
 	"github.com/abcxyz/lumberjack/clients/go/pkg/testutil"
-	"github.com/abcxyz/lumberjack/clients/go/pkg/timeutil"
 	"github.com/google/go-cmp/cmp"
 	rpcstatus "google.golang.org/genproto/googleapis/rpc/status"
 	"google.golang.org/grpc"
@@ -36,6 +31,8 @@ import (
 	grpcstatus "google.golang.org/grpc/status"
 	"google.golang.org/protobuf/testing/protocmp"
 	"google.golang.org/protobuf/types/known/structpb"
+	"net"
+	"testing"
 
 	alpb "github.com/abcxyz/lumberjack/clients/go/apis/v1alpha1"
 	calpb "google.golang.org/genproto/googleapis/cloud/audit"
@@ -124,8 +121,7 @@ func TestUnaryInterceptor(t *testing.T) {
 					Request:  &structpb.Struct{},
 					Response: &structpb.Struct{},
 				},
-				Mode:      alpb.AuditLogRequest_BEST_EFFORT,
-				Timestamp: uint64(1000),
+				Mode: alpb.AuditLogRequest_BEST_EFFORT,
 			},
 		},
 		{
@@ -163,8 +159,7 @@ func TestUnaryInterceptor(t *testing.T) {
 						Message: "fake error",
 					},
 				},
-				Mode:      alpb.AuditLogRequest_BEST_EFFORT,
-				Timestamp: uint64(1000),
+				Mode: alpb.AuditLogRequest_BEST_EFFORT,
 			},
 		},
 		{
@@ -202,8 +197,7 @@ func TestUnaryInterceptor(t *testing.T) {
 						Message: "fake error",
 					},
 				},
-				Mode:      alpb.AuditLogRequest_BEST_EFFORT,
-				Timestamp: uint64(1000),
+				Mode: alpb.AuditLogRequest_BEST_EFFORT,
 			},
 		},
 		{
@@ -233,8 +227,7 @@ func TestUnaryInterceptor(t *testing.T) {
 						PrincipalEmail: "user@example.com",
 					},
 				},
-				Mode:      alpb.AuditLogRequest_BEST_EFFORT,
-				Timestamp: uint64(1000),
+				Mode: alpb.AuditLogRequest_BEST_EFFORT,
 			},
 		},
 		{
@@ -265,8 +258,7 @@ func TestUnaryInterceptor(t *testing.T) {
 					},
 					Request: &structpb.Struct{},
 				},
-				Mode:      alpb.AuditLogRequest_FAIL_CLOSE,
-				Timestamp: uint64(1000),
+				Mode: alpb.AuditLogRequest_FAIL_CLOSE,
 			},
 		},
 		{
@@ -409,7 +401,7 @@ func TestUnaryInterceptor(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
-			i := &Interceptor{rules: tc.auditRules, logMode: tc.logMode, time: timeutil.NewFakeTime(time.UnixMilli(1000).UTC())}
+			i := &Interceptor{rules: tc.auditRules, logMode: tc.logMode}
 
 			r := &fakeServer{}
 			s := grpc.NewServer()
@@ -454,10 +446,12 @@ func TestUnaryInterceptor(t *testing.T) {
 			if len(r.gotReqs) > 0 {
 				gotReq = r.gotReqs[0]
 			}
-			if diff := cmp.Diff(tc.wantLogReq, gotReq, protocmp.Transform()); diff != "" {
+			if tc.wantLogReq != nil && gotReq.Timestamp == nil {
+				t.Error("UnaryInterceptor(...) gotReq missing timestamp")
+			}
+			if diff := cmp.Diff(tc.wantLogReq, gotReq, protocmp.Transform(), protocmp.IgnoreFields(&alpb.AuditLogRequest{}, "timestamp")); diff != "" {
 				t.Errorf("UnaryInterceptor(...) got diff in automatically emitted LogReq (-want, +got): %v", diff)
 			}
-
 			if err := c.Stop(); err != nil {
 				t.Fatal(err)
 			}
@@ -522,7 +516,6 @@ func TestStreamInterceptor(t *testing.T) {
 					"Val": structpb.NewStringValue("req1"),
 				}},
 			},
-			Timestamp: uint64(1000),
 		}, {
 			Type: alpb.AuditLogRequest_DATA_ACCESS,
 			Payload: &calpb.AuditLog{
@@ -536,7 +529,6 @@ func TestStreamInterceptor(t *testing.T) {
 					"Val": structpb.NewStringValue("req2"),
 				}},
 			},
-			Timestamp: uint64(1000),
 		}, {
 			Type: alpb.AuditLogRequest_DATA_ACCESS,
 			Payload: &calpb.AuditLog{
@@ -553,7 +545,6 @@ func TestStreamInterceptor(t *testing.T) {
 					"Val": structpb.NewStringValue("resp1"),
 				}},
 			},
-			Timestamp: uint64(1000),
 		}},
 	}, {
 		name: "server_stream_single_req_multiple_resps",
@@ -599,7 +590,6 @@ func TestStreamInterceptor(t *testing.T) {
 					"Val": structpb.NewStringValue("resp1"),
 				}},
 			},
-			Timestamp: uint64(1000),
 		}, {
 			Type: alpb.AuditLogRequest_DATA_ACCESS,
 			Payload: &calpb.AuditLog{
@@ -613,7 +603,6 @@ func TestStreamInterceptor(t *testing.T) {
 					"Val": structpb.NewStringValue("resp2"),
 				}},
 			},
-			Timestamp: uint64(1000),
 		}, {
 			Type: alpb.AuditLogRequest_DATA_ACCESS,
 			Payload: &calpb.AuditLog{
@@ -627,7 +616,6 @@ func TestStreamInterceptor(t *testing.T) {
 					"Val": structpb.NewStringValue("resp3"),
 				}},
 			},
-			Timestamp: uint64(1000),
 		}},
 	}, {
 		name: "bidirection_stream_multiple_reqs_resps",
@@ -677,7 +665,6 @@ func TestStreamInterceptor(t *testing.T) {
 					"Val": structpb.NewStringValue("resp1"),
 				}},
 			},
-			Timestamp: uint64(1000),
 		}, {
 			Type: alpb.AuditLogRequest_DATA_ACCESS,
 			Payload: &calpb.AuditLog{
@@ -694,7 +681,6 @@ func TestStreamInterceptor(t *testing.T) {
 					"Val": structpb.NewStringValue("resp2"),
 				}},
 			},
-			Timestamp: uint64(1000),
 		}},
 	}, {
 		name: "stream_without_logging_req_resp",
@@ -738,7 +724,6 @@ func TestStreamInterceptor(t *testing.T) {
 					PrincipalEmail: "user@example.com",
 				},
 			},
-			Timestamp: uint64(1000),
 		}, {
 			Type: alpb.AuditLogRequest_DATA_ACCESS,
 			Payload: &calpb.AuditLog{
@@ -749,7 +734,6 @@ func TestStreamInterceptor(t *testing.T) {
 					PrincipalEmail: "user@example.com",
 				},
 			},
-			Timestamp: uint64(1000),
 		}},
 	}, {
 		name: "stream_with_logging_req_only",
@@ -796,7 +780,6 @@ func TestStreamInterceptor(t *testing.T) {
 					"Val": structpb.NewStringValue("req1"),
 				}},
 			},
-			Timestamp: uint64(1000),
 		}, {
 			Type: alpb.AuditLogRequest_DATA_ACCESS,
 			Payload: &calpb.AuditLog{
@@ -810,7 +793,6 @@ func TestStreamInterceptor(t *testing.T) {
 					"Val": structpb.NewStringValue("req2"),
 				}},
 			},
-			Timestamp: uint64(1000),
 		}},
 	}, {
 		name: "audit_rule_is_inapplicable",
@@ -896,7 +878,6 @@ func TestStreamInterceptor(t *testing.T) {
 					Message: "something is wrong",
 				},
 			},
-			Timestamp: uint64(1000),
 		}},
 	}}
 
@@ -905,7 +886,7 @@ func TestStreamInterceptor(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
-			i := &Interceptor{rules: tc.auditRules, time: timeutil.NewFakeTime(time.UnixMilli(1000).UTC())}
+			i := &Interceptor{rules: tc.auditRules}
 
 			r := &fakeServer{}
 			s := grpc.NewServer()
@@ -950,11 +931,12 @@ func TestStreamInterceptor(t *testing.T) {
 				if lr.Operation == nil || lr.Operation.Id == "" {
 					t.Errorf("StreamInterceptor(...) gotReqs[%d] missing operation id", i)
 				}
-				// Nil the operation for easy comparison below.
-				lr.Operation = nil
+				if lr.Timestamp == nil {
+					t.Errorf("StreamInterceptor(...) gotReqs[%d] missing timestamp", i)
+				}
 			}
 
-			if diff := cmp.Diff(tc.wantLogReqs, r.gotReqs, protocmp.Transform()); diff != "" {
+			if diff := cmp.Diff(tc.wantLogReqs, r.gotReqs, protocmp.Transform(), protocmp.IgnoreFields(&alpb.AuditLogRequest{}, "timestamp", "operation")); diff != "" {
 				t.Errorf("StreamInterceptor(...) got diff in automatically emitted log requests (-want, +got): %v", diff)
 			}
 

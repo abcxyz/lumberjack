@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"regexp"
 	"sync"
+	"time"
 
 	"github.com/abcxyz/lumberjack/clients/go/pkg/security"
 	"github.com/abcxyz/lumberjack/clients/go/pkg/zlogger"
@@ -33,9 +34,9 @@ import (
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/structpb"
+	"google.golang.org/protobuf/types/known/timestamppb"
 
 	alpb "github.com/abcxyz/lumberjack/clients/go/apis/v1alpha1"
-	"github.com/abcxyz/lumberjack/clients/go/pkg/timeutil"
 	calpb "google.golang.org/genproto/googleapis/cloud/audit"
 )
 
@@ -86,12 +87,11 @@ type Interceptor struct {
 	sc      security.GRPCContext
 	rules   []*alpb.AuditRule
 	logMode alpb.AuditLogRequest_LogMode
-	time    timeutil.TimeInterface
 }
 
 // NewInterceptor creates a new interceptor with the given options.
 func NewInterceptor(options ...InterceptorOption) (*Interceptor, error) {
-	it := &Interceptor{time: timeutil.NewRealTime()}
+	it := &Interceptor{}
 	for _, o := range options {
 		if err := o(it); err != nil {
 			return nil, fmt.Errorf("failed to apply interceptor option: %w", err)
@@ -122,7 +122,7 @@ func (i *Interceptor) UnaryInterceptor(ctx context.Context, req interface{}, inf
 			MethodName:  info.FullMethod,
 		},
 		Mode:      i.logMode,
-		Timestamp: uint64(i.time.Now().UnixMilli()),
+		Timestamp: timestamppb.New(time.Now().UTC()),
 	}
 
 	// Set log type.
@@ -209,7 +209,7 @@ func (i *Interceptor) StreamInterceptor(srv interface{}, ss grpc.ServerStream, i
 			Producer: info.FullMethod,
 			Id:       uuid.New().String(),
 		},
-		Timestamp: uint64(i.time.Now().UnixMilli()),
+		Timestamp: timestamppb.New(time.Now().UTC()),
 	}
 
 	// Set log type.
