@@ -50,14 +50,14 @@ func realMain() (outErr error) {
 		return fmt.Errorf("failed to listen: %w", err)
 	}
 	interceptor, err := audit.NewInterceptor(auditopt.InterceptorFromConfigFile(auditopt.DefaultConfigFilePath))
+	if err != nil {
+		return fmt.Errorf("failed to setup audit interceptor: %w", err)
+	}
 	defer func() {
 		if err := interceptor.Stop(); err != nil {
 			outErr = fmt.Errorf("failed to stop interceptor: %w", err)
 		}
 	}()
-	if err != nil {
-		return fmt.Errorf("failed to setup audit interceptor: %w", err)
-	}
 	s := grpc.NewServer(grpc.UnaryInterceptor(interceptor.UnaryInterceptor), grpc.StreamInterceptor(interceptor.StreamInterceptor))
 	talkerpb.RegisterTalkerServer(s, &server{})
 	// Register the reflection service makes it easier for some clients.
