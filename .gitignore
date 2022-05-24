@@ -58,3 +58,6 @@ buildNumber.properties
 *.ipr
 .factorypath
 .settings
+
+# Go workspace file
+go.work

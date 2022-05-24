@@ -24,6 +24,7 @@ import (
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/testing/protocmp"
@@ -137,7 +138,7 @@ func TestAuditLogAgent_ProcessLog(t *testing.T) {
 				}
 			}()
 
-			conn, err := grpc.Dial(lis.Addr().String(), grpc.WithInsecure())
+			conn, err := grpc.Dial(lis.Addr().String(), grpc.WithTransportCredentials(insecure.NewCredentials()))
 			if err != nil {
 				t.Fatalf("Failed to establish gRPC conn: %v", err)
 			}
