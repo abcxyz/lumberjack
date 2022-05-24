@@ -20,6 +20,7 @@ import (
 	"fmt"
 
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 
 	alpb "github.com/abcxyz/lumberjack/clients/go/apis/v1alpha1"
 )
@@ -79,7 +80,7 @@ func NewProcessor(address string, opts ...Option) (*Processor, error) {
 		dialOpts = append(dialOpts, authDialOpts...)
 	} else {
 		// If no auth option is provided, fall back to insecure.
-		dialOpts = append(dialOpts, grpc.WithInsecure())
+		dialOpts = append(dialOpts, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	}
 	conn, err := grpc.Dial(address, dialOpts...)
 	if err != nil {

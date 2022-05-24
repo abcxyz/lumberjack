@@ -34,7 +34,7 @@ resource "null_resource" "server_build" {
       REPO       = local.repo
     }
 
-    command = "${path.module}/../../../clients/go/scripts/build.sh"
+    command = "${path.module}/../../../scripts/build_server.sh"
   }
 }
 

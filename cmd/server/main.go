@@ -31,9 +31,9 @@ import (
 	alpb "github.com/abcxyz/lumberjack/clients/go/apis/v1alpha1"
 	"github.com/abcxyz/lumberjack/clients/go/pkg/audit"
 	"github.com/abcxyz/lumberjack/clients/go/pkg/cloudlogging"
-	"github.com/abcxyz/lumberjack/clients/go/pkg/server"
 	"github.com/abcxyz/lumberjack/clients/go/pkg/trace"
 	"github.com/abcxyz/lumberjack/clients/go/pkg/zlogger"
+	"github.com/abcxyz/lumberjack/pkg/server"
 )
 
 func main() {

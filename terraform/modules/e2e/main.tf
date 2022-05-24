@@ -249,7 +249,7 @@ resource "null_resource" "build" {
       REPO       = "${var.registry_location}-docker.pkg.dev/${google_project.server_project.project_id}/images/lumberjack"
     }
 
-    command = "${path.module}/../../../clients/go/scripts/build.sh"
+    command = "${path.module}/../../../scripts/build_server.sh"
   }
 
   depends_on = [

@@ -31,12 +31,8 @@ func TestHTTPEndpoint(t testing.TB, ctx context.Context, endpointURL string,
 	u := uuid.New()
 	t.Logf("Generated UUID: %s.", u.String())
 
-	b, err := retry.NewExponential(cfg.AuditLogRequestWait)
-	if err != nil {
-		t.Fatalf("Retry logic setup failed: %v.", err)
-	}
-
-	if err = retry.Do(ctx, retry.WithMaxRetries(cfg.MaxAuditLogRequestTries, b), func(ctx context.Context) error {
+	b := retry.NewExponential(cfg.AuditLogRequestWait)
+	if err := retry.Do(ctx, retry.WithMaxRetries(cfg.MaxAuditLogRequestTries, b), func(ctx context.Context) error {
 		resp, err := MakeAuditLogRequest(u, endpointURL, cfg.AuditLogRequestTimeout, idToken)
 		if err != nil {
 			t.Logf("Audit log request failed: %v.", err)

@@ -29,6 +29,7 @@ import (
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/testing/protocmp"
 
@@ -197,7 +198,7 @@ func TestProcessor_Process(t *testing.T) {
 			}(t, s, lis)
 
 			addr := lis.Addr().String()
-			conn, err := grpc.Dial(addr, grpc.WithInsecure())
+			conn, err := grpc.Dial(addr, grpc.WithTransportCredentials(insecure.NewCredentials()))
 			if err != nil {
 				log.Fatalf("dialing %q: %v", addr, err)
 			}
@@ -306,7 +307,7 @@ func TestProcessor_Stop(t *testing.T) {
 			}(t, s, lis)
 
 			addr := lis.Addr().String()
-			conn, err := grpc.Dial(addr, grpc.WithInsecure())
+			conn, err := grpc.Dial(addr, grpc.WithTransportCredentials(insecure.NewCredentials()))
 			if err != nil {
 				log.Fatalf("dialing %q: %v", addr, err)
 			}
