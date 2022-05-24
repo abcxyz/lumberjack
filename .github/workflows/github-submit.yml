@@ -63,4 +63,4 @@ jobs:
 
       - name: Build and Push Container
         run: |
-          ./clients/go/scripts/build.sh
+          ./scripts/build_server.sh
