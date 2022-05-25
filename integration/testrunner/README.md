@@ -1,3 +1,5 @@
+**Lumberjack is not an official Google product.**
+
 ## HTTP Endpoints Test Runner
 
 ### About
