@@ -33,9 +33,7 @@ import (
 	"github.com/abcxyz/lumberjack/clients/go/test/grpc-app/talkerpb"
 )
 
-var (
-	port = flag.Int("port", 8080, "The server port")
-)
+var port = flag.Int("port", 8080, "The server port")
 
 func main() {
 	if err := realMain(); err != nil {

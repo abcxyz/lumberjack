@@ -22,8 +22,8 @@ import (
 	"github.com/google/uuid"
 )
 
-func MakeAuditLogRequest(u uuid.UUID, endpointUrl string, requestTimeout time.Duration, authToken string) (*http.Response, error) {
-	req, err := http.NewRequest(http.MethodGet, endpointUrl, nil)
+func MakeAuditLogRequest(u uuid.UUID, endpointURL string, requestTimeout time.Duration, authToken string) (*http.Response, error) {
+	req, err := http.NewRequest(http.MethodGet, endpointURL, nil)
 	if err != nil {
 		return nil, err
 	}

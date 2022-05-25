@@ -3,60 +3,28 @@ name: CI - Test Go
 on:
   push:
     branches:
-      - main
+      - 'main'
     paths:
       - 'clients/go/**'
       - '.github/workflows/github-presubmit-go.yml'
       - 'scripts/test_go.sh'
   pull_request:
     branches:
-      - main
+      - 'main'
     paths:
       - 'clients/go/**'
       - '.github/workflows/github-presubmit-go.yml'
       - 'scripts/test_go.sh'
 
-env:
-  GOMAXPROCS: 7
-
-# If a new commit comes in, cancel the current action run.
 concurrency:
   group: '${{ github.workflow }}-${{ github.head_ref || github.ref }}'
   cancel-in-progress: true
 
 jobs:
   lint:
-    name: Lint
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v2
-      - name: golangci-lint
-        uses: golangci/golangci-lint-action@v2
-        with:
-          working-directory: clients/go
-      
-      - name: Set up Go
-        uses: actions/setup-go@v2
-        with:
-          go-version: 1.18
-      
-      - name: gofmt
-        run: gofmt -s -d -l . 2>&1 | tee /dev/stderr | (! read)
-
-      - name: goimports
-        run: |
-          go install golang.org/x/tools/cmd/goimports@latest
-          goimports -l . 2>&1 | tee /dev/stderr | (! read)
-
-      - name: gomodtidy
-        run: |
-          for i in $(find . -name go.mod); do
-            pushd $(dirname $i) > /dev/null
-            go mod tidy
-            popd > /dev/null
-          done
-          git diff go.mod | tee /dev/stderr | (! read)
-          git diff go.sum | tee /dev/stderr | (! read)
+    uses: 'abcxyz/pkg/.github/workflows/go-lint.yml@main'
+    with:
+      go_version: '1.18'
 
   test:
     name: Tests
@@ -68,7 +36,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v2
         with:
-          go-version: 1.18
+          go-version: '1.18'
 
       # Cache go dependencies to reduce time for CI setup
       - uses: actions/cache@v2
@@ -83,15 +51,3 @@ jobs:
       - name: Run Build Script
         run: |
           ./scripts/test_go.sh
-
-  # TODO(crwilcox): Coverage has an issue right now with a module
-  # cover: no required module provides package github.com/abcxyz/lumberjack/clients/go/pkg/audit:
-  # go.mod file not found in current directory or any parent directory; see 'go help modules'
-  # - name: go-coverage
-  #   shell: bash
-  #   run: |-
-  #     OUTPUT="$(go tool cover -func=./clients/go/coverage.out)"
-  #     TOTAL="$(echo $OUTPUT | awk 'END{print $NF}')"
-  #     echo "::group::Coverage (${TOTAL})"
-  #     echo "${OUTPUT}"
-  #     echo "::endgroup::"

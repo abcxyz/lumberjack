@@ -68,7 +68,6 @@ func TestNewPrincipalEmailMatcher(t *testing.T) {
 			if diff := errutil.DiffSubstring(err, tc.wantErrSubstr); diff != "" {
 				t.Errorf("NewPrincipalEmailMatcher(%v) got unexpected error substring: %v", tc.opts, diff)
 			}
-
 		})
 	}
 }
