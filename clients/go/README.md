@@ -1,3 +1,5 @@
+**Lumberjack is not an official Google product.**
+
 This is the GO module for lumberjack client.
 
 For now, to use the module:

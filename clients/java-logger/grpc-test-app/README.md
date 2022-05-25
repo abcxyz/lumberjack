@@ -1,3 +1,5 @@
+**Lumberjack is not an official Google product.**
+
 Protos and server/client are largely based on the examples found in the grpc-java repo. https://github.com/grpc/grpc-java
 
 Build (from java-logger/ directory):
