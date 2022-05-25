@@ -41,8 +41,12 @@ type fakeLogProcessor struct {
 }
 
 func (p *fakeLogProcessor) Process(_ context.Context, logReq *alpb.AuditLogRequest) error {
-	reqClone := proto.Clone(logReq)
-	p.gotReq = reqClone.(*alpb.AuditLogRequest)
+	reqClone, ok := proto.Clone(logReq).(*alpb.AuditLogRequest)
+	if !ok {
+		return fmt.Errorf("expected *alpb.AuditLogRequest, got %T", reqClone)
+	}
+
+	p.gotReq = reqClone
 	if p.updateReq != nil {
 		logReq.Labels = p.updateReq.Labels
 		logReq.Payload = p.updateReq.Payload

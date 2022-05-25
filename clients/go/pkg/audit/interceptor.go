@@ -422,7 +422,6 @@ func (i *Interceptor) setErrorStatus(err error, logReq *alpb.AuditLogRequest) {
 			Message: err.Error(),
 		}
 	}
-
 }
 
 var serviceNameRegexp = regexp.MustCompile("^/{1,2}(.*?)/")

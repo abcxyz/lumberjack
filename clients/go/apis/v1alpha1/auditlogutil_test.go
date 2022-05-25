@@ -25,11 +25,12 @@ func TestShouldFailClose(t *testing.T) {
 		name    string
 		logMode AuditLogRequest_LogMode
 		wanted  bool
-	}{{
-		name:    "should_return_true_on_fail_close",
-		logMode: AuditLogRequest_FAIL_CLOSE,
-		wanted:  true,
-	},
+	}{
+		{
+			name:    "should_return_true_on_fail_close",
+			logMode: AuditLogRequest_FAIL_CLOSE,
+			wanted:  true,
+		},
 		{
 			name:    "should_return_false_on_best_effort",
 			logMode: AuditLogRequest_BEST_EFFORT,
