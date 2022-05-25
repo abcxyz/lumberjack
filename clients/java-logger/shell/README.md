@@ -1,3 +1,5 @@
+**Lumberjack is not an official Google product.**
+
 ## Audit Logging Shell (Java)
 
 ### About

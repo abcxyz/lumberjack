@@ -1,5 +1,7 @@
 # Lumberjack
 
+**Lumberjack is not an official Google product.**
+
 This repository contains components related to an audit logging service
 
 - [Go Client](./clients/go)

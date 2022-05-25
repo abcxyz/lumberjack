@@ -1,3 +1,5 @@
+**Lumberjack is not an official Google product.**
+
 # Third party dependencies
 
 Locally-defined protos cannot depend on protos in a remote repository because
