@@ -26,16 +26,19 @@ import (
 	"github.com/sethvargo/go-retry"
 )
 
-func TestHTTPEndpoint(t testing.TB, ctx context.Context, endpointURL string,
-	idToken string, projectID string, datasetQuery string, cfg *utils.Config) {
+func TestHTTPEndpoint(ctx context.Context, tb testing.TB, endpointURL string,
+	idToken string, projectID string, datasetQuery string, cfg *utils.Config,
+) {
+	tb.Helper()
+
 	u := uuid.New()
-	t.Logf("Generated UUID: %s.", u.String())
+	tb.Logf("Generated UUID: %s", u.String())
 
 	b := retry.NewExponential(cfg.AuditLogRequestWait)
 	if err := retry.Do(ctx, retry.WithMaxRetries(cfg.MaxAuditLogRequestTries, b), func(ctx context.Context) error {
 		resp, err := MakeAuditLogRequest(u, endpointURL, cfg.AuditLogRequestTimeout, idToken)
 		if err != nil {
-			t.Logf("Audit log request failed: %v.", err)
+			tb.Logf("audit log request failed: %v", err)
 		}
 
 		if resp.StatusCode == http.StatusOK {
@@ -43,25 +46,25 @@ func TestHTTPEndpoint(t testing.TB, ctx context.Context, endpointURL string,
 			return nil
 		}
 
-		t.Logf("Audit log failed with status: %v.", resp.Status)
-		return retry.RetryableError(fmt.Errorf("Audit logging failed, retrying."))
+		tb.Logf("Audit log failed with status: %v.", resp.Status)
+		return retry.RetryableError(fmt.Errorf("audit logging failed, retrying"))
 	}); err != nil {
-		t.Fatalf("Retry failed: %v.", err)
+		tb.Fatalf("Retry failed: %v.", err)
 	}
 
 	bqClient, err := utils.MakeClient(ctx, projectID)
 	if err != nil {
-		t.Fatalf("BigQuery request failed: %v.", err)
+		tb.Fatalf("BigQuery request failed: %v.", err)
 	}
 
 	defer func() {
 		if err := bqClient.Close(); err != nil {
-			t.Logf("Failed to close the BQ client: %v.", err)
+			tb.Logf("Failed to close the BQ client: %v.", err)
 		}
 	}()
 
 	bqQuery := makeQueryForHTTP(*bqClient, u, projectID, datasetQuery)
-	utils.QueryIfAuditLogExistsWithRetries(t, ctx, bqQuery, cfg, "httpEndpointTest")
+	utils.QueryIfAuditLogExistsWithRetries(ctx, tb, bqQuery, cfg, "httpEndpointTest")
 }
 
 func makeQueryForHTTP(client bigquery.Client, u uuid.UUID, projectID string, datasetQuery string) *bigquery.Query {

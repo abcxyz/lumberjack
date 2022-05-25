@@ -76,7 +76,7 @@ func TestHTTPEndpoints(t *testing.T) {
 			}
 
 			ctx := context.Background()
-			httprunner.TestHTTPEndpoint(t, ctx, test, idToken, *projectIDPtr, *datasetQueryPtr, cfg)
+			httprunner.TestHTTPEndpoint(ctx, t, test, idToken, *projectIDPtr, *datasetQueryPtr, cfg)
 		})
 	}
 }
@@ -103,7 +103,7 @@ func TestGRPCEndpoints(t *testing.T) {
 			}
 
 			ctx := context.Background()
-			grpcrunner.TestGRPCEndpoint(t, ctx, &grpcrunner.GRPC{
+			grpcrunner.TestGRPCEndpoint(ctx, t, &grpcrunner.GRPC{
 				ProjectID:    *projectIDPtr,
 				DatasetQuery: *datasetQueryPtr,
 
@@ -114,7 +114,6 @@ func TestGRPCEndpoints(t *testing.T) {
 			})
 		})
 	}
-
 }
 
 // resolveIDToken Resolves the ID token passed via the "id-token" flag if provided,
@@ -128,11 +127,11 @@ func resolveIDToken(endpointURL string) (string, error) {
 	// Attempt getting ID Token from service account if any.
 	ts, err := idtoken.NewTokenSource(context.Background(), endpointURL)
 	if err != nil {
-		return "", fmt.Errorf("unable to create token source: %v", err)
+		return "", fmt.Errorf("unable to create token source: %w", err)
 	}
 	t, err := ts.Token()
 	if err != nil {
-		return "", fmt.Errorf("unable to get token: %v", err)
+		return "", fmt.Errorf("unable to get token: %w", err)
 	}
 	return t.AccessToken, nil
 }

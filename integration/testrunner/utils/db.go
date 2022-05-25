@@ -25,7 +25,9 @@ import (
 )
 
 // queryIfAuditLogExists queries the DB and checks if audit log contained in the query exists or not.
-func QueryIfAuditLogExists(t testing.TB, ctx context.Context, query *bigquery.Query, expectedNum int64) (bool, error) {
+func QueryIfAuditLogExists(ctx context.Context, tb testing.TB, query *bigquery.Query, expectedNum int64) (bool, error) {
+	tb.Helper()
+
 	job, err := query.Run(ctx)
 	if err != nil {
 		return false, err
@@ -48,7 +50,7 @@ func QueryIfAuditLogExists(t testing.TB, ctx context.Context, query *bigquery.Qu
 	}
 
 	// Check if the matching row count is equal to expected, if yes, then the audit log exists.
-	t.Logf("Found %d matching rows", row[0])
+	tb.Logf("Found %d matching rows", row[0])
 	return row[0] == expectedNum, nil
 }
 
@@ -64,28 +66,32 @@ func MakeClient(ctx context.Context, projectID string) (*bigquery.Client, error)
 
 // This calls the database to check that an audit log exists. It uses the retries that are specified in the Config
 // file. This method assumes that only a single audit log will match, which constitutes success.
-func QueryIfAuditLogExistsWithRetries(t testing.TB, ctx context.Context, bqQuery *bigquery.Query, cfg *Config, testName string) {
-	QueryIfAuditLogsExistWithRetries(t, ctx, bqQuery, cfg, testName, 1)
+func QueryIfAuditLogExistsWithRetries(ctx context.Context, tb testing.TB, bqQuery *bigquery.Query, cfg *Config, testName string) {
+	tb.Helper()
+
+	QueryIfAuditLogsExistWithRetries(ctx, tb, bqQuery, cfg, testName, 1)
 }
 
 // This calls the database to check that an audit log exists. It uses the retries that are specified in the Config
 // file. This method allows for specifying how many logs we expect to match, in order to handle streaming use cases.
-func QueryIfAuditLogsExistWithRetries(t testing.TB, ctx context.Context, bqQuery *bigquery.Query, cfg *Config, testName string, expectedNum int64) {
+func QueryIfAuditLogsExistWithRetries(ctx context.Context, tb testing.TB, bqQuery *bigquery.Query, cfg *Config, testName string, expectedNum int64) {
+	tb.Helper()
+
 	b := retry.NewExponential(cfg.LogRoutingWait)
 	if err := retry.Do(ctx, retry.WithMaxRetries(cfg.MaxDBQueryTries, b), func(ctx context.Context) error {
-		found, err := QueryIfAuditLogExists(t, ctx, bqQuery, expectedNum)
+		found, err := QueryIfAuditLogExists(ctx, tb, bqQuery, expectedNum)
 		if found {
 			// Early exit retry if queried log already found.
 			return nil
 		}
 
-		t.Log("Matching entry not found, retrying...")
+		tb.Log("Matching entry not found, retrying...")
 
 		if err != nil {
-			t.Logf("Query error: %v.", err)
+			tb.Logf("Query error: %v.", err)
 		}
 		return retry.RetryableError(fmt.Errorf("no matching audit log found in bigquery after timeout for %q", testName))
 	}); err != nil {
-		t.Errorf("Retry failed: %v.", err)
+		tb.Errorf("Retry failed: %v.", err)
 	}
 }

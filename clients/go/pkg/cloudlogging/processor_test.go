@@ -62,7 +62,6 @@ func TestNewProcessor(t *testing.T) {
 	if len(p.loggerByLogType) != len(alpb.AuditLogRequest_LogType_name) {
 		t.Errorf("NewProcessor(%v) got len(p.loggerByLogType)=%v, want %v", opts, len(p.loggerByLogType), len(alpb.AuditLogRequest_LogType_name))
 	}
-
 }
 
 func TestProcessor_Process(t *testing.T) {
