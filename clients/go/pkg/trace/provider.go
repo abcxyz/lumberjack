@@ -31,7 +31,7 @@ import (
 func Init(traceRatio float64) error {
 	exporter, err := texporter.New()
 	if err != nil {
-		return fmt.Errorf("new trace exporter: %v", err)
+		return fmt.Errorf("failed to create trace exporter: %w", err)
 	}
 
 	// According to https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/trace/sdk.md#parentbased

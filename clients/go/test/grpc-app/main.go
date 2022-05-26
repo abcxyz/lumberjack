@@ -15,6 +15,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"flag"
 	"fmt"
 	"io"
@@ -143,7 +144,7 @@ func (s *server) Addition(svr talkerpb.Talker_AdditionServer) error {
 
 	for {
 		req, err := svr.Recv()
-		if err == io.EOF {
+		if errors.Is(err, io.EOF) {
 			// End of stream. Send the sum.
 			if err := svr.SendAndClose(&talkerpb.AdditionResponse{
 				Sum: uint64(sum),
@@ -175,7 +176,7 @@ func (s *server) Fail(ctx context.Context, req *talkerpb.FailRequest) (*talkerpb
 func (s *server) FailOnFour(svr talkerpb.Talker_FailOnFourServer) error {
 	for {
 		req, err := svr.Recv()
-		if err == io.EOF {
+		if errors.Is(err, io.EOF) {
 			svr.SendAndClose(&talkerpb.FailOnFourResponse{
 				Message: "closing...",
 			})

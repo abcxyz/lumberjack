@@ -17,8 +17,6 @@ package audit
 import (
 	"context"
 	"errors"
-	"fmt"
-	"net"
 	"testing"
 
 	"github.com/abcxyz/lumberjack/clients/go/pkg/errutil"
@@ -30,7 +28,6 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
-	"google.golang.org/grpc/status"
 	grpcstatus "google.golang.org/grpc/status"
 	"google.golang.org/protobuf/testing/protocmp"
 	"google.golang.org/protobuf/types/known/structpb"
@@ -52,7 +49,7 @@ func (s *fakeServer) ProcessLog(_ context.Context, logReq *alpb.AuditLogRequest)
 type fakeServerStream struct {
 	grpc.ServerStream
 
-	incomingCtx context.Context
+	incomingCtx context.Context //nolint:containedctx // Only for testing
 	gotRecvMsgs []interface{}
 	gotSendMsgs []interface{}
 }
@@ -82,7 +79,7 @@ func TestUnaryInterceptor(t *testing.T) {
 
 	tests := []struct {
 		name          string
-		ctx           context.Context
+		ctx           context.Context //nolint:containedctx // Only for testing
 		auditRules    []*alpb.AuditRule
 		req           interface{}
 		logMode       alpb.AuditLogRequest_LogMode
@@ -399,28 +396,19 @@ func TestUnaryInterceptor(t *testing.T) {
 	}
 	for _, tc := range tests {
 		tc := tc
+
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
 			i := &Interceptor{rules: tc.auditRules, logMode: tc.logMode}
 
 			r := &fakeServer{}
-			s := grpc.NewServer()
-			t.Cleanup(s.Stop)
 
-			alpb.RegisterAuditLogAgentServer(s, r)
-			lis, err := net.Listen("tcp", "localhost:0")
-			if err != nil {
-				t.Fatal(err)
-			}
-			go func(t *testing.T, s *grpc.Server, lis net.Listener) {
-				err := s.Serve(lis)
-				if err != nil {
-					// TODO: it may be worth validating this scenario. #47
-					fmt.Printf("net.Listen(tcp, localhost:0) serve failed: %v", err)
-				}
-			}(t, s, lis)
-			p, err := remote.NewProcessor(lis.Addr().String())
+			addr, _ := testutil.TestFakeGRPCServer(t, func(s *grpc.Server) {
+				alpb.RegisterAuditLogAgentServer(s, r)
+			})
+
+			p, err := remote.NewProcessor(addr)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -863,7 +851,7 @@ func TestStreamInterceptor(t *testing.T) {
 			LogType:   "DATA_ACCESS",
 		}},
 		handler: func(srv interface{}, ss grpc.ServerStream) error {
-			return status.Error(codes.Internal, "something is wrong")
+			return grpcstatus.Error(codes.Internal, "something is wrong")
 		},
 		wantErrSubstr: "something is wrong",
 		wantLogReqs: []*alpb.AuditLogRequest{{
@@ -890,22 +878,12 @@ func TestStreamInterceptor(t *testing.T) {
 			i := &Interceptor{rules: tc.auditRules}
 
 			r := &fakeServer{}
-			s := grpc.NewServer()
-			t.Cleanup(s.Stop)
 
-			alpb.RegisterAuditLogAgentServer(s, r)
-			lis, err := net.Listen("tcp", "localhost:0")
-			if err != nil {
-				t.Fatal(err)
-			}
-			go func(t *testing.T, s *grpc.Server, lis net.Listener) {
-				err := s.Serve(lis)
-				if err != nil {
-					// TODO: it may be worth validating this scenario. #47
-					fmt.Printf("net.Listen(tcp, localhost:0) serve failed: %v", err)
-				}
-			}(t, s, lis)
-			p, err := remote.NewProcessor(lis.Addr().String())
+			addr, _ := testutil.TestFakeGRPCServer(t, func(s *grpc.Server) {
+				alpb.RegisterAuditLogAgentServer(s, r)
+			})
+
+			p, err := remote.NewProcessor(addr)
 			if err != nil {
 				t.Fatal(err)
 			}

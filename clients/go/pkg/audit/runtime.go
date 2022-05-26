@@ -71,7 +71,7 @@ func newRuntimeInfo() (*runtimeInfo, error) {
 	return &runtimeInfo{val}, nil
 }
 
-// isAppEngine returns true for both standard and flex
+// isAppEngine returns true for both standard and flex.
 func isAppEngine() bool {
 	_, service := os.LookupEnv("GAE_SERVICE")
 	_, version := os.LookupEnv("GAE_VERSION")
