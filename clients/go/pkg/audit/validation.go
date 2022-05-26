@@ -19,14 +19,14 @@ import (
 	"fmt"
 	"strings"
 
-	alpb "github.com/abcxyz/lumberjack/clients/go/apis/v1alpha1"
+	api "github.com/abcxyz/lumberjack/clients/go/apis/v1alpha1"
 )
 
 type requestValidation struct{}
 
 // Process with receiver auditLogRequestValidation verifies
 // that the AuditLogRequest is properly formed.
-func (p requestValidation) Process(_ context.Context, logReq *alpb.AuditLogRequest) error {
+func (p requestValidation) Process(_ context.Context, logReq *api.AuditLogRequest) error {
 	if logReq == nil {
 		return fmt.Errorf("request shouldn't be nil: %w", ErrInvalidRequest)
 	}

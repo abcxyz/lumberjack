@@ -20,7 +20,7 @@ import (
 	"fmt"
 	"regexp"
 
-	alpb "github.com/abcxyz/lumberjack/clients/go/apis/v1alpha1"
+	api "github.com/abcxyz/lumberjack/clients/go/apis/v1alpha1"
 	"github.com/abcxyz/lumberjack/clients/go/pkg/audit"
 )
 
@@ -91,7 +91,7 @@ func NewPrincipalEmailMatcher(opts ...Option) (*PrincipalEmailMatcher, error) {
 //   2. If include != nil and exclude == nil, we only pass the request when the principal matches include.
 //   3. If include == nil and exclude != nil, we only drop the request when the principal matches exclude.
 //   4. If include != nil and exclude != nil, we drop the request when the principal doesn't match include and matches exclude.
-func (p *PrincipalEmailMatcher) Process(_ context.Context, logReq *alpb.AuditLogRequest) error {
+func (p *PrincipalEmailMatcher) Process(_ context.Context, logReq *api.AuditLogRequest) error {
 	if len(p.includes) == 0 && len(p.excludes) == 0 {
 		return nil
 	}

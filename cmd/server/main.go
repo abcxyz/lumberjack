@@ -28,7 +28,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
 
-	alpb "github.com/abcxyz/lumberjack/clients/go/apis/v1alpha1"
+	api "github.com/abcxyz/lumberjack/clients/go/apis/v1alpha1"
 	"github.com/abcxyz/lumberjack/clients/go/pkg/audit"
 	"github.com/abcxyz/lumberjack/clients/go/pkg/cloudlogging"
 	"github.com/abcxyz/lumberjack/clients/go/pkg/trace"
@@ -83,7 +83,7 @@ func realMain(ctx context.Context) error {
 		otelgrpc.UnaryServerInterceptor(),
 		zlogger.GRPCInterceptor(logger),
 	))
-	alpb.RegisterAuditLogAgentServer(s, logAgent)
+	api.RegisterAuditLogAgentServer(s, logAgent)
 	reflection.Register(s)
 
 	lis, err := net.Listen("tcp", ":"+cfg.Port)
