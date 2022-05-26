@@ -22,8 +22,8 @@ import (
 	"google.golang.org/protobuf/testing/protocmp"
 	"google.golang.org/protobuf/types/known/structpb"
 
-	alpb "github.com/abcxyz/lumberjack/clients/go/apis/v1alpha1"
-	"github.com/abcxyz/lumberjack/clients/go/pkg/testutil"
+	api "github.com/abcxyz/lumberjack/clients/go/apis/v1alpha1"
+	"github.com/abcxyz/lumberjack/clients/go/internal/testutil"
 )
 
 func TestRuntimeInfo_Process(t *testing.T) {
@@ -32,8 +32,8 @@ func TestRuntimeInfo_Process(t *testing.T) {
 	tests := []struct {
 		name       string
 		r          *runtimeInfo
-		logReq     *alpb.AuditLogRequest
-		wantLogReq *alpb.AuditLogRequest
+		logReq     *api.AuditLogRequest
+		wantLogReq *api.AuditLogRequest
 	}{
 		{
 			name: "should_write_monitored_resource_to_payload_metadata",
@@ -50,8 +50,8 @@ func TestRuntimeInfo_Process(t *testing.T) {
 					},
 				}),
 			},
-			logReq: testutil.ReqBuilder().Build(),
-			wantLogReq: testutil.ReqBuilder().WithMetadata(&structpb.Struct{
+			logReq: testutil.NewRequest(),
+			wantLogReq: testutil.NewRequest(testutil.WithMetadata(&structpb.Struct{
 				Fields: map[string]*structpb.Value{
 					"originating_resource": structpb.NewStructValue(&structpb.Struct{
 						Fields: map[string]*structpb.Value{
@@ -65,7 +65,7 @@ func TestRuntimeInfo_Process(t *testing.T) {
 						},
 					}),
 				},
-			}).Build(),
+			})),
 		},
 		{
 			name: "should_append_monitored_resources_to_payload_metadata",
@@ -82,7 +82,7 @@ func TestRuntimeInfo_Process(t *testing.T) {
 					},
 				}),
 			},
-			logReq: testutil.ReqBuilder().WithMetadata(&structpb.Struct{
+			logReq: testutil.NewRequest(testutil.WithMetadata(&structpb.Struct{
 				Fields: map[string]*structpb.Value{
 					"existing_key": structpb.NewStructValue(&structpb.Struct{
 						Fields: map[string]*structpb.Value{
@@ -90,8 +90,8 @@ func TestRuntimeInfo_Process(t *testing.T) {
 						},
 					}),
 				},
-			}).Build(),
-			wantLogReq: testutil.ReqBuilder().WithMetadata(&structpb.Struct{
+			})),
+			wantLogReq: testutil.NewRequest(testutil.WithMetadata(&structpb.Struct{
 				Fields: map[string]*structpb.Value{
 					"existing_key": structpb.NewStructValue(&structpb.Struct{
 						Fields: map[string]*structpb.Value{
@@ -110,11 +110,11 @@ func TestRuntimeInfo_Process(t *testing.T) {
 						},
 					}),
 				},
-			}).Build(),
+			})),
 		},
 		{
 			name: "nil_runtimeinfo_should_leave_metadata_untouched",
-			logReq: testutil.ReqBuilder().WithMetadata(&structpb.Struct{
+			logReq: testutil.NewRequest(testutil.WithMetadata(&structpb.Struct{
 				Fields: map[string]*structpb.Value{
 					"existing_key": structpb.NewStructValue(&structpb.Struct{
 						Fields: map[string]*structpb.Value{
@@ -122,8 +122,8 @@ func TestRuntimeInfo_Process(t *testing.T) {
 						},
 					}),
 				},
-			}).Build(),
-			wantLogReq: testutil.ReqBuilder().WithMetadata(&structpb.Struct{
+			})),
+			wantLogReq: testutil.NewRequest(testutil.WithMetadata(&structpb.Struct{
 				Fields: map[string]*structpb.Value{
 					"existing_key": structpb.NewStructValue(&structpb.Struct{
 						Fields: map[string]*structpb.Value{
@@ -131,12 +131,12 @@ func TestRuntimeInfo_Process(t *testing.T) {
 						},
 					}),
 				},
-			}).Build(),
+			})),
 		},
 		{
 			name: "nil_monitored_resource_should_leave_metadata_untouched",
 			r:    &runtimeInfo{},
-			logReq: testutil.ReqBuilder().WithMetadata(&structpb.Struct{
+			logReq: testutil.NewRequest(testutil.WithMetadata(&structpb.Struct{
 				Fields: map[string]*structpb.Value{
 					"existing_key": structpb.NewStructValue(&structpb.Struct{
 						Fields: map[string]*structpb.Value{
@@ -144,8 +144,8 @@ func TestRuntimeInfo_Process(t *testing.T) {
 						},
 					}),
 				},
-			}).Build(),
-			wantLogReq: testutil.ReqBuilder().WithMetadata(&structpb.Struct{
+			})),
+			wantLogReq: testutil.NewRequest(testutil.WithMetadata(&structpb.Struct{
 				Fields: map[string]*structpb.Value{
 					"existing_key": structpb.NewStructValue(&structpb.Struct{
 						Fields: map[string]*structpb.Value{
@@ -153,7 +153,7 @@ func TestRuntimeInfo_Process(t *testing.T) {
 						},
 					}),
 				},
-			}).Build(),
+			})),
 		},
 	}
 	for _, tc := range tests {

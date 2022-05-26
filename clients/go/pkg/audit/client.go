@@ -23,7 +23,7 @@ import (
 	"go.uber.org/multierr"
 	"go.uber.org/zap"
 
-	alpb "github.com/abcxyz/lumberjack/clients/go/apis/v1alpha1"
+	api "github.com/abcxyz/lumberjack/clients/go/apis/v1alpha1"
 	"github.com/abcxyz/lumberjack/clients/go/pkg/zlogger"
 )
 
@@ -32,7 +32,7 @@ type Client struct {
 	validators []LogProcessor
 	mutators   []LogProcessor
 	backends   []LogProcessor
-	logMode    alpb.AuditLogRequest_LogMode
+	logMode    api.AuditLogRequest_LogMode
 }
 
 // LogProcessor is the interface we use to process an AuditLogRequest.
@@ -40,7 +40,7 @@ type Client struct {
 //   - validate that the AuditLogRequest is properly formed
 //   - convert an AuditLogRequest to a Cloud LogEntry and write it to Cloud Logging
 type LogProcessor interface {
-	Process(context.Context, *alpb.AuditLogRequest) error
+	Process(context.Context, *api.AuditLogRequest) error
 }
 
 // StoppableProcessor is the interface to log processors that are stoppable.
@@ -98,7 +98,7 @@ func WithBackend(p LogProcessor) Option {
 
 // Sets FailClose value. This specifies whether errors should be surfaced
 // or swalled. Can be overridden on a per-request basis.
-func WithLogMode(mode alpb.AuditLogRequest_LogMode) Option {
+func WithLogMode(mode api.AuditLogRequest_LogMode) Option {
 	return func(o *Client) error {
 		o.logMode = mode
 		return nil
@@ -135,10 +135,10 @@ func (c *Client) Stop() error {
 }
 
 // Log runs the client processors sequentially on the given AuditLogRequest.
-func (c *Client) Log(ctx context.Context, logReq *alpb.AuditLogRequest) error {
+func (c *Client) Log(ctx context.Context, logReq *api.AuditLogRequest) error {
 	logger := zlogger.FromContext(ctx)
 
-	if logMode := logReq.Mode; logMode == alpb.AuditLogRequest_LOG_MODE_UNSPECIFIED {
+	if logMode := logReq.Mode; logMode == api.AuditLogRequest_LOG_MODE_UNSPECIFIED {
 		logMode = c.logMode
 		logReq.Mode = logMode
 	}
@@ -171,13 +171,13 @@ func (c *Client) Log(ctx context.Context, logReq *alpb.AuditLogRequest) error {
 
 // handleReturn is intended to be a wrapper that handles the LogMode correctly, and returns errors or
 // nil depending on whether the config and request have specified that they want to fail close.
-func (c *Client) handleReturn(ctx context.Context, err error, requestedLogMode alpb.AuditLogRequest_LogMode) error {
+func (c *Client) handleReturn(ctx context.Context, err error, requestedLogMode api.AuditLogRequest_LogMode) error {
 	// If there is no error, just return nil.
 	if err == nil {
 		return nil
 	}
 	// If there is an error, and we should fail close, return that error.
-	if alpb.ShouldFailClose(requestedLogMode) {
+	if api.ShouldFailClose(requestedLogMode) {
 		return err
 	}
 	// If there is an error, and we shouldn't fail close, log and return nil.

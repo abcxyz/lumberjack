@@ -23,10 +23,10 @@ import (
 	cal "google.golang.org/genproto/googleapis/cloud/audit"
 	"google.golang.org/protobuf/testing/protocmp"
 
-	alpb "github.com/abcxyz/lumberjack/clients/go/apis/v1alpha1"
+	api "github.com/abcxyz/lumberjack/clients/go/apis/v1alpha1"
+	"github.com/abcxyz/lumberjack/clients/go/internal/testutil"
 	"github.com/abcxyz/lumberjack/clients/go/pkg/audit"
 	"github.com/abcxyz/lumberjack/clients/go/pkg/errutil"
-	"github.com/abcxyz/lumberjack/clients/go/pkg/testutil"
 )
 
 func TestNewPrincipalEmailMatcher(t *testing.T) {
@@ -78,40 +78,40 @@ func TestPrincipalEmailMatcher_Process(t *testing.T) {
 	tests := []struct {
 		name       string
 		opts       []Option
-		logReq     *alpb.AuditLogRequest
-		wantLogReq *alpb.AuditLogRequest
+		logReq     *api.AuditLogRequest
+		wantLogReq *api.AuditLogRequest
 		wantErr    error
 	}{
 		{
 			name:       "should_succeed_when_include_and_exclude_are_nil",
-			logReq:     testutil.ReqBuilder().Build(),
-			wantLogReq: testutil.ReqBuilder().Build(),
+			logReq:     testutil.NewRequest(),
+			wantLogReq: testutil.NewRequest(),
 		},
 		{
 			name:       "should_succeed_when_include_matches_and_exclude_is_nil",
 			opts:       []Option{WithIncludes("foo@google.com")},
-			logReq:     testutil.ReqBuilder().WithPrincipal("foo@google.com").Build(),
-			wantLogReq: testutil.ReqBuilder().WithPrincipal("foo@google.com").Build(),
+			logReq:     testutil.NewRequest(testutil.WithPrincipal("foo@google.com")),
+			wantLogReq: testutil.NewRequest(testutil.WithPrincipal("foo@google.com")),
 		},
 		{
 			name:       "should_fail_precondition_when_include_mismatches_and_exclude_is_nil",
 			opts:       []Option{WithIncludes("foo@google.com")},
-			logReq:     testutil.ReqBuilder().WithPrincipal("bar@google.com").Build(),
-			wantLogReq: testutil.ReqBuilder().WithPrincipal("bar@google.com").Build(),
+			logReq:     testutil.NewRequest(testutil.WithPrincipal("bar@google.com")),
+			wantLogReq: testutil.NewRequest(testutil.WithPrincipal("bar@google.com")),
 			wantErr:    audit.ErrFailedPrecondition,
 		},
 		{
 			name:       "should_fail_precondition_when_exclude_matches_and_include_is_nil",
 			opts:       []Option{WithExcludes("foo@google.com")},
-			logReq:     testutil.ReqBuilder().WithPrincipal("foo@google.com").Build(),
-			wantLogReq: testutil.ReqBuilder().WithPrincipal("foo@google.com").Build(),
+			logReq:     testutil.NewRequest(testutil.WithPrincipal("foo@google.com")),
+			wantLogReq: testutil.NewRequest(testutil.WithPrincipal("foo@google.com")),
 			wantErr:    audit.ErrFailedPrecondition,
 		},
 		{
 			name:       "should_succeed_when_exclude_mismatches_and_include_is_nil",
 			opts:       []Option{WithExcludes("foo@google.com")},
-			logReq:     testutil.ReqBuilder().WithPrincipal("bar@google.com").Build(),
-			wantLogReq: testutil.ReqBuilder().WithPrincipal("bar@google.com").Build(),
+			logReq:     testutil.NewRequest(testutil.WithPrincipal("bar@google.com")),
+			wantLogReq: testutil.NewRequest(testutil.WithPrincipal("bar@google.com")),
 		},
 		{
 			name: "should_fail_precondition_when_include_mismatches_and_exclude_matches",
@@ -119,8 +119,8 @@ func TestPrincipalEmailMatcher_Process(t *testing.T) {
 				WithIncludes("foo@google.com"),
 				WithExcludes("bar@google.com"),
 			},
-			logReq:     testutil.ReqBuilder().WithPrincipal("bar@google.com").Build(),
-			wantLogReq: testutil.ReqBuilder().WithPrincipal("bar@google.com").Build(),
+			logReq:     testutil.NewRequest(testutil.WithPrincipal("bar@google.com")),
+			wantLogReq: testutil.NewRequest(testutil.WithPrincipal("bar@google.com")),
 			wantErr:    audit.ErrFailedPrecondition,
 		},
 		{
@@ -129,8 +129,8 @@ func TestPrincipalEmailMatcher_Process(t *testing.T) {
 				WithIncludes("foo@google.com"),
 				WithExcludes("bar@google.com"),
 			},
-			logReq:     testutil.ReqBuilder().WithPrincipal("foo@google.com").Build(),
-			wantLogReq: testutil.ReqBuilder().WithPrincipal("foo@google.com").Build(),
+			logReq:     testutil.NewRequest(testutil.WithPrincipal("foo@google.com")),
+			wantLogReq: testutil.NewRequest(testutil.WithPrincipal("foo@google.com")),
 		},
 		{
 			name: "should_succeed_when_include_matches_and_exclude_matches",
@@ -138,8 +138,8 @@ func TestPrincipalEmailMatcher_Process(t *testing.T) {
 				WithIncludes("foo@google.com"),
 				WithExcludes("@google.com"),
 			},
-			logReq:     testutil.ReqBuilder().WithPrincipal("foo@google.com").Build(),
-			wantLogReq: testutil.ReqBuilder().WithPrincipal("foo@google.com").Build(),
+			logReq:     testutil.NewRequest(testutil.WithPrincipal("foo@google.com")),
+			wantLogReq: testutil.NewRequest(testutil.WithPrincipal("foo@google.com")),
 		},
 		{
 			name: "should_work_as_intended_with_multiple_includes_and_excludes",
@@ -147,16 +147,16 @@ func TestPrincipalEmailMatcher_Process(t *testing.T) {
 				WithIncludes("foo@google.com", "bar@google.com"),
 				WithExcludes("baz@google.com", "qux@google.com"),
 			},
-			logReq:     testutil.ReqBuilder().WithPrincipal("bar@google.com").Build(),
-			wantLogReq: testutil.ReqBuilder().WithPrincipal("bar@google.com").Build(),
+			logReq:     testutil.NewRequest(testutil.WithPrincipal("bar@google.com")),
+			wantLogReq: testutil.NewRequest(testutil.WithPrincipal("bar@google.com")),
 		},
 		{
 			name: "empty_string_as_exclude_is_a_noop",
 			opts: []Option{
 				WithExcludes(""),
 			},
-			logReq:     testutil.ReqBuilder().WithPrincipal("foo@google.com").Build(),
-			wantLogReq: testutil.ReqBuilder().WithPrincipal("foo@google.com").Build(),
+			logReq:     testutil.NewRequest(testutil.WithPrincipal("foo@google.com")),
+			wantLogReq: testutil.NewRequest(testutil.WithPrincipal("foo@google.com")),
 		},
 		{
 			name: "empty_string_as_include_is_a_noop",
@@ -164,8 +164,8 @@ func TestPrincipalEmailMatcher_Process(t *testing.T) {
 				WithIncludes(""),
 				WithExcludes("."),
 			},
-			logReq:     testutil.ReqBuilder().WithPrincipal("foo@google.com").Build(),
-			wantLogReq: testutil.ReqBuilder().WithPrincipal("foo@google.com").Build(),
+			logReq:     testutil.NewRequest(testutil.WithPrincipal("foo@google.com")),
+			wantLogReq: testutil.NewRequest(testutil.WithPrincipal("foo@google.com")),
 			wantErr:    audit.ErrFailedPrecondition,
 		},
 		{
@@ -173,10 +173,10 @@ func TestPrincipalEmailMatcher_Process(t *testing.T) {
 			opts: []Option{
 				WithIncludes("foo@google.com"),
 			},
-			logReq: &alpb.AuditLogRequest{
+			logReq: &api.AuditLogRequest{
 				Payload: &cal.AuditLog{},
 			},
-			wantLogReq: &alpb.AuditLogRequest{
+			wantLogReq: &api.AuditLogRequest{
 				Payload: &cal.AuditLog{},
 			},
 			wantErr: audit.ErrInvalidRequest,

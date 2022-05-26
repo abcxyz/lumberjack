@@ -22,13 +22,13 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
-	alpb "github.com/abcxyz/lumberjack/clients/go/apis/v1alpha1"
+	api "github.com/abcxyz/lumberjack/clients/go/apis/v1alpha1"
 	"github.com/abcxyz/lumberjack/clients/go/pkg/audit"
 )
 
 // AuditLogAgent is the implementation of the audit log agent server.
 type AuditLogAgent struct {
-	alpb.UnimplementedAuditLogAgentServer
+	api.UnimplementedAuditLogAgentServer
 
 	client *audit.Client
 }
@@ -39,12 +39,12 @@ func NewAuditLogAgent(client *audit.Client) (*AuditLogAgent, error) {
 }
 
 // ProcessLog processes the log requests by calling the internal client.
-func (a *AuditLogAgent) ProcessLog(ctx context.Context, logReq *alpb.AuditLogRequest) (*alpb.AuditLogResponse, error) {
+func (a *AuditLogAgent) ProcessLog(ctx context.Context, logReq *api.AuditLogRequest) (*api.AuditLogResponse, error) {
 	if err := a.client.Log(ctx, logReq); err != nil {
 		return nil, codifyErr(err)
 	}
 
-	return &alpb.AuditLogResponse{
+	return &api.AuditLogResponse{
 		Result: logReq,
 	}, nil
 }

@@ -29,21 +29,21 @@ import (
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/testing/protocmp"
 
-	alpb "github.com/abcxyz/lumberjack/clients/go/apis/v1alpha1"
+	api "github.com/abcxyz/lumberjack/clients/go/apis/v1alpha1"
+	"github.com/abcxyz/lumberjack/clients/go/internal/testutil"
 	"github.com/abcxyz/lumberjack/clients/go/pkg/audit"
-	"github.com/abcxyz/lumberjack/clients/go/pkg/testutil"
 )
 
 type fakeLogProcessor struct {
-	gotReq    *alpb.AuditLogRequest
-	updateReq *alpb.AuditLogRequest
+	gotReq    *api.AuditLogRequest
+	updateReq *api.AuditLogRequest
 	returnErr error
 }
 
-func (p *fakeLogProcessor) Process(_ context.Context, logReq *alpb.AuditLogRequest) error {
-	reqClone, ok := proto.Clone(logReq).(*alpb.AuditLogRequest)
+func (p *fakeLogProcessor) Process(_ context.Context, logReq *api.AuditLogRequest) error {
+	reqClone, ok := proto.Clone(logReq).(*api.AuditLogRequest)
 	if !ok {
-		return fmt.Errorf("expected *alpb.AuditLogRequest, got %T", reqClone)
+		return fmt.Errorf("expected *api.AuditLogRequest, got %T", reqClone)
 	}
 
 	p.gotReq = reqClone
@@ -59,56 +59,56 @@ func TestAuditLogAgent_ProcessLog(t *testing.T) {
 
 	cases := []struct {
 		name        string
-		req         *alpb.AuditLogRequest
+		req         *api.AuditLogRequest
 		p           *fakeLogProcessor
-		wantSentReq *alpb.AuditLogRequest
-		wantResp    *alpb.AuditLogResponse
+		wantSentReq *api.AuditLogRequest
+		wantResp    *api.AuditLogResponse
 		wantErr     error
 	}{{
 		name:        "success_no_update",
-		req:         testutil.ReqBuilder().Build(),
+		req:         testutil.NewRequest(),
 		p:           &fakeLogProcessor{},
-		wantSentReq: testutil.ReqBuilder().WithMode(alpb.AuditLogRequest_FAIL_CLOSE).Build(),
-		wantResp: &alpb.AuditLogResponse{
-			Result: testutil.ReqBuilder().WithMode(alpb.AuditLogRequest_FAIL_CLOSE).Build(),
+		wantSentReq: testutil.NewRequest(testutil.WithMode(api.AuditLogRequest_FAIL_CLOSE)),
+		wantResp: &api.AuditLogResponse{
+			Result: testutil.NewRequest(testutil.WithMode(api.AuditLogRequest_FAIL_CLOSE)),
 		},
 	}, {
 		name: "success_with_update",
-		req:  testutil.ReqBuilder().WithServiceName("test-service").Build(),
+		req:  testutil.NewRequest(testutil.WithServiceName("test-service")),
 		p: &fakeLogProcessor{
-			updateReq: testutil.ReqBuilder().WithServiceName("bar").WithMethodName("Do").Build(),
+			updateReq: testutil.NewRequest(testutil.WithServiceName("bar"), testutil.WithMethodName("Do")),
 		},
-		wantSentReq: testutil.ReqBuilder().WithServiceName("test-service").WithMode(alpb.AuditLogRequest_FAIL_CLOSE).Build(),
-		wantResp: &alpb.AuditLogResponse{
-			Result: testutil.ReqBuilder().WithServiceName("bar").WithMethodName("Do").WithMode(alpb.AuditLogRequest_FAIL_CLOSE).Build(),
+		wantSentReq: testutil.NewRequest(testutil.WithServiceName("test-service"), testutil.WithMode(api.AuditLogRequest_FAIL_CLOSE)),
+		wantResp: &api.AuditLogResponse{
+			Result: testutil.NewRequest(testutil.WithServiceName("bar"), testutil.WithMethodName("Do"), testutil.WithMode(api.AuditLogRequest_FAIL_CLOSE)),
 		},
 	}, {
 		name: "internal_failure",
-		req:  testutil.ReqBuilder().WithServiceName("test-service").Build(),
+		req:  testutil.NewRequest(testutil.WithServiceName("test-service")),
 		p: &fakeLogProcessor{
 			returnErr: fmt.Errorf("injected err"),
 		},
-		wantSentReq: testutil.ReqBuilder().WithServiceName("test-service").WithMode(alpb.AuditLogRequest_FAIL_CLOSE).Build(),
+		wantSentReq: testutil.NewRequest(testutil.WithServiceName("test-service"), testutil.WithMode(api.AuditLogRequest_FAIL_CLOSE)),
 		wantErr:     status.Error(codes.Internal, "failed to execute backend *server.fakeLogProcessor: injected err"),
 	}, {
 		name: "invaid_argument_failure",
-		req:  testutil.ReqBuilder().WithServiceName("test-service").Build(),
+		req:  testutil.NewRequest(testutil.WithServiceName("test-service")),
 		p: &fakeLogProcessor{
 			returnErr: fmt.Errorf("injected: %w", audit.ErrInvalidRequest),
 		},
-		wantSentReq: testutil.ReqBuilder().WithServiceName("test-service").WithMode(alpb.AuditLogRequest_FAIL_CLOSE).Build(),
+		wantSentReq: testutil.NewRequest(testutil.WithServiceName("test-service"), testutil.WithMode(api.AuditLogRequest_FAIL_CLOSE)),
 		wantErr:     status.Error(codes.InvalidArgument, "failed to execute backend *server.fakeLogProcessor: injected: invalid audit log request"),
 	}, {
 		name: "invaid_argument_failure_with_requst_overriding_fail_close",
-		req:  testutil.ReqBuilder().WithServiceName("test-service").WithMode(alpb.AuditLogRequest_BEST_EFFORT).Build(),
+		req:  testutil.NewRequest(testutil.WithServiceName("test-service"), testutil.WithMode(api.AuditLogRequest_BEST_EFFORT)),
 		p: &fakeLogProcessor{
 			returnErr: fmt.Errorf("injected: %w", audit.ErrInvalidRequest),
 		},
-		wantSentReq: testutil.ReqBuilder().WithServiceName("test-service").WithMode(alpb.AuditLogRequest_BEST_EFFORT).Build(),
-		wantResp: &alpb.AuditLogResponse{
+		wantSentReq: testutil.NewRequest(testutil.WithServiceName("test-service"), testutil.WithMode(api.AuditLogRequest_BEST_EFFORT)),
+		wantResp: &api.AuditLogResponse{
 			// TODO: We want to swallow errors in the client on best effort, but that means the server will return
 			// with this output. Do we want any indication in the response that the audit log hasn't ocurred?
-			Result: testutil.ReqBuilder().WithServiceName("test-service").WithMode(alpb.AuditLogRequest_BEST_EFFORT).Build(),
+			Result: testutil.NewRequest(testutil.WithServiceName("test-service"), testutil.WithMode(api.AuditLogRequest_BEST_EFFORT)),
 		},
 	}}
 
@@ -121,7 +121,7 @@ func TestAuditLogAgent_ProcessLog(t *testing.T) {
 			s := grpc.NewServer()
 			defer s.Stop()
 
-			ac, err := audit.NewClient(audit.WithBackend(tc.p), audit.WithLogMode(alpb.AuditLogRequest_FAIL_CLOSE))
+			ac, err := audit.NewClient(audit.WithBackend(tc.p), audit.WithLogMode(api.AuditLogRequest_FAIL_CLOSE))
 			if err != nil {
 				t.Fatalf("Failed to create audit client: %v", err)
 			}
@@ -129,7 +129,7 @@ func TestAuditLogAgent_ProcessLog(t *testing.T) {
 			if err != nil {
 				t.Fatalf("Failed to create audit log agent server: %v", err)
 			}
-			alpb.RegisterAuditLogAgentServer(s, server)
+			api.RegisterAuditLogAgentServer(s, server)
 
 			lis, err := net.Listen("tcp", "localhost:0")
 			if err != nil {
@@ -147,7 +147,7 @@ func TestAuditLogAgent_ProcessLog(t *testing.T) {
 				t.Fatalf("Failed to establish gRPC conn: %v", err)
 			}
 
-			client := alpb.NewAuditLogAgentClient(conn)
+			client := api.NewAuditLogAgentClient(conn)
 			gotResp, err := client.ProcessLog(context.Background(), tc.req)
 
 			if diff := cmp.Diff(tc.wantErr, err, cmpopts.EquateErrors()); diff != "" {

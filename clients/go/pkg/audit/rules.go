@@ -17,7 +17,7 @@ package audit
 import (
 	"strings"
 
-	alpb "github.com/abcxyz/lumberjack/clients/go/apis/v1alpha1"
+	api "github.com/abcxyz/lumberjack/clients/go/apis/v1alpha1"
 )
 
 const wildcard = "*"
@@ -29,9 +29,9 @@ const wildcard = "*"
 //
 // If none of the Rules are relevant to the given method (i.e. the
 // the selectors don't match), we return nil.
-func mostRelevantRule(methodName string, rules []*alpb.AuditRule) *alpb.AuditRule {
+func mostRelevantRule(methodName string, rules []*api.AuditRule) *api.AuditRule {
 	var longest int
-	var mostRelevant *alpb.AuditRule
+	var mostRelevant *api.AuditRule
 	for _, r := range rules {
 		if isRuleApplicable(r, methodName) && len(r.Selector) > longest {
 			longest = len(r.Selector)
@@ -48,7 +48,7 @@ func mostRelevantRule(methodName string, rules []*alpb.AuditRule) *alpb.AuditRul
 // isRuleApplicable determines if a Rule applies to
 // the given method by comparing the Rule's Selector
 // to the methodName.
-func isRuleApplicable(rule *alpb.AuditRule, methodName string) bool {
+func isRuleApplicable(rule *api.AuditRule, methodName string) bool {
 	sel := rule.Selector
 	if sel == wildcard {
 		return true

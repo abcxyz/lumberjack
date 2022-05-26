@@ -23,7 +23,7 @@ import (
 	"go.uber.org/multierr"
 	"google.golang.org/protobuf/reflect/protoreflect"
 
-	alpb "github.com/abcxyz/lumberjack/clients/go/apis/v1alpha1"
+	api "github.com/abcxyz/lumberjack/clients/go/apis/v1alpha1"
 )
 
 // Processor is the remote Cloud Logging processor.
@@ -33,7 +33,7 @@ type Processor struct {
 	// fail-close.
 	bestEffort bool
 	// loggerByLogType is not threadsafe.
-	loggerByLogType map[alpb.AuditLogRequest_LogType]*logging.Logger
+	loggerByLogType map[api.AuditLogRequest_LogType]*logging.Logger
 }
 
 // Option is the option to set up a Cloud Logging processor.
@@ -88,9 +88,9 @@ func NewProcessor(ctx context.Context, opts ...Option) (*Processor, error) {
 		p.client = client
 	}
 
-	loggerByLogType := map[alpb.AuditLogRequest_LogType]*logging.Logger{}
-	for v := range alpb.AuditLogRequest_LogType_name {
-		logType := alpb.AuditLogRequest_LogType(v)
+	loggerByLogType := map[api.AuditLogRequest_LogType]*logging.Logger{}
+	for v := range api.AuditLogRequest_LogType_name {
+		logType := api.AuditLogRequest_LogType(v)
 		logName := logNameFromLogType(logType)
 		if logName == "" {
 			return nil, fmt.Errorf("the log type %v is not annotated with a log name", logType)
@@ -104,7 +104,7 @@ func NewProcessor(ctx context.Context, opts ...Option) (*Processor, error) {
 // logNameFromLogType obtains the Cloud Logging LogName by reading the
 // proto annotation of the AuditLogRequest.Type. If the proto annotation
 // is missing, we use a default logName.
-func logNameFromLogType(t alpb.AuditLogRequest_LogType) string {
+func logNameFromLogType(t api.AuditLogRequest_LogType) string {
 	enumOpts := t.Descriptor().Values().ByNumber(t.Number()).Options().ProtoReflect()
 	var logName string
 	enumOpts.Range(func(fd protoreflect.FieldDescriptor, v protoreflect.Value) bool {
@@ -118,12 +118,12 @@ func logNameFromLogType(t alpb.AuditLogRequest_LogType) string {
 }
 
 // Process emits an audit logs to Cloud Logging synchronously.
-func (p *Processor) Process(ctx context.Context, logReq *alpb.AuditLogRequest) error {
+func (p *Processor) Process(ctx context.Context, logReq *api.AuditLogRequest) error {
 	logger, ok := p.loggerByLogType[logReq.Type]
 	if !ok {
 		// Hitting this code path would be unlikely because NewProcessor
 		// creates loggers for every log type in the AuditLogRequest proto.
-		logger = p.loggerByLogType[alpb.AuditLogRequest_UNSPECIFIED]
+		logger = p.loggerByLogType[api.AuditLogRequest_UNSPECIFIED]
 	}
 	logEntry := logging.Entry{
 		Payload:   logReq.Payload,
@@ -133,8 +133,8 @@ func (p *Processor) Process(ctx context.Context, logReq *alpb.AuditLogRequest) e
 	}
 
 	bestEffort := p.bestEffort
-	if logReq.Mode != alpb.AuditLogRequest_LOG_MODE_UNSPECIFIED {
-		bestEffort = (logReq.Mode == alpb.AuditLogRequest_BEST_EFFORT)
+	if logReq.Mode != api.AuditLogRequest_LOG_MODE_UNSPECIFIED {
+		bestEffort = (logReq.Mode == api.AuditLogRequest_BEST_EFFORT)
 	}
 
 	if bestEffort {

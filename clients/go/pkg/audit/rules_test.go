@@ -17,13 +17,13 @@ package audit
 import (
 	"testing"
 
-	alpb "github.com/abcxyz/lumberjack/clients/go/apis/v1alpha1"
+	api "github.com/abcxyz/lumberjack/clients/go/apis/v1alpha1"
 )
 
 func TestMostRelevantRule(t *testing.T) {
 	t.Parallel()
 
-	ruleBySelector := map[string]*alpb.AuditRule{
+	ruleBySelector := map[string]*api.AuditRule{
 		"a.b.c":   {Selector: "a.b.c"},
 		"a.b.*":   {Selector: "a.b.*"},
 		"a.*":     {Selector: "a.*"},
@@ -36,13 +36,13 @@ func TestMostRelevantRule(t *testing.T) {
 
 	tests := []struct {
 		name       string
-		rules      []*alpb.AuditRule
+		rules      []*api.AuditRule
 		methodName string
-		wantRule   *alpb.AuditRule
+		wantRule   *api.AuditRule
 	}{
 		{
 			name: "exact_match_wins",
-			rules: []*alpb.AuditRule{
+			rules: []*api.AuditRule{
 				ruleBySelector["a.b.c"],
 				ruleBySelector["a.b.*"],
 				ruleBySelector["*"],
@@ -52,7 +52,7 @@ func TestMostRelevantRule(t *testing.T) {
 		},
 		{
 			name: "partial_wildcard_match_wins",
-			rules: []*alpb.AuditRule{
+			rules: []*api.AuditRule{
 				ruleBySelector["a.b.c"],
 				ruleBySelector["a.b.*"],
 				ruleBySelector["*"],
@@ -62,7 +62,7 @@ func TestMostRelevantRule(t *testing.T) {
 		},
 		{
 			name: "partial_wildcard_match_wins_again",
-			rules: []*alpb.AuditRule{
+			rules: []*api.AuditRule{
 				ruleBySelector["*"],
 				ruleBySelector["a.b.*"],
 				ruleBySelector["a.b.c"],
@@ -72,7 +72,7 @@ func TestMostRelevantRule(t *testing.T) {
 		},
 		{
 			name: "wildcard_match_wins",
-			rules: []*alpb.AuditRule{
+			rules: []*api.AuditRule{
 				ruleBySelector["a.b.c"],
 				ruleBySelector["a.b.*"],
 				ruleBySelector["*"],
@@ -82,7 +82,7 @@ func TestMostRelevantRule(t *testing.T) {
 		},
 		{
 			name: "wildcard_suffix_barley_matches",
-			rules: []*alpb.AuditRule{
+			rules: []*api.AuditRule{
 				ruleBySelector["foo*"],
 			},
 			methodName: "foo",
@@ -90,7 +90,7 @@ func TestMostRelevantRule(t *testing.T) {
 		},
 		{
 			name: "no_match",
-			rules: []*alpb.AuditRule{
+			rules: []*api.AuditRule{
 				ruleBySelector["a.b.c"],
 				ruleBySelector["a.b.*"],
 				ruleBySelector["a.*"],
@@ -99,7 +99,7 @@ func TestMostRelevantRule(t *testing.T) {
 		},
 		{
 			name: "match_ignore_leading_slashes",
-			rules: []*alpb.AuditRule{
+			rules: []*api.AuditRule{
 				ruleBySelector["//a.b.c"],
 				ruleBySelector["/a.b.*"],
 				ruleBySelector["a.*"],

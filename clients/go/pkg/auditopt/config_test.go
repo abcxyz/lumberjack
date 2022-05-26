@@ -25,24 +25,24 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/sethvargo/go-envconfig"
-	calpb "google.golang.org/genproto/googleapis/cloud/audit"
+	capi "google.golang.org/genproto/googleapis/cloud/audit"
 	"google.golang.org/grpc"
 	"google.golang.org/protobuf/testing/protocmp"
 
-	alpb "github.com/abcxyz/lumberjack/clients/go/apis/v1alpha1"
+	api "github.com/abcxyz/lumberjack/clients/go/apis/v1alpha1"
 	"github.com/abcxyz/lumberjack/clients/go/pkg/audit"
 	"github.com/abcxyz/lumberjack/clients/go/pkg/errutil"
-	"github.com/abcxyz/lumberjack/clients/go/pkg/testutil"
+	"github.com/abcxyz/lumberjack/clients/go/internal/testutil"
 )
 
 type fakeServer struct {
-	alpb.UnimplementedAuditLogAgentServer
-	gotReq *alpb.AuditLogRequest
+	api.UnimplementedAuditLogAgentServer
+	gotReq *api.AuditLogRequest
 }
 
-func (s *fakeServer) ProcessLog(_ context.Context, logReq *alpb.AuditLogRequest) (*alpb.AuditLogResponse, error) {
+func (s *fakeServer) ProcessLog(_ context.Context, logReq *api.AuditLogRequest) (*api.AuditLogResponse, error) {
 	s.gotReq = logReq
-	return &alpb.AuditLogResponse{Result: logReq}, nil
+	return &api.AuditLogResponse{Result: logReq}, nil
 }
 
 func TestMustFromConfigFile(t *testing.T) {
@@ -52,8 +52,8 @@ func TestMustFromConfigFile(t *testing.T) {
 		name          string
 		envs          map[string]string
 		fileContent   string
-		req           *alpb.AuditLogRequest
-		wantReq       *alpb.AuditLogRequest
+		req           *api.AuditLogRequest
+		wantReq       *api.AuditLogRequest
 		wantErrSubstr string
 	}{
 		{
@@ -71,8 +71,8 @@ backend:
     address: %s
     insecure_enabled: true
 `,
-			req:     testutil.ReqBuilder().WithPrincipal("abc@project.iam.gserviceaccount.com").Build(),
-			wantReq: testutil.ReqBuilder().WithPrincipal("abc@project.iam.gserviceaccount.com").Build(),
+			req:     testutil.NewRequest(testutil.WithPrincipal("abc@project.iam.gserviceaccount.com")),
+			wantReq: testutil.NewRequest(testutil.WithPrincipal("abc@project.iam.gserviceaccount.com")),
 		},
 		{
 			name: "condition_not_set_log_all",
@@ -86,8 +86,8 @@ backend:
     address: %s
     insecure_enabled: true
 `,
-			req:     testutil.ReqBuilder().WithPrincipal("abc@project.iam.gserviceaccount.com").Build(),
-			wantReq: testutil.ReqBuilder().WithPrincipal("abc@project.iam.gserviceaccount.com").Build(),
+			req:     testutil.NewRequest(testutil.WithPrincipal("abc@project.iam.gserviceaccount.com")),
+			wantReq: testutil.NewRequest(testutil.WithPrincipal("abc@project.iam.gserviceaccount.com")),
 		},
 		{
 			name: "env_var_overwrites_config_file",
@@ -107,8 +107,8 @@ security_context:
   from_raw_jwt:
   - key: authorization
 `,
-			req:     testutil.ReqBuilder().WithPrincipal("abc@project.iam.gserviceaccount.com").Build(),
-			wantReq: testutil.ReqBuilder().WithPrincipal("abc@project.iam.gserviceaccount.com").Build(),
+			req:     testutil.NewRequest(testutil.WithPrincipal("abc@project.iam.gserviceaccount.com")),
+			wantReq: testutil.NewRequest(testutil.WithPrincipal("abc@project.iam.gserviceaccount.com")),
 		},
 		{
 			name: "explicitly_include_service_account",
@@ -126,8 +126,8 @@ security_context:
   from_raw_jwt:
   - key: authorization
 `,
-			req:     testutil.ReqBuilder().WithPrincipal("abc@project.iam.gserviceaccount.com").Build(),
-			wantReq: testutil.ReqBuilder().WithPrincipal("abc@project.iam.gserviceaccount.com").Build(),
+			req:     testutil.NewRequest(testutil.WithPrincipal("abc@project.iam.gserviceaccount.com")),
+			wantReq: testutil.NewRequest(testutil.WithPrincipal("abc@project.iam.gserviceaccount.com")),
 		},
 		{
 			name: "empty_string_allowed_for_regex_filter",
@@ -145,7 +145,7 @@ security_context:
   from_raw_jwt:
   - key: authorization
 `,
-			req: testutil.ReqBuilder().WithPrincipal("abc@project.iam.gserviceaccount.com").Build(),
+			req: testutil.NewRequest(testutil.WithPrincipal("abc@project.iam.gserviceaccount.com")),
 		},
 		{
 			name:          "invalid_config_file_should_error",
@@ -195,7 +195,7 @@ security_context:
 			r := &fakeServer{}
 
 			addr, _ := testutil.TestFakeGRPCServer(t, func(s *grpc.Server) {
-				alpb.RegisterAuditLogAgentServer(s, r)
+				api.RegisterAuditLogAgentServer(s, r)
 			})
 
 			path := filepath.Join(t.TempDir(), "config.yaml")
@@ -220,7 +220,7 @@ security_context:
 				// We ignore `AuditLog.Metadata` because it contains the
 				// runtime information which varies depending on the
 				// environment executing the unit test.
-				protocmp.IgnoreFields(&calpb.AuditLog{}, "metadata"),
+				protocmp.IgnoreFields(&capi.AuditLog{}, "metadata"),
 			}
 			if diff := cmp.Diff(tc.wantReq, r.gotReq, cmpopts...); diff != "" {
 				t.Errorf("audit logging backend got request (-want,+got):\n%s", diff)
@@ -264,15 +264,15 @@ backend:
 		name          string
 		envs          map[string]string
 		path          string
-		req           *alpb.AuditLogRequest
-		wantReq       *alpb.AuditLogRequest
+		req           *api.AuditLogRequest
+		wantReq       *api.AuditLogRequest
 		wantErrSubstr string
 	}{
 		{
 			name:    "use_config_file_when_provided",
 			path:    path.Join(dir, "valid.yaml"),
-			req:     testutil.ReqBuilder().WithPrincipal("abc@project.iam.gserviceaccount.com").Build(),
-			wantReq: testutil.ReqBuilder().WithPrincipal("abc@project.iam.gserviceaccount.com").Build(),
+			req:     testutil.NewRequest(testutil.WithPrincipal("abc@project.iam.gserviceaccount.com")),
+			wantReq: testutil.NewRequest(testutil.WithPrincipal("abc@project.iam.gserviceaccount.com")),
 		},
 		{
 			name: "use_env_var_when_config_file_not_found",
@@ -282,8 +282,8 @@ backend:
 				"AUDIT_CLIENT_BACKEND_REMOTE_INSECURE_ENABLED":    "true",
 				"AUDIT_CLIENT_BACKEND_REMOTE_IMPERSONATE_ACCOUNT": "example@test.iam.gserviceaccount.com",
 			},
-			req:     testutil.ReqBuilder().WithPrincipal("abc@project.iam.gserviceaccount.com").Build(),
-			wantReq: testutil.ReqBuilder().WithPrincipal("abc@project.iam.gserviceaccount.com").Build(),
+			req:     testutil.NewRequest(testutil.WithPrincipal("abc@project.iam.gserviceaccount.com")),
+			wantReq: testutil.NewRequest(testutil.WithPrincipal("abc@project.iam.gserviceaccount.com")),
 		},
 		{
 			name: "use_defaults_when_config_file_not_found",
@@ -292,8 +292,8 @@ backend:
 				"AUDIT_CLIENT_BACKEND_REMOTE_INSECURE_ENABLED":    "true",
 				"AUDIT_CLIENT_BACKEND_REMOTE_IMPERSONATE_ACCOUNT": "example@test.iam.gserviceaccount.com",
 			},
-			req:     testutil.ReqBuilder().WithPrincipal("abc@project.iam.gserviceaccount.com").Build(),
-			wantReq: testutil.ReqBuilder().WithPrincipal("abc@project.iam.gserviceaccount.com").Build(),
+			req:     testutil.NewRequest(testutil.WithPrincipal("abc@project.iam.gserviceaccount.com")),
+			wantReq: testutil.NewRequest(testutil.WithPrincipal("abc@project.iam.gserviceaccount.com")),
 		},
 		{
 			name:          "invalid_config_file_should_error",
@@ -310,7 +310,7 @@ backend:
 			r := &fakeServer{}
 
 			addr, _ := testutil.TestFakeGRPCServer(t, func(s *grpc.Server) {
-				alpb.RegisterAuditLogAgentServer(s, r)
+				api.RegisterAuditLogAgentServer(s, r)
 			})
 
 			c, err := audit.NewClient(fromConfigFile(tc.path, envconfig.MultiLookuper(
@@ -330,7 +330,7 @@ backend:
 				// We ignore `AuditLog.Metadata` because it contains the
 				// runtime information which varies depending on the
 				// environment executing the unit test.
-				protocmp.IgnoreFields(&calpb.AuditLog{}, "metadata"),
+				protocmp.IgnoreFields(&capi.AuditLog{}, "metadata"),
 			}
 			if diff := cmp.Diff(tc.wantReq, r.gotReq, cmpopts...); diff != "" {
 				t.Errorf("audit logging backend got request (-want,+got):\n%s", diff)
@@ -345,7 +345,7 @@ func TestLoadConfig(t *testing.T) {
 	cases := []struct {
 		name        string
 		fileContent string
-		wantCfg     *alpb.Config
+		wantCfg     *api.Config
 	}{
 		{
 			name: "raw_jwt_with_just_key",
@@ -359,10 +359,10 @@ security_context:
   from_raw_jwt:
   - key: authorization
 `,
-			wantCfg: &alpb.Config{
+			wantCfg: &api.Config{
 				Version:         "v1alpha1",
-				Backend:         &alpb.Backend{Remote: &alpb.Remote{Address: "foo:443", InsecureEnabled: true}},
-				SecurityContext: &alpb.SecurityContext{FromRawJWT: []*alpb.FromRawJWT{{Key: "authorization"}}},
+				Backend:         &api.Backend{Remote: &api.Remote{Address: "foo:443", InsecureEnabled: true}},
+				SecurityContext: &api.SecurityContext{FromRawJWT: []*api.FromRawJWT{{Key: "authorization"}}},
 			},
 		},
 		{
@@ -378,10 +378,10 @@ security_context:
   - key: x-jwt-assertion
     prefix: somePrefix
 `,
-			wantCfg: &alpb.Config{
+			wantCfg: &api.Config{
 				Version:         "v1alpha1",
-				Backend:         &alpb.Backend{Remote: &alpb.Remote{Address: "foo:443", InsecureEnabled: true}},
-				SecurityContext: &alpb.SecurityContext{FromRawJWT: []*alpb.FromRawJWT{{Key: "x-jwt-assertion", Prefix: "somePrefix"}}},
+				Backend:         &api.Backend{Remote: &api.Remote{Address: "foo:443", InsecureEnabled: true}},
+				SecurityContext: &api.SecurityContext{FromRawJWT: []*api.FromRawJWT{{Key: "x-jwt-assertion", Prefix: "somePrefix"}}},
 			},
 		},
 		{
@@ -397,10 +397,10 @@ security_context:
   - key: x-jwt-assertion
     prefix:
 `,
-			wantCfg: &alpb.Config{
+			wantCfg: &api.Config{
 				Version:         "v1alpha1",
-				Backend:         &alpb.Backend{Remote: &alpb.Remote{Address: "foo:443", InsecureEnabled: true}},
-				SecurityContext: &alpb.SecurityContext{FromRawJWT: []*alpb.FromRawJWT{{Key: "x-jwt-assertion"}}},
+				Backend:         &api.Backend{Remote: &api.Remote{Address: "foo:443", InsecureEnabled: true}},
+				SecurityContext: &api.SecurityContext{FromRawJWT: []*api.FromRawJWT{{Key: "x-jwt-assertion"}}},
 			},
 		},
 		{
@@ -415,10 +415,10 @@ security_context:
   from_raw_jwt:
   - key: x-jwt-assertion
 `,
-			wantCfg: &alpb.Config{
+			wantCfg: &api.Config{
 				Version:         "v1alpha1",
-				Backend:         &alpb.Backend{Remote: &alpb.Remote{Address: "foo:443", InsecureEnabled: true}},
-				SecurityContext: &alpb.SecurityContext{FromRawJWT: []*alpb.FromRawJWT{{Key: "x-jwt-assertion"}}},
+				Backend:         &api.Backend{Remote: &api.Remote{Address: "foo:443", InsecureEnabled: true}},
+				SecurityContext: &api.SecurityContext{FromRawJWT: []*api.FromRawJWT{{Key: "x-jwt-assertion"}}},
 			},
 		},
 		{
@@ -433,10 +433,10 @@ condition:
   regex:
     principal_include: "user@example.com"
 `,
-			wantCfg: &alpb.Config{
+			wantCfg: &api.Config{
 				Version:   "v1alpha1",
-				Backend:   &alpb.Backend{Remote: &alpb.Remote{Address: "foo:443", InsecureEnabled: true}},
-				Condition: &alpb.Condition{Regex: &alpb.RegexCondition{PrincipalInclude: "user@example.com"}},
+				Backend:   &api.Backend{Remote: &api.Remote{Address: "foo:443", InsecureEnabled: true}},
+				Condition: &api.Condition{Regex: &api.RegexCondition{PrincipalInclude: "user@example.com"}},
 			},
 		},
 	}
