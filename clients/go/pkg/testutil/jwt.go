@@ -22,12 +22,14 @@ import (
 
 // JWTFromClaims is a testing helper that builds a JWT from the
 // given claims.
-func JWTFromClaims(t *testing.T, claims map[string]interface{}) string {
+func JWTFromClaims(tb testing.TB, claims map[string]interface{}) string {
+	tb.Helper()
+
 	var jwtMapClaims jwt.MapClaims = claims
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwtMapClaims)
 	signedToken, err := token.SignedString([]byte("secureSecretText"))
 	if err != nil {
-		t.Fatal(err)
+		tb.Fatal(err)
 	}
 	return signedToken
 }

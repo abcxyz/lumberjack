@@ -18,17 +18,17 @@ import (
 	"context"
 	"fmt"
 	"io/ioutil"
-	"net"
+	"os"
 	"path"
 	"path/filepath"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/sethvargo/go-envconfig"
 	calpb "google.golang.org/genproto/googleapis/cloud/audit"
 	"google.golang.org/grpc"
 	"google.golang.org/protobuf/testing/protocmp"
 
-	"github.com/abcxyz/lumberjack/clients/go/apis/v1alpha1"
 	alpb "github.com/abcxyz/lumberjack/clients/go/apis/v1alpha1"
 	"github.com/abcxyz/lumberjack/clients/go/pkg/audit"
 	"github.com/abcxyz/lumberjack/clients/go/pkg/errutil"
@@ -46,7 +46,8 @@ func (s *fakeServer) ProcessLog(_ context.Context, logReq *alpb.AuditLogRequest)
 }
 
 func TestMustFromConfigFile(t *testing.T) {
-	// No parallel since testing with env vars.
+	t.Parallel()
+
 	cases := []struct {
 		name          string
 		envs          map[string]string
@@ -186,36 +187,25 @@ security_context:
 	}
 
 	for _, tc := range cases {
+		tc := tc
+
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			r := &fakeServer{}
-			s := grpc.NewServer()
-			defer s.Stop()
-			alpb.RegisterAuditLogAgentServer(s, r)
 
-			lis, err := net.Listen("tcp", "localhost:0")
-			if err != nil {
-				t.Fatal(err)
-			}
-			go func(t *testing.T, s *grpc.Server, lis net.Listener) {
-				err := s.Serve(lis)
-				if err != nil {
-					// TODO: it may be worth validating this scenario. #47
-					fmt.Printf("net.Listen(tcp, localhost:0) serve failed: %v", err)
-				}
-			}(t, s, lis)
-
-			for k, v := range tc.envs {
-				t.Setenv(k, v)
-			}
+			addr, _ := testutil.TestFakeGRPCServer(t, func(s *grpc.Server) {
+				alpb.RegisterAuditLogAgentServer(s, r)
+			})
 
 			path := filepath.Join(t.TempDir(), "config.yaml")
 			// Add address of the fake server to the config file.
-			content := fmt.Sprintf(tc.fileContent, lis.Addr().String())
+			content := fmt.Sprintf(tc.fileContent, addr)
 			if err := ioutil.WriteFile(path, []byte(content), 0o600); err != nil {
 				t.Fatal(err)
 			}
 
-			c, err := audit.NewClient(MustFromConfigFile(path))
+			c, err := audit.NewClient(mustFromConfigFile(path, envconfig.MapLookuper(tc.envs)))
 			if diff := errutil.DiffSubstring(err, tc.wantErrSubstr); diff != "" {
 				t.Errorf("audit.NewClient(FromConfigFile(%v)) got unexpected error substring: %v", path, diff)
 			}
@@ -240,7 +230,8 @@ security_context:
 }
 
 func TestFromConfigFile(t *testing.T) {
-	// No parallel since testing with env vars.
+	t.Parallel()
+
 	configFileContentByName := map[string]string{
 		"valid.yaml": `
 version: v1alpha1
@@ -254,6 +245,7 @@ backend:
 `,
 		"invalid.yaml": `bananas`,
 	}
+
 	// Set up config files.
 	dir := t.TempDir()
 	for name, content := range configFileContentByName {
@@ -261,7 +253,13 @@ backend:
 		if err := ioutil.WriteFile(path, []byte(content), 0o600); err != nil {
 			t.Fatal(err)
 		}
+		t.Cleanup(func() {
+			if err := os.Remove(path); err != nil {
+				t.Fatal(err)
+			}
+		})
 	}
+
 	cases := []struct {
 		name          string
 		envs          map[string]string
@@ -304,30 +302,20 @@ backend:
 		},
 	}
 	for _, tc := range cases {
+		tc := tc
+
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			r := &fakeServer{}
-			s := grpc.NewServer()
-			defer s.Stop()
-			alpb.RegisterAuditLogAgentServer(s, r)
 
-			lis, err := net.Listen("tcp", "localhost:0")
-			if err != nil {
-				t.Fatal(err)
-			}
-			go func(t *testing.T, s *grpc.Server, lis net.Listener) {
-				err := s.Serve(lis)
-				if err != nil {
-					// TODO: it may be worth validating this scenario. #47
-					fmt.Printf("net.Listen(tcp, localhost:0) serve failed: %v\n", err)
-				}
-			}(t, s, lis)
+			addr, _ := testutil.TestFakeGRPCServer(t, func(s *grpc.Server) {
+				alpb.RegisterAuditLogAgentServer(s, r)
+			})
 
-			t.Setenv("AUDIT_CLIENT_BACKEND_REMOTE_ADDRESS", lis.Addr().String())
-			for k, v := range tc.envs {
-				t.Setenv(k, v)
-			}
-
-			c, err := audit.NewClient(FromConfigFile(tc.path))
+			c, err := audit.NewClient(fromConfigFile(tc.path, envconfig.MultiLookuper(
+				envconfig.MapLookuper(map[string]string{"AUDIT_CLIENT_BACKEND_REMOTE_ADDRESS": addr}),
+				envconfig.MapLookuper(tc.envs))))
 			if diff := errutil.DiffSubstring(err, tc.wantErrSubstr); diff != "" {
 				t.Errorf("audit.NewClient(FromConfigFile(%v)) got unexpected error substring: %v", tc.path, diff)
 			}
@@ -353,10 +341,11 @@ backend:
 
 func TestLoadConfig(t *testing.T) {
 	t.Parallel()
+
 	cases := []struct {
 		name        string
 		fileContent string
-		wantCfg     *v1alpha1.Config
+		wantCfg     *alpb.Config
 	}{
 		{
 			name: "raw_jwt_with_just_key",
@@ -370,10 +359,10 @@ security_context:
   from_raw_jwt:
   - key: authorization
 `,
-			wantCfg: &v1alpha1.Config{
+			wantCfg: &alpb.Config{
 				Version:         "v1alpha1",
-				Backend:         &v1alpha1.Backend{Remote: &v1alpha1.Remote{Address: "foo:443", InsecureEnabled: true}},
-				SecurityContext: &v1alpha1.SecurityContext{FromRawJWT: []*v1alpha1.FromRawJWT{{Key: "authorization"}}},
+				Backend:         &alpb.Backend{Remote: &alpb.Remote{Address: "foo:443", InsecureEnabled: true}},
+				SecurityContext: &alpb.SecurityContext{FromRawJWT: []*alpb.FromRawJWT{{Key: "authorization"}}},
 			},
 		},
 		{
@@ -389,10 +378,10 @@ security_context:
   - key: x-jwt-assertion
     prefix: somePrefix
 `,
-			wantCfg: &v1alpha1.Config{
+			wantCfg: &alpb.Config{
 				Version:         "v1alpha1",
-				Backend:         &v1alpha1.Backend{Remote: &v1alpha1.Remote{Address: "foo:443", InsecureEnabled: true}},
-				SecurityContext: &v1alpha1.SecurityContext{FromRawJWT: []*v1alpha1.FromRawJWT{{Key: "x-jwt-assertion", Prefix: "somePrefix"}}},
+				Backend:         &alpb.Backend{Remote: &alpb.Remote{Address: "foo:443", InsecureEnabled: true}},
+				SecurityContext: &alpb.SecurityContext{FromRawJWT: []*alpb.FromRawJWT{{Key: "x-jwt-assertion", Prefix: "somePrefix"}}},
 			},
 		},
 		{
@@ -408,10 +397,10 @@ security_context:
   - key: x-jwt-assertion
     prefix:
 `,
-			wantCfg: &v1alpha1.Config{
+			wantCfg: &alpb.Config{
 				Version:         "v1alpha1",
-				Backend:         &v1alpha1.Backend{Remote: &v1alpha1.Remote{Address: "foo:443", InsecureEnabled: true}},
-				SecurityContext: &v1alpha1.SecurityContext{FromRawJWT: []*v1alpha1.FromRawJWT{{Key: "x-jwt-assertion"}}},
+				Backend:         &alpb.Backend{Remote: &alpb.Remote{Address: "foo:443", InsecureEnabled: true}},
+				SecurityContext: &alpb.SecurityContext{FromRawJWT: []*alpb.FromRawJWT{{Key: "x-jwt-assertion"}}},
 			},
 		},
 		{
@@ -426,10 +415,10 @@ security_context:
   from_raw_jwt:
   - key: x-jwt-assertion
 `,
-			wantCfg: &v1alpha1.Config{
+			wantCfg: &alpb.Config{
 				Version:         "v1alpha1",
-				Backend:         &v1alpha1.Backend{Remote: &v1alpha1.Remote{Address: "foo:443", InsecureEnabled: true}},
-				SecurityContext: &v1alpha1.SecurityContext{FromRawJWT: []*v1alpha1.FromRawJWT{{Key: "x-jwt-assertion"}}},
+				Backend:         &alpb.Backend{Remote: &alpb.Remote{Address: "foo:443", InsecureEnabled: true}},
+				SecurityContext: &alpb.SecurityContext{FromRawJWT: []*alpb.FromRawJWT{{Key: "x-jwt-assertion"}}},
 			},
 		},
 		{
@@ -444,9 +433,9 @@ condition:
   regex:
     principal_include: "user@example.com"
 `,
-			wantCfg: &v1alpha1.Config{
+			wantCfg: &alpb.Config{
 				Version:   "v1alpha1",
-				Backend:   &v1alpha1.Backend{Remote: &v1alpha1.Remote{Address: "foo:443", InsecureEnabled: true}},
+				Backend:   &alpb.Backend{Remote: &alpb.Remote{Address: "foo:443", InsecureEnabled: true}},
 				Condition: &alpb.Condition{Regex: &alpb.RegexCondition{PrincipalInclude: "user@example.com"}},
 			},
 		},
@@ -454,6 +443,7 @@ condition:
 
 	for _, tc := range cases {
 		tc := tc
+
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
@@ -466,7 +456,7 @@ condition:
 			if err != nil {
 				t.Fatal(err)
 			}
-			cfg, err := loadConfig(fc)
+			cfg, err := loadConfig(fc, envconfig.MapLookuper(nil))
 			if err != nil {
 				t.Errorf("loadConfig() got unexpected error: %v", err)
 			}
@@ -479,8 +469,10 @@ condition:
 
 func TestInterceptorFromConfigFile(t *testing.T) {
 	t.Parallel()
+
 	cases := []struct {
 		name          string
+		envs          map[string]string
 		fileContent   string
 		wantErrSubstr string
 	}{
@@ -587,6 +579,7 @@ rules:
 
 	for _, tc := range cases {
 		tc := tc
+
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
@@ -594,8 +587,13 @@ rules:
 			if err := ioutil.WriteFile(path, []byte(tc.fileContent), 0o600); err != nil {
 				t.Fatal(err)
 			}
+			t.Cleanup(func() {
+				if err := os.Remove(path); err != nil {
+					t.Fatal(err)
+				}
+			})
 
-			_, err := audit.NewInterceptor(InterceptorFromConfigFile(path))
+			_, err := audit.NewInterceptor(interceptorFromConfigFile(path, envconfig.MapLookuper(tc.envs)))
 			if diff := errutil.DiffSubstring(err, tc.wantErrSubstr); diff != "" {
 				t.Errorf("WithInterceptorFromConfigFile(path) got unexpected error substring: %v", diff)
 			}

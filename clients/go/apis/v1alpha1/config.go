@@ -242,7 +242,7 @@ func (sc *SecurityContext) Validate() error {
 	var merr error
 	for i, j := range sc.FromRawJWT {
 		if err := j.Validate(); err != nil {
-			merr = multierr.Append(merr, fmt.Errorf("FromRawJWT[%d]: %v", i, err))
+			merr = multierr.Append(merr, fmt.Errorf("FromRawJWT[%d]: %w", i, err))
 		}
 	}
 	return merr
@@ -261,7 +261,7 @@ type FromRawJWT struct {
 	JWKs *JWKs `yaml:"jwks,omitempty"`
 }
 
-// Validate validates the FromRawJWT
+// Validate validates the FromRawJWT.
 func (j *FromRawJWT) Validate() error {
 	if j.Key == "" {
 		return fmt.Errorf("key must be specified")

@@ -138,8 +138,7 @@ func (c *Client) Stop() error {
 func (c *Client) Log(ctx context.Context, logReq *alpb.AuditLogRequest) error {
 	logger := zlogger.FromContext(ctx)
 
-	logMode := logReq.Mode
-	if logMode == alpb.AuditLogRequest_LOG_MODE_UNSPECIFIED {
+	if logMode := logReq.Mode; logMode == alpb.AuditLogRequest_LOG_MODE_UNSPECIFIED {
 		logMode = c.logMode
 		logReq.Mode = logMode
 	}

@@ -21,10 +21,17 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  lint:
+  lint-client:
     uses: 'abcxyz/pkg/.github/workflows/go-lint.yml@main'
     with:
       go_version: '1.18'
+      directory: 'clients/go'
+
+  lint-server:
+    uses: 'abcxyz/pkg/.github/workflows/go-lint.yml@main'
+    with:
+      go_version: '1.18'
+      directory: '.'
 
   test:
     name: Tests

@@ -38,7 +38,6 @@ import (
 	"github.com/sethvargo/go-envconfig"
 	"gopkg.in/yaml.v2"
 
-	"github.com/abcxyz/lumberjack/clients/go/apis/v1alpha1"
 	alpb "github.com/abcxyz/lumberjack/clients/go/apis/v1alpha1"
 )
 
@@ -48,12 +47,18 @@ const DefaultConfigFilePath = "/etc/auditlogging/config.yaml"
 // audit client. `path` is required, and if the config file is
 // missing, we return an error.
 func MustFromConfigFile(path string) audit.Option {
+	return mustFromConfigFile(path, envconfig.OsLookuper())
+}
+
+// mustFromConfigFile is like MustFromConfigFile, but exposes a custom lookuper
+// for testing.
+func mustFromConfigFile(path string, lookuper envconfig.Lookuper) audit.Option {
 	return func(c *audit.Client) error {
 		fc, err := ioutil.ReadFile(path)
 		if err != nil {
 			return err
 		}
-		cfg, err := loadConfig(fc)
+		cfg, err := loadConfig(fc, lookuper)
 		if err != nil {
 			return err
 		}
@@ -66,6 +71,12 @@ func MustFromConfigFile(path string) audit.Option {
 // path. If the config file is not found, we keep going by
 // using env vars and default values to configure the client.
 func FromConfigFile(path string) audit.Option {
+	return fromConfigFile(path, envconfig.OsLookuper())
+}
+
+// fromConfigFile is like FromConfigFile, but exposes a custom lookuper for
+// testing.
+func fromConfigFile(path string, lookuper envconfig.Lookuper) audit.Option {
 	return func(c *audit.Client) error {
 		if path == "" {
 			path = DefaultConfigFilePath
@@ -76,7 +87,7 @@ func FromConfigFile(path string) audit.Option {
 		if err != nil && !errors.Is(err, fs.ErrNotExist) {
 			return err
 		}
-		cfg, err := loadConfig(fc)
+		cfg, err := loadConfig(fc, lookuper)
 		if err != nil {
 			return err
 		}
@@ -88,12 +99,18 @@ func FromConfigFile(path string) audit.Option {
 // config file. The returned option can be used to create an interceptor
 // to add capability to gRPC server.
 func InterceptorFromConfigFile(path string) audit.InterceptorOption {
+	return interceptorFromConfigFile(path, envconfig.OsLookuper())
+}
+
+// interceptorFromConfigFile is like InterceptorFromConfigFile, but exposes a
+// custom lookuper for testing.
+func interceptorFromConfigFile(path string, lookuper envconfig.Lookuper) audit.InterceptorOption {
 	return func(i *audit.Interceptor) error {
 		fc, err := ioutil.ReadFile(path)
 		if err != nil {
 			return fmt.Errorf("failed to read config file: %w", err)
 		}
-		cfg, err := loadConfig(fc)
+		cfg, err := loadConfig(fc, lookuper)
 		if err != nil {
 			return err
 		}
@@ -209,7 +226,7 @@ func backendsFromConfig(cfg *alpb.Config) ([]audit.Option, error) {
 
 	if cfg.Backend.CloudLogging != nil {
 		var opts []cloudlogging.Option
-		if cfg.GetLogMode() == v1alpha1.AuditLogRequest_BEST_EFFORT {
+		if cfg.GetLogMode() == alpb.AuditLogRequest_BEST_EFFORT {
 			opts = append(opts, cloudlogging.WithDefaultBestEffort())
 		}
 
@@ -241,14 +258,14 @@ func labelsFromConfig(cfg *alpb.Config) audit.Option {
 	return audit.WithMutator(&lp)
 }
 
-func loadConfig(b []byte) (*alpb.Config, error) {
+func loadConfig(b []byte, lookuper envconfig.Lookuper) (*alpb.Config, error) {
 	cfg := &alpb.Config{}
 	if err := yaml.Unmarshal(b, cfg); err != nil {
 		return nil, err
 	}
 
 	// Process overrides from env vars.
-	l := envconfig.PrefixLookuper("AUDIT_CLIENT_", envconfig.OsLookuper())
+	l := envconfig.PrefixLookuper("AUDIT_CLIENT_", lookuper)
 	if err := envconfig.ProcessWith(context.Background(), cfg, l); err != nil {
 		return nil, err
 	}
