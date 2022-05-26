@@ -28,7 +28,6 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
-	"google.golang.org/grpc/status"
 	grpcstatus "google.golang.org/grpc/status"
 	"google.golang.org/protobuf/testing/protocmp"
 	"google.golang.org/protobuf/types/known/structpb"
@@ -852,7 +851,7 @@ func TestStreamInterceptor(t *testing.T) {
 			LogType:   "DATA_ACCESS",
 		}},
 		handler: func(srv interface{}, ss grpc.ServerStream) error {
-			return status.Error(codes.Internal, "something is wrong")
+			return grpcstatus.Error(codes.Internal, "something is wrong")
 		},
 		wantErrSubstr: "something is wrong",
 		wantLogReqs: []*alpb.AuditLogRequest{{
