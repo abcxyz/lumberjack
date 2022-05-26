@@ -17,22 +17,17 @@
 package testutil
 
 import (
-	alpb "github.com/abcxyz/lumberjack/clients/go/apis/v1alpha1"
+	api "github.com/abcxyz/lumberjack/clients/go/apis/v1alpha1"
+
 	"google.golang.org/genproto/googleapis/cloud/audit"
 	"google.golang.org/protobuf/types/known/structpb"
 )
 
-// RequestBuilder is intended to be used as a helper for test classes.
-// It builds basic AuditLogRequests with sane defaults for testing,
-// and exposes a builder in order to create requests for tests that have
-// specific requirements.
-type RequestBuilder struct {
-	auditLogRequest *alpb.AuditLogRequest
-}
+type RequestOptions func(r *api.AuditLogRequest) *api.AuditLogRequest
 
-func ReqBuilder() *RequestBuilder {
-	return &RequestBuilder{auditLogRequest: &alpb.AuditLogRequest{
-		Type: alpb.AuditLogRequest_DATA_ACCESS,
+func NewRequest(opts ...RequestOptions) *api.AuditLogRequest {
+	request := &api.AuditLogRequest{
+		Type: api.AuditLogRequest_DATA_ACCESS,
 		Payload: &audit.AuditLog{
 			ServiceName:  "test-service",
 			ResourceName: "test-resource",
@@ -40,39 +35,51 @@ func ReqBuilder() *RequestBuilder {
 				PrincipalEmail: "user@example.com",
 			},
 		},
-	}}
+	}
+	for _, opt := range opts {
+		request = opt(request)
+	}
+	return request
 }
 
-func (b *RequestBuilder) WithLabels(labels map[string]string) *RequestBuilder {
-	b.auditLogRequest.Labels = labels
-	return b
+func WithLabels(labels map[string]string) RequestOptions {
+	return func(r *api.AuditLogRequest) *api.AuditLogRequest {
+		r.Labels = labels
+		return r
+	}
 }
 
-func (b *RequestBuilder) WithPrincipal(principal string) *RequestBuilder {
-	b.auditLogRequest.Payload.AuthenticationInfo.PrincipalEmail = principal
-	return b
+func WithPrincipal(principal string) RequestOptions {
+	return func(r *api.AuditLogRequest) *api.AuditLogRequest {
+		r.Payload.AuthenticationInfo.PrincipalEmail = principal
+		return r
+	}
 }
 
-func (b *RequestBuilder) WithMethodName(methodName string) *RequestBuilder {
-	b.auditLogRequest.Payload.MethodName = methodName
-	return b
+func WithMethodName(method string) RequestOptions {
+	return func(r *api.AuditLogRequest) *api.AuditLogRequest {
+		r.Payload.MethodName = method
+		return r
+	}
 }
 
-func (b *RequestBuilder) WithServiceName(serviceName string) *RequestBuilder {
-	b.auditLogRequest.Payload.ServiceName = serviceName
-	return b
+func WithServiceName(service string) RequestOptions {
+	return func(r *api.AuditLogRequest) *api.AuditLogRequest {
+		r.Payload.ServiceName = service
+		return r
+	}
 }
 
-func (b *RequestBuilder) WithMetadata(metadata *structpb.Struct) *RequestBuilder {
-	b.auditLogRequest.Payload.Metadata = metadata
-	return b
+func WithMetadata(metadata *structpb.Struct) RequestOptions {
+	return func(r *api.AuditLogRequest) *api.AuditLogRequest {
+		r.Payload.Metadata = metadata
+		return r
+	}
 }
 
-func (b *RequestBuilder) WithMode(logMode alpb.AuditLogRequest_LogMode) *RequestBuilder {
-	b.auditLogRequest.Mode = logMode
-	return b
-}
-
-func (b *RequestBuilder) Build() *alpb.AuditLogRequest {
-	return b.auditLogRequest
+func WithMode(mode api.AuditLogRequest_LogMode) RequestOptions {
+	return func(r *api.AuditLogRequest) *api.AuditLogRequest {
+		r.Mode = mode
+		return r
+	}
 }

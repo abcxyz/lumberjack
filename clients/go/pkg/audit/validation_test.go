@@ -23,7 +23,7 @@ import (
 	"google.golang.org/genproto/googleapis/cloud/audit"
 	"google.golang.org/protobuf/testing/protocmp"
 
-	alpb "github.com/abcxyz/lumberjack/clients/go/apis/v1alpha1"
+	api "github.com/abcxyz/lumberjack/clients/go/apis/v1alpha1"
 	"github.com/abcxyz/lumberjack/clients/go/pkg/testutil"
 )
 
@@ -33,19 +33,19 @@ func TestRequestValidation_Process(t *testing.T) {
 	ctx := context.Background()
 	tests := []struct {
 		name       string
-		logReq     *alpb.AuditLogRequest
-		wantLogReq *alpb.AuditLogRequest
+		logReq     *api.AuditLogRequest
+		wantLogReq *api.AuditLogRequest
 		wantErr    error
 	}{
 		{
 			name:       "valid_AuditLogRequest",
-			logReq:     testutil.ReqBuilder().Build(),
-			wantLogReq: testutil.ReqBuilder().Build(),
+			logReq:     testutil.NewRequest(),
+			wantLogReq: testutil.NewRequest(),
 		},
 		{
 			name:       "should_error_when_logReq_payload_is_nil",
-			logReq:     &alpb.AuditLogRequest{},
-			wantLogReq: &alpb.AuditLogRequest{},
+			logReq:     &api.AuditLogRequest{},
+			wantLogReq: &api.AuditLogRequest{},
 			wantErr:    ErrInvalidRequest,
 		},
 		{
@@ -54,12 +54,12 @@ func TestRequestValidation_Process(t *testing.T) {
 		},
 		{
 			name: "should_error_when_authInfo_is_nil",
-			logReq: &alpb.AuditLogRequest{
+			logReq: &api.AuditLogRequest{
 				Payload: &audit.AuditLog{
 					ServiceName: "test-service",
 				},
 			},
-			wantLogReq: &alpb.AuditLogRequest{
+			wantLogReq: &api.AuditLogRequest{
 				Payload: &audit.AuditLog{
 					ServiceName: "test-service",
 				},
@@ -68,13 +68,13 @@ func TestRequestValidation_Process(t *testing.T) {
 		},
 		{
 			name: "should_error_when_auth_email_is_nil",
-			logReq: &alpb.AuditLogRequest{
+			logReq: &api.AuditLogRequest{
 				Payload: &audit.AuditLog{
 					ServiceName:        "test-service",
 					AuthenticationInfo: &audit.AuthenticationInfo{},
 				},
 			},
-			wantLogReq: &alpb.AuditLogRequest{
+			wantLogReq: &api.AuditLogRequest{
 				Payload: &audit.AuditLog{
 					ServiceName:        "test-service",
 					AuthenticationInfo: &audit.AuthenticationInfo{},
@@ -84,7 +84,7 @@ func TestRequestValidation_Process(t *testing.T) {
 		},
 		{
 			name: "should_error_when_auth_email_has_no_domain",
-			logReq: &alpb.AuditLogRequest{
+			logReq: &api.AuditLogRequest{
 				Payload: &audit.AuditLog{
 					ServiceName: "test-service",
 					AuthenticationInfo: &audit.AuthenticationInfo{
@@ -92,7 +92,7 @@ func TestRequestValidation_Process(t *testing.T) {
 					},
 				},
 			},
-			wantLogReq: &alpb.AuditLogRequest{
+			wantLogReq: &api.AuditLogRequest{
 				Payload: &audit.AuditLog{
 					ServiceName: "test-service",
 					AuthenticationInfo: &audit.AuthenticationInfo{
@@ -104,7 +104,7 @@ func TestRequestValidation_Process(t *testing.T) {
 		},
 		{
 			name: "should_error_when_serviceName_is_empty",
-			logReq: &alpb.AuditLogRequest{
+			logReq: &api.AuditLogRequest{
 				Payload: &audit.AuditLog{
 					ServiceName: "",
 					AuthenticationInfo: &audit.AuthenticationInfo{
@@ -112,7 +112,7 @@ func TestRequestValidation_Process(t *testing.T) {
 					},
 				},
 			},
-			wantLogReq: &alpb.AuditLogRequest{
+			wantLogReq: &api.AuditLogRequest{
 				Payload: &audit.AuditLog{
 					ServiceName: "",
 					AuthenticationInfo: &audit.AuthenticationInfo{

@@ -32,18 +32,18 @@ import (
 	"google.golang.org/protobuf/testing/protocmp"
 	"google.golang.org/protobuf/types/known/structpb"
 
-	alpb "github.com/abcxyz/lumberjack/clients/go/apis/v1alpha1"
-	calpb "google.golang.org/genproto/googleapis/cloud/audit"
+	api "github.com/abcxyz/lumberjack/clients/go/apis/v1alpha1"
+	capi "google.golang.org/genproto/googleapis/cloud/audit"
 )
 
 type fakeServer struct {
-	alpb.UnimplementedAuditLogAgentServer
-	gotReqs []*alpb.AuditLogRequest
+	api.UnimplementedAuditLogAgentServer
+	gotReqs []*api.AuditLogRequest
 }
 
-func (s *fakeServer) ProcessLog(_ context.Context, logReq *alpb.AuditLogRequest) (*alpb.AuditLogResponse, error) {
+func (s *fakeServer) ProcessLog(_ context.Context, logReq *api.AuditLogRequest) (*api.AuditLogResponse, error) {
 	s.gotReqs = append(s.gotReqs, logReq)
-	return &alpb.AuditLogResponse{Result: logReq}, nil
+	return &api.AuditLogResponse{Result: logReq}, nil
 }
 
 type fakeServerStream struct {
@@ -80,12 +80,12 @@ func TestUnaryInterceptor(t *testing.T) {
 	tests := []struct {
 		name          string
 		ctx           context.Context //nolint:containedctx // Only for testing
-		auditRules    []*alpb.AuditRule
+		auditRules    []*api.AuditRule
 		req           interface{}
-		logMode       alpb.AuditLogRequest_LogMode
+		logMode       api.AuditLogRequest_LogMode
 		info          *grpc.UnaryServerInfo
 		handler       grpc.UnaryHandler
-		wantLogReq    *alpb.AuditLogRequest
+		wantLogReq    *api.AuditLogRequest
 		wantErrSubstr string
 	}{
 		{
@@ -93,12 +93,12 @@ func TestUnaryInterceptor(t *testing.T) {
 			ctx: metadata.NewIncomingContext(context.Background(), metadata.New(map[string]string{
 				"authorization": jwt,
 			})),
-			auditRules: []*alpb.AuditRule{{
+			auditRules: []*api.AuditRule{{
 				Selector:  "/ExampleService/ExampleMethod",
-				Directive: alpb.AuditRuleDirectiveRequestAndResponse,
+				Directive: api.AuditRuleDirectiveRequestAndResponse,
 				LogType:   "ADMIN_ACTIVITY",
 			}},
-			logMode: alpb.AuditLogRequest_BEST_EFFORT,
+			logMode: api.AuditLogRequest_BEST_EFFORT,
 			info: &grpc.UnaryServerInfo{
 				FullMethod: "/ExampleService/ExampleMethod",
 			},
@@ -107,19 +107,19 @@ func TestUnaryInterceptor(t *testing.T) {
 				logReq.Payload.ResourceName = "ExampleResourceName"
 				return nil, nil
 			},
-			wantLogReq: &alpb.AuditLogRequest{
-				Type: alpb.AuditLogRequest_ADMIN_ACTIVITY,
-				Payload: &calpb.AuditLog{
+			wantLogReq: &api.AuditLogRequest{
+				Type: api.AuditLogRequest_ADMIN_ACTIVITY,
+				Payload: &capi.AuditLog{
 					ServiceName:  "ExampleService",
 					MethodName:   "/ExampleService/ExampleMethod",
 					ResourceName: "ExampleResourceName",
-					AuthenticationInfo: &calpb.AuthenticationInfo{
+					AuthenticationInfo: &capi.AuthenticationInfo{
 						PrincipalEmail: "user@example.com",
 					},
 					Request:  &structpb.Struct{},
 					Response: &structpb.Struct{},
 				},
-				Mode: alpb.AuditLogRequest_BEST_EFFORT,
+				Mode: api.AuditLogRequest_BEST_EFFORT,
 			},
 		},
 		{
@@ -127,12 +127,12 @@ func TestUnaryInterceptor(t *testing.T) {
 			ctx: metadata.NewIncomingContext(context.Background(), metadata.New(map[string]string{
 				"authorization": jwt,
 			})),
-			auditRules: []*alpb.AuditRule{{
+			auditRules: []*api.AuditRule{{
 				Selector:  "*",
-				Directive: alpb.AuditRuleDirectiveRequestAndResponse,
+				Directive: api.AuditRuleDirectiveRequestAndResponse,
 				LogType:   "DATA_ACCESS",
 			}},
-			logMode: alpb.AuditLogRequest_BEST_EFFORT,
+			logMode: api.AuditLogRequest_BEST_EFFORT,
 			info: &grpc.UnaryServerInfo{
 				FullMethod: "/ExampleService/ExampleMethod",
 			},
@@ -142,13 +142,13 @@ func TestUnaryInterceptor(t *testing.T) {
 				return nil, grpcstatus.Error(codes.FailedPrecondition, "fake error")
 			},
 			wantErrSubstr: "fake error",
-			wantLogReq: &alpb.AuditLogRequest{
-				Type: alpb.AuditLogRequest_DATA_ACCESS,
-				Payload: &calpb.AuditLog{
+			wantLogReq: &api.AuditLogRequest{
+				Type: api.AuditLogRequest_DATA_ACCESS,
+				Payload: &capi.AuditLog{
 					ServiceName:  "ExampleService",
 					MethodName:   "/ExampleService/ExampleMethod",
 					ResourceName: "ExampleResourceName",
-					AuthenticationInfo: &calpb.AuthenticationInfo{
+					AuthenticationInfo: &capi.AuthenticationInfo{
 						PrincipalEmail: "user@example.com",
 					},
 					Request: &structpb.Struct{},
@@ -157,7 +157,7 @@ func TestUnaryInterceptor(t *testing.T) {
 						Message: "fake error",
 					},
 				},
-				Mode: alpb.AuditLogRequest_BEST_EFFORT,
+				Mode: api.AuditLogRequest_BEST_EFFORT,
 			},
 		},
 		{
@@ -165,12 +165,12 @@ func TestUnaryInterceptor(t *testing.T) {
 			ctx: metadata.NewIncomingContext(context.Background(), metadata.New(map[string]string{
 				"authorization": jwt,
 			})),
-			auditRules: []*alpb.AuditRule{{
+			auditRules: []*api.AuditRule{{
 				Selector:  "*",
-				Directive: alpb.AuditRuleDirectiveRequestAndResponse,
+				Directive: api.AuditRuleDirectiveRequestAndResponse,
 				LogType:   "DATA_ACCESS",
 			}},
-			logMode: alpb.AuditLogRequest_BEST_EFFORT,
+			logMode: api.AuditLogRequest_BEST_EFFORT,
 			info: &grpc.UnaryServerInfo{
 				FullMethod: "/ExampleService/ExampleMethod",
 			},
@@ -180,13 +180,13 @@ func TestUnaryInterceptor(t *testing.T) {
 				return nil, errors.New("fake error")
 			},
 			wantErrSubstr: "fake error",
-			wantLogReq: &alpb.AuditLogRequest{
-				Type: alpb.AuditLogRequest_DATA_ACCESS,
-				Payload: &calpb.AuditLog{
+			wantLogReq: &api.AuditLogRequest{
+				Type: api.AuditLogRequest_DATA_ACCESS,
+				Payload: &capi.AuditLog{
 					ServiceName:  "ExampleService",
 					MethodName:   "/ExampleService/ExampleMethod",
 					ResourceName: "ExampleResourceName",
-					AuthenticationInfo: &calpb.AuthenticationInfo{
+					AuthenticationInfo: &capi.AuthenticationInfo{
 						PrincipalEmail: "user@example.com",
 					},
 					Request: &structpb.Struct{},
@@ -195,7 +195,7 @@ func TestUnaryInterceptor(t *testing.T) {
 						Message: "fake error",
 					},
 				},
-				Mode: alpb.AuditLogRequest_BEST_EFFORT,
+				Mode: api.AuditLogRequest_BEST_EFFORT,
 			},
 		},
 		{
@@ -203,11 +203,11 @@ func TestUnaryInterceptor(t *testing.T) {
 			ctx: metadata.NewIncomingContext(context.Background(), metadata.New(map[string]string{
 				"authorization": jwt,
 			})),
-			auditRules: []*alpb.AuditRule{{
+			auditRules: []*api.AuditRule{{
 				Selector:  "/ExampleService/ExampleMethod",
-				Directive: alpb.AuditRuleDirectiveDefault,
+				Directive: api.AuditRuleDirectiveDefault,
 			}},
-			logMode: alpb.AuditLogRequest_BEST_EFFORT,
+			logMode: api.AuditLogRequest_BEST_EFFORT,
 			info: &grpc.UnaryServerInfo{
 				FullMethod: "/ExampleService/ExampleMethod",
 			},
@@ -216,16 +216,16 @@ func TestUnaryInterceptor(t *testing.T) {
 				logReq.Payload.ResourceName = "ExampleResourceName"
 				return nil, nil
 			},
-			wantLogReq: &alpb.AuditLogRequest{
-				Payload: &calpb.AuditLog{
+			wantLogReq: &api.AuditLogRequest{
+				Payload: &capi.AuditLog{
 					ServiceName:  "ExampleService",
 					MethodName:   "/ExampleService/ExampleMethod",
 					ResourceName: "ExampleResourceName",
-					AuthenticationInfo: &calpb.AuthenticationInfo{
+					AuthenticationInfo: &capi.AuthenticationInfo{
 						PrincipalEmail: "user@example.com",
 					},
 				},
-				Mode: alpb.AuditLogRequest_BEST_EFFORT,
+				Mode: api.AuditLogRequest_BEST_EFFORT,
 			},
 		},
 		{
@@ -233,11 +233,11 @@ func TestUnaryInterceptor(t *testing.T) {
 			ctx: metadata.NewIncomingContext(context.Background(), metadata.New(map[string]string{
 				"authorization": jwt,
 			})),
-			auditRules: []*alpb.AuditRule{{
+			auditRules: []*api.AuditRule{{
 				Selector:  "/ExampleService/ExampleMethod",
-				Directive: alpb.AuditRuleDirectiveRequestOnly,
+				Directive: api.AuditRuleDirectiveRequestOnly,
 			}},
-			logMode: alpb.AuditLogRequest_FAIL_CLOSE,
+			logMode: api.AuditLogRequest_FAIL_CLOSE,
 			info: &grpc.UnaryServerInfo{
 				FullMethod: "/ExampleService/ExampleMethod",
 			},
@@ -246,26 +246,26 @@ func TestUnaryInterceptor(t *testing.T) {
 				logReq.Payload.ResourceName = "ExampleResourceName"
 				return nil, nil
 			},
-			wantLogReq: &alpb.AuditLogRequest{
-				Payload: &calpb.AuditLog{
+			wantLogReq: &api.AuditLogRequest{
+				Payload: &capi.AuditLog{
 					ServiceName:  "ExampleService",
 					MethodName:   "/ExampleService/ExampleMethod",
 					ResourceName: "ExampleResourceName",
-					AuthenticationInfo: &calpb.AuthenticationInfo{
+					AuthenticationInfo: &capi.AuthenticationInfo{
 						PrincipalEmail: "user@example.com",
 					},
 					Request: &structpb.Struct{},
 				},
-				Mode: alpb.AuditLogRequest_FAIL_CLOSE,
+				Mode: api.AuditLogRequest_FAIL_CLOSE,
 			},
 		},
 		{
 			name: "audit_rule_is_inapplicable",
 			ctx:  context.Background(),
-			auditRules: []*alpb.AuditRule{{
+			auditRules: []*api.AuditRule{{
 				Selector: "/ExampleService/Inapplicable",
 			}},
-			logMode: alpb.AuditLogRequest_BEST_EFFORT,
+			logMode: api.AuditLogRequest_BEST_EFFORT,
 			info: &grpc.UnaryServerInfo{
 				FullMethod: "/ExampleService/ExampleMethod",
 			},
@@ -276,10 +276,10 @@ func TestUnaryInterceptor(t *testing.T) {
 		{
 			name: "malformed_method_info_fail_close",
 			ctx:  context.Background(),
-			auditRules: []*alpb.AuditRule{{
+			auditRules: []*api.AuditRule{{
 				Selector: "*",
 			}},
-			logMode: alpb.AuditLogRequest_FAIL_CLOSE,
+			logMode: api.AuditLogRequest_FAIL_CLOSE,
 			info: &grpc.UnaryServerInfo{
 				FullMethod: "bananas",
 			},
@@ -291,10 +291,10 @@ func TestUnaryInterceptor(t *testing.T) {
 		{
 			name: "malformed_method_info_best_effort",
 			ctx:  context.Background(),
-			auditRules: []*alpb.AuditRule{{
+			auditRules: []*api.AuditRule{{
 				Selector: "*",
 			}},
-			logMode: alpb.AuditLogRequest_BEST_EFFORT,
+			logMode: api.AuditLogRequest_BEST_EFFORT,
 			info: &grpc.UnaryServerInfo{
 				FullMethod: "bananas",
 			},
@@ -307,10 +307,10 @@ func TestUnaryInterceptor(t *testing.T) {
 			ctx: metadata.NewIncomingContext(context.Background(), metadata.New(map[string]string{
 				"authorization": "bananas",
 			})),
-			auditRules: []*alpb.AuditRule{{
+			auditRules: []*api.AuditRule{{
 				Selector: "*",
 			}},
-			logMode: alpb.AuditLogRequest_BEST_EFFORT,
+			logMode: api.AuditLogRequest_BEST_EFFORT,
 			info: &grpc.UnaryServerInfo{
 				FullMethod: "/ExampleService/ExampleMethod",
 			},
@@ -323,10 +323,10 @@ func TestUnaryInterceptor(t *testing.T) {
 			ctx: metadata.NewIncomingContext(context.Background(), metadata.New(map[string]string{
 				"authorization": "bananas",
 			})),
-			auditRules: []*alpb.AuditRule{{
+			auditRules: []*api.AuditRule{{
 				Selector: "*",
 			}},
-			logMode: alpb.AuditLogRequest_FAIL_CLOSE,
+			logMode: api.AuditLogRequest_FAIL_CLOSE,
 			info: &grpc.UnaryServerInfo{
 				FullMethod: "/ExampleService/ExampleMethod",
 			},
@@ -340,10 +340,10 @@ func TestUnaryInterceptor(t *testing.T) {
 			ctx: metadata.NewIncomingContext(context.Background(), metadata.New(map[string]string{
 				"authorization": "bananas",
 			})),
-			auditRules: []*alpb.AuditRule{{
+			auditRules: []*api.AuditRule{{
 				Selector: "*",
 			}},
-			logMode: alpb.AuditLogRequest_FAIL_CLOSE,
+			logMode: api.AuditLogRequest_FAIL_CLOSE,
 			info: &grpc.UnaryServerInfo{
 				FullMethod: "/ExampleService/ExampleMethod",
 			},
@@ -357,11 +357,11 @@ func TestUnaryInterceptor(t *testing.T) {
 			ctx: metadata.NewIncomingContext(context.Background(), metadata.New(map[string]string{
 				"authorization": jwt,
 			})),
-			auditRules: []*alpb.AuditRule{{
+			auditRules: []*api.AuditRule{{
 				Selector:  "*",
-				Directive: alpb.AuditRuleDirectiveRequestAndResponse,
+				Directive: api.AuditRuleDirectiveRequestAndResponse,
 			}},
-			logMode: alpb.AuditLogRequest_FAIL_CLOSE,
+			logMode: api.AuditLogRequest_FAIL_CLOSE,
 			info: &grpc.UnaryServerInfo{
 				FullMethod: "/ExampleService/ExampleMethod",
 			},
@@ -378,11 +378,11 @@ func TestUnaryInterceptor(t *testing.T) {
 			ctx: metadata.NewIncomingContext(context.Background(), metadata.New(map[string]string{
 				"authorization": jwt,
 			})),
-			auditRules: []*alpb.AuditRule{{
+			auditRules: []*api.AuditRule{{
 				Selector:  "*",
-				Directive: alpb.AuditRuleDirectiveRequestAndResponse,
+				Directive: api.AuditRuleDirectiveRequestAndResponse,
 			}},
-			logMode: alpb.AuditLogRequest_BEST_EFFORT,
+			logMode: api.AuditLogRequest_BEST_EFFORT,
 			info: &grpc.UnaryServerInfo{
 				FullMethod: "/ExampleService/ExampleMethod",
 			},
@@ -405,7 +405,7 @@ func TestUnaryInterceptor(t *testing.T) {
 			r := &fakeServer{}
 
 			addr, _ := testutil.TestFakeGRPCServer(t, func(s *grpc.Server) {
-				alpb.RegisterAuditLogAgentServer(s, r)
+				api.RegisterAuditLogAgentServer(s, r)
 			})
 
 			p, err := remote.NewProcessor(addr)
@@ -419,7 +419,7 @@ func TestUnaryInterceptor(t *testing.T) {
 			i.Client = c
 
 			fromRawJWT := &security.FromRawJWT{
-				FromRawJWT: []*alpb.FromRawJWT{{
+				FromRawJWT: []*api.FromRawJWT{{
 					Key:    "authorization",
 					Prefix: "Bearer ",
 				}},
@@ -431,14 +431,14 @@ func TestUnaryInterceptor(t *testing.T) {
 				t.Errorf("UnaryInterceptor(...) got unexpected error substring: %v", diff)
 			}
 
-			var gotReq *alpb.AuditLogRequest
+			var gotReq *api.AuditLogRequest
 			if len(r.gotReqs) > 0 {
 				gotReq = r.gotReqs[0]
 			}
 			if tc.wantLogReq != nil && gotReq.Timestamp == nil {
 				t.Error("UnaryInterceptor(...) gotReq missing timestamp")
 			}
-			if diff := cmp.Diff(tc.wantLogReq, gotReq, protocmp.Transform(), protocmp.IgnoreFields(&alpb.AuditLogRequest{}, "timestamp")); diff != "" {
+			if diff := cmp.Diff(tc.wantLogReq, gotReq, protocmp.Transform(), protocmp.IgnoreFields(&api.AuditLogRequest{}, "timestamp")); diff != "" {
 				t.Errorf("UnaryInterceptor(...) got diff in automatically emitted LogReq (-want, +got): %v", diff)
 			}
 			if err := c.Stop(); err != nil {
@@ -464,8 +464,8 @@ func TestStreamInterceptor(t *testing.T) {
 		ss            *fakeServerStream
 		info          *grpc.StreamServerInfo
 		handler       grpc.StreamHandler
-		auditRules    []*alpb.AuditRule
-		wantLogReqs   []*alpb.AuditLogRequest
+		auditRules    []*api.AuditRule
+		wantLogReqs   []*api.AuditLogRequest
 		wantErrSubstr string
 	}{{
 		name: "client_stream_multiple_reqs_single_resp",
@@ -477,9 +477,9 @@ func TestStreamInterceptor(t *testing.T) {
 		info: &grpc.StreamServerInfo{
 			FullMethod: "/ExampleService/ExampleMethod",
 		},
-		auditRules: []*alpb.AuditRule{{
+		auditRules: []*api.AuditRule{{
 			Selector:  "/ExampleService/ExampleMethod",
-			Directive: alpb.AuditRuleDirectiveRequestAndResponse,
+			Directive: api.AuditRuleDirectiveRequestAndResponse,
 			LogType:   "DATA_ACCESS",
 		}},
 		handler: func(srv interface{}, ss grpc.ServerStream) error {
@@ -492,13 +492,13 @@ func TestStreamInterceptor(t *testing.T) {
 			}
 			return ss.SendMsg(&msg{Val: "resp1"})
 		},
-		wantLogReqs: []*alpb.AuditLogRequest{{
-			Type: alpb.AuditLogRequest_DATA_ACCESS,
-			Payload: &calpb.AuditLog{
+		wantLogReqs: []*api.AuditLogRequest{{
+			Type: api.AuditLogRequest_DATA_ACCESS,
+			Payload: &capi.AuditLog{
 				ServiceName:  "ExampleService",
 				MethodName:   "/ExampleService/ExampleMethod",
 				ResourceName: "ExampleResourceName",
-				AuthenticationInfo: &calpb.AuthenticationInfo{
+				AuthenticationInfo: &capi.AuthenticationInfo{
 					PrincipalEmail: "user@example.com",
 				},
 				Request: &structpb.Struct{Fields: map[string]*structpb.Value{
@@ -506,12 +506,12 @@ func TestStreamInterceptor(t *testing.T) {
 				}},
 			},
 		}, {
-			Type: alpb.AuditLogRequest_DATA_ACCESS,
-			Payload: &calpb.AuditLog{
+			Type: api.AuditLogRequest_DATA_ACCESS,
+			Payload: &capi.AuditLog{
 				ServiceName:  "ExampleService",
 				MethodName:   "/ExampleService/ExampleMethod",
 				ResourceName: "ExampleResourceName",
-				AuthenticationInfo: &calpb.AuthenticationInfo{
+				AuthenticationInfo: &capi.AuthenticationInfo{
 					PrincipalEmail: "user@example.com",
 				},
 				Request: &structpb.Struct{Fields: map[string]*structpb.Value{
@@ -519,12 +519,12 @@ func TestStreamInterceptor(t *testing.T) {
 				}},
 			},
 		}, {
-			Type: alpb.AuditLogRequest_DATA_ACCESS,
-			Payload: &calpb.AuditLog{
+			Type: api.AuditLogRequest_DATA_ACCESS,
+			Payload: &capi.AuditLog{
 				ServiceName:  "ExampleService",
 				MethodName:   "/ExampleService/ExampleMethod",
 				ResourceName: "ExampleResourceName",
-				AuthenticationInfo: &calpb.AuthenticationInfo{
+				AuthenticationInfo: &capi.AuthenticationInfo{
 					PrincipalEmail: "user@example.com",
 				},
 				Request: &structpb.Struct{Fields: map[string]*structpb.Value{
@@ -545,9 +545,9 @@ func TestStreamInterceptor(t *testing.T) {
 		info: &grpc.StreamServerInfo{
 			FullMethod: "/ExampleService/ExampleMethod",
 		},
-		auditRules: []*alpb.AuditRule{{
+		auditRules: []*api.AuditRule{{
 			Selector:  "/ExampleService/ExampleMethod",
-			Directive: alpb.AuditRuleDirectiveRequestAndResponse,
+			Directive: api.AuditRuleDirectiveRequestAndResponse,
 			LogType:   "DATA_ACCESS",
 		}},
 		handler: func(srv interface{}, ss grpc.ServerStream) error {
@@ -563,13 +563,13 @@ func TestStreamInterceptor(t *testing.T) {
 			}
 			return nil
 		},
-		wantLogReqs: []*alpb.AuditLogRequest{{
-			Type: alpb.AuditLogRequest_DATA_ACCESS,
-			Payload: &calpb.AuditLog{
+		wantLogReqs: []*api.AuditLogRequest{{
+			Type: api.AuditLogRequest_DATA_ACCESS,
+			Payload: &capi.AuditLog{
 				ServiceName:  "ExampleService",
 				MethodName:   "/ExampleService/ExampleMethod",
 				ResourceName: "ExampleResourceName",
-				AuthenticationInfo: &calpb.AuthenticationInfo{
+				AuthenticationInfo: &capi.AuthenticationInfo{
 					PrincipalEmail: "user@example.com",
 				},
 				Request: &structpb.Struct{Fields: map[string]*structpb.Value{
@@ -580,12 +580,12 @@ func TestStreamInterceptor(t *testing.T) {
 				}},
 			},
 		}, {
-			Type: alpb.AuditLogRequest_DATA_ACCESS,
-			Payload: &calpb.AuditLog{
+			Type: api.AuditLogRequest_DATA_ACCESS,
+			Payload: &capi.AuditLog{
 				ServiceName:  "ExampleService",
 				MethodName:   "/ExampleService/ExampleMethod",
 				ResourceName: "ExampleResourceName",
-				AuthenticationInfo: &calpb.AuthenticationInfo{
+				AuthenticationInfo: &capi.AuthenticationInfo{
 					PrincipalEmail: "user@example.com",
 				},
 				Response: &structpb.Struct{Fields: map[string]*structpb.Value{
@@ -593,12 +593,12 @@ func TestStreamInterceptor(t *testing.T) {
 				}},
 			},
 		}, {
-			Type: alpb.AuditLogRequest_DATA_ACCESS,
-			Payload: &calpb.AuditLog{
+			Type: api.AuditLogRequest_DATA_ACCESS,
+			Payload: &capi.AuditLog{
 				ServiceName:  "ExampleService",
 				MethodName:   "/ExampleService/ExampleMethod",
 				ResourceName: "ExampleResourceName",
-				AuthenticationInfo: &calpb.AuthenticationInfo{
+				AuthenticationInfo: &capi.AuthenticationInfo{
 					PrincipalEmail: "user@example.com",
 				},
 				Response: &structpb.Struct{Fields: map[string]*structpb.Value{
@@ -616,9 +616,9 @@ func TestStreamInterceptor(t *testing.T) {
 		info: &grpc.StreamServerInfo{
 			FullMethod: "/ExampleService/ExampleMethod",
 		},
-		auditRules: []*alpb.AuditRule{{
+		auditRules: []*api.AuditRule{{
 			Selector:  "/ExampleService/ExampleMethod",
-			Directive: alpb.AuditRuleDirectiveRequestAndResponse,
+			Directive: api.AuditRuleDirectiveRequestAndResponse,
 			LogType:   "DATA_ACCESS",
 		}},
 		handler: func(srv interface{}, ss grpc.ServerStream) error {
@@ -638,13 +638,13 @@ func TestStreamInterceptor(t *testing.T) {
 			}
 			return nil
 		},
-		wantLogReqs: []*alpb.AuditLogRequest{{
-			Type: alpb.AuditLogRequest_DATA_ACCESS,
-			Payload: &calpb.AuditLog{
+		wantLogReqs: []*api.AuditLogRequest{{
+			Type: api.AuditLogRequest_DATA_ACCESS,
+			Payload: &capi.AuditLog{
 				ServiceName:  "ExampleService",
 				MethodName:   "/ExampleService/ExampleMethod",
 				ResourceName: "ExampleResourceName",
-				AuthenticationInfo: &calpb.AuthenticationInfo{
+				AuthenticationInfo: &capi.AuthenticationInfo{
 					PrincipalEmail: "user@example.com",
 				},
 				Request: &structpb.Struct{Fields: map[string]*structpb.Value{
@@ -655,12 +655,12 @@ func TestStreamInterceptor(t *testing.T) {
 				}},
 			},
 		}, {
-			Type: alpb.AuditLogRequest_DATA_ACCESS,
-			Payload: &calpb.AuditLog{
+			Type: api.AuditLogRequest_DATA_ACCESS,
+			Payload: &capi.AuditLog{
 				ServiceName:  "ExampleService",
 				MethodName:   "/ExampleService/ExampleMethod",
 				ResourceName: "ExampleResourceName",
-				AuthenticationInfo: &calpb.AuthenticationInfo{
+				AuthenticationInfo: &capi.AuthenticationInfo{
 					PrincipalEmail: "user@example.com",
 				},
 				Request: &structpb.Struct{Fields: map[string]*structpb.Value{
@@ -681,9 +681,9 @@ func TestStreamInterceptor(t *testing.T) {
 		info: &grpc.StreamServerInfo{
 			FullMethod: "/ExampleService/ExampleMethod",
 		},
-		auditRules: []*alpb.AuditRule{{
+		auditRules: []*api.AuditRule{{
 			Selector:  "/ExampleService/ExampleMethod",
-			Directive: alpb.AuditRuleDirectiveDefault,
+			Directive: api.AuditRuleDirectiveDefault,
 			LogType:   "DATA_ACCESS",
 		}},
 		handler: func(srv interface{}, ss grpc.ServerStream) error {
@@ -703,23 +703,23 @@ func TestStreamInterceptor(t *testing.T) {
 			}
 			return nil
 		},
-		wantLogReqs: []*alpb.AuditLogRequest{{
-			Type: alpb.AuditLogRequest_DATA_ACCESS,
-			Payload: &calpb.AuditLog{
+		wantLogReqs: []*api.AuditLogRequest{{
+			Type: api.AuditLogRequest_DATA_ACCESS,
+			Payload: &capi.AuditLog{
 				ServiceName:  "ExampleService",
 				MethodName:   "/ExampleService/ExampleMethod",
 				ResourceName: "ExampleResourceName",
-				AuthenticationInfo: &calpb.AuthenticationInfo{
+				AuthenticationInfo: &capi.AuthenticationInfo{
 					PrincipalEmail: "user@example.com",
 				},
 			},
 		}, {
-			Type: alpb.AuditLogRequest_DATA_ACCESS,
-			Payload: &calpb.AuditLog{
+			Type: api.AuditLogRequest_DATA_ACCESS,
+			Payload: &capi.AuditLog{
 				ServiceName:  "ExampleService",
 				MethodName:   "/ExampleService/ExampleMethod",
 				ResourceName: "ExampleResourceName",
-				AuthenticationInfo: &calpb.AuthenticationInfo{
+				AuthenticationInfo: &capi.AuthenticationInfo{
 					PrincipalEmail: "user@example.com",
 				},
 			},
@@ -734,9 +734,9 @@ func TestStreamInterceptor(t *testing.T) {
 		info: &grpc.StreamServerInfo{
 			FullMethod: "/ExampleService/ExampleMethod",
 		},
-		auditRules: []*alpb.AuditRule{{
+		auditRules: []*api.AuditRule{{
 			Selector:  "/ExampleService/ExampleMethod",
-			Directive: alpb.AuditRuleDirectiveRequestOnly,
+			Directive: api.AuditRuleDirectiveRequestOnly,
 			LogType:   "DATA_ACCESS",
 		}},
 		handler: func(srv interface{}, ss grpc.ServerStream) error {
@@ -756,13 +756,13 @@ func TestStreamInterceptor(t *testing.T) {
 			}
 			return nil
 		},
-		wantLogReqs: []*alpb.AuditLogRequest{{
-			Type: alpb.AuditLogRequest_DATA_ACCESS,
-			Payload: &calpb.AuditLog{
+		wantLogReqs: []*api.AuditLogRequest{{
+			Type: api.AuditLogRequest_DATA_ACCESS,
+			Payload: &capi.AuditLog{
 				ServiceName:  "ExampleService",
 				MethodName:   "/ExampleService/ExampleMethod",
 				ResourceName: "ExampleResourceName",
-				AuthenticationInfo: &calpb.AuthenticationInfo{
+				AuthenticationInfo: &capi.AuthenticationInfo{
 					PrincipalEmail: "user@example.com",
 				},
 				Request: &structpb.Struct{Fields: map[string]*structpb.Value{
@@ -770,12 +770,12 @@ func TestStreamInterceptor(t *testing.T) {
 				}},
 			},
 		}, {
-			Type: alpb.AuditLogRequest_DATA_ACCESS,
-			Payload: &calpb.AuditLog{
+			Type: api.AuditLogRequest_DATA_ACCESS,
+			Payload: &capi.AuditLog{
 				ServiceName:  "ExampleService",
 				MethodName:   "/ExampleService/ExampleMethod",
 				ResourceName: "ExampleResourceName",
-				AuthenticationInfo: &calpb.AuthenticationInfo{
+				AuthenticationInfo: &capi.AuthenticationInfo{
 					PrincipalEmail: "user@example.com",
 				},
 				Request: &structpb.Struct{Fields: map[string]*structpb.Value{
@@ -793,9 +793,9 @@ func TestStreamInterceptor(t *testing.T) {
 		info: &grpc.StreamServerInfo{
 			FullMethod: "/ExampleService/ExampleMethod",
 		},
-		auditRules: []*alpb.AuditRule{{
+		auditRules: []*api.AuditRule{{
 			Selector:  "/ExampleService/OtherMethod",
-			Directive: alpb.AuditRuleDirectiveDefault,
+			Directive: api.AuditRuleDirectiveDefault,
 			LogType:   "DATA_ACCESS",
 		}},
 		handler: func(srv interface{}, ss grpc.ServerStream) error {
@@ -819,9 +819,9 @@ func TestStreamInterceptor(t *testing.T) {
 		info: &grpc.StreamServerInfo{
 			FullMethod: "/ExampleService/ExampleMethod",
 		},
-		auditRules: []*alpb.AuditRule{{
+		auditRules: []*api.AuditRule{{
 			Selector:  "/ExampleService/OtherMethod",
-			Directive: alpb.AuditRuleDirectiveDefault,
+			Directive: api.AuditRuleDirectiveDefault,
 			LogType:   "DATA_ACCESS",
 		}},
 		handler: func(srv interface{}, ss grpc.ServerStream) error {
@@ -845,21 +845,21 @@ func TestStreamInterceptor(t *testing.T) {
 		info: &grpc.StreamServerInfo{
 			FullMethod: "/ExampleService/ExampleMethod",
 		},
-		auditRules: []*alpb.AuditRule{{
+		auditRules: []*api.AuditRule{{
 			Selector:  "/ExampleService/ExampleMethod",
-			Directive: alpb.AuditRuleDirectiveRequestAndResponse,
+			Directive: api.AuditRuleDirectiveRequestAndResponse,
 			LogType:   "DATA_ACCESS",
 		}},
 		handler: func(srv interface{}, ss grpc.ServerStream) error {
 			return grpcstatus.Error(codes.Internal, "something is wrong")
 		},
 		wantErrSubstr: "something is wrong",
-		wantLogReqs: []*alpb.AuditLogRequest{{
-			Type: alpb.AuditLogRequest_DATA_ACCESS,
-			Payload: &calpb.AuditLog{
+		wantLogReqs: []*api.AuditLogRequest{{
+			Type: api.AuditLogRequest_DATA_ACCESS,
+			Payload: &capi.AuditLog{
 				ServiceName: "ExampleService",
 				MethodName:  "/ExampleService/ExampleMethod",
-				AuthenticationInfo: &calpb.AuthenticationInfo{
+				AuthenticationInfo: &capi.AuthenticationInfo{
 					PrincipalEmail: "user@example.com",
 				},
 				Status: &rpcstatus.Status{
@@ -880,7 +880,7 @@ func TestStreamInterceptor(t *testing.T) {
 			r := &fakeServer{}
 
 			addr, _ := testutil.TestFakeGRPCServer(t, func(s *grpc.Server) {
-				alpb.RegisterAuditLogAgentServer(s, r)
+				api.RegisterAuditLogAgentServer(s, r)
 			})
 
 			p, err := remote.NewProcessor(addr)
@@ -894,7 +894,7 @@ func TestStreamInterceptor(t *testing.T) {
 			i.Client = c
 
 			fromRawJWT := &security.FromRawJWT{
-				FromRawJWT: []*alpb.FromRawJWT{{
+				FromRawJWT: []*api.FromRawJWT{{
 					Key:    "authorization",
 					Prefix: "Bearer ",
 				}},
@@ -915,7 +915,7 @@ func TestStreamInterceptor(t *testing.T) {
 				}
 			}
 
-			if diff := cmp.Diff(tc.wantLogReqs, r.gotReqs, protocmp.Transform(), protocmp.IgnoreFields(&alpb.AuditLogRequest{}, "timestamp", "operation")); diff != "" {
+			if diff := cmp.Diff(tc.wantLogReqs, r.gotReqs, protocmp.Transform(), protocmp.IgnoreFields(&api.AuditLogRequest{}, "timestamp", "operation")); diff != "" {
 				t.Errorf("StreamInterceptor(...) got diff in automatically emitted log requests (-want, +got): %v", diff)
 			}
 
@@ -996,33 +996,33 @@ func TestHandleReturnUnary(t *testing.T) {
 
 	tests := []struct {
 		name     string
-		logMode  alpb.AuditLogRequest_LogMode
+		logMode  api.AuditLogRequest_LogMode
 		err      error
 		wantResp bool
 		wantErr  bool
 	}{
 		{
 			name:     "returns_response_no_err_best_effort",
-			logMode:  alpb.AuditLogRequest_BEST_EFFORT,
+			logMode:  api.AuditLogRequest_BEST_EFFORT,
 			wantResp: true,
 			wantErr:  false,
 		},
 		{
 			name:     "returns_response_no_err_fail_close",
-			logMode:  alpb.AuditLogRequest_FAIL_CLOSE,
+			logMode:  api.AuditLogRequest_FAIL_CLOSE,
 			wantResp: true,
 			wantErr:  false,
 		},
 		{
 			name:     "returns_err_with_err_fail_close",
-			logMode:  alpb.AuditLogRequest_FAIL_CLOSE,
+			logMode:  api.AuditLogRequest_FAIL_CLOSE,
 			err:      errors.New("test error"),
 			wantResp: false,
 			wantErr:  true,
 		},
 		{
 			name:     "returns_response_with_err_best_effort",
-			logMode:  alpb.AuditLogRequest_BEST_EFFORT,
+			logMode:  api.AuditLogRequest_BEST_EFFORT,
 			err:      errors.New("test error"),
 			wantResp: true,
 			wantErr:  false,
@@ -1067,29 +1067,29 @@ func TestHandleReturnStream(t *testing.T) {
 
 	tests := []struct {
 		name    string
-		logMode alpb.AuditLogRequest_LogMode
+		logMode api.AuditLogRequest_LogMode
 		err     error
 		wantErr bool
 	}{
 		{
 			name:    "returns_nil_no_err_best_effort",
-			logMode: alpb.AuditLogRequest_BEST_EFFORT,
+			logMode: api.AuditLogRequest_BEST_EFFORT,
 			wantErr: false,
 		},
 		{
 			name:    "returns_response_no_err_fail_close",
-			logMode: alpb.AuditLogRequest_FAIL_CLOSE,
+			logMode: api.AuditLogRequest_FAIL_CLOSE,
 			wantErr: false,
 		},
 		{
 			name:    "returns_err_with_err_fail_close",
-			logMode: alpb.AuditLogRequest_FAIL_CLOSE,
+			logMode: api.AuditLogRequest_FAIL_CLOSE,
 			err:     errors.New("test error"),
 			wantErr: true,
 		},
 		{
 			name:    "returns_nil_with_err_best_effort",
-			logMode: alpb.AuditLogRequest_BEST_EFFORT,
+			logMode: api.AuditLogRequest_BEST_EFFORT,
 			err:     errors.New("test error"),
 			wantErr: false,
 		},
@@ -1123,31 +1123,31 @@ func TestHandleReturnWithResponse(t *testing.T) {
 
 	tests := []struct {
 		name       string
-		logMode    alpb.AuditLogRequest_LogMode
+		logMode    api.AuditLogRequest_LogMode
 		err        error
 		wantResp   bool
 		wantErrStr string
 	}{
 		{
 			name:     "returns_response_no_err_best_effort",
-			logMode:  alpb.AuditLogRequest_BEST_EFFORT,
+			logMode:  api.AuditLogRequest_BEST_EFFORT,
 			wantResp: true,
 		},
 		{
 			name:     "returns_response_no_err_fail_close",
-			logMode:  alpb.AuditLogRequest_FAIL_CLOSE,
+			logMode:  api.AuditLogRequest_FAIL_CLOSE,
 			wantResp: true,
 		},
 		{
 			name:       "returns_err_with_err_fail_close",
-			logMode:    alpb.AuditLogRequest_FAIL_CLOSE,
+			logMode:    api.AuditLogRequest_FAIL_CLOSE,
 			err:        testErr,
 			wantResp:   true,
 			wantErrStr: errStr,
 		},
 		{
 			name:     "returns_response_with_err_best_effort",
-			logMode:  alpb.AuditLogRequest_BEST_EFFORT,
+			logMode:  api.AuditLogRequest_BEST_EFFORT,
 			err:      testErr,
 			wantResp: true,
 		},
