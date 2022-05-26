@@ -22,7 +22,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 
-	alpb "github.com/abcxyz/lumberjack/clients/go/apis/v1alpha1"
+	api "github.com/abcxyz/lumberjack/clients/go/apis/v1alpha1"
 )
 
 // Option is the option to set up a remote audit log processor.
@@ -52,7 +52,7 @@ type grpcAuthOptions interface {
 type Processor struct {
 	address     string
 	conn        *grpc.ClientConn
-	client      alpb.AuditLogAgentClient
+	client      api.AuditLogAgentClient
 	authOpts    grpcAuthOptions
 	rawDialOpts []grpc.DialOption
 }
@@ -88,12 +88,12 @@ func NewProcessor(address string, opts ...Option) (*Processor, error) {
 	}
 
 	p.conn = conn
-	p.client = alpb.NewAuditLogAgentClient(conn)
+	p.client = api.NewAuditLogAgentClient(conn)
 	return p, nil
 }
 
 // Process processes the audit log request by calling a remote service.
-func (p *Processor) Process(ctx context.Context, logReq *alpb.AuditLogRequest) error {
+func (p *Processor) Process(ctx context.Context, logReq *api.AuditLogRequest) error {
 	var authCallOpts []grpc.CallOption
 	if p.authOpts != nil {
 		var err error

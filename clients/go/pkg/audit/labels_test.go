@@ -19,7 +19,7 @@ import (
 	"errors"
 	"testing"
 
-	alpb "github.com/abcxyz/lumberjack/clients/go/apis/v1alpha1"
+	api "github.com/abcxyz/lumberjack/clients/go/apis/v1alpha1"
 	"github.com/abcxyz/lumberjack/clients/go/pkg/testutil"
 	"github.com/google/go-cmp/cmp"
 	"google.golang.org/protobuf/testing/protocmp"
@@ -32,26 +32,26 @@ func TestProcessLabels(t *testing.T) {
 	tests := []struct {
 		name         string
 		configLabels map[string]string
-		logReq       *alpb.AuditLogRequest
-		wantLogReq   *alpb.AuditLogRequest
+		logReq       *api.AuditLogRequest
+		wantLogReq   *api.AuditLogRequest
 		wantErr      error
 	}{
 		{
 			name:         "adds_labels",
 			configLabels: map[string]string{"label1": "value1"},
-			logReq:       testutil.ReqBuilder().Build(),
-			wantLogReq:   testutil.ReqBuilder().WithLabels(map[string]string{"label1": "value1"}).Build(),
+			logReq:       testutil.NewRequest(),
+			wantLogReq:   testutil.NewRequest(testutil.WithLabels(map[string]string{"label1": "value1"})),
 		},
 		{
 			name:         "adds_labels_without_overwriting",
 			configLabels: map[string]string{"label1": "value1", "label2": "value2"},
-			logReq:       testutil.ReqBuilder().WithLabels(map[string]string{"label1": "requestval"}).Build(),
-			wantLogReq:   testutil.ReqBuilder().WithLabels(map[string]string{"label1": "requestval", "label2": "value2"}).Build(),
+			logReq:       testutil.NewRequest(testutil.WithLabels(map[string]string{"label1": "requestval"})),
+			wantLogReq:   testutil.NewRequest(testutil.WithLabels(map[string]string{"label1": "requestval", "label2": "value2"})),
 		},
 		{
 			name:       "adds_nothing_if_nil_labels",
-			logReq:     testutil.ReqBuilder().WithLabels(map[string]string{"label1": "requestval"}).Build(),
-			wantLogReq: testutil.ReqBuilder().WithLabels(map[string]string{"label1": "requestval"}).Build(),
+			logReq:     testutil.NewRequest(testutil.WithLabels(map[string]string{"label1": "requestval"})),
+			wantLogReq: testutil.NewRequest(testutil.WithLabels(map[string]string{"label1": "requestval"})),
 		},
 	}
 	for _, tc := range tests {
