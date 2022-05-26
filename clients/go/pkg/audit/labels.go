@@ -17,7 +17,7 @@ package audit
 import (
 	"context"
 
-	alpb "github.com/abcxyz/lumberjack/clients/go/apis/v1alpha1"
+	api "github.com/abcxyz/lumberjack/clients/go/apis/v1alpha1"
 )
 
 // LabelProcessor is a mutator that adds labels to each AuditLogRequest. These labels
@@ -30,7 +30,7 @@ type LabelProcessor struct {
 
 // Process adds the configured labels to each passed in request, without overwriting
 // existing labels.
-func (p *LabelProcessor) Process(ctx context.Context, logReq *alpb.AuditLogRequest) error {
+func (p *LabelProcessor) Process(ctx context.Context, logReq *api.AuditLogRequest) error {
 	if len(p.DefaultLabels) == 0 {
 		// short circuit if there are no labels to add
 		return nil

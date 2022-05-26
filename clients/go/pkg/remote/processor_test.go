@@ -27,19 +27,19 @@ import (
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/testing/protocmp"
 
-	alpb "github.com/abcxyz/lumberjack/clients/go/apis/v1alpha1"
-	"github.com/abcxyz/lumberjack/clients/go/pkg/testutil"
+	api "github.com/abcxyz/lumberjack/clients/go/apis/v1alpha1"
+	"github.com/abcxyz/lumberjack/clients/go/internal/testutil"
 )
 
 type fakeServer struct {
-	alpb.UnimplementedAuditLogAgentServer
+	api.UnimplementedAuditLogAgentServer
 
-	gotReq    *alpb.AuditLogRequest
-	resp      *alpb.AuditLogResponse
+	gotReq    *api.AuditLogRequest
+	resp      *api.AuditLogResponse
 	returnErr error
 }
 
-func (s *fakeServer) ProcessLog(_ context.Context, logReq *alpb.AuditLogRequest) (*alpb.AuditLogResponse, error) {
+func (s *fakeServer) ProcessLog(_ context.Context, logReq *api.AuditLogRequest) (*api.AuditLogResponse, error) {
 	s.gotReq = logReq
 	return s.resp, s.returnErr
 }
@@ -50,46 +50,46 @@ func TestProcessor_Process_Insecure(t *testing.T) {
 	cases := []struct {
 		name          string
 		server        *fakeServer
-		req           *alpb.AuditLogRequest
-		wantSentReq   *alpb.AuditLogRequest
-		wantResultReq *alpb.AuditLogRequest
+		req           *api.AuditLogRequest
+		wantSentReq   *api.AuditLogRequest
+		wantResultReq *api.AuditLogRequest
 		wantErr       error
 	}{{
 		name: "success_log_req_no_change",
 		server: &fakeServer{
-			resp: &alpb.AuditLogResponse{
-				Result: testutil.ReqBuilder().WithLabels(map[string]string{"foo": "bar"}).Build(),
+			resp: &api.AuditLogResponse{
+				Result: testutil.NewRequest(testutil.WithLabels(map[string]string{"foo": "bar"})),
 			},
 		},
-		req:           testutil.ReqBuilder().WithLabels(map[string]string{"foo": "bar"}).Build(),
-		wantSentReq:   testutil.ReqBuilder().WithLabels(map[string]string{"foo": "bar"}).Build(),
-		wantResultReq: testutil.ReqBuilder().WithLabels(map[string]string{"foo": "bar"}).Build(),
+		req:           testutil.NewRequest(testutil.WithLabels(map[string]string{"foo": "bar"})),
+		wantSentReq:   testutil.NewRequest(testutil.WithLabels(map[string]string{"foo": "bar"})),
+		wantResultReq: testutil.NewRequest(testutil.WithLabels(map[string]string{"foo": "bar"})),
 	}, {
 		name: "success_log_req_updated",
 		server: &fakeServer{
-			resp: &alpb.AuditLogResponse{
-				Result: testutil.ReqBuilder().WithLabels(
+			resp: &api.AuditLogResponse{
+				Result: testutil.NewRequest(testutil.WithLabels(
 					map[string]string{
 						"foo": "bar",
 						"abc": "123",
-					}).Build(),
+					})),
 			},
 		},
-		req:         testutil.ReqBuilder().WithLabels(map[string]string{"foo": "bar"}).Build(),
-		wantSentReq: testutil.ReqBuilder().WithLabels(map[string]string{"foo": "bar"}).Build(),
-		wantResultReq: testutil.ReqBuilder().WithLabels(
+		req:         testutil.NewRequest(testutil.WithLabels(map[string]string{"foo": "bar"})),
+		wantSentReq: testutil.NewRequest(testutil.WithLabels(map[string]string{"foo": "bar"})),
+		wantResultReq: testutil.NewRequest(testutil.WithLabels(
 			map[string]string{
 				"foo": "bar",
 				"abc": "123",
-			}).Build(),
+			})),
 	}, {
 		name: "server_error",
 		server: &fakeServer{
 			returnErr: status.Error(codes.FailedPrecondition, "injected err"),
 		},
-		req:           testutil.ReqBuilder().WithLabels(map[string]string{"foo": "bar"}).Build(),
-		wantSentReq:   testutil.ReqBuilder().WithLabels(map[string]string{"foo": "bar"}).Build(),
-		wantResultReq: testutil.ReqBuilder().WithLabels(map[string]string{"foo": "bar"}).Build(),
+		req:           testutil.NewRequest(testutil.WithLabels(map[string]string{"foo": "bar"})),
+		wantSentReq:   testutil.NewRequest(testutil.WithLabels(map[string]string{"foo": "bar"})),
+		wantResultReq: testutil.NewRequest(testutil.WithLabels(map[string]string{"foo": "bar"})),
 		wantErr:       status.Error(codes.FailedPrecondition, "injected err"),
 	}}
 
@@ -100,7 +100,7 @@ func TestProcessor_Process_Insecure(t *testing.T) {
 
 			s := grpc.NewServer()
 			defer s.Stop()
-			alpb.RegisterAuditLogAgentServer(s, tc.server)
+			api.RegisterAuditLogAgentServer(s, tc.server)
 
 			lis, err := net.Listen("tcp", "localhost:0")
 			if err != nil {

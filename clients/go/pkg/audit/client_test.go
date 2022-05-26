@@ -23,9 +23,9 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"google.golang.org/protobuf/testing/protocmp"
 
-	alpb "github.com/abcxyz/lumberjack/clients/go/apis/v1alpha1"
+	api "github.com/abcxyz/lumberjack/clients/go/apis/v1alpha1"
+	"github.com/abcxyz/lumberjack/clients/go/internal/testutil"
 	"github.com/abcxyz/lumberjack/clients/go/pkg/errutil"
-	"github.com/abcxyz/lumberjack/clients/go/pkg/testutil"
 )
 
 const processorOrderKey = "processorOrder"
@@ -35,7 +35,7 @@ type testOrderProcessor struct {
 	returnErr error
 }
 
-func (p testOrderProcessor) Process(_ context.Context, logReq *alpb.AuditLogRequest) error {
+func (p testOrderProcessor) Process(_ context.Context, logReq *api.AuditLogRequest) error {
 	if logReq.Labels == nil {
 		logReq.Labels = map[string]string{}
 	}
@@ -49,40 +49,40 @@ func TestLog(t *testing.T) {
 	ctx := context.Background()
 	tests := []struct {
 		name          string
-		logReq        *alpb.AuditLogRequest
+		logReq        *api.AuditLogRequest
 		opts          []Option
-		wantLogReq    *alpb.AuditLogRequest
+		wantLogReq    *api.AuditLogRequest
 		wantErrSubstr string
 	}{
 		{
 			name:       "well_formed_log_should_succeed_with_default_options",
-			logReq:     testutil.ReqBuilder().Build(),
-			wantLogReq: testutil.ReqBuilder().Build(),
+			logReq:     testutil.NewRequest(),
+			wantLogReq: testutil.NewRequest(),
 		},
 		{
 			name:   "nil_payload_should_error_from_default_validator_fail_close",
-			logReq: &alpb.AuditLogRequest{},
+			logReq: &api.AuditLogRequest{},
 			opts: []Option{
-				WithLogMode(alpb.AuditLogRequest_FAIL_CLOSE),
+				WithLogMode(api.AuditLogRequest_FAIL_CLOSE),
 			},
-			wantLogReq:    &alpb.AuditLogRequest{Mode: alpb.AuditLogRequest_FAIL_CLOSE},
+			wantLogReq:    &api.AuditLogRequest{Mode: api.AuditLogRequest_FAIL_CLOSE},
 			wantErrSubstr: "failed to execute validator",
 		},
 		{
 			name:   "should_run_validator_then_mutator_then_backend",
-			logReq: testutil.ReqBuilder().Build(),
+			logReq: testutil.NewRequest(),
 			opts: []Option{
 				WithBackend(testOrderProcessor{name: "backend"}),
 				WithMutator(testOrderProcessor{name: "mutator"}),
 				WithValidator(testOrderProcessor{name: "validator"}),
 			},
-			wantLogReq: testutil.ReqBuilder().WithLabels(
+			wantLogReq: testutil.NewRequest(testutil.WithLabels(
 				map[string]string{processorOrderKey: "validator, mutator, backend, "},
-			).Build(),
+			)),
 		},
 		{
 			name:   "multiple_ordered_validators_should_run_before_multiple_ordered_backends",
-			logReq: testutil.ReqBuilder().Build(),
+			logReq: testutil.NewRequest(),
 			opts: []Option{
 				WithBackend(testOrderProcessor{name: "backend0"}),
 				WithValidator(testOrderProcessor{name: "validator0"}),
@@ -90,79 +90,81 @@ func TestLog(t *testing.T) {
 				WithBackend(testOrderProcessor{name: "backend1"}),
 				WithValidator(testOrderProcessor{name: "validator2"}),
 			},
-			wantLogReq: testutil.ReqBuilder().WithLabels(
+			wantLogReq: testutil.NewRequest(testutil.WithLabels(
 				map[string]string{processorOrderKey: "validator0, validator1, validator2, backend0, backend1, "},
-			).Build(),
+			)),
 		},
 		{
 			name:   "skip_subsequent_processors_when_precondition_failed",
-			logReq: testutil.ReqBuilder().Build(),
+			logReq: testutil.NewRequest(),
 			opts: []Option{
 				WithValidator(testOrderProcessor{name: "validator0"}),
 				WithValidator(testOrderProcessor{name: "validator1", returnErr: fmt.Errorf("skip: %w", ErrFailedPrecondition)}),
 				WithBackend(testOrderProcessor{name: "backend0"}),
 				WithBackend(testOrderProcessor{name: "backend1"}),
 			},
-			wantLogReq: testutil.ReqBuilder().WithLabels(
+			wantLogReq: testutil.NewRequest(testutil.WithLabels(
 				map[string]string{processorOrderKey: "validator0, validator1, "},
-			).Build(),
+			)),
 		},
 		{
 			name:   "injected_error_in_mutator_should_return_error_on_fail_close",
-			logReq: testutil.ReqBuilder().Build(),
+			logReq: testutil.NewRequest(),
 			opts: []Option{
 				WithMutator(testOrderProcessor{name: "fake", returnErr: fmt.Errorf("fake error")}),
-				WithLogMode(alpb.AuditLogRequest_FAIL_CLOSE),
+				WithLogMode(api.AuditLogRequest_FAIL_CLOSE),
 			},
-			wantLogReq: testutil.ReqBuilder().WithLabels(
-				map[string]string{processorOrderKey: "fake, "},
-			).WithMode(alpb.AuditLogRequest_FAIL_CLOSE).Build(),
+			wantLogReq: testutil.NewRequest(
+				testutil.WithLabels(
+					map[string]string{processorOrderKey: "fake, "},
+				),
+				testutil.WithMode(api.AuditLogRequest_FAIL_CLOSE)),
 			wantErrSubstr: "failed to execute mutator",
 		},
 		{
 			name:   "injected_error_in_mutator_should_return_nil_on_best_effort",
-			logReq: testutil.ReqBuilder().Build(),
+			logReq: testutil.NewRequest(),
 			opts: []Option{
 				WithMutator(testOrderProcessor{name: "fake", returnErr: fmt.Errorf("fake error")}),
-				WithLogMode(alpb.AuditLogRequest_BEST_EFFORT),
+				WithLogMode(api.AuditLogRequest_BEST_EFFORT),
 			},
-			wantLogReq: testutil.ReqBuilder().WithLabels(
-				map[string]string{processorOrderKey: "fake, "},
-			).WithMode(alpb.AuditLogRequest_BEST_EFFORT).Build(),
+			wantLogReq: testutil.NewRequest(
+				testutil.WithLabels(map[string]string{processorOrderKey: "fake, "}),
+				testutil.WithMode(api.AuditLogRequest_BEST_EFFORT)),
 		},
 		{
 			name:   "failed_precondition_in_mutator_should_return_nil_on_best_effort",
-			logReq: testutil.ReqBuilder().Build(),
+			logReq: testutil.NewRequest(),
 			opts: []Option{
 				WithMutator(testOrderProcessor{name: "fake", returnErr: fmt.Errorf("fake error: %w", ErrFailedPrecondition)}),
-				WithLogMode(alpb.AuditLogRequest_BEST_EFFORT),
+				WithLogMode(api.AuditLogRequest_BEST_EFFORT),
 			},
-			wantLogReq: testutil.ReqBuilder().WithLabels(
-				map[string]string{processorOrderKey: "fake, "},
-			).WithMode(alpb.AuditLogRequest_BEST_EFFORT).Build(),
+			wantLogReq: testutil.NewRequest(
+				testutil.WithLabels(map[string]string{processorOrderKey: "fake, "}),
+				testutil.WithMode(api.AuditLogRequest_BEST_EFFORT)),
 		},
 		{
 			name:   "injected_error_in_backend_should_return_error_on_fail_close",
-			logReq: testutil.ReqBuilder().Build(),
+			logReq: testutil.NewRequest(),
 			opts: []Option{
 				WithBackend(testOrderProcessor{name: "fake", returnErr: fmt.Errorf("fake error")}),
-				WithLogMode(alpb.AuditLogRequest_FAIL_CLOSE),
+				WithLogMode(api.AuditLogRequest_FAIL_CLOSE),
 			},
-			wantLogReq: testutil.ReqBuilder().WithLabels(
-				map[string]string{processorOrderKey: "fake, "},
-			).WithMode(alpb.AuditLogRequest_FAIL_CLOSE).Build(),
+			wantLogReq: testutil.NewRequest(
+				testutil.WithLabels(map[string]string{processorOrderKey: "fake, "}),
+				testutil.WithMode(api.AuditLogRequest_FAIL_CLOSE)),
 			wantErrSubstr: "failed to execute backend",
 		},
 		{
 			name:   "failed_precondition_in_backend_should_return_error_on_fail_close",
-			logReq: testutil.ReqBuilder().Build(),
+			logReq: testutil.NewRequest(),
 			opts: []Option{
 				WithBackend(testOrderProcessor{name: "fake", returnErr: fmt.Errorf("fake error: %w", ErrFailedPrecondition)}),
-				WithLogMode(alpb.AuditLogRequest_FAIL_CLOSE),
+				WithLogMode(api.AuditLogRequest_FAIL_CLOSE),
 			},
-			wantLogReq: testutil.ReqBuilder().WithLabels(
-				map[string]string{processorOrderKey: "fake, "},
-			).WithMode(alpb.AuditLogRequest_FAIL_CLOSE).Build(),
+			wantLogReq: testutil.NewRequest(
+				testutil.WithLabels(map[string]string{processorOrderKey: "fake, "}),
+				testutil.WithMode(api.AuditLogRequest_FAIL_CLOSE)),
 			wantErrSubstr: "failed to execute backend",
 		},
 	}
@@ -198,25 +200,25 @@ func TestHandleReturn_Client(t *testing.T) {
 
 	tests := []struct {
 		name    string
-		logMode alpb.AuditLogRequest_LogMode
+		logMode api.AuditLogRequest_LogMode
 		err     error
 		wantErr bool
 	}{
 		{
 			name:    "returns_nil_with_err_best_effort",
-			logMode: alpb.AuditLogRequest_BEST_EFFORT,
+			logMode: api.AuditLogRequest_BEST_EFFORT,
 			err:     errors.New("test error"),
 			wantErr: false,
 		},
 		{
 			name:    "returns_err_with_err_fail_close",
-			logMode: alpb.AuditLogRequest_FAIL_CLOSE,
+			logMode: api.AuditLogRequest_FAIL_CLOSE,
 			err:     errors.New("test error"),
 			wantErr: true,
 		},
 		{
 			name:    "returns_nil_no_err",
-			logMode: alpb.AuditLogRequest_FAIL_CLOSE,
+			logMode: api.AuditLogRequest_FAIL_CLOSE,
 			wantErr: false,
 		},
 	}

@@ -21,8 +21,8 @@ import (
 	"testing"
 
 	"github.com/abcxyz/lumberjack/clients/go/apis/v1alpha1"
+	"github.com/abcxyz/lumberjack/clients/go/internal/testutil"
 	"github.com/abcxyz/lumberjack/clients/go/pkg/errutil"
-	"github.com/abcxyz/lumberjack/clients/go/pkg/testutil"
 	"google.golang.org/grpc/metadata"
 )
 

@@ -36,8 +36,8 @@ import (
 	"google.golang.org/protobuf/types/known/structpb"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
-	alpb "github.com/abcxyz/lumberjack/clients/go/apis/v1alpha1"
-	calpb "google.golang.org/genproto/googleapis/cloud/audit"
+	api "github.com/abcxyz/lumberjack/clients/go/apis/v1alpha1"
+	capi "google.golang.org/genproto/googleapis/cloud/audit"
 )
 
 type auditLogReqKey struct{}
@@ -65,7 +65,7 @@ func WithSecurityContext(sc security.GRPCContext) InterceptorOption {
 
 // WithAuditRules configures the interceptor to use the given rules to match
 // methods and instruct audit logging.
-func WithAuditRules(rs ...*alpb.AuditRule) InterceptorOption {
+func WithAuditRules(rs ...*api.AuditRule) InterceptorOption {
 	return func(i *Interceptor) error {
 		i.rules = rs
 		return nil
@@ -73,7 +73,7 @@ func WithAuditRules(rs ...*alpb.AuditRule) InterceptorOption {
 }
 
 // WithInterceptorLogMode configures the interceptor to honor the given log mode.
-func WithInterceptorLogMode(m alpb.AuditLogRequest_LogMode) InterceptorOption {
+func WithInterceptorLogMode(m api.AuditLogRequest_LogMode) InterceptorOption {
 	return func(i *Interceptor) error {
 		i.logMode = m
 		return nil
@@ -85,8 +85,8 @@ func WithInterceptorLogMode(m alpb.AuditLogRequest_LogMode) InterceptorOption {
 type Interceptor struct {
 	*Client
 	sc      security.GRPCContext
-	rules   []*alpb.AuditRule
-	logMode alpb.AuditLogRequest_LogMode
+	rules   []*api.AuditRule
+	logMode api.AuditLogRequest_LogMode
 }
 
 // NewInterceptor creates a new interceptor with the given options.
@@ -116,8 +116,8 @@ func (i *Interceptor) UnaryInterceptor(ctx context.Context, req interface{}, inf
 		return i.handleReturnUnary(ctx, req, handler, status.Errorf(codes.FailedPrecondition, "audit interceptor: %v", err))
 	}
 
-	logReq := &alpb.AuditLogRequest{
-		Payload: &calpb.AuditLog{
+	logReq := &api.AuditLogRequest{
+		Payload: &capi.AuditLog{
 			ServiceName: serviceName,
 			MethodName:  info.FullMethod,
 		},
@@ -126,9 +126,9 @@ func (i *Interceptor) UnaryInterceptor(ctx context.Context, req interface{}, inf
 	}
 
 	// Set log type.
-	logReq.Type = alpb.AuditLogRequest_UNSPECIFIED
-	if t, ok := alpb.AuditLogRequest_LogType_value[r.LogType]; ok {
-		logReq.Type = alpb.AuditLogRequest_LogType(t)
+	logReq.Type = api.AuditLogRequest_UNSPECIFIED
+	if t, ok := api.AuditLogRequest_LogType_value[r.LogType]; ok {
+		logReq.Type = api.AuditLogRequest_LogType(t)
 	}
 
 	// Autofill `Payload.AuthenticationInfo.PrincipalEmail`.
@@ -138,7 +138,7 @@ func (i *Interceptor) UnaryInterceptor(ctx context.Context, req interface{}, inf
 			"audit interceptor failed to get request principal; this is likely a result of misconfiguration of audit client (security_context): %v %v",
 			zap.Any("security_context", i.sc), zap.Error(err)))
 	}
-	logReq.Payload.AuthenticationInfo = &calpb.AuthenticationInfo{PrincipalEmail: principal}
+	logReq.Payload.AuthenticationInfo = &capi.AuthenticationInfo{PrincipalEmail: principal}
 
 	// Autofill `Payload.Request`.
 	if shouldLogReq(r) {
@@ -199,8 +199,8 @@ func (i *Interceptor) StreamInterceptor(srv interface{}, ss grpc.ServerStream, i
 	}
 
 	// Build a baseline log request to be shared by all stream calls.
-	logReq := &alpb.AuditLogRequest{
-		Payload: &calpb.AuditLog{
+	logReq := &api.AuditLogRequest{
+		Payload: &capi.AuditLog{
 			ServiceName: serviceName,
 			MethodName:  info.FullMethod,
 		},
@@ -213,9 +213,9 @@ func (i *Interceptor) StreamInterceptor(srv interface{}, ss grpc.ServerStream, i
 	}
 
 	// Set log type.
-	logReq.Type = alpb.AuditLogRequest_UNSPECIFIED
-	if t, ok := alpb.AuditLogRequest_LogType_value[r.LogType]; ok {
-		logReq.Type = alpb.AuditLogRequest_LogType(t)
+	logReq.Type = api.AuditLogRequest_UNSPECIFIED
+	if t, ok := api.AuditLogRequest_LogType_value[r.LogType]; ok {
+		logReq.Type = api.AuditLogRequest_LogType(t)
 	}
 
 	// Autofill `Payload.AuthenticationInfo.PrincipalEmail`.
@@ -225,7 +225,7 @@ func (i *Interceptor) StreamInterceptor(srv interface{}, ss grpc.ServerStream, i
 			"audit interceptor failed to get request principal; this is likely a result of misconfiguration of audit client (security_context): %v %v",
 			zap.Any("security_context", i.sc), zap.Error(err)))
 	}
-	logReq.Payload.AuthenticationInfo = &calpb.AuthenticationInfo{PrincipalEmail: principal}
+	logReq.Payload.AuthenticationInfo = &capi.AuthenticationInfo{PrincipalEmail: principal}
 
 	handlerErr := handler(srv, &serverStreamWrapper{
 		c:              i.Client,
@@ -249,8 +249,8 @@ type serverStreamWrapper struct {
 
 	c *Client
 
-	baselineLogReq *alpb.AuditLogRequest
-	rule           *alpb.AuditRule
+	baselineLogReq *api.AuditLogRequest
+	rule           *api.AuditRule
 
 	// We use a lock to guard the last received request.
 	// This is OK because according to: https://pkg.go.dev/google.golang.org/grpc#ServerStream
@@ -285,9 +285,9 @@ func (ss *serverStreamWrapper) Context() context.Context {
 // for incoming requests. We first log the last request received if any.
 // We keep the latest request with the hope it can be logged in the next response.
 func (ss *serverStreamWrapper) RecvMsg(m interface{}) error {
-	logReq, ok := proto.Clone(ss.baselineLogReq).(*alpb.AuditLogRequest)
+	logReq, ok := proto.Clone(ss.baselineLogReq).(*api.AuditLogRequest)
 	if !ok {
-		return fmt.Errorf("expected *alpb.AuditLogRequest")
+		return fmt.Errorf("expected *api.AuditLogRequest")
 	}
 
 	// RecvMsg is a blocking call until the next message is received into 'm'.
@@ -314,9 +314,9 @@ func (ss *serverStreamWrapper) RecvMsg(m interface{}) error {
 // for outgoing responses. If there is a request from last time, we log them
 // together. Otherwise, only the response will be logged.
 func (ss *serverStreamWrapper) SendMsg(m interface{}) error {
-	logReq, ok := proto.Clone(ss.baselineLogReq).(*alpb.AuditLogRequest)
+	logReq, ok := proto.Clone(ss.baselineLogReq).(*api.AuditLogRequest)
 	if !ok {
-		return fmt.Errorf("expected *alpb.AuditLogRequest")
+		return fmt.Errorf("expected *api.AuditLogRequest")
 	}
 
 	// If there is a last request, we log it with the response in the same log entry.
@@ -343,7 +343,7 @@ func (ss *serverStreamWrapper) SendMsg(m interface{}) error {
 	return ss.ServerStream.SendMsg(m)
 }
 
-func setReq(logReq *alpb.AuditLogRequest, m interface{}) error {
+func setReq(logReq *api.AuditLogRequest, m interface{}) error {
 	ms, err := toProtoStruct(m)
 	if err != nil {
 		return status.Errorf(codes.Internal, "audit interceptor failed converting req into a proto struct: %v", err)
@@ -352,7 +352,7 @@ func setReq(logReq *alpb.AuditLogRequest, m interface{}) error {
 	return nil
 }
 
-func setResp(logReq *alpb.AuditLogRequest, m interface{}) error {
+func setResp(logReq *api.AuditLogRequest, m interface{}) error {
 	ms, err := toProtoStruct(m)
 	if err != nil {
 		return status.Errorf(codes.Internal, "audit interceptor failed converting resp into a proto struct: %v", err)
@@ -361,18 +361,18 @@ func setResp(logReq *alpb.AuditLogRequest, m interface{}) error {
 	return nil
 }
 
-func shouldLogReq(r *alpb.AuditRule) bool {
-	return r.Directive == alpb.AuditRuleDirectiveRequestAndResponse || r.Directive == alpb.AuditRuleDirectiveRequestOnly
+func shouldLogReq(r *api.AuditRule) bool {
+	return r.Directive == api.AuditRuleDirectiveRequestAndResponse || r.Directive == api.AuditRuleDirectiveRequestOnly
 }
 
-func shouldLogResp(r *alpb.AuditRule) bool {
-	return r.Directive == alpb.AuditRuleDirectiveRequestAndResponse
+func shouldLogResp(r *api.AuditRule) bool {
+	return r.Directive == api.AuditRuleDirectiveRequestAndResponse
 }
 
 // handleReturnUnary is intended to be a wrapper that handles the LogMode correctly, and returns errors or the handler
 // depending on whether the config and has specified to fail close.
 func (i *Interceptor) handleReturnUnary(ctx context.Context, req interface{}, handler grpc.UnaryHandler, err error) (interface{}, error) {
-	if alpb.ShouldFailClose(i.logMode) && err != nil {
+	if api.ShouldFailClose(i.logMode) && err != nil {
 		return nil, err
 	}
 	if err != nil {
@@ -385,7 +385,7 @@ func (i *Interceptor) handleReturnUnary(ctx context.Context, req interface{}, ha
 }
 
 func (i *Interceptor) handleReturnStream(ctx context.Context, ss grpc.ServerStream, handler grpc.StreamHandler, err error) error {
-	if alpb.ShouldFailClose(i.logMode) && err != nil {
+	if api.ShouldFailClose(i.logMode) && err != nil {
 		return err
 	}
 	if err != nil {
@@ -401,7 +401,7 @@ func (i *Interceptor) handleReturnStream(ctx context.Context, ss grpc.ServerStre
 // depending on whether the config and has specified to fail close. Differs from the above, as this is intended to be used
 // after the next handler in the chain has returned, and so we have a response formed already.
 func (i *Interceptor) handleReturnWithResponse(ctx context.Context, handlerResp interface{}, err error) (interface{}, error) {
-	if alpb.ShouldFailClose(i.logMode) && err != nil {
+	if api.ShouldFailClose(i.logMode) && err != nil {
 		return handlerResp, err
 	}
 	if err != nil {
@@ -415,7 +415,7 @@ func (i *Interceptor) handleReturnWithResponse(ctx context.Context, handlerResp 
 
 // logError attempts to emit an audit log for an error that has occurred. Errors are logged in
 // rpc Status format, and if a grpc error has occurred, that grpc error is converted to rpc.
-func (i *Interceptor) setErrorStatus(err error, logReq *alpb.AuditLogRequest) {
+func (i *Interceptor) setErrorStatus(err error, logReq *api.AuditLogRequest) {
 	grpcStatus, ok := status.FromError(err)
 	if ok {
 		logReq.Payload.Status = &rpcstatus.Status{
@@ -447,11 +447,11 @@ func serviceName(methodName string) (string, error) {
 
 // LogReqFromCtx returns the AuditLogRequest stored in the context.
 // If the AuditLogRequest doesn't exist, we return an empty one.
-func LogReqFromCtx(ctx context.Context) (*alpb.AuditLogRequest, bool) {
-	if r, ok := ctx.Value(auditLogReqKey{}).(*alpb.AuditLogRequest); ok {
+func LogReqFromCtx(ctx context.Context) (*api.AuditLogRequest, bool) {
+	if r, ok := ctx.Value(auditLogReqKey{}).(*api.AuditLogRequest); ok {
 		return r, true
 	}
-	return &alpb.AuditLogRequest{Payload: &calpb.AuditLog{}}, false
+	return &api.AuditLogRequest{Payload: &capi.AuditLog{}}, false
 }
 
 // toProtoStruct converts v, which must marshal into a JSON object,

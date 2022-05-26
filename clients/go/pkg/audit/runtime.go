@@ -22,7 +22,7 @@ import (
 	"strings"
 
 	"cloud.google.com/go/compute/metadata"
-	alpb "github.com/abcxyz/lumberjack/clients/go/apis/v1alpha1"
+	api "github.com/abcxyz/lumberjack/clients/go/apis/v1alpha1"
 	mrpb "google.golang.org/genproto/googleapis/api/monitoredres"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/types/known/structpb"
@@ -266,7 +266,7 @@ func toStructVal(monitoredResource *mrpb.MonitoredResource) (*structpb.Value, er
 // Process stores the application's GCP runtime information in the audit log
 // request. More specifically, in the Payload.Metadata under the key
 // "originating_resource".
-func (p *runtimeInfo) Process(ctx context.Context, logReq *alpb.AuditLogRequest) error {
+func (p *runtimeInfo) Process(ctx context.Context, logReq *api.AuditLogRequest) error {
 	if p == nil || p.monitoredResource == nil {
 		return nil
 	}

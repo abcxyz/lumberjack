@@ -30,9 +30,9 @@ import (
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/testing/protocmp"
 
-	alpb "github.com/abcxyz/lumberjack/clients/go/apis/v1alpha1"
+	api "github.com/abcxyz/lumberjack/clients/go/apis/v1alpha1"
+	"github.com/abcxyz/lumberjack/clients/go/internal/testutil"
 	"github.com/abcxyz/lumberjack/clients/go/pkg/errutil"
-	"github.com/abcxyz/lumberjack/clients/go/pkg/testutil"
 )
 
 type fakeServer struct {
@@ -57,8 +57,8 @@ func TestNewProcessor(t *testing.T) {
 	if p.client == nil {
 		t.Errorf("NewProcessor(%v) error: p.client should not be nil", opts)
 	}
-	if len(p.loggerByLogType) != len(alpb.AuditLogRequest_LogType_name) {
-		t.Errorf("NewProcessor(%v) got len(p.loggerByLogType)=%v, want %v", opts, len(p.loggerByLogType), len(alpb.AuditLogRequest_LogType_name))
+	if len(p.loggerByLogType) != len(api.AuditLogRequest_LogType_name) {
+		t.Errorf("NewProcessor(%v) got len(p.loggerByLogType)=%v, want %v", opts, len(p.loggerByLogType), len(api.AuditLogRequest_LogType_name))
 	}
 }
 
@@ -69,8 +69,8 @@ func TestProcessor_Process(t *testing.T) {
 		name          string
 		server        *fakeServer
 		opts          []Option
-		logReq        *alpb.AuditLogRequest
-		wantLogReq    *alpb.AuditLogRequest
+		logReq        *api.AuditLogRequest
+		wantLogReq    *api.AuditLogRequest
 		wantErrSubstr string
 	}{
 		{
@@ -78,14 +78,14 @@ func TestProcessor_Process(t *testing.T) {
 			server: &fakeServer{
 				resp: &logpb.WriteLogEntriesResponse{},
 			},
-			logReq: &alpb.AuditLogRequest{
-				Type:      alpb.AuditLogRequest_DATA_ACCESS,
+			logReq: &api.AuditLogRequest{
+				Type:      api.AuditLogRequest_DATA_ACCESS,
 				Payload:   &audit.AuditLog{ServiceName: "test-service"},
 				Labels:    map[string]string{"test-key": "test-value"},
 				Operation: &logpb.LogEntryOperation{Id: "test-id", Producer: "test-producer"},
 			},
-			wantLogReq: &alpb.AuditLogRequest{
-				Type:      alpb.AuditLogRequest_DATA_ACCESS,
+			wantLogReq: &api.AuditLogRequest{
+				Type:      api.AuditLogRequest_DATA_ACCESS,
 				Payload:   &audit.AuditLog{ServiceName: "test-service"},
 				Labels:    map[string]string{"test-key": "test-value"},
 				Operation: &logpb.LogEntryOperation{Id: "test-id", Producer: "test-producer"},
@@ -96,12 +96,12 @@ func TestProcessor_Process(t *testing.T) {
 			server: &fakeServer{
 				returnErr: status.Error(codes.FailedPrecondition, "injected err"),
 			},
-			logReq: &alpb.AuditLogRequest{
-				Type:    alpb.AuditLogRequest_DATA_ACCESS,
+			logReq: &api.AuditLogRequest{
+				Type:    api.AuditLogRequest_DATA_ACCESS,
 				Payload: &audit.AuditLog{ServiceName: "test-service"},
 			},
-			wantLogReq: &alpb.AuditLogRequest{
-				Type:    alpb.AuditLogRequest_DATA_ACCESS,
+			wantLogReq: &api.AuditLogRequest{
+				Type:    api.AuditLogRequest_DATA_ACCESS,
 				Payload: &audit.AuditLog{ServiceName: "test-service"},
 			},
 			wantErrSubstr: "synchronous write to Cloud logging failed",
@@ -112,13 +112,13 @@ func TestProcessor_Process(t *testing.T) {
 				resp: &logpb.WriteLogEntriesResponse{},
 			},
 			opts: []Option{WithDefaultBestEffort()},
-			logReq: &alpb.AuditLogRequest{
-				Type:    alpb.AuditLogRequest_DATA_ACCESS,
+			logReq: &api.AuditLogRequest{
+				Type:    api.AuditLogRequest_DATA_ACCESS,
 				Payload: &audit.AuditLog{ServiceName: "test-service"},
 				Labels:  map[string]string{"test-key": "test-value"},
 			},
-			wantLogReq: &alpb.AuditLogRequest{
-				Type:    alpb.AuditLogRequest_DATA_ACCESS,
+			wantLogReq: &api.AuditLogRequest{
+				Type:    api.AuditLogRequest_DATA_ACCESS,
 				Payload: &audit.AuditLog{ServiceName: "test-service"},
 				Labels:  map[string]string{"test-key": "test-value"},
 			},
@@ -129,12 +129,12 @@ func TestProcessor_Process(t *testing.T) {
 				returnErr: status.Error(codes.FailedPrecondition, "injected err"),
 			},
 			opts: []Option{WithDefaultBestEffort()},
-			logReq: &alpb.AuditLogRequest{
-				Type:    alpb.AuditLogRequest_DATA_ACCESS,
+			logReq: &api.AuditLogRequest{
+				Type:    api.AuditLogRequest_DATA_ACCESS,
 				Payload: &audit.AuditLog{ServiceName: "test-service"},
 			},
-			wantLogReq: &alpb.AuditLogRequest{
-				Type:    alpb.AuditLogRequest_DATA_ACCESS,
+			wantLogReq: &api.AuditLogRequest{
+				Type:    api.AuditLogRequest_DATA_ACCESS,
 				Payload: &audit.AuditLog{ServiceName: "test-service"},
 			},
 		},
@@ -144,15 +144,15 @@ func TestProcessor_Process(t *testing.T) {
 				returnErr: status.Error(codes.FailedPrecondition, "injected err"),
 			},
 			opts: []Option{WithDefaultBestEffort()},
-			logReq: &alpb.AuditLogRequest{
-				Type:    alpb.AuditLogRequest_DATA_ACCESS,
+			logReq: &api.AuditLogRequest{
+				Type:    api.AuditLogRequest_DATA_ACCESS,
 				Payload: &audit.AuditLog{ServiceName: "test-service"},
-				Mode:    alpb.AuditLogRequest_FAIL_CLOSE,
+				Mode:    api.AuditLogRequest_FAIL_CLOSE,
 			},
-			wantLogReq: &alpb.AuditLogRequest{
-				Type:    alpb.AuditLogRequest_DATA_ACCESS,
+			wantLogReq: &api.AuditLogRequest{
+				Type:    api.AuditLogRequest_DATA_ACCESS,
 				Payload: &audit.AuditLog{ServiceName: "test-service"},
-				Mode:    alpb.AuditLogRequest_FAIL_CLOSE,
+				Mode:    api.AuditLogRequest_FAIL_CLOSE,
 			},
 			wantErrSubstr: "synchronous write to Cloud logging failed",
 		},
@@ -161,15 +161,15 @@ func TestProcessor_Process(t *testing.T) {
 			server: &fakeServer{
 				returnErr: status.Error(codes.FailedPrecondition, "injected err"),
 			},
-			logReq: &alpb.AuditLogRequest{
-				Type:    alpb.AuditLogRequest_DATA_ACCESS,
+			logReq: &api.AuditLogRequest{
+				Type:    api.AuditLogRequest_DATA_ACCESS,
 				Payload: &audit.AuditLog{ServiceName: "test-service"},
-				Mode:    alpb.AuditLogRequest_BEST_EFFORT,
+				Mode:    api.AuditLogRequest_BEST_EFFORT,
 			},
-			wantLogReq: &alpb.AuditLogRequest{
-				Type:    alpb.AuditLogRequest_DATA_ACCESS,
+			wantLogReq: &api.AuditLogRequest{
+				Type:    api.AuditLogRequest_DATA_ACCESS,
 				Payload: &audit.AuditLog{ServiceName: "test-service"},
-				Mode:    alpb.AuditLogRequest_BEST_EFFORT,
+				Mode:    api.AuditLogRequest_BEST_EFFORT,
 			},
 		},
 	}
@@ -219,7 +219,7 @@ func TestProcessor_Stop(t *testing.T) {
 		name          string
 		server        *fakeServer
 		opts          []Option
-		logReqs       []*alpb.AuditLogRequest
+		logReqs       []*api.AuditLogRequest
 		wantErrSubstr string
 	}{
 		{
@@ -228,9 +228,9 @@ func TestProcessor_Stop(t *testing.T) {
 				returnErr: status.Error(codes.FailedPrecondition, "injected err"),
 			},
 			opts: []Option{WithDefaultBestEffort()},
-			logReqs: []*alpb.AuditLogRequest{
+			logReqs: []*api.AuditLogRequest{
 				{
-					Type:    alpb.AuditLogRequest_DATA_ACCESS,
+					Type:    api.AuditLogRequest_DATA_ACCESS,
 					Payload: &audit.AuditLog{ServiceName: "test-service"},
 				},
 			},
@@ -242,13 +242,13 @@ func TestProcessor_Stop(t *testing.T) {
 				returnErr: status.Error(codes.FailedPrecondition, "injected err"),
 			},
 			opts: []Option{WithDefaultBestEffort()},
-			logReqs: []*alpb.AuditLogRequest{
+			logReqs: []*api.AuditLogRequest{
 				{
-					Type:    alpb.AuditLogRequest_DATA_ACCESS,
+					Type:    api.AuditLogRequest_DATA_ACCESS,
 					Payload: &audit.AuditLog{ServiceName: "test-service"},
 				},
 				{
-					Type:    alpb.AuditLogRequest_ADMIN_ACTIVITY,
+					Type:    api.AuditLogRequest_ADMIN_ACTIVITY,
 					Payload: &audit.AuditLog{ServiceName: "test-service"},
 				},
 			},
@@ -259,9 +259,9 @@ func TestProcessor_Stop(t *testing.T) {
 			server: &fakeServer{
 				returnErr: status.Error(codes.FailedPrecondition, "injected err"),
 			},
-			logReqs: []*alpb.AuditLogRequest{
+			logReqs: []*api.AuditLogRequest{
 				{
-					Type:    alpb.AuditLogRequest_DATA_ACCESS,
+					Type:    api.AuditLogRequest_DATA_ACCESS,
 					Payload: &audit.AuditLog{ServiceName: "test-service"},
 				},
 			},

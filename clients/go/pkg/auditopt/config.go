@@ -38,7 +38,7 @@ import (
 	"github.com/sethvargo/go-envconfig"
 	"gopkg.in/yaml.v2"
 
-	alpb "github.com/abcxyz/lumberjack/clients/go/apis/v1alpha1"
+	api "github.com/abcxyz/lumberjack/clients/go/apis/v1alpha1"
 )
 
 const DefaultConfigFilePath = "/etc/auditlogging/config.yaml"
@@ -158,7 +158,7 @@ func interceptorFromConfigFile(path string, lookuper envconfig.Lookuper) audit.I
 	}
 }
 
-func clientFromConfig(c *audit.Client, cfg *alpb.Config) error {
+func clientFromConfig(c *audit.Client, cfg *api.Config) error {
 	opts := []audit.Option{audit.WithRuntimeInfo()}
 
 	withPrincipalFilter, err := principalFilterFromConfig(cfg)
@@ -186,7 +186,7 @@ func clientFromConfig(c *audit.Client, cfg *alpb.Config) error {
 	return nil
 }
 
-func principalFilterFromConfig(cfg *alpb.Config) (audit.Option, error) {
+func principalFilterFromConfig(cfg *api.Config) (audit.Option, error) {
 	if cfg.Condition == nil || cfg.Condition.Regex == nil {
 		return nil, nil
 	}
@@ -203,7 +203,7 @@ func principalFilterFromConfig(cfg *alpb.Config) (audit.Option, error) {
 	return audit.WithValidator(m), nil
 }
 
-func backendsFromConfig(cfg *alpb.Config) ([]audit.Option, error) {
+func backendsFromConfig(cfg *api.Config) ([]audit.Option, error) {
 	var backendOpts []audit.Option
 
 	if cfg.Backend.Remote != nil {
@@ -226,7 +226,7 @@ func backendsFromConfig(cfg *alpb.Config) ([]audit.Option, error) {
 
 	if cfg.Backend.CloudLogging != nil {
 		var opts []cloudlogging.Option
-		if cfg.GetLogMode() == alpb.AuditLogRequest_BEST_EFFORT {
+		if cfg.GetLogMode() == api.AuditLogRequest_BEST_EFFORT {
 			opts = append(opts, cloudlogging.WithDefaultBestEffort())
 		}
 
@@ -253,13 +253,13 @@ func backendsFromConfig(cfg *alpb.Config) ([]audit.Option, error) {
 	return backendOpts, nil
 }
 
-func labelsFromConfig(cfg *alpb.Config) audit.Option {
+func labelsFromConfig(cfg *api.Config) audit.Option {
 	lp := audit.LabelProcessor{DefaultLabels: cfg.Labels}
 	return audit.WithMutator(&lp)
 }
 
-func loadConfig(b []byte, lookuper envconfig.Lookuper) (*alpb.Config, error) {
-	cfg := &alpb.Config{}
+func loadConfig(b []byte, lookuper envconfig.Lookuper) (*api.Config, error) {
+	cfg := &api.Config{}
 	if err := yaml.Unmarshal(b, cfg); err != nil {
 		return nil, err
 	}
