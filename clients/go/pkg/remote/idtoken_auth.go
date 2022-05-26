@@ -63,6 +63,8 @@ func setIDTokenAuth(p *Processor, ts oauth2.TokenSource) error {
 	if err != nil {
 		return fmt.Errorf("failed to load system cert pool: %w", err)
 	}
+
+	//nolint:gosec // We need to support TLS 1.2 for now (G402).
 	cred := credentials.NewTLS(&tls.Config{
 		RootCAs: systemRoots,
 	})

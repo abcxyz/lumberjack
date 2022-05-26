@@ -31,7 +31,7 @@ func TestFromRawJWT_RequestPrincipal(t *testing.T) {
 
 	tests := []struct {
 		name          string
-		ctx           context.Context
+		ctx           context.Context //nolint:containedctx // Only for testing
 		fromRawJWT    []*v1alpha1.FromRawJWT
 		want          string
 		wantErrSubstr string

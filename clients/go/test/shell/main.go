@@ -69,7 +69,11 @@ func (h *handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, fmt.Sprintf("malformated ID token: %v", err), http.StatusBadRequest)
 		return
 	}
-	email := claims["email"].(string)
+	email, ok := claims["email"].(string)
+	if !ok {
+		http.Error(w, fmt.Sprintf("email claim is not a string (got %T)", claims["email"]), http.StatusBadRequest)
+		return
+	}
 	if email == "" {
 		http.Error(w, fmt.Sprintf("ID token doesn't have email in the claims: %v", err), http.StatusBadRequest)
 		return

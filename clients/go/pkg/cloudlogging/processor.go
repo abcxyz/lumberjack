@@ -29,8 +29,8 @@ import (
 // Processor is the remote Cloud Logging processor.
 type Processor struct {
 	client *logging.Client
-	// bestEffort defaults to false and sets the default
-	// logging mode to fail-close.
+	// bestEffort defaults to false and sets the default logging mode to
+	// fail-close.
 	bestEffort bool
 	// loggerByLogType is not threadsafe.
 	loggerByLogType map[alpb.AuditLogRequest_LogType]*logging.Logger
@@ -47,15 +47,17 @@ func WithLoggingClient(client *logging.Client) Option {
 	}
 }
 
-// WithDefaultBestEffort sets the default logging mode of operation to best effort.
-// There are two possible logging modes of operation:
+// WithDefaultBestEffort sets the default logging mode of operation to best
+// effort. There are two possible logging modes of operation:
 //   - fail-close. Without this option, this is default. The Cloud Logging
 //   client blocks to emit a log, and immediately returns an error when
 //   there's a failure.
 //   - best effort. The Cloud Logging client emits logs asynchronously
 //   and does not return an error on failure. Calling `Stop()` flushes
 //   the logs and returns all previously encountered errors.
-// TODO(b/203776475): individual log requests can specify failclose or besteffort logging
+//
+// TODO(b/203776475): individual log requests can specify failclose or
+// besteffort logging.
 func WithDefaultBestEffort() Option {
 	return func(p *Processor) error {
 		p.bestEffort = true
@@ -63,8 +65,8 @@ func WithDefaultBestEffort() Option {
 	}
 }
 
-// NewProcessor creates a new Cloud Logging log processor
-// with the given options.
+// NewProcessor creates a new Cloud Logging log processor with the given
+// options.
 func NewProcessor(ctx context.Context, opts ...Option) (*Processor, error) {
 	p := &Processor{}
 	for _, o := range opts {

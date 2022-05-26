@@ -285,7 +285,10 @@ func (ss *serverStreamWrapper) Context() context.Context {
 // for incoming requests. We first log the last request received if any.
 // We keep the latest request with the hope it can be logged in the next response.
 func (ss *serverStreamWrapper) RecvMsg(m interface{}) error {
-	logReq := proto.Clone(ss.baselineLogReq).(*alpb.AuditLogRequest)
+	logReq, ok := proto.Clone(ss.baselineLogReq).(*alpb.AuditLogRequest)
+	if !ok {
+		return fmt.Errorf("expected *alpb.AuditLogRequest")
+	}
 
 	// RecvMsg is a blocking call until the next message is received into 'm'.
 	if err := ss.ServerStream.RecvMsg(m); err != nil {
@@ -311,7 +314,10 @@ func (ss *serverStreamWrapper) RecvMsg(m interface{}) error {
 // for outgoing responses. If there is a request from last time, we log them
 // together. Otherwise, only the response will be logged.
 func (ss *serverStreamWrapper) SendMsg(m interface{}) error {
-	logReq := proto.Clone(ss.baselineLogReq).(*alpb.AuditLogRequest)
+	logReq, ok := proto.Clone(ss.baselineLogReq).(*alpb.AuditLogRequest)
+	if !ok {
+		return fmt.Errorf("expected *alpb.AuditLogRequest")
+	}
 
 	// If there is a last request, we log it with the response in the same log entry.
 	// Otherwise, this log entry will only contain the response.
