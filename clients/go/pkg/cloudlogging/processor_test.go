@@ -17,8 +17,6 @@ package cloudlogging
 import (
 	"context"
 	"fmt"
-	"log"
-	"net"
 	"testing"
 
 	"cloud.google.com/go/logging"
@@ -29,12 +27,12 @@ import (
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/testing/protocmp"
 
 	alpb "github.com/abcxyz/lumberjack/clients/go/apis/v1alpha1"
 	"github.com/abcxyz/lumberjack/clients/go/pkg/errutil"
+	"github.com/abcxyz/lumberjack/clients/go/pkg/testutil"
 )
 
 type fakeServer struct {
@@ -175,45 +173,30 @@ func TestProcessor_Process(t *testing.T) {
 			},
 		},
 	}
+
 	for _, tc := range tests {
 		tc := tc
+
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
 			// Setup fake Cloud Logging server.
-			s := grpc.NewServer()
-			defer s.Stop()
-			logpb.RegisterLoggingServiceV2Server(s, tc.server)
-
-			lis, err := net.Listen("tcp", "localhost:0")
-			if err != nil {
-				t.Fatalf("net.Listen(tcp, localhost:0) failed: %v", err)
-			}
-			go func(t *testing.T, s *grpc.Server, lis net.Listener) {
-				err := s.Serve(lis)
-				if err != nil {
-					t.Errorf("net.Listen(tcp, localhost:0) serve failed: %v", err)
-				}
-			}(t, s, lis)
-
-			addr := lis.Addr().String()
-			conn, err := grpc.Dial(addr, grpc.WithTransportCredentials(insecure.NewCredentials()))
-			if err != nil {
-				log.Fatalf("dialing %q: %v", addr, err)
-			}
+			addr, conn := testutil.TestFakeGRPCServer(t, func(s *grpc.Server) {
+				logpb.RegisterLoggingServiceV2Server(s, tc.server)
+			})
 
 			// Setup fake Cloud Logging client.
 			ctx := context.Background()
 			loggingClient, err := logging.NewClient(ctx, "testProjectID", option.WithGRPCConn(conn))
 			if err != nil {
-				log.Fatalf("creating client for fake at %q: %v", addr, err)
+				t.Fatalf("creating client for fake at %q: %v", addr, err)
 			}
 
 			// Setup Processor.
 			opts := append(tc.opts, WithLoggingClient(loggingClient))
 			p, err := NewProcessor(ctx, opts...)
 			if err != nil {
-				log.Fatalf("calling NewProcessor: %v", err)
+				t.Fatalf("calling NewProcessor: %v", err)
 			}
 
 			// Run test.
@@ -286,43 +269,27 @@ func TestProcessor_Stop(t *testing.T) {
 	}
 	for _, tc := range tests {
 		tc := tc
+
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
 			// Setup fake Cloud Logging server.
-			s := grpc.NewServer()
-			defer s.Stop()
-			logpb.RegisterLoggingServiceV2Server(s, tc.server)
-
-			lis, err := net.Listen("tcp", "localhost:0")
-			if err != nil {
-				t.Fatalf("net.Listen(tcp, localhost:0) failed: %v", err)
-			}
-			go func(t *testing.T, s *grpc.Server, lis net.Listener) {
-				err := s.Serve(lis)
-				if err != nil {
-					t.Errorf("net.Listen(tcp, localhost:0) serve failed: %v", err)
-				}
-			}(t, s, lis)
-
-			addr := lis.Addr().String()
-			conn, err := grpc.Dial(addr, grpc.WithTransportCredentials(insecure.NewCredentials()))
-			if err != nil {
-				log.Fatalf("dialing %q: %v", addr, err)
-			}
+			addr, conn := testutil.TestFakeGRPCServer(t, func(s *grpc.Server) {
+				logpb.RegisterLoggingServiceV2Server(s, tc.server)
+			})
 
 			// Setup fake Cloud Logging client.
 			ctx := context.Background()
 			loggingClient, err := logging.NewClient(ctx, "testProjectID", option.WithGRPCConn(conn))
 			if err != nil {
-				log.Fatalf("creating client for fake at %q: %v", addr, err)
+				t.Fatalf("creating client for fake at %q: %v", addr, err)
 			}
 
 			// Setup Processor.
 			opts := append(tc.opts, WithLoggingClient(loggingClient))
 			p, err := NewProcessor(ctx, opts...)
 			if err != nil {
-				log.Fatalf("calling NewProcessor: %v", err)
+				t.Fatalf("calling NewProcessor: %v", err)
 			}
 
 			// Write the logs.
