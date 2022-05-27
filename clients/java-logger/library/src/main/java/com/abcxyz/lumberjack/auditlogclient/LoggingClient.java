@@ -48,11 +48,14 @@ public class LoggingClient {
    * @param auditLogRequest log request
    */
   public void log(AuditLogRequest auditLogRequest) throws LogProcessingException {
-    // Override config's log mode if the request has explicitly specified log mode. We also want to ensure that
-    // the log mode used here is passed on to the server, so if the log mode is missing from the request, we add
+    // Override config's log mode if the request has explicitly specified log mode. We also want to
+    // ensure that
+    // the log mode used here is passed on to the server, so if the log mode is missing from the
+    // request, we add
     // the config log mode to the request.
     LogMode logMode;
-    if (auditLogRequest.getMode() == null || auditLogRequest.getMode().equals(LogMode.LOG_MODE_UNSPECIFIED)) {
+    if (auditLogRequest.getMode() == null
+        || auditLogRequest.getMode().equals(LogMode.LOG_MODE_UNSPECIFIED)) {
       logMode = config.getLogMode();
       auditLogRequest = auditLogRequest.toBuilder().setMode(logMode).build();
     } else {
@@ -72,10 +75,13 @@ public class LoggingClient {
     } catch (Exception e) { // TODO(#157): Should we swallow throwable?
 
       if (ConfigUtils.shouldFailClose(logMode)) {
-        throw new LogProcessingException("Fail close enabled and ran into exception while audit logging.", e);
+        throw new LogProcessingException(
+            "Fail close enabled and ran into exception while audit logging.", e);
       } else {
-        log.error("Exception occurred while attempting to audit log, "
-            + "continuing without audit logging.", e);
+        log.error(
+            "Exception occurred while attempting to audit log, "
+                + "continuing without audit logging.",
+            e);
       }
     }
   }

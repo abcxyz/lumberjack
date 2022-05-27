@@ -13,13 +13,17 @@ import org.mockito.junit.jupiter.MockitoExtension;
 @ExtendWith(MockitoExtension.class)
 public class CloudFunctionManagerTests {
 
-  @Mock
-  RuntimeInfoCommonUtils runtimeInfoCommonUtils;
+  @Mock RuntimeInfoCommonUtils runtimeInfoCommonUtils;
 
   @Test
   void WithCorrectEnvironmentVariablesIsCloudFunctionReturnsTrue() {
-    CloudFunctionManager cloudFunctionManager = new CloudFunctionManager("TestFunctionSig",
-        "FunctionTarget", "TestService", "TestRevision", runtimeInfoCommonUtils);
+    CloudFunctionManager cloudFunctionManager =
+        new CloudFunctionManager(
+            "TestFunctionSig",
+            "FunctionTarget",
+            "TestService",
+            "TestRevision",
+            runtimeInfoCommonUtils);
     Mockito.doReturn(false).when(runtimeInfoCommonUtils).isNullOrBlank("TestFunctionSig");
     Mockito.doReturn(false).when(runtimeInfoCommonUtils).isNullOrBlank("FunctionTarget");
     Mockito.doReturn(false).when(runtimeInfoCommonUtils).isNullOrBlank("TestService");
@@ -30,8 +34,9 @@ public class CloudFunctionManagerTests {
 
   @Test
   void WithEmptyEnvironmentVariablesIsCloudFunctionReturnsFalse() {
-    CloudFunctionManager cloudFunctionManager = new CloudFunctionManager("FunctionSigType",
-        "", "TestService", "TestRevision", runtimeInfoCommonUtils);
+    CloudFunctionManager cloudFunctionManager =
+        new CloudFunctionManager(
+            "FunctionSigType", "", "TestService", "TestRevision", runtimeInfoCommonUtils);
     Mockito.doReturn(true).when(runtimeInfoCommonUtils).isNullOrBlank("");
     Boolean isCloudFunction = cloudFunctionManager.isCloudFunction();
     assertThat(isCloudFunction).isFalse();
@@ -39,8 +44,9 @@ public class CloudFunctionManagerTests {
 
   @Test
   void WithNullEnvironmentVariablesIsCloudFunctionReturnsFalse() {
-    CloudFunctionManager cloudFunctionManager = new CloudFunctionManager("FunctionSigType",
-        null, "TestService", "TestRevision", runtimeInfoCommonUtils);
+    CloudFunctionManager cloudFunctionManager =
+        new CloudFunctionManager(
+            "FunctionSigType", null, "TestService", "TestRevision", runtimeInfoCommonUtils);
     Mockito.doReturn(true).when(runtimeInfoCommonUtils).isNullOrBlank(null);
     Boolean isCloudFunction = cloudFunctionManager.isCloudFunction();
     assertThat(isCloudFunction).isFalse();
@@ -48,8 +54,9 @@ public class CloudFunctionManagerTests {
 
   @Test
   void detectCloudFunctionResourceReturnsValidResource() {
-    CloudFunctionManager cloudFunctionManager = new CloudFunctionManager(null,
-        "FunctionTarget", "TestService", "TestRevision", runtimeInfoCommonUtils);
+    CloudFunctionManager cloudFunctionManager =
+        new CloudFunctionManager(
+            null, "FunctionTarget", "TestService", "TestRevision", runtimeInfoCommonUtils);
     Mockito.doReturn("testProject").when(runtimeInfoCommonUtils).getProjectId();
     Mockito.doReturn("testRegion").when(runtimeInfoCommonUtils).getRegion();
     MonitoredResource mr = cloudFunctionManager.detectCloudFunction();
@@ -59,10 +66,11 @@ public class CloudFunctionManagerTests {
 
   @Test
   void detectCloudFunctionResourceThrowsExceptionOnInValidResource() {
-    CloudFunctionManager cloudFunctionManager = new CloudFunctionManager(null,
-        "FunctionTarget", "TestService", "TestRevision", runtimeInfoCommonUtils);
-    Mockito.doThrow(new IllegalArgumentException("IllegalArgumentException")).when(
-            runtimeInfoCommonUtils)
+    CloudFunctionManager cloudFunctionManager =
+        new CloudFunctionManager(
+            null, "FunctionTarget", "TestService", "TestRevision", runtimeInfoCommonUtils);
+    Mockito.doThrow(new IllegalArgumentException("IllegalArgumentException"))
+        .when(runtimeInfoCommonUtils)
         .getProjectId();
     assertThrows(IllegalArgumentException.class, () -> cloudFunctionManager.detectCloudFunction());
   }

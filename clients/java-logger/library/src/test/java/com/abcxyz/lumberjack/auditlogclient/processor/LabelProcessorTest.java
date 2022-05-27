@@ -15,8 +15,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 @ExtendWith(MockitoExtension.class)
 public class LabelProcessorTest {
-  @Mock
-  AuditLoggingConfiguration auditLoggingConfiguration;
+  @Mock AuditLoggingConfiguration auditLoggingConfiguration;
   AuditLog auditLog = AuditLog.newBuilder().build();
   AuditLogRequest auditLogRequest = AuditLogRequest.newBuilder().setPayload(auditLog).build();
 
@@ -40,10 +39,8 @@ public class LabelProcessorTest {
     LabelProcessor labelProcessor = new LabelProcessor(auditLoggingConfiguration);
 
     String otherValue = "otherValue1";
-    AuditLogRequest request= AuditLogRequest.newBuilder()
-        .setPayload(auditLog)
-        .putLabels("label1", otherValue)
-        .build();
+    AuditLogRequest request =
+        AuditLogRequest.newBuilder().setPayload(auditLog).putLabels("label1", otherValue).build();
     AuditLogRequest output = labelProcessor.process(request);
     assertThat(output.getLabelsMap()).isNotEqualTo(labels);
     assertThat(output.getLabelsMap().get("label1")).isEqualTo(otherValue);
@@ -55,10 +52,8 @@ public class LabelProcessorTest {
     LabelProcessor labelProcessor = new LabelProcessor(auditLoggingConfiguration);
 
     String otherValue = "otherValue1";
-    AuditLogRequest request= AuditLogRequest.newBuilder()
-        .setPayload(auditLog)
-        .putLabels("label1", otherValue)
-        .build();
+    AuditLogRequest request =
+        AuditLogRequest.newBuilder().setPayload(auditLog).putLabels("label1", otherValue).build();
     AuditLogRequest output = labelProcessor.process(request);
     assertThat(output.getLabelsMap().size()).isEqualTo(1);
     assertThat(output.getLabelsMap().get("label1")).isEqualTo(otherValue);

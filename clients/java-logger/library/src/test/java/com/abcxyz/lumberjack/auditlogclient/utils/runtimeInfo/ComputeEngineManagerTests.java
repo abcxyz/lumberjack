@@ -14,11 +14,9 @@ import org.mockito.junit.jupiter.MockitoExtension;
 @ExtendWith(MockitoExtension.class)
 public class ComputeEngineManagerTests {
 
-  @Mock
-  RuntimeInfoCommonUtils runtimeInfoCommonUtils;
+  @Mock RuntimeInfoCommonUtils runtimeInfoCommonUtils;
 
-  @InjectMocks
-  ComputeEngineManager computeEngineManager;
+  @InjectMocks ComputeEngineManager computeEngineManager;
 
   @Test
   void detectGCEResourceReturnsResourceOnValidMetadata() {
@@ -33,7 +31,8 @@ public class ComputeEngineManagerTests {
 
   @Test
   void detectGCEResourceThrowsExceptionResourceOnInvalidMetadata() {
-    Mockito.doThrow(new IllegalArgumentException("Exception")).when(runtimeInfoCommonUtils)
+    Mockito.doThrow(new IllegalArgumentException("Exception"))
+        .when(runtimeInfoCommonUtils)
         .getProjectId();
     assertThrows(IllegalArgumentException.class, () -> computeEngineManager.detectGCEResource());
   }

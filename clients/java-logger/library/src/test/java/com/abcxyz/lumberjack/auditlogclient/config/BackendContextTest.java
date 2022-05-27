@@ -30,7 +30,7 @@ public class BackendContextTest {
   @Test
   public void remoteBackend() throws IOException {
     ObjectMapper mapper = new ObjectMapper(new YAMLFactory());
-    BackendContext backendContext=
+    BackendContext backendContext =
         mapper
             .readValue(
                 getClass().getClassLoader().getResourceAsStream("backend_remote.yml"),
@@ -45,7 +45,7 @@ public class BackendContextTest {
   @Test
   public void localBackend() throws IOException {
     ObjectMapper mapper = new ObjectMapper(new YAMLFactory());
-    BackendContext backendContext=
+    BackendContext backendContext =
         mapper
             .readValue(
                 getClass().getClassLoader().getResourceAsStream("backend_local.yml"),
@@ -60,7 +60,7 @@ public class BackendContextTest {
   @Test
   public void cloudLoggingBackend_Default() throws IOException {
     ObjectMapper mapper = new ObjectMapper(new YAMLFactory());
-    BackendContext backendContext=
+    BackendContext backendContext =
         mapper
             .readValue(
                 getClass().getClassLoader().getResourceAsStream("backend_cloudlogging_default.yml"),
@@ -75,7 +75,7 @@ public class BackendContextTest {
   @Test
   public void cloudLoggingBackend_CustomProject() throws IOException {
     ObjectMapper mapper = new ObjectMapper(new YAMLFactory());
-    BackendContext backendContext=
+    BackendContext backendContext =
         mapper
             .readValue(
                 getClass().getClassLoader().getResourceAsStream("backend_cloudlogging_custom.yml"),
@@ -90,7 +90,7 @@ public class BackendContextTest {
   @Test
   public void allAsBackend() throws IOException {
     ObjectMapper mapper = new ObjectMapper(new YAMLFactory());
-    BackendContext backendContext=
+    BackendContext backendContext =
         mapper
             .readValue(
                 getClass().getClassLoader().getResourceAsStream("backend_all.yml"),

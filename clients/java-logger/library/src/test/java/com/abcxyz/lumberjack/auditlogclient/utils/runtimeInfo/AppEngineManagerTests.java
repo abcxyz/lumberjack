@@ -13,13 +13,13 @@ import org.mockito.junit.jupiter.MockitoExtension;
 @ExtendWith(MockitoExtension.class)
 public class AppEngineManagerTests {
 
-  @Mock
-  RuntimeInfoCommonUtils runtimeInfoCommonUtils;
+  @Mock RuntimeInfoCommonUtils runtimeInfoCommonUtils;
 
   @Test
   void WithCorrectEnvironmentVariablesIsAppEngineReturnsTrue() {
-    AppEngineManager appEngineManager = new AppEngineManager("TestService", "TestVersion",
-        "TestInstance", "TestRuntime", runtimeInfoCommonUtils);
+    AppEngineManager appEngineManager =
+        new AppEngineManager(
+            "TestService", "TestVersion", "TestInstance", "TestRuntime", runtimeInfoCommonUtils);
     Mockito.doReturn(false).when(runtimeInfoCommonUtils).isNullOrBlank("TestService");
     Mockito.doReturn(false).when(runtimeInfoCommonUtils).isNullOrBlank("TestVersion");
     Mockito.doReturn(false).when(runtimeInfoCommonUtils).isNullOrBlank("TestInstance");
@@ -30,8 +30,9 @@ public class AppEngineManagerTests {
 
   @Test
   void WithEmptyEnvironmentVariablesIsAppEngineReturnsFalse() {
-    AppEngineManager appEngineManager = new AppEngineManager("TestService", "TestVersion",
-        "", "TestRuntime", runtimeInfoCommonUtils);
+    AppEngineManager appEngineManager =
+        new AppEngineManager(
+            "TestService", "TestVersion", "", "TestRuntime", runtimeInfoCommonUtils);
     Mockito.doReturn(true).when(runtimeInfoCommonUtils).isNullOrBlank("");
     Boolean isAppEngine = appEngineManager.isAppEngine();
     assertThat(isAppEngine).isFalse();
@@ -39,8 +40,9 @@ public class AppEngineManagerTests {
 
   @Test
   void WithNullEnvironmentVariablesIsAppEngineReturnsFalse() {
-    AppEngineManager appEngineManager = new AppEngineManager("TestService", "TestVersion",
-        null, "TestRuntime", runtimeInfoCommonUtils);
+    AppEngineManager appEngineManager =
+        new AppEngineManager(
+            "TestService", "TestVersion", null, "TestRuntime", runtimeInfoCommonUtils);
     Mockito.doReturn(true).when(runtimeInfoCommonUtils).isNullOrBlank(null);
     Boolean isAppEngine = appEngineManager.isAppEngine();
     assertThat(isAppEngine).isFalse();
@@ -48,8 +50,9 @@ public class AppEngineManagerTests {
 
   @Test
   void detectAppEngineResourceReturnsValidResource() {
-    AppEngineManager appEngineManager = new AppEngineManager("TestService", "TestVersion",
-        "TestInstance", "TestRuntime", runtimeInfoCommonUtils);
+    AppEngineManager appEngineManager =
+        new AppEngineManager(
+            "TestService", "TestVersion", "TestInstance", "TestRuntime", runtimeInfoCommonUtils);
     Mockito.doReturn("testProject").when(runtimeInfoCommonUtils).getProjectId();
     Mockito.doReturn("testZone").when(runtimeInfoCommonUtils).getZone();
     MonitoredResource mr = appEngineManager.detectAppEngineResource();
@@ -59,10 +62,11 @@ public class AppEngineManagerTests {
 
   @Test
   void detectCloudRunResourceThrowsExceptionOnInValidResource() {
-    AppEngineManager appEngineManager = new AppEngineManager(null, "TestVersion",
-        "TestInstance", "TestRuntime", runtimeInfoCommonUtils);
-    Mockito.doThrow(new IllegalArgumentException("IllegalArgumentException")).when(
-            runtimeInfoCommonUtils)
+    AppEngineManager appEngineManager =
+        new AppEngineManager(
+            null, "TestVersion", "TestInstance", "TestRuntime", runtimeInfoCommonUtils);
+    Mockito.doThrow(new IllegalArgumentException("IllegalArgumentException"))
+        .when(runtimeInfoCommonUtils)
         .getProjectId();
     assertThrows(IllegalArgumentException.class, () -> appEngineManager.detectAppEngineResource());
   }

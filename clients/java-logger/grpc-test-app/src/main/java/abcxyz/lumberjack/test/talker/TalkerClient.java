@@ -32,10 +32,9 @@ package abcxyz.lumberjack.test.talker;
  */
 
 import com.abcxyz.lumberjack.test.talker.AdditionRequest;
+import com.abcxyz.lumberjack.test.talker.FailOnFourRequest;
 import com.abcxyz.lumberjack.test.talker.FailRequest;
 import com.abcxyz.lumberjack.test.talker.FailResponse;
-import com.abcxyz.lumberjack.test.talker.FailOnFourRequest;
-import com.abcxyz.lumberjack.test.talker.FailOnFourResponse;
 import com.abcxyz.lumberjack.test.talker.FibonacciRequest;
 import com.abcxyz.lumberjack.test.talker.HelloRequest;
 import com.abcxyz.lumberjack.test.talker.HelloResponse;
@@ -79,7 +78,7 @@ public class TalkerClient {
     try {
       response = blockingStub.hello(request);
     } catch (StatusRuntimeException e) {
-      log.info("RPC failed: " +  e.getStatus());
+      log.info("RPC failed: " + e.getStatus());
       throw e;
     }
     log.info("Greeting: " + response.getMessage());
@@ -113,7 +112,7 @@ public class TalkerClient {
     } catch (StatusRuntimeException e) {
       log.info("RPC failed: " + e.getStatus());
     } catch (Exception e) {
-      log.info("Got other failure " +  e.getMessage());
+      log.info("Got other failure " + e.getMessage());
     }
   }
 
@@ -157,8 +156,8 @@ public class TalkerClient {
 
     for (int i = 1; i <= max; i++) {
       log.info("Sending: " + i);
-      FailOnFourRequest request = FailOnFourRequest.newBuilder().setValue(i)
-          .setTarget(target.toString()).build();
+      FailOnFourRequest request =
+          FailOnFourRequest.newBuilder().setValue(i).setTarget(target.toString()).build();
       requestObserver.onNext(request);
     }
 

@@ -96,8 +96,8 @@ public class AuditLoggingServerInterceptor<ReqT extends Message> implements Serv
       if (ConfigUtils.shouldFailClose(auditLoggingConfiguration.getLogMode())) {
         throw new IllegalStateException("Unable to determine principal.", e);
       } else {
-        log.error("Principal was unable to be determined, "
-            + "continuing without audit logging.", e);
+        log.error(
+            "Principal was unable to be determined, " + "continuing without audit logging.", e);
         next.startCall(call, headers);
       }
     }
@@ -167,7 +167,8 @@ public class AuditLoggingServerInterceptor<ReqT extends Message> implements Serv
       }
 
       /**
-       * This method is where exceptions will bubble up to. It is used here to audit log those errors.
+       * This method is where exceptions will bubble up to. It is used here to audit log those
+       * errors.
        */
       @Override
       public void onHalfClose() {
@@ -202,8 +203,8 @@ public class AuditLoggingServerInterceptor<ReqT extends Message> implements Serv
     builder.setType(selector.getLogType());
     builder.setOperation(logEntryOperation);
     Instant now = clock.instant();
-    builder.setTimestamp(Timestamp.newBuilder().setSeconds(now.getEpochSecond())
-        .setNanos(now.getNano()));
+    builder.setTimestamp(
+        Timestamp.newBuilder().setSeconds(now.getEpochSecond()).setNanos(now.getNano()));
 
     try {
       log.info("Audit logging...");
@@ -226,13 +227,12 @@ public class AuditLoggingServerInterceptor<ReqT extends Message> implements Serv
     Code code = Code.INTERNAL; // default to internal error
     // TODO: identify other types of exceptions that we could add specific codes for
     if (e instanceof StatusRuntimeException) {
-      // Audit logs expect an rpc code, however this exception is grpc specific. We have to convert from one to the other.
+      // Audit logs expect an rpc code, however this exception is grpc specific. We have to convert
+      // from one to the other.
       code = Code.forNumber(((StatusRuntimeException) e).getStatus().getCode().value());
     }
-    logBuilder.setStatus(Status.newBuilder()
-        .setCode(code.getNumber())
-        .setMessage(code.name())
-        .build());
+    logBuilder.setStatus(
+        Status.newBuilder().setCode(code.getNumber()).setMessage(code.name()).build());
     auditLog(selector, request, null, logBuilder, logEntryOperation);
   }
 

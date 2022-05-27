@@ -14,13 +14,12 @@ import org.mockito.junit.jupiter.MockitoExtension;
 @ExtendWith(MockitoExtension.class)
 public class KubernetesManagerTests {
 
-  @Mock
-  RuntimeInfoCommonUtils runtimeInfoCommonUtils;
+  @Mock RuntimeInfoCommonUtils runtimeInfoCommonUtils;
 
   @Test
   void detectGCEResourceReturnsResourceOnValidMetadata() throws IOException {
-    KubernetesManager kubernetesManager = new KubernetesManager("hostname", "containerName",
-        runtimeInfoCommonUtils);
+    KubernetesManager kubernetesManager =
+        new KubernetesManager("hostname", "containerName", runtimeInfoCommonUtils);
     Mockito.doReturn("testProject").when(runtimeInfoCommonUtils).getProjectId();
     Mockito.doReturn("testClusterName").when(runtimeInfoCommonUtils).getClusterName();
     Mockito.doReturn("testZone").when(runtimeInfoCommonUtils).getZone();
@@ -30,14 +29,13 @@ public class KubernetesManagerTests {
     assertThat(mr.containsLabels("pod_name")).isTrue();
   }
 
-
   void detectGCEResourceThrowsExceptionResourceOnInvalidMetadata() {
-    KubernetesManager kubernetesManager = new KubernetesManager("hostname", "containerName",
-        runtimeInfoCommonUtils);
-    Mockito.doThrow(new IllegalArgumentException("Exception")).when(runtimeInfoCommonUtils)
+    KubernetesManager kubernetesManager =
+        new KubernetesManager("hostname", "containerName", runtimeInfoCommonUtils);
+    Mockito.doThrow(new IllegalArgumentException("Exception"))
+        .when(runtimeInfoCommonUtils)
         .getProjectId();
-    assertThrows(IllegalArgumentException.class,
-        () -> kubernetesManager.detectKubernetesResource());
+    assertThrows(
+        IllegalArgumentException.class, () -> kubernetesManager.detectKubernetesResource());
   }
-
 }
