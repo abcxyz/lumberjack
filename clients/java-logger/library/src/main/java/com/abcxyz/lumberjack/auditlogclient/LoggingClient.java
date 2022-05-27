@@ -49,10 +49,8 @@ public class LoggingClient {
    */
   public void log(AuditLogRequest auditLogRequest) throws LogProcessingException {
     // Override config's log mode if the request has explicitly specified log mode. We also want to
-    // ensure that
-    // the log mode used here is passed on to the server, so if the log mode is missing from the
-    // request, we add
-    // the config log mode to the request.
+    // ensure that the log mode used here is passed on to the server, so if the log mode is missing
+    // from the request, we add the config log mode to the request.
     LogMode logMode;
     if (auditLogRequest.getMode() == null
         || auditLogRequest.getMode().equals(LogMode.LOG_MODE_UNSPECIFIED)) {
@@ -79,8 +77,7 @@ public class LoggingClient {
             "Fail close enabled and ran into exception while audit logging.", e);
       } else {
         log.error(
-            "Exception occurred while attempting to audit log, "
-                + "continuing without audit logging.",
+            "Exception occurred while attempting to audit log, continuing without audit logging.",
             e);
       }
     }
