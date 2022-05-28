@@ -55,7 +55,9 @@ public class BackendContext {
   }
 
   public boolean cloudLoggingEnabled() {
-    // Check that cloud logging config exists. If it does, make sure either project is set or default is enabled.
-    return getCloudlogging().useDefaultProject() || !Strings.isNullOrEmpty(getCloudlogging().getProject());
+    // Check that cloud logging config exists. If it does, make sure either project is set or
+    // default is enabled.
+    return getCloudlogging().useDefaultProject()
+        || !Strings.isNullOrEmpty(getCloudlogging().getProject());
   }
 }

@@ -28,6 +28,7 @@ public class CloudLoggingConfiguration {
 
   @JsonProperty("default_project")
   private boolean defaultProject;
+
   private String project;
 
   public String getProject() {

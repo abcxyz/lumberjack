@@ -20,9 +20,7 @@ import com.abcxyz.lumberjack.test.talker.AdditionResponse;
 import io.grpc.stub.StreamObserver;
 import lombok.extern.slf4j.Slf4j;
 
-/**
- * Client-side handler for client streaming.
- */
+/** Client-side handler for client streaming. */
 @Slf4j
 public class ClientAdditionObserver implements StreamObserver<AdditionResponse> {
 

@@ -5,8 +5,8 @@ import com.google.inject.Inject;
 import com.google.inject.name.Named;
 
 /**
- * CloudRunManager provides functionality for getting run time info for processes running on
- * cloud Run.
+ * CloudRunManager provides functionality for getting run time info for processes running on cloud
+ * Run.
  */
 public class CloudRunManager {
 
@@ -16,8 +16,10 @@ public class CloudRunManager {
   private final RuntimeInfoCommonUtils runtimeInfoCommonUtils;
 
   @Inject
-  public CloudRunManager(@Named("K_CONFIGURATION") final String configuration,
-      @Named("K_SERVICE") final String service, @Named("K_REVISION") final String revision,
+  public CloudRunManager(
+      @Named("K_CONFIGURATION") final String configuration,
+      @Named("K_SERVICE") final String service,
+      @Named("K_REVISION") final String revision,
       RuntimeInfoCommonUtils runtimeInfoCommonUtils) {
     this.configuration = configuration;
     this.service = service;
@@ -45,5 +47,4 @@ public class CloudRunManager {
         && !runtimeInfoCommonUtils.isNullOrBlank(service)
         && !runtimeInfoCommonUtils.isNullOrBlank(revision);
   }
-
 }

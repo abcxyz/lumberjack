@@ -17,16 +17,11 @@ import javax.annotation.Nullable;
 
 public class RuntimeInfoValueProvider implements Provider<Value> {
 
-  @Inject
-  private CloudRunManager cloudRunManager;
-  @Inject
-  private AppEngineManager appEngineManager;
-  @Inject
-  private CloudFunctionManager cloudFunctionManager;
-  @Inject
-  private KubernetesManager kubernetesManager;
-  @Inject
-  private ComputeEngineManager computeEngineManager;
+  @Inject private CloudRunManager cloudRunManager;
+  @Inject private AppEngineManager appEngineManager;
+  @Inject private CloudFunctionManager cloudFunctionManager;
+  @Inject private KubernetesManager kubernetesManager;
+  @Inject private ComputeEngineManager computeEngineManager;
 
   @Override
   @Nullable

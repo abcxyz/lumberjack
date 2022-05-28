@@ -21,9 +21,7 @@ import com.google.inject.AbstractModule;
 import com.google.inject.name.Names;
 import com.google.protobuf.Value;
 
-/**
- * Provides configuration for runtimeInfo processing.
- */
+/** Provides configuration for runtimeInfo processing. */
 public class RuntimeInfoProcessorModule extends AbstractModule {
 
   @Override
@@ -31,7 +29,7 @@ public class RuntimeInfoProcessorModule extends AbstractModule {
     // bind provider class
     bind(Value.class).toProvider(RuntimeInfoValueProvider.class);
 
-    //Environment variables bindings for cloud run/function
+    // Environment variables bindings for cloud run/function
     bind(String.class)
         .annotatedWith(Names.named("K_CONFIGURATION"))
         .toInstance(System.getenv().getOrDefault("K_CONFIGURATION", ""));
@@ -42,7 +40,7 @@ public class RuntimeInfoProcessorModule extends AbstractModule {
         .annotatedWith(Names.named("K_REVISION"))
         .toInstance(System.getenv().getOrDefault("K_REVISION", ""));
 
-    //Environment variables bindings for App Engine
+    // Environment variables bindings for App Engine
     bind(String.class)
         .annotatedWith(Names.named("GAE_SERVICE"))
         .toInstance(System.getenv().getOrDefault("GAE_SERVICE", ""));
@@ -56,7 +54,7 @@ public class RuntimeInfoProcessorModule extends AbstractModule {
         .annotatedWith(Names.named("GAE_RUNTIME"))
         .toInstance(System.getenv().getOrDefault("GAE_RUNTIME", ""));
 
-    //Environment variables bindings for cloud function
+    // Environment variables bindings for cloud function
     bind(String.class)
         .annotatedWith(Names.named("FUNCTION_SIGNATURE_TYPE"))
         .toInstance(System.getenv().getOrDefault("FUNCTION_SIGNATURE_TYPE", ""));
@@ -64,7 +62,7 @@ public class RuntimeInfoProcessorModule extends AbstractModule {
         .annotatedWith(Names.named("FUNCTION_TARGET"))
         .toInstance(System.getenv().getOrDefault("FUNCTION_TARGET", ""));
 
-    //Environment variables bindings for k8s
+    // Environment variables bindings for k8s
     bind(String.class)
         .annotatedWith(Names.named("HOSTNAME"))
         .toInstance(System.getenv().getOrDefault("HOSTNAME", ""));

@@ -16,7 +16,6 @@
 
 package com.abcxyz.lumberjack.auditlogclient.modules;
 
-import com.abcxyz.lumberjack.auditlogclient.config.BackendContext;
 import com.abcxyz.lumberjack.auditlogclient.config.RemoteConfiguration;
 import com.abcxyz.lumberjack.v1alpha1.AuditLogAgentGrpc;
 import com.google.auth.oauth2.GoogleCredentials;
@@ -54,7 +53,8 @@ public class RemoteProcessorModule extends AbstractModule {
       throw new IllegalArgumentException(credentials + " not valid as ID token provider.");
     }
     String remoteAudience =
-        remoteConfiguration.getAuthAudience() == null || remoteConfiguration.getAuthAudience().isBlank()
+        remoteConfiguration.getAuthAudience() == null
+                || remoteConfiguration.getAuthAudience().isBlank()
             ? "https://" + urlWithoutPort(remoteConfiguration.getAddress())
             : remoteConfiguration.getAuthAudience();
 

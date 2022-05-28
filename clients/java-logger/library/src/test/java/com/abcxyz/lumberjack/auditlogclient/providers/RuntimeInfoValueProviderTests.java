@@ -22,27 +22,22 @@ import org.mockito.junit.jupiter.MockitoExtension;
 @ExtendWith(MockitoExtension.class)
 public class RuntimeInfoValueProviderTests {
 
-  MonitoredResource mr = MonitoredResource.newBuilder()
-      .setType("gce_instance")
-      .putLabels("project_id", "gcp_project")
-      .putLabels("instance_id", "testInstance")
-      .putLabels("instance_hostname", "testInstanceName")
-      .putLabels("zone", "testZone")
-      .build();
+  MonitoredResource mr =
+      MonitoredResource.newBuilder()
+          .setType("gce_instance")
+          .putLabels("project_id", "gcp_project")
+          .putLabels("instance_id", "testInstance")
+          .putLabels("instance_hostname", "testInstanceName")
+          .putLabels("zone", "testZone")
+          .build();
 
-  @Mock
-  private CloudRunManager cloudRunManager;
-  @Mock
-  private CloudFunctionManager cloudFunctionManager;
-  @Mock
-  private KubernetesManager kubernetesManager;
-  @Mock
-  private AppEngineManager appEngineManager;
-  @Mock
-  private ComputeEngineManager computeEngineManager;
+  @Mock private CloudRunManager cloudRunManager;
+  @Mock private CloudFunctionManager cloudFunctionManager;
+  @Mock private KubernetesManager kubernetesManager;
+  @Mock private AppEngineManager appEngineManager;
+  @Mock private ComputeEngineManager computeEngineManager;
 
-  @InjectMocks
-  private RuntimeInfoValueProvider runtimeInfoValueProvider;
+  @InjectMocks private RuntimeInfoValueProvider runtimeInfoValueProvider;
 
   @Test
   void getValueWithNoPlatformMatchReturnsNull() throws IOException {
