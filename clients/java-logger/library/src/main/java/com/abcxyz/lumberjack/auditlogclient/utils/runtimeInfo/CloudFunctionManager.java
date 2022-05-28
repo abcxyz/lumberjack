@@ -14,9 +14,11 @@ public class CloudFunctionManager {
   private final RuntimeInfoCommonUtils runtimeInfoCommonUtils;
 
   @Inject
-  public CloudFunctionManager(@Named("FUNCTION_SIGNATURE_TYPE") final String functionSigType,
+  public CloudFunctionManager(
+      @Named("FUNCTION_SIGNATURE_TYPE") final String functionSigType,
       @Named("FUNCTION_TARGET") final String functionTarget,
-      @Named("K_SERVICE") final String service, @Named("K_REVISION") final String revision,
+      @Named("K_SERVICE") final String service,
+      @Named("K_REVISION") final String revision,
       RuntimeInfoCommonUtils runtimeInfoCommonUtils) {
     this.functionTarget = functionTarget;
     this.functionSigType = functionSigType;
@@ -39,11 +41,9 @@ public class CloudFunctionManager {
   }
 
   public boolean isCloudFunction() {
-    return
-        !runtimeInfoCommonUtils.isNullOrBlank(functionTarget)
-            && !runtimeInfoCommonUtils.isNullOrBlank(functionSigType)
-            && !runtimeInfoCommonUtils.isNullOrBlank(service)
-            && !runtimeInfoCommonUtils.isNullOrBlank(revision);
+    return !runtimeInfoCommonUtils.isNullOrBlank(functionTarget)
+        && !runtimeInfoCommonUtils.isNullOrBlank(functionSigType)
+        && !runtimeInfoCommonUtils.isNullOrBlank(service)
+        && !runtimeInfoCommonUtils.isNullOrBlank(revision);
   }
-
 }

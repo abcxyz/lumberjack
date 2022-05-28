@@ -36,10 +36,10 @@ import com.abcxyz.lumberjack.auditlogclient.AuditLogs;
 import com.abcxyz.lumberjack.auditlogclient.modules.AuditLoggingModule;
 import com.abcxyz.lumberjack.test.talker.AdditionRequest;
 import com.abcxyz.lumberjack.test.talker.AdditionResponse;
-import com.abcxyz.lumberjack.test.talker.FailRequest;
-import com.abcxyz.lumberjack.test.talker.FailResponse;
 import com.abcxyz.lumberjack.test.talker.FailOnFourRequest;
 import com.abcxyz.lumberjack.test.talker.FailOnFourResponse;
+import com.abcxyz.lumberjack.test.talker.FailRequest;
+import com.abcxyz.lumberjack.test.talker.FailResponse;
 import com.abcxyz.lumberjack.test.talker.FibonacciRequest;
 import com.abcxyz.lumberjack.test.talker.FibonacciResponse;
 import com.abcxyz.lumberjack.test.talker.HelloRequest;
@@ -58,7 +58,6 @@ import io.grpc.stub.StreamObserver;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.logging.Logger;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
@@ -148,7 +147,7 @@ public class TalkerService {
      * This is a test API for server streaming. The client sends a request with how many places of
      * fibonacci numbers it wants, and then the server streams each number in order.
      *
-     * example: 3 places -> 0, 1, 1
+     * <p>example: 3 places -> 0, 1, 1
      */
     @Override
     public void fibonacci(
@@ -169,15 +168,16 @@ public class TalkerService {
       if (position == 1 || position == 2) return 1;
       if (fibonacciMemo.containsKey(position)) return fibonacciMemo.get(position);
 
-      int value = getFibonacciValueForPosition(position - 1) + getFibonacciValueForPosition(position - 2);
+      int value =
+          getFibonacciValueForPosition(position - 1) + getFibonacciValueForPosition(position - 2);
       fibonacciMemo.put(position, value);
       return value;
     }
 
     /**
-     * This is a test API for client streaming. The client opens a stream and can send any
-     * number of numbers. The server adds up all those numbers, and when the stream is closed,
-     * replies with the final sum of all the numbers.
+     * This is a test API for client streaming. The client opens a stream and can send any number of
+     * numbers. The server adds up all those numbers, and when the stream is closed, replies with
+     * the final sum of all the numbers.
      */
     @Override
     public StreamObserver<AdditionRequest> addition(
@@ -186,7 +186,8 @@ public class TalkerService {
     }
 
     /**
-     * This is an api that always fails. It is intended to test the failure modes of our application.
+     * This is an api that always fails. It is intended to test the failure modes of our
+     * application.
      */
     @Override
     public void fail(FailRequest req, StreamObserver<FailResponse> responseObserver) {
@@ -200,7 +201,8 @@ public class TalkerService {
     }
 
     /**
-     * This fails if it receives the value "4". Intended for testing what happens on a failure mid-stream.
+     * This fails if it receives the value "4". Intended for testing what happens on a failure
+     * mid-stream.
      */
     @Override
     public StreamObserver<FailOnFourRequest> failOnFour(

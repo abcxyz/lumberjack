@@ -14,8 +14,10 @@ public class AppEngineManager {
   private final RuntimeInfoCommonUtils runtimeInfoCommonUtils;
 
   @Inject
-  public AppEngineManager(@Named("GAE_SERVICE") final String service,
-      @Named("GAE_VERSION") final String version, @Named("GAE_INSTANCE") final String instance,
+  public AppEngineManager(
+      @Named("GAE_SERVICE") final String service,
+      @Named("GAE_VERSION") final String version,
+      @Named("GAE_INSTANCE") final String instance,
       @Named("GAE_RUNTIME") final String runtime,
       RuntimeInfoCommonUtils runtimeInfoCommonUtils) {
     this.service = service;

@@ -1,8 +1,8 @@
 package com.abcxyz.lumberjack.auditlogclient.config;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.any;
+import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.eq;
 
 import org.junit.jupiter.api.Test;
@@ -12,8 +12,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 @ExtendWith(MockitoExtension.class)
 public class FiltersTest {
-  @Spy
-  Filters filters;
+  @Spy Filters filters;
 
   @Test
   public void getsIncludes() {
@@ -28,7 +27,9 @@ public class FiltersTest {
     filters.setIncludes(includeString);
 
     String otherIncludeString = "*.other.com";
-    doReturn(otherIncludeString).when(filters).getEnvOrDefault(eq(Filters.PRINCIPAL_INCLUDE_ENV_KEY), any());
+    doReturn(otherIncludeString)
+        .when(filters)
+        .getEnvOrDefault(eq(Filters.PRINCIPAL_INCLUDE_ENV_KEY), any());
     assertThat(filters.getIncludes()).isEqualTo(otherIncludeString);
   }
 
@@ -45,8 +46,9 @@ public class FiltersTest {
     filters.setExcludes(excludeString);
 
     String otherExcludeString = "*.other.com";
-    doReturn(otherExcludeString).when(filters).getEnvOrDefault(eq(Filters.PRINCIPAL_EXCLUDE_ENV_KEY), any());
+    doReturn(otherExcludeString)
+        .when(filters)
+        .getEnvOrDefault(eq(Filters.PRINCIPAL_EXCLUDE_ENV_KEY), any());
     assertThat(filters.getExcludes()).isEqualTo(otherExcludeString);
   }
-
 }

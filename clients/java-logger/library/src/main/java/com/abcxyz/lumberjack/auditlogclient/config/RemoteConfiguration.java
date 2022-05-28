@@ -7,8 +7,10 @@ import lombok.Data;
 public class RemoteConfiguration {
   private static final String ADDRESS_ENV_KEY = "AUDIT_CLIENT_BACKEND_REMOTE_ADDRESS";
   private static final String AUTH_AUDIENCE_ENV_KEY = "AUDIT_CLIENT_BACKEND_AUTH_AUDIENCE";
-  private static final String IMPERSONATE_ACC_ENV_KEY = "AUDIT_CLIENT_BACKEND_REMOTE_IMPERSONATE_ACCOUNT";
-  private static final String INSECURE_ENABLED_ENV_KEY = "AUDIT_CLIENT_BACKEND_REMOTE_INSECURE_ENABLED";
+  private static final String IMPERSONATE_ACC_ENV_KEY =
+      "AUDIT_CLIENT_BACKEND_REMOTE_IMPERSONATE_ACCOUNT";
+  private static final String INSECURE_ENABLED_ENV_KEY =
+      "AUDIT_CLIENT_BACKEND_REMOTE_INSECURE_ENABLED";
 
   private String address;
 

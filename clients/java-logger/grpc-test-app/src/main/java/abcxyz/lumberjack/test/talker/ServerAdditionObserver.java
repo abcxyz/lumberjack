@@ -22,9 +22,7 @@ import com.abcxyz.lumberjack.test.talker.AdditionResponse;
 import com.google.cloud.audit.AuditLog;
 import io.grpc.stub.StreamObserver;
 
-/**
- * Server-side handler for client streaming.
- */
+/** Server-side handler for client streaming. */
 public class ServerAdditionObserver implements StreamObserver<AdditionRequest> {
   private int sum = 0;
   private final StreamObserver<AdditionResponse> responseStream;

@@ -90,9 +90,11 @@ func TestGRPCEndpoints(t *testing.T) {
 	}
 
 	for i, test := range tests {
-		test := test
+		i, test := i, test
+
 		t.Run(test, func(t *testing.T) {
 			t.Parallel()
+
 			if test == "" {
 				t.Fatalf("URL for test with index %v not found.", i)
 			}

@@ -25,9 +25,7 @@ import io.grpc.StatusRuntimeException;
 import io.grpc.stub.StreamObserver;
 import lombok.extern.slf4j.Slf4j;
 
-/**
- * Server-side handler for client streaming. This one fails if it ever receives the value "4"
- */
+/** Server-side handler for client streaming. This one fails if it ever receives the value "4" */
 @Slf4j
 public class ServerFailOnFourObserver implements StreamObserver<FailOnFourRequest> {
   private final StreamObserver<FailOnFourResponse> responseStream;
@@ -54,7 +52,8 @@ public class ServerFailOnFourObserver implements StreamObserver<FailOnFourReques
 
   @Override
   public void onCompleted() {
-    FailOnFourResponse response = FailOnFourResponse.newBuilder().setMessage("Good job sending no 4s").build();
+    FailOnFourResponse response =
+        FailOnFourResponse.newBuilder().setMessage("Good job sending no 4s").build();
     responseStream.onNext(response);
     responseStream.onCompleted();
   }
