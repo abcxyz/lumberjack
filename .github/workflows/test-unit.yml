@@ -14,11 +14,24 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  # Go
-  go_lint:
+  # Go server
+  go_lint_server:
     uses: 'abcxyz/pkg/.github/workflows/go-lint.yml@main'
     with:
       go_version: '1.18'
+
+  go_test_server:
+    uses: 'abcxyz/pkg/.github/workflows/go-test.yml@main'
+    with:
+      go_version: '1.18'
+      go_packages: './cmd/... ./pkg/... ./third_party/...'
+
+  # Go client
+  go_lint_client:
+    uses: 'abcxyz/pkg/.github/workflows/go-lint.yml@main'
+    with:
+      go_version: '1.18'
+      directory: 'clients/go'
 
   go_test_client:
     uses: 'abcxyz/pkg/.github/workflows/go-test.yml@main'
@@ -27,19 +40,13 @@ jobs:
       directory: 'clients/go'
       go_packages: './...'
 
-  go_test_server:
-    uses: 'abcxyz/pkg/.github/workflows/go-test.yml@main'
-    with:
-      go_version: '1.18'
-      go_packages: './cmd/... ./pkg/... ./third_party/...'
-
-  # Java
-  java_lint:
+  # Java client
+  java_lint_client:
     uses: 'abcxyz/pkg/.github/workflows/java-lint.yml@main'
     with:
       java_version: '11'
 
-  java_test:
+  java_test_client:
     runs-on: 'ubuntu-latest'
     steps:
       - uses: 'actions/checkout@v2'
