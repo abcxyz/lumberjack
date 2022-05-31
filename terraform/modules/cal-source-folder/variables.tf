@@ -21,7 +21,7 @@ variable "log_sink_name" {
 }
 
 variable "folder_id" {
-  type        = string
+  type     = string
   description = "The folder ID for which the aggregated folder level log sink should be created."
 }
 

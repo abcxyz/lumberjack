@@ -1,12 +1,12 @@
 name: CI - Integration Tests
 
 on:
-  push:
-    branches:
-      - main
-  pull_request:
-    branches:
-      - main
+  # push:
+  #   branches:
+  #     - main
+  # pull_request:
+  #   branches:
+  #     - main
   schedule:
     - cron: '0 0 */1 * *'
 
@@ -60,7 +60,7 @@ jobs:
       # https://github.com/google-github-actions/auth/issues/89
       - name: Workaround for GCS TF Provider
         run: echo "GOOGLE_OAUTH_ACCESS_TOKEN=${{ steps.auth.outputs.access_token }}" >> $GITHUB_ENV
-      
+
       - id: gcloud
         name: Set up Cloud SDK
         uses: google-github-actions/setup-gcloud@v0
