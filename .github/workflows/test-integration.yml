@@ -1,0 +1,67 @@
+name: 'test (integration)'
+
+on:
+  push:
+    branches:
+      - 'main'
+  pull_request:
+    branches:
+      - 'main'
+  workflow_dispatch:
+
+concurrency:
+  group: '${{ github.workflow }}-${{ github.head_ref || github.ref }}'
+  cancel-in-progress: true
+
+jobs:
+  integration:
+    env:
+      PROJECT_NUMBER: '638387980668'
+
+    permissions:
+      contents: 'read'
+      id-token: 'write'
+
+    runs-on: 'ubuntu-latest'
+
+    steps:
+      - name: 'Checkout'
+        uses: 'actions/checkout@2541b1294d2704b0964813337f33b291d3f8596b' # ratchet:actions/checkout@v3
+
+      - name: 'Setup Go'
+        uses: 'actions/setup-go@fcdc43634adb5f7ae75a9d7a9b9361790f7293e2' # ratchet:actions/setup-go@v3
+        with:
+          go-version: '${{ inputs.go_version }}'
+
+      - name: 'Cache dependencies'
+        uses: 'actions/cache@48af2dc4a9e8278b89d7fa154b955c30c6aaab09' # ratchet:actions/cache@v3
+        with:
+          path: |-
+            ~/go/pkg/mod
+          key: ${{ runner.os }}-go-test-${{ hashFiles('**/go.sum') }}
+          restore-keys: |-
+            ${{ runner.os }}-go-
+            ${{ runner.os }}-go-test-
+
+      - id: 'auth'
+        name: 'Authenticate to Google Cloud'
+        uses: 'google-github-actions/auth@ceee102ec2387dd9e844e01b530ccd4ec87ce955' # ratchet:google-github-actions/auth@v0
+        with:
+          workload_identity_provider: 'projects/${{ env.PROJECT_NUMBER }}/locations/global/workloadIdentityPools/github-pool/providers/github-provider'
+          service_account: 'gh-access-sa@lumberjack-dev-infra.iam.gserviceaccount.com'
+          token_format: 'access_token' # Needed for Terraform workaround
+
+      # TODO: Workload Identity doesn't work with GCS Provider.
+      # https://github.com/google-github-actions/auth/issues/89
+      - name: 'Workaround Terraform issue'
+        shell: 'bash'
+        run: |-
+          echo "GOOGLE_OAUTH_ACCESS_TOKEN=${{ steps.auth.outputs.access_token }}" >> $GITHUB_ENV
+
+      - name: 'Install and configure gcloud'
+        uses: 'google-github-actions/setup-gcloud@877d4953d2c70a0ba7ef3290ae968eb24af233bb' # ratchet:google-github-actions/setup-gcloud@v0
+
+      - name: 'Run integration tests'
+        run: |-
+          gcloud auth configure-docker us-docker.pkg.dev
+          ./scripts/integration_build.sh
