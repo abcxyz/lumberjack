@@ -48,8 +48,7 @@ type handler struct {
 // ServeHTTP emits an application audit log with a traceID. To verify
 // that our audit logging solution works end-to-end, we can check
 // that a log entry with the same traceID successfully reached the
-// final log storage (e.g. BigQuery log sink). For context, see
-// go/lumberjack-ci-design.
+// final log storage (e.g. BigQuery log sink).
 func (h *handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	log.Printf("Received request at %s", r.URL)
 	// Get the traceID from URL.

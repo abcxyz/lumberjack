@@ -35,7 +35,7 @@ type runtimeInfo struct {
 	// monitoredResource is a *structpb.Value representation of
 	// *mrpb.MonitoredResource. We use a *structpb.Value representation because we
 	// store the runtime information in the `Metadata` field of the audit log
-	// request payload. For context, see go/lumberjack-populate-runtime-info
+	// request payload.
 	monitoredResource *structpb.Value
 }
 
