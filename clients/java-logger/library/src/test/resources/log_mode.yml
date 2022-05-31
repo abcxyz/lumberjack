@@ -19,4 +19,3 @@ rules:
 - selector: "*"
   directive: AUDIT_REQUEST_AND_RESPONSE
 log_mode: FAIL_CLOSE
-

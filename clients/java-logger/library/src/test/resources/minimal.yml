@@ -18,4 +18,3 @@ security_context:
 rules:
 - selector: "*"
   directive: AUDIT_REQUEST_AND_RESPONSE
-
