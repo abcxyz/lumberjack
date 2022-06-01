@@ -246,7 +246,7 @@ resource "null_resource" "build" {
     environment = {
       PROJECT_ID = google_project.server_project.project_id
       TAG        = local.tag
-      REPO       = "${var.registry_location}-docker.pkg.dev/${google_project.server_project.project_id}/images/lumberjack"
+      REPO       = "${var.registry_location}-docker.pkg.dev/${google_project.server_project.project_id}/images"
     }
 
     command = "${path.module}/../../../scripts/build_server.sh"
@@ -260,7 +260,7 @@ resource "null_resource" "build" {
 module "server_service" {
   source       = "../server-service"
   project_id   = google_project.server_project.project_id
-  server_image = "${var.registry_location}-docker.pkg.dev/${google_project.server_project.project_id}/images/lumberjack/server:${local.tag}"
+  server_image = "${var.registry_location}-docker.pkg.dev/${google_project.server_project.project_id}/images/lumberjack-server:${local.tag}"
   service_name = var.service_name
 
   # Give the list of IAM entities in the input variables

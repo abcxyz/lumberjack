@@ -67,7 +67,7 @@ module "server-sink" {
 module "server-service" {
   source       = "../modules/server-service"
   project_id   = "lumberjack-server"
-  server_image = "gcr.io/lumberjack-server/lumberjack/server:fake"
+  server_image = "gcr.io/lumberjack-server/lumberjack-server:fake"
 }
 
 module "bigquery-destination" {
