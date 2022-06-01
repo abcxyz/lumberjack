@@ -37,6 +37,8 @@ jobs:
         with:
           go-version: '1.18'
 
+      - run: git config --global url."https://${GITHUB_TOKEN}:x-oauth-basic@github.com/abcxyz/pkg".insteadOf "https://github.com/abcxyz/pkg"
+
       - name: 'Cache dependencies'
         uses: 'actions/cache@48af2dc4a9e8278b89d7fa154b955c30c6aaab09' # ratchet:actions/cache@v3
         with:

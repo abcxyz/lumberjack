@@ -18,6 +18,7 @@ import (
 	"bytes"
 	"testing"
 
+	pkgtest "github.com/abcxyz/pkg/testutil"
 	"github.com/google/go-cmp/cmp"
 	"gopkg.in/yaml.v2"
 )
