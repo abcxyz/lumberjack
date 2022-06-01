@@ -31,8 +31,8 @@ import (
 	"google.golang.org/protobuf/testing/protocmp"
 
 	api "github.com/abcxyz/lumberjack/clients/go/apis/v1alpha1"
-	"github.com/abcxyz/lumberjack/clients/go/pkg/errutil"
 	"github.com/abcxyz/lumberjack/clients/go/pkg/testutil"
+	pkgtest "github.com/abcxyz/pkg/testutil"
 )
 
 type fakeServer struct {
@@ -201,7 +201,7 @@ func TestProcessor_Process(t *testing.T) {
 
 			// Run test.
 			gotErr := p.Process(ctx, tc.logReq)
-			if diff := errutil.DiffSubstring(gotErr, tc.wantErrSubstr); diff != "" {
+			if diff := pkgtest.DiffErrString(gotErr, tc.wantErrSubstr); diff != "" {
 				t.Errorf("Process(%+v) got unexpected error substring: %v", tc.logReq, diff)
 			}
 			// Verify that the log request is not modified.
@@ -303,7 +303,7 @@ func TestProcessor_Stop(t *testing.T) {
 
 			// Run test.
 			gotErr := p.Stop()
-			if diff := errutil.DiffSubstring(gotErr, tc.wantErrSubstr); diff != "" {
+			if diff := pkgtest.DiffErrString(gotErr, tc.wantErrSubstr); diff != "" {
 				t.Errorf("Stop() got unexpected error substring: %v", diff)
 			}
 		})

@@ -18,7 +18,6 @@ import (
 	"bytes"
 	"testing"
 
-	"github.com/abcxyz/lumberjack/clients/go/pkg/errutil"
 	"github.com/google/go-cmp/cmp"
 	"gopkg.in/yaml.v2"
 )
@@ -327,7 +326,7 @@ func TestValidate(t *testing.T) {
 			t.Parallel()
 
 			err := tc.cfg.Validate()
-			if diff := errutil.DiffSubstring(err, tc.wantErr); diff != "" {
+			if diff := pkgtest.DiffErrString(err, tc.wantErr); diff != "" {
 				t.Errorf("Validate() got unexpected error: %s", diff)
 			}
 		})

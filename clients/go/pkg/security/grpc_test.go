@@ -21,8 +21,8 @@ import (
 	"testing"
 
 	"github.com/abcxyz/lumberjack/clients/go/apis/v1alpha1"
-	"github.com/abcxyz/lumberjack/clients/go/pkg/errutil"
 	"github.com/abcxyz/lumberjack/clients/go/pkg/testutil"
+	pkgtest "github.com/abcxyz/pkg/testutil"
 	"google.golang.org/grpc/metadata"
 )
 
@@ -156,7 +156,7 @@ func TestFromRawJWT_RequestPrincipal(t *testing.T) {
 
 			j := &FromRawJWT{FromRawJWT: tc.fromRawJWT}
 			got, err := j.RequestPrincipal(tc.ctx)
-			if diff := errutil.DiffSubstring(err, tc.wantErrSubstr); diff != "" {
+			if diff := pkgtest.DiffErrString(err, tc.wantErrSubstr); diff != "" {
 				t.Errorf("j.RequestPrincipal()) got unexpected error substring: %v", diff)
 			}
 

@@ -31,8 +31,8 @@ import (
 
 	api "github.com/abcxyz/lumberjack/clients/go/apis/v1alpha1"
 	"github.com/abcxyz/lumberjack/clients/go/pkg/audit"
-	"github.com/abcxyz/lumberjack/clients/go/pkg/errutil"
 	"github.com/abcxyz/lumberjack/clients/go/pkg/testutil"
+	pkgtest "github.com/abcxyz/pkg/testutil"
 )
 
 type fakeServer struct {
@@ -206,7 +206,7 @@ security_context:
 			}
 
 			c, err := audit.NewClient(mustFromConfigFile(path, envconfig.MapLookuper(tc.envs)))
-			if diff := errutil.DiffSubstring(err, tc.wantErrSubstr); diff != "" {
+			if diff := pkgtest.DiffErrString(err, tc.wantErrSubstr); diff != "" {
 				t.Errorf("audit.NewClient(FromConfigFile(%v)) got unexpected error substring: %v", path, diff)
 			}
 			if err != nil {
@@ -316,7 +316,7 @@ backend:
 			c, err := audit.NewClient(fromConfigFile(tc.path, envconfig.MultiLookuper(
 				envconfig.MapLookuper(map[string]string{"AUDIT_CLIENT_BACKEND_REMOTE_ADDRESS": addr}),
 				envconfig.MapLookuper(tc.envs))))
-			if diff := errutil.DiffSubstring(err, tc.wantErrSubstr); diff != "" {
+			if diff := pkgtest.DiffErrString(err, tc.wantErrSubstr); diff != "" {
 				t.Errorf("audit.NewClient(FromConfigFile(%v)) got unexpected error substring: %v", tc.path, diff)
 			}
 			if err != nil {
@@ -594,7 +594,7 @@ rules:
 			})
 
 			_, err := audit.NewInterceptor(interceptorFromConfigFile(path, envconfig.MapLookuper(tc.envs)))
-			if diff := errutil.DiffSubstring(err, tc.wantErrSubstr); diff != "" {
+			if diff := pkgtest.DiffErrString(err, tc.wantErrSubstr); diff != "" {
 				t.Errorf("WithInterceptorFromConfigFile(path) got unexpected error substring: %v", diff)
 			}
 		})
