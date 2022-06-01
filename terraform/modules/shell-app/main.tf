@@ -15,7 +15,7 @@
  */
 
 locals {
-  repo = "${var.artifact_registry_location}-docker.pkg.dev/${var.project_id}/images/lumberjack"
+  repo = "${var.artifact_registry_location}-docker.pkg.dev/${var.project_id}/images"
   tag  = var.use_random_tag ? uuid() : var.tag
   default_server_env_vars = {
   }

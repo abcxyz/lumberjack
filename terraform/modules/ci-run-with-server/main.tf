@@ -16,7 +16,7 @@
 
 locals {
   tag  = var.use_random_tag ? uuid() : var.tag
-  repo = "${var.artifact_registry_location}-docker.pkg.dev/${var.server_project_id}/images/lumberjack"
+  repo = "${var.artifact_registry_location}-docker.pkg.dev/${var.server_project_id}/images"
   env_vars = {
     "AUDIT_CLIENT_BACKEND_REMOTE_ADDRESS" : "${trimprefix(module.server_service.audit_log_server_url, "https://")}:443",
   }
@@ -41,7 +41,7 @@ resource "null_resource" "server_build" {
 module "server_service" {
   source       = "../server-service"
   project_id   = var.server_project_id
-  server_image = "${local.repo}/server:${local.tag}"
+  server_image = "${local.repo}/lumberjack-server:${local.tag}"
   service_name = var.service_name
 
   // Disable dedicated service account for audit logging server.

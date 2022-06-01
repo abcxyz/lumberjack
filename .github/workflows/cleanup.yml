@@ -1,9 +1,6 @@
 name: 'cleanup'
 
 on:
-  push:
-    paths:
-      - '.github/workflows/cleanup.yml'
   pull_request:
     paths:
       - '.github/workflows/cleanup.yml'
@@ -11,19 +8,21 @@ on:
     - cron: '0 0 */1 * *'
   workflow_dispatch:
 
+env:
+  PROJECT_ID: 'github-ci-app-0'
+  PROJECT_NUMBER: '638387980668'
+  REGION: 'us-central1'
+
+permissions:
+  contents: 'read'
+  id-token: 'write'
+
 jobs:
-  cleanup:
-    env:
-      PROJECT_ID: 'github-ci-app-0'
-      PROJECT_NUMBER: '638387980668'
-      REGION: 'us-central1'
-
-    permissions:
-      contents: 'read'
-      id-token: 'write'
-
+  # cleanup_cloudrun_services deletes all Cloud Run services that are more than
+  # 5 days old, since sometimes services are not deleted during integration
+  # tests.
+  cleanup_cloudrun_services:
     runs-on: 'ubuntu-latest'
-
     steps:
       - name: 'Checkout'
         uses: 'actions/checkout@2541b1294d2704b0964813337f33b291d3f8596b' # ratchet:actions/checkout@v3
@@ -55,3 +54,25 @@ jobs:
               --project="${{ env.PROJECT_ID }}" \
               --region="${{ env.REGION }}"
           done
+
+  # cleanup_container_images deletes all untagged container images that are more
+  # than 14 days old.
+  cleanup_container_images:
+    runs-on: 'ubuntu-latest'
+    steps:
+      - name: 'Checkout'
+        uses: 'actions/checkout@2541b1294d2704b0964813337f33b291d3f8596b' # ratchet:actions/checkout@v3
+
+      - name: 'Authenticate to Google Cloud'
+        uses: 'google-github-actions/auth@ceee102ec2387dd9e844e01b530ccd4ec87ce955' # ratchet:google-github-actions/auth@v0
+        with:
+          workload_identity_provider: 'projects/${{ env.PROJECT_NUMBER }}/locations/global/workloadIdentityPools/github-pool/providers/github-provider'
+          service_account: 'gh-access-sa@lumberjack-dev-infra.iam.gserviceaccount.com'
+
+      - name: 'Remove old container images'
+        uses: 'docker://us-docker.pkg.dev/gcr-cleaner/gcr-cleaner/gcr-cleaner-cli@sha256:e15fb64f6703067b066ed181a97f6304b63540bfc8743420a3f20453ab018fed' # ratchet:docker://us-docker.pkg.dev/gcr-cleaner/gcr-cleaner/gcr-cleaner-cli
+        with:
+          args: >-
+            -repo=us-docker.pkg.dev/lumberjack-dev-infra/images/lumberjack-server
+            -grace=336h
+            -tag-filter-any='[a-f0-9]{40}'

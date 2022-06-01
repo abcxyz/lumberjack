@@ -37,7 +37,7 @@ fi
 
 docker build \
   --file="$(dirname "$0")/server.dockerfile" \
-  --tag="${REPO}/server:${TAG}" \
+  --tag="${REPO}/lumberjack-server:${TAG}" \
   ${ROOT}
 
-docker push "${REPO}/server:${TAG}"
+docker push "${REPO}/lumberjack-server:${TAG}"
