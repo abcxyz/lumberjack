@@ -23,7 +23,7 @@ import (
 	"time"
 
 	"github.com/abcxyz/lumberjack/clients/go/pkg/security"
-	"github.com/abcxyz/lumberjack/clients/go/pkg/zlogger"
+	zlogger "github.com/abcxyz/pkg/logging"
 	"github.com/google/uuid"
 	"go.uber.org/zap"
 	"google.golang.org/genproto/googleapis/logging/v2"
@@ -103,10 +103,10 @@ func NewInterceptor(options ...InterceptorOption) (*Interceptor, error) {
 // UnaryInterceptor is a gRPC unary interceptor that automatically emits application audit logs.
 // The interceptor is currently implemented in fail-close mode.
 func (i *Interceptor) UnaryInterceptor(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error) {
-	zlogger := zlogger.FromContext(ctx)
+	logger := zlogger.FromContext(ctx)
 	r := mostRelevantRule(info.FullMethod, i.rules)
 	if r == nil {
-		zlogger.Debug("no audit rule matching the method name", zap.String("method_name", info.FullMethod), zap.Any("audit_rules", i.rules))
+		logger.Debug("no audit rule matching the method name", zap.String("method_name", info.FullMethod), zap.Any("audit_rules", i.rules))
 		// Interceptor not applied to this method, continue
 		return handler(ctx, req)
 	}
@@ -162,7 +162,7 @@ func (i *Interceptor) UnaryInterceptor(ctx context.Context, req interface{}, inf
 
 		// Best effort log the error.
 		if err := i.Log(ctx, logReq); err != nil {
-			zlogger.Error("unable to audit log error", zap.Error(err))
+			logger.Error("unable to audit log error", zap.Error(err))
 		}
 		return resp, handlerErr
 	}
@@ -185,11 +185,11 @@ func (i *Interceptor) UnaryInterceptor(ctx context.Context, req interface{}, inf
 // StreamInterceptor intercepts gRPC stream calls to inject audit logging capability.
 func (i *Interceptor) StreamInterceptor(srv interface{}, ss grpc.ServerStream, info *grpc.StreamServerInfo, handler grpc.StreamHandler) error {
 	ctx := ss.Context()
-	zlogger := zlogger.FromContext(ctx)
+	logger := zlogger.FromContext(ctx)
 
 	r := mostRelevantRule(info.FullMethod, i.rules)
 	if r == nil {
-		zlogger.Debug("no audit rule matching the method name", zap.String("method_name", info.FullMethod), zap.Any("audit_rules", i.rules))
+		logger.Debug("no audit rule matching the method name", zap.String("method_name", info.FullMethod), zap.Any("audit_rules", i.rules))
 		return handler(srv, ss)
 	}
 
@@ -238,7 +238,7 @@ func (i *Interceptor) StreamInterceptor(srv interface{}, ss grpc.ServerStream, i
 
 		// Best effort log the error.
 		if err := i.Log(ctx, logReq); err != nil {
-			zlogger.Error("unable to audit log error", zap.Error(err))
+			logger.Error("unable to audit log error", zap.Error(err))
 		}
 	}
 	return handlerErr
@@ -377,8 +377,8 @@ func (i *Interceptor) handleReturnUnary(ctx context.Context, req interface{}, ha
 	}
 	if err != nil {
 		// There was an error, but we are failing open.
-		zlogger := zlogger.FromContext(ctx)
-		zlogger.Warn("Error occurred while attempting to audit log, but continuing without audit logging or raising error.",
+		logger := zlogger.FromContext(ctx)
+		logger.Warn("Error occurred while attempting to audit log, but continuing without audit logging or raising error.",
 			zap.Error(err))
 	}
 	return handler(ctx, req)
@@ -390,8 +390,8 @@ func (i *Interceptor) handleReturnStream(ctx context.Context, ss grpc.ServerStre
 	}
 	if err != nil {
 		// There was an error, but we are failing open.
-		zlogger := zlogger.FromContext(ctx)
-		zlogger.Warn("Error occurred while attempting to audit log, but continuing without audit logging or raising error.",
+		logger := zlogger.FromContext(ctx)
+		logger.Warn("Error occurred while attempting to audit log, but continuing without audit logging or raising error.",
 			zap.Error(err))
 	}
 	return handler(ctx, ss)
@@ -406,8 +406,8 @@ func (i *Interceptor) handleReturnWithResponse(ctx context.Context, handlerResp 
 	}
 	if err != nil {
 		// There was an error, but we are failing open.
-		zlogger := zlogger.FromContext(ctx)
-		zlogger.Warn("Error occurred while attempting to audit log, but continuing without audit logging or raising error.",
+		logger := zlogger.FromContext(ctx)
+		logger.Warn("Error occurred while attempting to audit log, but continuing without audit logging or raising error.",
 			zap.Error(err))
 	}
 	return handlerResp, nil
