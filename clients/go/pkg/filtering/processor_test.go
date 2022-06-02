@@ -26,7 +26,7 @@ import (
 	api "github.com/abcxyz/lumberjack/clients/go/apis/v1alpha1"
 	"github.com/abcxyz/lumberjack/clients/go/pkg/audit"
 	"github.com/abcxyz/lumberjack/clients/go/pkg/testutil"
-	pkgtest "github.com/abcxyz/pkg/testutil"
+	pkgtestutil "github.com/abcxyz/pkg/testutil"
 )
 
 func TestNewPrincipalEmailMatcher(t *testing.T) {
@@ -65,7 +65,7 @@ func TestNewPrincipalEmailMatcher(t *testing.T) {
 			t.Parallel()
 
 			_, err := NewPrincipalEmailMatcher(tc.opts...)
-			if diff := pkgtest.DiffErrString(err, tc.wantErrSubstr); diff != "" {
+			if diff := pkgtestutil.DiffErrString(err, tc.wantErrSubstr); diff != "" {
 				t.Errorf("NewPrincipalEmailMatcher(%v) got unexpected error substring: %v", tc.opts, diff)
 			}
 		})

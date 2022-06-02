@@ -22,7 +22,7 @@ import (
 	"github.com/abcxyz/lumberjack/clients/go/pkg/remote"
 	"github.com/abcxyz/lumberjack/clients/go/pkg/security"
 	"github.com/abcxyz/lumberjack/clients/go/pkg/testutil"
-	pkgtest "github.com/abcxyz/pkg/testutil"
+	pkgtestutil "github.com/abcxyz/pkg/testutil"
 	"github.com/google/go-cmp/cmp"
 	rpcstatus "google.golang.org/genproto/googleapis/rpc/status"
 	"google.golang.org/grpc"
@@ -427,7 +427,7 @@ func TestUnaryInterceptor(t *testing.T) {
 			i.sc = fromRawJWT
 
 			_, gotErr := i.UnaryInterceptor(tc.ctx, tc.req, tc.info, tc.handler)
-			if diff := pkgtest.DiffErrString(gotErr, tc.wantErrSubstr); diff != "" {
+			if diff := pkgtestutil.DiffErrString(gotErr, tc.wantErrSubstr); diff != "" {
 				t.Errorf("UnaryInterceptor(...) got unexpected error substring: %v", diff)
 			}
 
@@ -902,7 +902,7 @@ func TestStreamInterceptor(t *testing.T) {
 			i.sc = fromRawJWT
 
 			gotErr := i.StreamInterceptor(nil, tc.ss, tc.info, tc.handler)
-			if diff := pkgtest.DiffErrString(gotErr, tc.wantErrSubstr); diff != "" {
+			if diff := pkgtestutil.DiffErrString(gotErr, tc.wantErrSubstr); diff != "" {
 				t.Errorf("UnaryInterceptor(...) got unexpected error substring: %v", diff)
 			}
 
@@ -972,7 +972,7 @@ func TestServiceName(t *testing.T) {
 			t.Parallel()
 
 			got, gotErr := serviceName(tc.fullMethodName)
-			if diff := pkgtest.DiffErrString(gotErr, tc.wantErrSubstr); diff != "" {
+			if diff := pkgtestutil.DiffErrString(gotErr, tc.wantErrSubstr); diff != "" {
 				t.Errorf("serviceName(%v) got unexpected error substring: %v", tc.fullMethodName, diff)
 			}
 
@@ -1161,7 +1161,7 @@ func TestHandleReturnWithResponse(t *testing.T) {
 
 			got, gotErr := i.handleReturnWithResponse(ctx, response, tc.err)
 
-			if diff := pkgtest.DiffErrString(gotErr, tc.wantErrStr); diff != "" {
+			if diff := pkgtestutil.DiffErrString(gotErr, tc.wantErrStr); diff != "" {
 				t.Errorf("got unexpected error substring: %v", diff)
 			}
 

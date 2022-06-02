@@ -25,7 +25,7 @@ import (
 
 	api "github.com/abcxyz/lumberjack/clients/go/apis/v1alpha1"
 	"github.com/abcxyz/lumberjack/clients/go/pkg/testutil"
-	pkgtest "github.com/abcxyz/pkg/testutil"
+	pkgtestutil "github.com/abcxyz/pkg/testutil"
 )
 
 const processorOrderKey = "processorOrder"
@@ -184,7 +184,7 @@ func TestLog(t *testing.T) {
 				}
 			})
 			err = c.Log(ctx, test.logReq)
-			if diff := pkgtest.DiffErrString(err, test.wantErrSubstr); diff != "" {
+			if diff := pkgtestutil.DiffErrString(err, test.wantErrSubstr); diff != "" {
 				t.Errorf("Log(%+v) got unexpected error substring: %v", test.logReq, diff)
 			}
 			if diff := cmp.Diff(test.wantLogReq, test.logReq, protocmp.Transform()); diff != "" {
