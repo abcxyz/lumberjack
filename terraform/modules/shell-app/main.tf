@@ -29,7 +29,7 @@ resource "null_resource" "shell_app_build" {
   provisioner "local-exec" {
     environment = {
       REPO     = local.repo
-      APP_NAME = var.service_name
+      APP_NAME = "test-app"
       TAG      = local.tag
     }
     command = var.build_command
@@ -44,7 +44,7 @@ resource "google_cloud_run_service" "shell_app_service" {
   template {
     spec {
       containers {
-        image = "${local.repo}/${var.service_name}:${local.tag}"
+        image = "${local.repo}/test-app:${local.tag}"
 
         resources {
           limits = {

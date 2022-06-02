@@ -74,5 +74,6 @@ jobs:
         with:
           args: >-
             -repo=us-docker.pkg.dev/lumberjack-dev-infra/images/lumberjack-server
+            -repo=us-docker.pkg.dev/lumberjack-dev-infra/images/test-app
             -grace=336h
             -tag-filter-any='[a-f0-9]{40}'
