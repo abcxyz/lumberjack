@@ -24,7 +24,7 @@ import (
 	"go.uber.org/zap"
 
 	api "github.com/abcxyz/lumberjack/clients/go/apis/v1alpha1"
-	"github.com/abcxyz/lumberjack/clients/go/pkg/zlogger"
+	zlogger "github.com/abcxyz/pkg/logging"
 )
 
 // Client is the Lumberjack audit logging Client.
