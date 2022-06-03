@@ -18,21 +18,13 @@ set -eEuo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." &>/dev/null; pwd -P)"
 
-if [ -z "${PROJECT_ID:-}" ]; then
-  echo "✋ Missing PROJECT_ID!" >&2
-  exit 1
-fi
-
 if [ -z "${TAG:-}" ]; then
-  # TODO(b/203448889): Disallow dirty repo.
-  TAG="$(git describe --dirty --always)"
+  TAG="latest"
   echo "🎈 Using tag ${TAG}!" >&2
 fi
 
 if [ -z "${REPO:-}" ]; then
-  # TODO(b/203448996): Use full github repo path.
-  REPO="gcr.io/${PROJECT_ID}/lumberjack"
-  echo "🎈 Using repo ${REPO}!" >&2
+  echo "✋ Missing REPO!" >&2
 fi
 
 docker build \
