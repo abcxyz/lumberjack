@@ -24,7 +24,7 @@ jobs:
       PROJECT_NUMBER: '638387980668'
       REGISTRY: 'us-docker.pkg.dev'
       REPO: 'us-docker.pkg.dev/lumberjack-dev-infra/images'
-      TAG: 'latest'
+      TAG: "${{ github.event.inputs.tag }}"
 
     permissions:
       contents: 'read'
