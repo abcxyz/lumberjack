@@ -43,6 +43,7 @@ jobs:
           echo "Fetching services to delete older than ${SINCE}..."
 
           TO_DELETE=( $(gcloud run services list \
+            --quiet \
             --project="${{ env.PROJECT_ID }}" \
             --region="${{ env.REGION }}" \
             --filter="metadata.creationTimestamp<${SINCE}" \
@@ -51,6 +52,7 @@ jobs:
           for SERVICE in "${TO_DELETE[@]}"; do
             echo "Deleting ${SERVICE}..."
             gcloud run services delete ${SERVICE} \
+              --quiet \
               --project="${{ env.PROJECT_ID }}" \
               --region="${{ env.REGION }}"
           done
