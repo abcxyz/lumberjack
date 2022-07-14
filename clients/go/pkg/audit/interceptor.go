@@ -25,12 +25,14 @@ import (
 	"github.com/abcxyz/lumberjack/clients/go/pkg/security"
 	zlogger "github.com/abcxyz/pkg/logging"
 	"github.com/google/uuid"
+	"github.com/lestrrat-go/jwx/v2/jwt"
 	"go.uber.org/zap"
 	"google.golang.org/genproto/googleapis/logging/v2"
 	rpccode "google.golang.org/genproto/googleapis/rpc/code"
 	rpcstatus "google.golang.org/genproto/googleapis/rpc/status"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
+	grpcmetadata "google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/structpb"
@@ -80,13 +82,26 @@ func WithInterceptorLogMode(m api.AuditLogRequest_LogMode) InterceptorOption {
 	}
 }
 
+// WithJVS configures the interceptor to use the JVS client to add justifications to logs.
+func WithJVS(j JVS) InterceptorOption {
+	return func(i *Interceptor) error {
+		i.jvsClient = j
+		return nil
+	}
+}
+
+type JVS interface {
+	ValidateJWT(jwtStr string) (*jwt.Token, error)
+}
+
 // Interceptor contains the fields required for an interceptor
 // to autofill and emit audit logs.
 type Interceptor struct {
 	*Client
-	sc      security.GRPCContext
-	rules   []*api.AuditRule
-	logMode api.AuditLogRequest_LogMode
+	sc        security.GRPCContext
+	rules     []*api.AuditRule
+	logMode   api.AuditLogRequest_LogMode
+	jvsClient JVS
 }
 
 // NewInterceptor creates a new interceptor with the given options.
@@ -145,6 +160,37 @@ func (i *Interceptor) UnaryInterceptor(ctx context.Context, req interface{}, inf
 		if err := setReq(logReq, req); err != nil {
 			return i.handleReturnUnary(ctx, req, handler, status.Errorf(codes.Internal,
 				"audit interceptor failed converting req into a Google struct proto: %v", err))
+		}
+	}
+
+	if i.jvsClient != nil {
+		// JVS Client added, look for justification info
+		md, ok := grpcmetadata.FromIncomingContext(ctx)
+		if !ok {
+			return "", fmt.Errorf("gRPC metadata in incoming context is missing")
+		}
+		vals := md.Get("justification_token")
+		if vals != nil && len(vals) > 0 {
+			jwtRaw := vals[0]
+			tok, err := i.jvsClient.ValidateJWT(jwtRaw)
+			if err != nil {
+				return i.handleReturnUnary(ctx, req, handler, status.Errorf(codes.Internal,
+					"audit interceptor failed converting parsing or validating justification token: %v", err))
+			}
+			// TODO: Gracefully handle if metadata isn't empty.
+			buf, err := json.Marshal(*tok)
+			if err != nil {
+				return i.handleReturnUnary(ctx, req, handler, status.Errorf(codes.Internal,
+					"couldn't convert token to json: %v", err))
+			}
+			logReq.Payload.Metadata = &structpb.Struct{
+				Fields: map[string]*structpb.Value{
+					"justification_token": structpb.NewStringValue(fmt.Sprintf("%s", buf)),
+				},
+			}
+		} else {
+			return i.handleReturnUnary(ctx, req, handler, status.Errorf(codes.Internal,
+				"no justification token found."))
 		}
 	}
 
