@@ -139,8 +139,9 @@ func realMain(ctx context.Context) error {
 
 	// Create the server and listen in a goroutine.
 	server := &http.Server{
-		Addr:    ":" + port,
-		Handler: mux,
+		Addr:              ":" + port,
+		Handler:           mux,
+		ReadHeaderTimeout: 2 * time.Second,
 	}
 	serverErrCh := make(chan error, 1)
 	go func() {
