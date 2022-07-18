@@ -90,6 +90,8 @@ func WithJVS(j JVS) InterceptorOption {
 	}
 }
 
+// JVS is intended to provide a method for validating JWTs passed in using the
+// justification_token header.
 type JVS interface {
 	ValidateJWT(jwtStr string) (*jwt.Token, error)
 }
