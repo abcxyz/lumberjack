@@ -513,7 +513,7 @@ func TestUnaryInterceptor(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
-			i := &Interceptor{rules: tc.auditRules, logMode: tc.logMode, jvsClient: &fakeJVS{}}
+			i := &Interceptor{rules: tc.auditRules, logMode: tc.logMode, jwtValidator: &fakeJVS{}}
 
 			r := &fakeServer{}
 

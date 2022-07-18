@@ -82,17 +82,17 @@ func WithInterceptorLogMode(m api.AuditLogRequest_LogMode) InterceptorOption {
 	}
 }
 
-// WithJVS configures the interceptor to use the JVS client to add justifications to logs.
-func WithJVS(j JVS) InterceptorOption {
+// WithJWTValidator configures the interceptor to use the JWTValidator client to add justifications to logs.
+func WithJWTValidator(j JWTValidator) InterceptorOption {
 	return func(i *Interceptor) error {
-		i.jvsClient = j
+		i.jwtValidator = j
 		return nil
 	}
 }
 
-// JVS is intended to provide a method for validating JWTs passed in using the
+// JWTValidator is intended to provide a method for validating JWTs passed in using the
 // justification_token header.
-type JVS interface {
+type JWTValidator interface {
 	ValidateJWT(jwtStr string) (*jwt.Token, error)
 }
 
@@ -100,10 +100,10 @@ type JVS interface {
 // to autofill and emit audit logs.
 type Interceptor struct {
 	*Client
-	sc        security.GRPCContext
-	rules     []*api.AuditRule
-	logMode   api.AuditLogRequest_LogMode
-	jvsClient JVS
+	sc           security.GRPCContext
+	rules        []*api.AuditRule
+	logMode      api.AuditLogRequest_LogMode
+	jwtValidator JWTValidator
 }
 
 // NewInterceptor creates a new interceptor with the given options.
@@ -165,8 +165,10 @@ func (i *Interceptor) UnaryInterceptor(ctx context.Context, req interface{}, inf
 		}
 	}
 
-	if i.jvsClient != nil {
-		// JVS Client added, look for justification info
+	// If JWT Validator hasn't been added, we don't handle justification JWTs, and just log
+	// without the justification.
+	if i.jwtValidator != nil {
+		// JWT Validator added, look for justification info
 		md, ok := grpcmetadata.FromIncomingContext(ctx)
 		if !ok {
 			return "", fmt.Errorf("gRPC metadata in incoming context is missing")
@@ -174,7 +176,7 @@ func (i *Interceptor) UnaryInterceptor(ctx context.Context, req interface{}, inf
 		vals := md.Get("justification_token")
 		if len(vals) > 0 {
 			jwtRaw := vals[0]
-			tok, err := i.jvsClient.ValidateJWT(jwtRaw)
+			tok, err := i.jwtValidator.ValidateJWT(jwtRaw)
 			if err != nil {
 				return i.handleReturnUnary(ctx, req, handler, status.Errorf(codes.Internal,
 					"audit interceptor failed converting parsing or validating justification token: %v", err))
