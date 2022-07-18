@@ -4,7 +4,7 @@
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
-//     https://www.apache.org/licenses/LICENSE-2.0
+//	https://www.apache.org/licenses/LICENSE-2.0
 //
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
@@ -43,12 +43,13 @@ func main() {
 }
 
 func realMain() (outErr error) {
+	ctx := context.Background()
 	flag.Parse()
 	lis, err := net.Listen("tcp", fmt.Sprintf(":%d", *port))
 	if err != nil {
 		return fmt.Errorf("failed to listen: %w", err)
 	}
-	interceptor, err := audit.NewInterceptor(auditopt.InterceptorFromConfigFile(auditopt.DefaultConfigFilePath))
+	interceptor, err := audit.NewInterceptor(auditopt.InterceptorFromConfigFile(ctx, auditopt.DefaultConfigFilePath))
 	if err != nil {
 		return fmt.Errorf("failed to setup audit interceptor: %w", err)
 	}

@@ -77,10 +77,15 @@ type fakeJVS struct{}
 
 func (j *fakeJVS) ValidateJWT(jwtStr string) (*jwt.Token, error) {
 	t := jwt.New()
-	t.Set(jwt.SubjectKey, `me@example.com`)
-	t.Set(jwt.AudienceKey, `aud`)
-	t.Set(jwt.JwtIDKey, "123")
-	//t.Set(`privateClaimKey`, `Hello, World!`)
+	if err := t.Set(jwt.SubjectKey, `me@example.com`); err != nil {
+		return nil, err
+	}
+	if err := t.Set(jwt.AudienceKey, `aud`); err != nil {
+		return nil, err
+	}
+	if err := t.Set(jwt.JwtIDKey, "123"); err != nil {
+		return nil, err
+	}
 	return &t, nil
 }
 
@@ -101,7 +106,7 @@ func TestUnaryInterceptor(t *testing.T) {
 	if err != nil {
 		t.Fatal(fmt.Errorf("couldn't generate string for claims: %w", err))
 	}
-	claimsString := fmt.Sprintf("%s", buf)
+	claimsString := string(buf)
 
 	tests := []struct {
 		name          string

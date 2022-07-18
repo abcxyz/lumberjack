@@ -469,6 +469,7 @@ condition:
 
 func TestInterceptorFromConfigFile(t *testing.T) {
 	t.Parallel()
+	ctx := context.Background()
 
 	cases := []struct {
 		name          string
@@ -593,7 +594,7 @@ rules:
 				}
 			})
 
-			_, err := audit.NewInterceptor(interceptorFromConfigFile(path, envconfig.MapLookuper(tc.envs)))
+			_, err := audit.NewInterceptor(interceptorFromConfigFile(ctx, path, envconfig.MapLookuper(tc.envs)))
 			if diff := pkgtestutil.DiffErrString(err, tc.wantErrSubstr); diff != "" {
 				t.Errorf("WithInterceptorFromConfigFile(path) got unexpected error substring: %v", diff)
 			}

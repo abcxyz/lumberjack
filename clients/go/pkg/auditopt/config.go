@@ -14,9 +14,10 @@
 
 // Package auditopt configures a client by looking three locations
 // to determine the config variables:
-//   1. env vars
-//   2. a config file
-//   3. defaults
+//  1. env vars
+//  2. a config file
+//  3. defaults
+//
 // Each location takes precedence on the one below it. For example,
 // if you set the config variable `FOO` in both env vars and a config
 // file, the env var value overwrites the config file value.
@@ -30,6 +31,7 @@ import (
 	"io/ioutil"
 
 	"cloud.google.com/go/logging"
+	"github.com/abcxyz/jvs/client-lib/go/client"
 	"github.com/abcxyz/lumberjack/clients/go/pkg/audit"
 	"github.com/abcxyz/lumberjack/clients/go/pkg/cloudlogging"
 	"github.com/abcxyz/lumberjack/clients/go/pkg/filtering"
@@ -98,13 +100,13 @@ func fromConfigFile(path string, lookuper envconfig.Lookuper) audit.Option {
 // InterceptorFromConfigFile returns an interceptor option from the given
 // config file. The returned option can be used to create an interceptor
 // to add capability to gRPC server.
-func InterceptorFromConfigFile(path string) audit.InterceptorOption {
-	return interceptorFromConfigFile(path, envconfig.OsLookuper())
+func InterceptorFromConfigFile(ctx context.Context, path string) audit.InterceptorOption {
+	return interceptorFromConfigFile(ctx, path, envconfig.OsLookuper())
 }
 
 // interceptorFromConfigFile is like InterceptorFromConfigFile, but exposes a
 // custom lookuper for testing.
-func interceptorFromConfigFile(path string, lookuper envconfig.Lookuper) audit.InterceptorOption {
+func interceptorFromConfigFile(ctx context.Context, path string, lookuper envconfig.Lookuper) audit.InterceptorOption {
 	return func(i *audit.Interceptor) error {
 		fc, err := ioutil.ReadFile(path)
 		if err != nil {
@@ -118,6 +120,14 @@ func interceptorFromConfigFile(path string, lookuper envconfig.Lookuper) audit.I
 		// Interceptor requires security context.
 		if cfg.SecurityContext == nil {
 			return fmt.Errorf("SecurityContext must be provided to use interceptor")
+		}
+
+		if cfg.JVSEndpoint != "" {
+			jvsClient, err := client.NewJVSClient(ctx, &client.JVSConfig{JVSEndpoint: cfg.JVSEndpoint})
+			if err != nil {
+				return err
+			}
+			audit.WithJVS(jvsClient)
 		}
 
 		opts := []audit.InterceptorOption{

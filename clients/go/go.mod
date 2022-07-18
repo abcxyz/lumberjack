@@ -38,6 +38,7 @@ require (
 	github.com/abcxyz/pkg v0.0.0-20220627210229-493bf5fec862
 	github.com/golang-jwt/jwt v3.2.2+incompatible
 	github.com/google/uuid v1.3.0
+	github.com/lestrrat-go/jwx/v2 v2.0.3
 	go.opentelemetry.io/otel v1.7.0
 	go.opentelemetry.io/otel/sdk v1.2.0
 	go.uber.org/multierr v1.8.0
@@ -62,7 +63,6 @@ require (
 	github.com/lestrrat-go/httpcc v1.0.1 // indirect
 	github.com/lestrrat-go/httprc v1.0.2 // indirect
 	github.com/lestrrat-go/iter v1.0.2 // indirect
-	github.com/lestrrat-go/jwx/v2 v2.0.3 // indirect
 	github.com/lestrrat-go/option v1.0.0 // indirect
 	go.uber.org/atomic v1.9.0 // indirect
 	golang.org/x/crypto v0.0.0-20220427172511-eb4f295cb31f // indirect

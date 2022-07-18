@@ -170,22 +170,24 @@ func (i *Interceptor) UnaryInterceptor(ctx context.Context, req interface{}, inf
 			return "", fmt.Errorf("gRPC metadata in incoming context is missing")
 		}
 		vals := md.Get("justification_token")
-		if vals != nil && len(vals) > 0 {
+		if len(vals) > 0 {
 			jwtRaw := vals[0]
 			tok, err := i.jvsClient.ValidateJWT(jwtRaw)
 			if err != nil {
 				return i.handleReturnUnary(ctx, req, handler, status.Errorf(codes.Internal,
 					"audit interceptor failed converting parsing or validating justification token: %v", err))
 			}
-			// TODO: Gracefully handle if metadata isn't empty.
 			buf, err := json.Marshal(*tok)
 			if err != nil {
 				return i.handleReturnUnary(ctx, req, handler, status.Errorf(codes.Internal,
 					"couldn't convert token to json: %v", err))
 			}
+			// Note: We don't set metadata before here, so we can directly set it.
+			// If we need to put other data in metadata, this should be modified to not
+			// overwrite it.
 			logReq.Payload.Metadata = &structpb.Struct{
 				Fields: map[string]*structpb.Value{
-					"justification_token": structpb.NewStringValue(fmt.Sprintf("%s", buf)),
+					"justification_token": structpb.NewStringValue(string(buf)),
 				},
 			}
 		} else {
