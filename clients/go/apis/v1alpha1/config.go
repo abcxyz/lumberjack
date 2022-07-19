@@ -67,9 +67,13 @@ type Config struct {
 
 	// JVSEndpoint is the endpoint where public keys may be retrieved from the JVS.
 	// These will be used to validate JWT tokens that are passed in through the
-	// "justification_token" header. If omitted, justifications will not be added
-	// to logs.
-	JVSEndpoint string `yaml:"jvs_endpoint,omitempty" env:"JVS_ENDPOINT,overwrite"`
+	// "justification_token" header.
+	JVSEndpoint string `yaml:"jvs_endpoint,omitempty" env:"JVS_ENDPOINT,overwrite,default=localhost:8080"`
+
+	// EnableJustification enables adding justification information to audit logs. If this is enabled,
+	// all manual calls are expected to pass in a justification in the "justification_token" header.
+	// If omitted, justifications will not be added to logs, even if provided.
+	EnableJustification bool `yaml:"enable_justification,omitempty" env:"ENABLE_JUSTIFICATION,overwrite,default=false"`
 }
 
 // Validate checks if the config is valid.

@@ -10,7 +10,7 @@ require (
 	github.com/abcxyz/pkg v0.0.0-20220627210229-493bf5fec862
 	github.com/google/go-cmp v0.5.8
 	github.com/google/uuid v1.3.0
-	github.com/sethvargo/go-envconfig v0.6.2
+	github.com/sethvargo/go-envconfig v0.8.0
 	github.com/sethvargo/go-retry v0.2.3
 	go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc v0.32.0
 	golang.org/x/oauth2 v0.0.0-20220524215830-622c5d57e401

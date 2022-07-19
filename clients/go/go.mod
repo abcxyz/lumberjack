@@ -21,7 +21,7 @@ require (
 require (
 	cloud.google.com/go v0.102.0 // indirect
 	cloud.google.com/go/logging v1.4.2
-	github.com/sethvargo/go-envconfig v0.6.2
+	github.com/sethvargo/go-envconfig v0.8.0
 	golang.org/x/sync v0.0.0-20220601150217-0de741cfad7f // indirect
 )
 

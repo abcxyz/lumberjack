@@ -55,7 +55,8 @@ labels:
   mylabel1: myvalue1
   mylabel2: myvalue2
 log_mode: BEST_EFFORT
-jvs_endpoint: example.com`,
+jvs_endpoint: example.com
+enable_justification: true`,
 		wantConfig: &Config{
 			Version: "v1alpha1",
 			Backend: &Backend{
@@ -87,8 +88,9 @@ jvs_endpoint: example.com`,
 				"mylabel1": "myvalue1",
 				"mylabel2": "myvalue2",
 			},
-			LogMode:     "BEST_EFFORT",
-			JVSEndpoint: "example.com",
+			LogMode:             "BEST_EFFORT",
+			JVSEndpoint:         "example.com",
+			EnableJustification: true,
 		},
 		wantLogMode: AuditLogRequest_BEST_EFFORT,
 	}, {

@@ -360,9 +360,11 @@ security_context:
   - key: authorization
 `,
 			wantCfg: &api.Config{
-				Version:         "v1alpha1",
-				Backend:         &api.Backend{Remote: &api.Remote{Address: "foo:443", InsecureEnabled: true}},
-				SecurityContext: &api.SecurityContext{FromRawJWT: []*api.FromRawJWT{{Key: "authorization"}}},
+				Version:             "v1alpha1",
+				Backend:             &api.Backend{Remote: &api.Remote{Address: "foo:443", InsecureEnabled: true}},
+				SecurityContext:     &api.SecurityContext{FromRawJWT: []*api.FromRawJWT{{Key: "authorization"}}},
+				JVSEndpoint:         "localhost:8080",
+				EnableJustification: false,
 			},
 		},
 		{
@@ -379,9 +381,11 @@ security_context:
     prefix: somePrefix
 `,
 			wantCfg: &api.Config{
-				Version:         "v1alpha1",
-				Backend:         &api.Backend{Remote: &api.Remote{Address: "foo:443", InsecureEnabled: true}},
-				SecurityContext: &api.SecurityContext{FromRawJWT: []*api.FromRawJWT{{Key: "x-jwt-assertion", Prefix: "somePrefix"}}},
+				Version:             "v1alpha1",
+				Backend:             &api.Backend{Remote: &api.Remote{Address: "foo:443", InsecureEnabled: true}},
+				SecurityContext:     &api.SecurityContext{FromRawJWT: []*api.FromRawJWT{{Key: "x-jwt-assertion", Prefix: "somePrefix"}}},
+				JVSEndpoint:         "localhost:8080",
+				EnableJustification: false,
 			},
 		},
 		{
@@ -398,9 +402,11 @@ security_context:
     prefix:
 `,
 			wantCfg: &api.Config{
-				Version:         "v1alpha1",
-				Backend:         &api.Backend{Remote: &api.Remote{Address: "foo:443", InsecureEnabled: true}},
-				SecurityContext: &api.SecurityContext{FromRawJWT: []*api.FromRawJWT{{Key: "x-jwt-assertion"}}},
+				Version:             "v1alpha1",
+				Backend:             &api.Backend{Remote: &api.Remote{Address: "foo:443", InsecureEnabled: true}},
+				SecurityContext:     &api.SecurityContext{FromRawJWT: []*api.FromRawJWT{{Key: "x-jwt-assertion"}}},
+				JVSEndpoint:         "localhost:8080",
+				EnableJustification: false,
 			},
 		},
 		{
@@ -416,9 +422,11 @@ security_context:
   - key: x-jwt-assertion
 `,
 			wantCfg: &api.Config{
-				Version:         "v1alpha1",
-				Backend:         &api.Backend{Remote: &api.Remote{Address: "foo:443", InsecureEnabled: true}},
-				SecurityContext: &api.SecurityContext{FromRawJWT: []*api.FromRawJWT{{Key: "x-jwt-assertion"}}},
+				Version:             "v1alpha1",
+				Backend:             &api.Backend{Remote: &api.Remote{Address: "foo:443", InsecureEnabled: true}},
+				SecurityContext:     &api.SecurityContext{FromRawJWT: []*api.FromRawJWT{{Key: "x-jwt-assertion"}}},
+				JVSEndpoint:         "localhost:8080",
+				EnableJustification: false,
 			},
 		},
 		{
@@ -434,9 +442,33 @@ condition:
     principal_include: "user@example.com"
 `,
 			wantCfg: &api.Config{
-				Version:   "v1alpha1",
-				Backend:   &api.Backend{Remote: &api.Remote{Address: "foo:443", InsecureEnabled: true}},
-				Condition: &api.Condition{Regex: &api.RegexCondition{PrincipalInclude: "user@example.com"}},
+				Version:             "v1alpha1",
+				Backend:             &api.Backend{Remote: &api.Remote{Address: "foo:443", InsecureEnabled: true}},
+				Condition:           &api.Condition{Regex: &api.RegexCondition{PrincipalInclude: "user@example.com"}},
+				JVSEndpoint:         "localhost:8080",
+				EnableJustification: false,
+			},
+		},
+		{
+			name: "raw_jwt_with_jvs_and_justification",
+			fileContent: `
+version: v1alpha1
+backend:
+  remote:
+    address: foo:443
+    insecure_enabled: true
+security_context:
+  from_raw_jwt:
+  - key: authorization
+jvs_endpoint: example.com:123
+enable_justification: true
+`,
+			wantCfg: &api.Config{
+				Version:             "v1alpha1",
+				Backend:             &api.Backend{Remote: &api.Remote{Address: "foo:443", InsecureEnabled: true}},
+				SecurityContext:     &api.SecurityContext{FromRawJWT: []*api.FromRawJWT{{Key: "authorization"}}},
+				JVSEndpoint:         "example.com:123",
+				EnableJustification: true,
 			},
 		},
 	}

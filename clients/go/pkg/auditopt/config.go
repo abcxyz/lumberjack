@@ -122,7 +122,7 @@ func interceptorFromConfigFile(ctx context.Context, path string, lookuper envcon
 			return fmt.Errorf("SecurityContext must be provided to use interceptor")
 		}
 
-		if cfg.JVSEndpoint != "" {
+		if cfg.EnableJustification {
 			jvsClient, err := client.NewJVSClient(ctx, &client.JVSConfig{JVSEndpoint: cfg.JVSEndpoint})
 			if err != nil {
 				return err
