@@ -461,7 +461,7 @@ security_context:
   from_raw_jwt:
   - key: authorization
 jvs_endpoint: example.com:123
-enable_justification: true
+require_justification: true
 `,
 			wantCfg: &api.Config{
 				Version:              "v1alpha1",
