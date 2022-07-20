@@ -64,6 +64,16 @@ type Config struct {
 	// If fail-close is not chosen, the audit logger will log errors that occur,
 	// and then continue without impeding the application in any way.
 	LogMode string `yaml:"log_mode,omitempty" env:"LOG_MODE,overwrite"`
+
+	// JVSEndpoint is the endpoint where public keys may be retrieved from the JVS.
+	// These will be used to validate JWT tokens that are passed in through the
+	// "justification_token" header.
+	JVSEndpoint string `yaml:"jvs_endpoint,omitempty" env:"JVS_ENDPOINT,overwrite,default=localhost:8080"`
+
+	// RequireJustification enables adding justification information to audit logs. If this is enabled,
+	// all manual calls are expected to pass in a justification in the "justification_token" header.
+	// If omitted, justifications will not be added to logs, even if provided.
+	RequireJustification bool `yaml:"enable_justification,omitempty" env:"ENABLE_JUSTIFICATION,overwrite,default=false"`
 }
 
 // Validate checks if the config is valid.

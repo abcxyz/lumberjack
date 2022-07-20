@@ -25,12 +25,14 @@ import (
 	"github.com/abcxyz/lumberjack/clients/go/pkg/security"
 	zlogger "github.com/abcxyz/pkg/logging"
 	"github.com/google/uuid"
+	"github.com/lestrrat-go/jwx/v2/jwt"
 	"go.uber.org/zap"
 	"google.golang.org/genproto/googleapis/logging/v2"
 	rpccode "google.golang.org/genproto/googleapis/rpc/code"
 	rpcstatus "google.golang.org/genproto/googleapis/rpc/status"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
+	grpcmetadata "google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/structpb"
@@ -80,13 +82,28 @@ func WithInterceptorLogMode(m api.AuditLogRequest_LogMode) InterceptorOption {
 	}
 }
 
+// WithJWTValidator configures the interceptor to use the JWTValidator client to add justifications to logs.
+func WithJWTValidator(j JWTValidator) InterceptorOption {
+	return func(i *Interceptor) error {
+		i.jwtValidator = j
+		return nil
+	}
+}
+
+// JWTValidator is intended to provide a method for validating JWTs passed in using the
+// justification_token header.
+type JWTValidator interface {
+	ValidateJWT(jwtStr string) (*jwt.Token, error)
+}
+
 // Interceptor contains the fields required for an interceptor
 // to autofill and emit audit logs.
 type Interceptor struct {
 	*Client
-	sc      security.GRPCContext
-	rules   []*api.AuditRule
-	logMode api.AuditLogRequest_LogMode
+	sc           security.GRPCContext
+	rules        []*api.AuditRule
+	logMode      api.AuditLogRequest_LogMode
+	jwtValidator JWTValidator
 }
 
 // NewInterceptor creates a new interceptor with the given options.
@@ -145,6 +162,40 @@ func (i *Interceptor) UnaryInterceptor(ctx context.Context, req interface{}, inf
 		if err := setReq(logReq, req); err != nil {
 			return i.handleReturnUnary(ctx, req, handler, status.Errorf(codes.Internal,
 				"audit interceptor failed converting req into a Google struct proto: %v", err))
+		}
+	}
+
+	// If JWT Validator hasn't been added, we don't handle justification JWTs, and just log
+	// without the justification.
+	if i.jwtValidator != nil {
+		// JWT Validator added, look for justification info
+		md, ok := grpcmetadata.FromIncomingContext(ctx)
+		if !ok {
+			return "", fmt.Errorf("gRPC metadata in incoming context is missing")
+		}
+		vals := md.Get("justification_token")
+		if len(vals) == 0 {
+			return i.handleReturnUnary(ctx, req, handler, status.Errorf(codes.Internal,
+				"no justification token found."))
+		}
+		jwtRaw := vals[0]
+		tok, err := i.jwtValidator.ValidateJWT(jwtRaw)
+		if err != nil {
+			return i.handleReturnUnary(ctx, req, handler, status.Errorf(codes.Internal,
+				"audit interceptor failed converting parsing or validating justification token: %v", err))
+		}
+		buf, err := json.Marshal(*tok)
+		if err != nil {
+			return i.handleReturnUnary(ctx, req, handler, status.Errorf(codes.Internal,
+				"couldn't convert token to json: %v", err))
+		}
+		// Note: We don't set metadata before here, so we can directly set it.
+		// If we need to put other data in metadata, this should be modified to not
+		// overwrite it.
+		logReq.Payload.Metadata = &structpb.Struct{
+			Fields: map[string]*structpb.Value{
+				"justification_token": structpb.NewStringValue(string(buf)),
+			},
 		}
 	}
 
