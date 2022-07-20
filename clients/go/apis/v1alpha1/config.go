@@ -73,7 +73,7 @@ type Config struct {
 	// RequireJustification enables adding justification information to audit logs. If this is enabled,
 	// all manual calls are expected to pass in a justification in the "justification_token" header.
 	// If omitted, justifications will not be added to logs, even if provided.
-	RequireJustification bool `yaml:"enable_justification,omitempty" env:"ENABLE_JUSTIFICATION,overwrite,default=false"`
+	RequireJustification bool `yaml:"require_justification,omitempty" env:"REQUIRE_JUSTIFICATION,overwrite,default=false"`
 }
 
 // Validate checks if the config is valid.
