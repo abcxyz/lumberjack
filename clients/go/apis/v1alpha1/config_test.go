@@ -56,7 +56,7 @@ labels:
   mylabel2: myvalue2
 log_mode: BEST_EFFORT
 jvs_endpoint: example.com
-enable_justification: true`,
+require_justification: true`,
 		wantConfig: &Config{
 			Version: "v1alpha1",
 			Backend: &Backend{
