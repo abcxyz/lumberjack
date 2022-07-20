@@ -102,7 +102,8 @@ public class AuditLoggingServerInterceptor<ReqT extends Message> implements Serv
       if (ConfigUtils.shouldFailClose(auditLoggingConfiguration.getLogMode())) {
         throw new IllegalStateException("Unable to determine principal.", e);
       } else {
-        log.error("Principal was unable to be determined, continuing without audit logging.", e);
+        log.error(
+            "Principal was unable to be determined, continuing without audit logging.", e);
         next.startCall(call, headers);
       }
     }
