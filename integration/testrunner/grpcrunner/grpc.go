@@ -109,11 +109,13 @@ func TestGRPCEndpoint(ctx context.Context, tb testing.TB, g *GRPC) {
 		g.BigQueryClient = bqClient
 	}
 
-	g.runHelloCheck(ctx, tb)
-	g.runFailCheck(ctx, tb)
-	g.runFibonacciCheck(ctx, tb)
-	g.runAdditionCheck(ctx, tb)
-	g.runFailOnFourCheck(ctx, tb)
+	justificationRequired := strings.Contains(g.EndpointURL, "go")
+
+	g.runHelloCheck(ctx, tb, justificationRequired)
+	g.runFailCheck(ctx, tb, justificationRequired)
+	g.runFibonacciCheck(ctx, tb, justificationRequired)
+	g.runAdditionCheck(ctx, tb, justificationRequired)
+	g.runFailOnFourCheck(ctx, tb, justificationRequired)
 }
 
 // create a justification token to pass in the call to services.
@@ -140,7 +142,7 @@ func justificationToken() (string, error) {
 }
 
 // End-to-end test for the fibonacci API, which is a test for server-side streaming.
-func (g *GRPC) runFibonacciCheck(ctx context.Context, tb testing.TB) {
+func (g *GRPC) runFibonacciCheck(ctx context.Context, tb testing.TB, justificationRequired bool) {
 	tb.Helper()
 
 	u := uuid.New()
@@ -160,12 +162,12 @@ func (g *GRPC) runFibonacciCheck(ctx context.Context, tb testing.TB) {
 		}
 		tb.Logf("Received value %v", place.Value)
 	}
-	query := g.makeQueryForGRPCStream(u)
+	query := g.makeQueryForGRPCStream(u, justificationRequired)
 	utils.QueryIfAuditLogsExistWithRetries(ctx, tb, query, g.Config, "server_stream_fibonacci", int64(places))
 }
 
 // End-to-end test for the addition API, which is a test for client-side streaming.
-func (g *GRPC) runAdditionCheck(ctx context.Context, tb testing.TB) {
+func (g *GRPC) runAdditionCheck(ctx context.Context, tb testing.TB, justificationRequired bool) {
 	tb.Helper()
 
 	u := uuid.New()
@@ -188,12 +190,12 @@ func (g *GRPC) runAdditionCheck(ctx context.Context, tb testing.TB) {
 	}
 	tb.Logf("Value returned: %d", reply.Sum)
 
-	query := g.makeQueryForGRPCStream(u)
+	query := g.makeQueryForGRPCStream(u, justificationRequired)
 	utils.QueryIfAuditLogsExistWithRetries(ctx, tb, query, g.Config, "client_stream_addition", int64(totalNumbers))
 }
 
 // End-to-end test for the hello API, which is a test for unary requests.
-func (g *GRPC) runHelloCheck(ctx context.Context, tb testing.TB) {
+func (g *GRPC) runHelloCheck(ctx context.Context, tb testing.TB, justificationRequired bool) {
 	tb.Helper()
 
 	u := uuid.New()
@@ -201,12 +203,12 @@ func (g *GRPC) runHelloCheck(ctx context.Context, tb testing.TB) {
 	if err != nil {
 		tb.Errorf("could not greet: %v", err)
 	}
-	query := g.makeQueryForGRPCUnary(u)
+	query := g.makeQueryForGRPCUnary(u, justificationRequired)
 	utils.QueryIfAuditLogExistsWithRetries(ctx, tb, query, g.Config, "unary_hello")
 }
 
 // End-to-end test for the fail API, which is a test for unary failures.
-func (g *GRPC) runFailCheck(ctx context.Context, tb testing.TB) {
+func (g *GRPC) runFailCheck(ctx context.Context, tb testing.TB, justificationRequired bool) {
 	tb.Helper()
 
 	u := uuid.New()
@@ -226,12 +228,12 @@ func (g *GRPC) runFailCheck(ctx context.Context, tb testing.TB) {
 		tb.Errorf("Did not get err as expected. Instead got reply: %v", reply)
 	}
 
-	query := g.makeQueryForGRPCUnary(u)
+	query := g.makeQueryForGRPCUnary(u, justificationRequired)
 	utils.QueryIfAuditLogExistsWithRetries(ctx, tb, query, g.Config, "unary_fail")
 }
 
 // End-to-end test for the failOnFour API, which is a test for failures during client-side streaming.
-func (g *GRPC) runFailOnFourCheck(ctx context.Context, tb testing.TB) {
+func (g *GRPC) runFailOnFourCheck(ctx context.Context, tb testing.TB, justificationRequired bool) {
 	tb.Helper()
 
 	u := uuid.New()
@@ -263,7 +265,7 @@ func (g *GRPC) runFailOnFourCheck(ctx context.Context, tb testing.TB) {
 		tb.Errorf("Did not get err as expected. Instead got reply: %v", reply)
 	}
 
-	query := g.makeQueryForGRPCStream(u)
+	query := g.makeQueryForGRPCStream(u, justificationRequired)
 	// we expect to have 4 audit logs - the last sent number (5) will be after the err ocurred.
 	utils.QueryIfAuditLogsExistWithRetries(ctx, tb, query, g.Config, "stream_fail_on_four", int64(4))
 }
