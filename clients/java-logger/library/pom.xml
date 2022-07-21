@@ -130,7 +130,7 @@
     <dependency>
       <groupId>com.github.abcxyz</groupId>
       <artifactId>jvs</artifactId>
-      <version>4ca6177</version>
+      <version>e4e04ef</version>
     </dependency>
   </dependencies>
 

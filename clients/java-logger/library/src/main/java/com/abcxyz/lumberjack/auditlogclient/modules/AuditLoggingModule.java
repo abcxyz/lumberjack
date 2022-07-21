@@ -16,6 +16,8 @@
 
 package com.abcxyz.lumberjack.auditlogclient.modules;
 
+import com.abcxyz.jvs.JVSClientBuilder;
+import com.abcxyz.jvs.JvsClient;
 import com.abcxyz.lumberjack.auditlogclient.LoggingClient;
 import com.abcxyz.lumberjack.auditlogclient.LoggingClientBuilder;
 import com.abcxyz.lumberjack.auditlogclient.config.AuditLoggingConfiguration;
@@ -40,6 +42,13 @@ public class AuditLoggingModule extends AbstractModule {
   @Provides
   public Filters filters(AuditLoggingConfiguration auditLoggingConfiguration) {
     return auditLoggingConfiguration.getFilters();
+  }
+
+  @Provides
+  public JvsClient jvsClient(AuditLoggingConfiguration auditLoggingConfiguration) {
+    return new JVSClientBuilder()
+        .withJvsEndpoint(auditLoggingConfiguration.getJvsEndpoint())
+        .build();
   }
 
   @Provides
