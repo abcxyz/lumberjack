@@ -20,7 +20,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.doThrow;
-import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
@@ -243,7 +242,8 @@ public class AuditLoggingServerInterceptorTests {
 
     // Create Metadata
     Metadata md = new Metadata();
-    Metadata.Key<String> metadataKey = Metadata.Key.of("justification_token", Metadata.ASCII_STRING_MARSHALLER);
+    Metadata.Key<String> metadataKey =
+        Metadata.Key.of("justification_token", Metadata.ASCII_STRING_MARSHALLER);
     md.put(metadataKey, token);
 
     // Set up JVS mock to return the correct token
@@ -252,8 +252,12 @@ public class AuditLoggingServerInterceptorTests {
 
     // Set up expected map. We want the claims to be under "justificatino_token" key in json format
     Map<String, Value> expectedMap = new HashMap<>();
-    expectedMap.put("justification_token", Value.newBuilder().setStringValue(
-        "{\"role\":\"user\",\"created\":" + date.getTime() + ",\"id\":\"jwt-id\"}").build());
+    expectedMap.put(
+        "justification_token",
+        Value.newBuilder()
+            .setStringValue(
+                "{\"role\":\"user\",\"created\":" + date.getTime() + ",\"id\":\"jwt-id\"}")
+            .build());
 
     Struct returnVal = interceptor.getStructForJustification(md);
     assertThat(returnVal.getFieldsMap()).isEqualTo(expectedMap);
@@ -271,7 +275,8 @@ public class AuditLoggingServerInterceptorTests {
 
     // Create Metadata
     Metadata md = new Metadata();
-    Metadata.Key<String> metadataKey = Metadata.Key.of("justification_token", Metadata.ASCII_STRING_MARSHALLER);
+    Metadata.Key<String> metadataKey =
+        Metadata.Key.of("justification_token", Metadata.ASCII_STRING_MARSHALLER);
     md.put(metadataKey, token);
 
     // Set up JVS mock to throw exception

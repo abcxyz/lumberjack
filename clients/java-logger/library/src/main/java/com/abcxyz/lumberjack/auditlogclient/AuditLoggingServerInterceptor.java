@@ -102,8 +102,7 @@ public class AuditLoggingServerInterceptor<ReqT extends Message> implements Serv
       if (ConfigUtils.shouldFailClose(auditLoggingConfiguration.getLogMode())) {
         throw new IllegalStateException("Unable to determine principal.", e);
       } else {
-        log.error(
-            "Principal was unable to be determined, continuing without audit logging.", e);
+        log.error("Principal was unable to be determined, continuing without audit logging.", e);
         next.startCall(call, headers);
       }
     }
@@ -313,12 +312,13 @@ public class AuditLoggingServerInterceptor<ReqT extends Message> implements Serv
   }
 
   /**
-   * Get the justification token out of the headers, and create a struct of the correct format
-   * for use in audit logging metadata. We expect the claims from the JWT to be put in JSON format
-   * and put into the struct under the justification_token key.
+   * Get the justification token out of the headers, and create a struct of the correct format for
+   * use in audit logging metadata. We expect the claims from the JWT to be put in JSON format and
+   * put into the struct under the justification_token key.
    */
   Struct getStructForJustification(Metadata headers) throws JwkException {
-    Metadata.Key<String> metadataKey = Metadata.Key.of("justification_token", Metadata.ASCII_STRING_MARSHALLER);
+    Metadata.Key<String> metadataKey =
+        Metadata.Key.of("justification_token", Metadata.ASCII_STRING_MARSHALLER);
     String jwtString = headers.get(metadataKey);
     DecodedJWT jwt = jvs.validateJWT(jwtString);
     String jsonString = StringUtils.newStringUtf8(Base64.decodeBase64(jwt.getPayload()));
