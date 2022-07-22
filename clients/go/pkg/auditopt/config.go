@@ -43,7 +43,7 @@ import (
 	api "github.com/abcxyz/lumberjack/clients/go/apis/v1alpha1"
 )
 
-const DefaultConfigFilePath = "/etc/auditlogging/config.yaml"
+const DefaultConfigFilePath = "/etc/lumberjack/config.yaml"
 
 // MustFromConfigFile specifies a config file to configure the
 // audit client. `path` is required, and if the config file is
