@@ -42,13 +42,15 @@ public class AuditLoggingConfigurationTest {
     assertThat(config.getConditions()).isNull();
     assertThat(config.getRules().size()).isEqualTo(1);
     assertThat(config.getLogMode()).isEqualTo(LogMode.LOG_MODE_UNSPECIFIED);
+    assertThat(config.isJustificationRequired()).isEqualTo(false);
+    assertThat(config.getJvsEndpoint()).isEqualTo("localhost:8080");
 
     assertThat(module.backendContext(config)).isEqualTo(expectedBackendContext);
     assertThat(module.filters(config)).isEqualTo(new Filters());
   }
 
   @Test
-  public void testMinimalConfiguration_Labels() throws IOException {
+  public void testMinimalConfiguration_Labels_JVS() throws IOException {
     AuditLoggingConfigurationModule configModule = new AuditLoggingConfigurationModule();
     AuditLoggingModule module = new AuditLoggingModule();
     AuditLoggingConfiguration config =
@@ -66,6 +68,8 @@ public class AuditLoggingConfigurationTest {
 
     assertThat(module.backendContext(config)).isEqualTo(expectedBackendContext);
     assertThat(module.filters(config)).isEqualTo(new Filters());
+    assertThat(config.isJustificationRequired()).isEqualTo(true);
+    assertThat(config.getJvsEndpoint()).isEqualTo("example.com:123");
 
     Map<String, String> expectedLabels = new HashMap<>();
     expectedLabels.put("mylabel1", "myvalue1");

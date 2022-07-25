@@ -28,6 +28,14 @@
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
   </properties>
 
+  <repositories>
+    <repository>
+      <id>jitpack.io</id>
+      <url>https://jitpack.io</url>
+    </repository>
+  </repositories>
+
+
   <dependencies>
     <dependency>
       <groupId>com.fasterxml.jackson.core</groupId>
@@ -118,6 +126,11 @@
       <groupId>com.google.guava</groupId>
       <artifactId>guava</artifactId>
       <version>31.0.1-jre</version>
+    </dependency>
+    <dependency>
+      <groupId>com.github.abcxyz</groupId>
+      <artifactId>jvs</artifactId>
+      <version>e4e04ef</version>
     </dependency>
   </dependencies>
 

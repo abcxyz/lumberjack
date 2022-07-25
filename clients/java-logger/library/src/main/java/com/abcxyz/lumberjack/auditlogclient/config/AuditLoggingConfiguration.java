@@ -46,6 +46,12 @@ public class AuditLoggingConfiguration {
   @JsonProperty("security_context")
   private SecurityContext securityContext;
 
+  @JsonProperty(value = "jvs_endpoint")
+  private String jvsEndpoint = "localhost:8080";
+
+  @JsonProperty(value = "require_justification")
+  private boolean justificationRequired = false;
+
   private Map<String, String> labels;
 
   public Filters getFilters() {
