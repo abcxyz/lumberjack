@@ -62,21 +62,25 @@ func realMain() (outErr error) {
 	block, _ := pem.Decode([]byte(pubKey))
 	key, err := x509.ParsePKIXPublicKey(block.Bytes)
 	if err != nil {
-		log.Fatal(err)
+		log.Printf("Err when parsing key %v", err)
+		return err
 	}
 	ecdsaKey, err := jwk.FromRaw(key)
 	if err != nil {
-		log.Fatal(err)
+		log.Printf("Err when converting key to jwk %v", err)
+		return err
 	}
 	if err := ecdsaKey.Set(jwk.KeyIDKey, "integ-key"); err != nil {
-		log.Fatal(err)
+		log.Printf("Err when setting key id %v", err)
+		return err
 	}
 
 	jwks := make(map[string][]jwk.Key)
 	jwks["keys"] = []jwk.Key{ecdsaKey}
 	j, err := json.MarshalIndent(jwks, "", " ")
 	if err != nil {
-		log.Fatal("couldn't create jwks json")
+		log.Printf("Err when creating jwks json %v", err)
+		return err
 	}
 	path := "/.well-known/jwks"
 	mux := http.NewServeMux()

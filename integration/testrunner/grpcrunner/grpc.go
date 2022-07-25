@@ -293,20 +293,19 @@ func createConnection(tb testing.TB, addr string, idToken string) *grpc.ClientCo
 // We specifically look up the log using the UUID specified in the request as we know the server will add that
 // as the resource name, and provides us a unique key to find logs with.
 func (g *GRPC) makeQueryForGRPCUnary(u uuid.UUID, justificationRequired bool) *bigquery.Query {
-	var additionalConditionals string
+	queryString := fmt.Sprintf("SELECT count(*) FROM %s.%s WHERE jsonPayload.resource_name=?", g.ProjectID, g.DatasetQuery)
 	if justificationRequired {
-		additionalConditionals = "AND jsonPayload.metadata.justification_token != \"\""
+		queryString += ` AND jsonPayload.metadata.justification_token != ""`
 	}
-	queryString := fmt.Sprintf("SELECT count(*) FROM %s.%s WHERE jsonPayload.resource_name=? %s LIMIT 1", g.ProjectID, g.DatasetQuery, additionalConditionals)
+	queryString += " LIMIT 1"
 	return utils.MakeQuery(*g.BigQueryClient, u, queryString)
 }
 
 // Similar to the above function, but can return multiple results, which is what we expect for streaming.
 func (g *GRPC) makeQueryForGRPCStream(u uuid.UUID, justificationRequired bool) *bigquery.Query {
-	var additionalConditionals string
+	queryString := fmt.Sprintf("SELECT count(*) FROM %s.%s WHERE jsonPayload.resource_name=?", g.ProjectID, g.DatasetQuery)
 	if justificationRequired {
-		additionalConditionals = "AND jsonPayload.metadata.justification_token != \"\""
+		queryString += ` AND jsonPayload.metadata.justification_token != ""`
 	}
-	queryString := fmt.Sprintf("SELECT count(*) FROM %s.%s WHERE jsonPayload.resource_name=? %s", g.ProjectID, g.DatasetQuery, additionalConditionals)
 	return utils.MakeQuery(*g.BigQueryClient, u, queryString)
 }
