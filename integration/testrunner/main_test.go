@@ -22,6 +22,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strings"
 	"testing"
 
 	"github.com/abcxyz/lumberjack/integration/testrunner/grpcrunner"
@@ -104,6 +105,8 @@ func TestGRPCEndpoints(t *testing.T) {
 				t.Fatalf("Resolving ID Token failed: %v.", err)
 			}
 
+			justificationRequired := strings.Contains(test, "go")
+
 			ctx := context.Background()
 			grpcrunner.TestGRPCEndpoint(ctx, t, &grpcrunner.GRPC{
 				ProjectID:    *projectIDPtr,
@@ -112,7 +115,8 @@ func TestGRPCEndpoints(t *testing.T) {
 				IDToken:     idToken,
 				EndpointURL: test,
 
-				Config: cfg,
+				Config:               cfg,
+				RequireJustification: justificationRequired,
 			})
 		})
 	}

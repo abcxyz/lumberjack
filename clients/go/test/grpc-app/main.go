@@ -45,6 +45,7 @@ import (
 
 var port = flag.Int("port", 8080, "The server port")
 
+// Matching private key here: https://github.com/abcxyz/lumberjack/pull/261/files#diff-499009010e3b24ec9e364f0c66e4f3e88898ea2788f81f8a866a81944a8655fbR57
 const pubKey = "-----BEGIN PUBLIC KEY-----\nMFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEhBWj8vw5LkPRWbCr45k0cOarIcWg\nApM03mSYF911de5q1wGOL7R9N8pC7jo2xbS+i1wGsMiz+AWnhhZIQcNTKg==\n-----END PUBLIC KEY-----\n"
 
 func main() {
@@ -57,39 +58,11 @@ func realMain() (outErr error) {
 	ctx, done := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer done()
 
-	// Parse pre-made key and set up a server to host it in JWKS format.
-	// This is intended to stand in for the JVS in the integration tests.
-	block, _ := pem.Decode([]byte(pubKey))
-	key, err := x509.ParsePKIXPublicKey(block.Bytes)
+	pubKeyEndpoint, shutdown, err := startLocalPublicKeyServer()
 	if err != nil {
-		log.Printf("Err when parsing key %v", err)
 		return err
 	}
-	ecdsaKey, err := jwk.FromRaw(key)
-	if err != nil {
-		log.Printf("Err when converting key to jwk %v", err)
-		return err
-	}
-	if err := ecdsaKey.Set(jwk.KeyIDKey, "integ-key"); err != nil {
-		log.Printf("Err when setting key id %v", err)
-		return err
-	}
-
-	jwks := make(map[string][]jwk.Key)
-	jwks["keys"] = []jwk.Key{ecdsaKey}
-	j, err := json.MarshalIndent(jwks, "", " ")
-	if err != nil {
-		log.Printf("Err when creating jwks json %v", err)
-		return err
-	}
-	path := "/.well-known/jwks"
-	mux := http.NewServeMux()
-	mux.HandleFunc(path, func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusOK)
-		fmt.Fprintf(w, "%s", j)
-	})
-	svr := httptest.NewServer(mux)
-	defer svr.Close()
+	defer shutdown()
 
 	flag.Parse()
 	lis, err := net.Listen("tcp", fmt.Sprintf(":%d", *port))
@@ -98,7 +71,7 @@ func realMain() (outErr error) {
 	}
 	jvs, err := client.NewJVSClient(ctx, &client.JVSConfig{
 		Version:      1,
-		JVSEndpoint:  svr.URL + path,
+		JVSEndpoint:  pubKeyEndpoint,
 		CacheTimeout: time.Minute * 5,
 	})
 	if err != nil {
@@ -135,6 +108,42 @@ func realMain() (outErr error) {
 	log.Println("server stopped.")
 
 	return nil
+}
+
+// Parse pre-made key and set up a server to host it in JWKS format.
+// This is intended to stand in for the JVS in the integration tests.
+func startLocalPublicKeyServer() (string, func(), error) {
+	block, _ := pem.Decode([]byte(pubKey))
+	key, err := x509.ParsePKIXPublicKey(block.Bytes)
+	if err != nil {
+		log.Printf("Err when parsing key %v", err)
+		return "", nil, err
+	}
+	ecdsaKey, err := jwk.FromRaw(key)
+	if err != nil {
+		log.Printf("Err when converting key to jwk %v", err)
+		return "", nil, err
+	}
+	if err := ecdsaKey.Set(jwk.KeyIDKey, "integ-key"); err != nil {
+		log.Printf("Err when setting key id %v", err)
+		return "", nil, err
+	}
+
+	jwks := make(map[string][]jwk.Key)
+	jwks["keys"] = []jwk.Key{ecdsaKey}
+	j, err := json.MarshalIndent(jwks, "", " ")
+	if err != nil {
+		log.Printf("Err when creating jwks json %v", err)
+		return "", nil, err
+	}
+	path := "/.well-known/jwks"
+	mux := http.NewServeMux()
+	mux.HandleFunc(path, func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		fmt.Fprintf(w, "%s", j)
+	})
+	svr := httptest.NewServer(mux)
+	return svr.URL + path, func() { svr.Close() }, nil
 }
 
 type server struct {

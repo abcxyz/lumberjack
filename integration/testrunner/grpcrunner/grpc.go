@@ -50,10 +50,12 @@ type GRPC struct {
 	EndpointURL  string
 	TalkerClient talkerpb.TalkerClient
 
-	Config         *utils.Config
-	BigQueryClient *bigquery.Client
+	Config               *utils.Config
+	BigQueryClient       *bigquery.Client
+	RequireJustification bool
 }
 
+// Matching public key here: https://github.com/abcxyz/lumberjack/pull/261/files#diff-f06321655121106c1e25ed2dd8cf773af6d7d5fb9b129abb2e1c04ba4d6dea5eR48
 const privateKey = "-----BEGIN EC PRIVATE KEY-----\nMHcCAQEEIITZ4357UsTCbhxXu8w8cY54ZLlsAIJj/Aej9ylb/ZfBoAoGCCqGSM49\nAwEHoUQDQgAEhBWj8vw5LkPRWbCr45k0cOarIcWgApM03mSYF911de5q1wGOL7R9\nN8pC7jo2xbS+i1wGsMiz+AWnhhZIQcNTKg==\n-----END EC PRIVATE KEY-----"
 
 // TestGRPCEndpoint runs tests against a GRPC endpoint. The given GRPC must
@@ -82,27 +84,9 @@ func TestGRPCEndpoint(ctx context.Context, tb testing.TB, g *GRPC) {
 		g.TalkerClient = talkerpb.NewTalkerClient(conn)
 	}
 
-	now := time.Now().UTC()
-	claims := jvspb.JVSClaims{
-		StandardClaims: &jwt.StandardClaims{
-			Audience:  "talker-app",
-			ExpiresAt: now.Add(time.Hour).Unix(),
-			Id:        uuid.New().String(),
-			IssuedAt:  now.Unix(),
-			Issuer:    "lumberjack-test-runner",
-			NotBefore: now.Unix(),
-			Subject:   "lumberjack-integ",
-		},
-		Justifications: []*jvspb.Justification{},
-	}
-	token := jwt.NewWithClaims(jwt.SigningMethodES256, claims)
-	token.Header["kid"] = "integ-key"
-
-	block, _ := pem.Decode([]byte(privateKey))
-	key, _ := x509.ParseECPrivateKey(block.Bytes)
-	signedToken, err := jvscrypto.SignToken(token, key)
+	signedToken, err := justificationToken()
 	if err != nil {
-		tb.Fatalf("couldn't sign justification token: %v", err)
+		tb.Fatalf("couldn't generate justification token: %v", err)
 	}
 
 	md, ok := metadata.FromOutgoingContext(ctx)
@@ -125,17 +109,38 @@ func TestGRPCEndpoint(ctx context.Context, tb testing.TB, g *GRPC) {
 		g.BigQueryClient = bqClient
 	}
 
-	justificationRequired := strings.Contains(g.EndpointURL, "go")
+	g.runHelloCheck(ctx, tb)
+	g.runFailCheck(ctx, tb)
+	g.runFibonacciCheck(ctx, tb)
+	g.runAdditionCheck(ctx, tb)
+	g.runFailOnFourCheck(ctx, tb)
+}
 
-	g.runHelloCheck(ctx, tb, justificationRequired)
-	g.runFailCheck(ctx, tb, justificationRequired)
-	g.runFibonacciCheck(ctx, tb, justificationRequired)
-	g.runAdditionCheck(ctx, tb, justificationRequired)
-	g.runFailOnFourCheck(ctx, tb, justificationRequired)
+// create a justification token to pass in the call to services.
+func justificationToken() (string, error) {
+	now := time.Now().UTC()
+	claims := jvspb.JVSClaims{
+		StandardClaims: &jwt.StandardClaims{
+			Audience:  "talker-app",
+			ExpiresAt: now.Add(time.Hour).Unix(),
+			Id:        uuid.New().String(),
+			IssuedAt:  now.Unix(),
+			Issuer:    "lumberjack-test-runner",
+			NotBefore: now.Unix(),
+			Subject:   "lumberjack-integ",
+		},
+		Justifications: []*jvspb.Justification{},
+	}
+	token := jwt.NewWithClaims(jwt.SigningMethodES256, claims)
+	token.Header["kid"] = "integ-key"
+
+	block, _ := pem.Decode([]byte(privateKey))
+	key, _ := x509.ParseECPrivateKey(block.Bytes)
+	return jvscrypto.SignToken(token, key)
 }
 
 // End-to-end test for the fibonacci API, which is a test for server-side streaming.
-func (g *GRPC) runFibonacciCheck(ctx context.Context, tb testing.TB, justificationRequired bool) {
+func (g *GRPC) runFibonacciCheck(ctx context.Context, tb testing.TB) {
 	tb.Helper()
 
 	u := uuid.New()
@@ -155,12 +160,12 @@ func (g *GRPC) runFibonacciCheck(ctx context.Context, tb testing.TB, justificati
 		}
 		tb.Logf("Received value %v", place.Value)
 	}
-	query := g.makeQueryForGRPCStream(u, justificationRequired)
+	query := g.makeQueryForGRPCStream(u)
 	utils.QueryIfAuditLogsExistWithRetries(ctx, tb, query, g.Config, "server_stream_fibonacci", int64(places))
 }
 
 // End-to-end test for the addition API, which is a test for client-side streaming.
-func (g *GRPC) runAdditionCheck(ctx context.Context, tb testing.TB, justificationRequired bool) {
+func (g *GRPC) runAdditionCheck(ctx context.Context, tb testing.TB) {
 	tb.Helper()
 
 	u := uuid.New()
@@ -183,12 +188,12 @@ func (g *GRPC) runAdditionCheck(ctx context.Context, tb testing.TB, justificatio
 	}
 	tb.Logf("Value returned: %d", reply.Sum)
 
-	query := g.makeQueryForGRPCStream(u, justificationRequired)
+	query := g.makeQueryForGRPCStream(u)
 	utils.QueryIfAuditLogsExistWithRetries(ctx, tb, query, g.Config, "client_stream_addition", int64(totalNumbers))
 }
 
 // End-to-end test for the hello API, which is a test for unary requests.
-func (g *GRPC) runHelloCheck(ctx context.Context, tb testing.TB, justificationRequired bool) {
+func (g *GRPC) runHelloCheck(ctx context.Context, tb testing.TB) {
 	tb.Helper()
 
 	u := uuid.New()
@@ -196,12 +201,12 @@ func (g *GRPC) runHelloCheck(ctx context.Context, tb testing.TB, justificationRe
 	if err != nil {
 		tb.Errorf("could not greet: %v", err)
 	}
-	query := g.makeQueryForGRPCUnary(u, justificationRequired)
+	query := g.makeQueryForGRPCUnary(u)
 	utils.QueryIfAuditLogExistsWithRetries(ctx, tb, query, g.Config, "unary_hello")
 }
 
 // End-to-end test for the fail API, which is a test for unary failures.
-func (g *GRPC) runFailCheck(ctx context.Context, tb testing.TB, justificationRequired bool) {
+func (g *GRPC) runFailCheck(ctx context.Context, tb testing.TB) {
 	tb.Helper()
 
 	u := uuid.New()
@@ -221,12 +226,12 @@ func (g *GRPC) runFailCheck(ctx context.Context, tb testing.TB, justificationReq
 		tb.Errorf("Did not get err as expected. Instead got reply: %v", reply)
 	}
 
-	query := g.makeQueryForGRPCUnary(u, justificationRequired)
+	query := g.makeQueryForGRPCUnary(u)
 	utils.QueryIfAuditLogExistsWithRetries(ctx, tb, query, g.Config, "unary_fail")
 }
 
 // End-to-end test for the failOnFour API, which is a test for failures during client-side streaming.
-func (g *GRPC) runFailOnFourCheck(ctx context.Context, tb testing.TB, justificationRequired bool) {
+func (g *GRPC) runFailOnFourCheck(ctx context.Context, tb testing.TB) {
 	tb.Helper()
 
 	u := uuid.New()
@@ -258,7 +263,7 @@ func (g *GRPC) runFailOnFourCheck(ctx context.Context, tb testing.TB, justificat
 		tb.Errorf("Did not get err as expected. Instead got reply: %v", reply)
 	}
 
-	query := g.makeQueryForGRPCStream(u, justificationRequired)
+	query := g.makeQueryForGRPCStream(u)
 	// we expect to have 4 audit logs - the last sent number (5) will be after the err ocurred.
 	utils.QueryIfAuditLogsExistWithRetries(ctx, tb, query, g.Config, "stream_fail_on_four", int64(4))
 }
@@ -292,9 +297,9 @@ func createConnection(tb testing.TB, addr string, idToken string) *grpc.ClientCo
 // This query is used to find the relevant audit log in BigQuery, which we assume will be added by the server.
 // We specifically look up the log using the UUID specified in the request as we know the server will add that
 // as the resource name, and provides us a unique key to find logs with.
-func (g *GRPC) makeQueryForGRPCUnary(u uuid.UUID, justificationRequired bool) *bigquery.Query {
+func (g *GRPC) makeQueryForGRPCUnary(u uuid.UUID) *bigquery.Query {
 	queryString := fmt.Sprintf("SELECT count(*) FROM %s.%s WHERE jsonPayload.resource_name=?", g.ProjectID, g.DatasetQuery)
-	if justificationRequired {
+	if g.RequireJustification {
 		queryString += ` AND jsonPayload.metadata.justification_token != ""`
 	}
 	queryString += " LIMIT 1"
@@ -302,9 +307,9 @@ func (g *GRPC) makeQueryForGRPCUnary(u uuid.UUID, justificationRequired bool) *b
 }
 
 // Similar to the above function, but can return multiple results, which is what we expect for streaming.
-func (g *GRPC) makeQueryForGRPCStream(u uuid.UUID, justificationRequired bool) *bigquery.Query {
+func (g *GRPC) makeQueryForGRPCStream(u uuid.UUID) *bigquery.Query {
 	queryString := fmt.Sprintf("SELECT count(*) FROM %s.%s WHERE jsonPayload.resource_name=?", g.ProjectID, g.DatasetQuery)
-	if justificationRequired {
+	if g.RequireJustification {
 		queryString += ` AND jsonPayload.metadata.justification_token != ""`
 	}
 	return utils.MakeQuery(*g.BigQueryClient, u, queryString)
