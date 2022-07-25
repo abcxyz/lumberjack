@@ -56,6 +56,7 @@ type GRPC struct {
 }
 
 // Matching public key here: https://github.com/abcxyz/lumberjack/pull/261/files#diff-f06321655121106c1e25ed2dd8cf773af6d7d5fb9b129abb2e1c04ba4d6dea5eR48
+// and here: https://github.com/abcxyz/lumberjack/pull/264/files#diff-6c73b144011b225fa9f7602b77cc3bb4817b74b9852269e4f5f7625bd039ab4dR113
 const privateKey = "-----BEGIN EC PRIVATE KEY-----\nMHcCAQEEIITZ4357UsTCbhxXu8w8cY54ZLlsAIJj/Aej9ylb/ZfBoAoGCCqGSM49\nAwEHoUQDQgAEhBWj8vw5LkPRWbCr45k0cOarIcWgApM03mSYF911de5q1wGOL7R9\nN8pC7jo2xbS+i1wGsMiz+AWnhhZIQcNTKg==\n-----END EC PRIVATE KEY-----"
 
 // TestGRPCEndpoint runs tests against a GRPC endpoint. The given GRPC must
@@ -109,13 +110,11 @@ func TestGRPCEndpoint(ctx context.Context, tb testing.TB, g *GRPC) {
 		g.BigQueryClient = bqClient
 	}
 
-	justificationRequired := strings.Contains(g.EndpointURL, "go")
-
-	g.runHelloCheck(ctx, tb, justificationRequired)
-	g.runFailCheck(ctx, tb, justificationRequired)
-	g.runFibonacciCheck(ctx, tb, justificationRequired)
-	g.runAdditionCheck(ctx, tb, justificationRequired)
-	g.runFailOnFourCheck(ctx, tb, justificationRequired)
+	g.runHelloCheck(ctx, tb)
+	g.runFailCheck(ctx, tb)
+	g.runFibonacciCheck(ctx, tb)
+	g.runAdditionCheck(ctx, tb)
+	g.runFailOnFourCheck(ctx, tb)
 }
 
 // create a justification token to pass in the call to services.
@@ -142,7 +141,7 @@ func justificationToken() (string, error) {
 }
 
 // End-to-end test for the fibonacci API, which is a test for server-side streaming.
-func (g *GRPC) runFibonacciCheck(ctx context.Context, tb testing.TB, justificationRequired bool) {
+func (g *GRPC) runFibonacciCheck(ctx context.Context, tb testing.TB) {
 	tb.Helper()
 
 	u := uuid.New()
@@ -162,12 +161,12 @@ func (g *GRPC) runFibonacciCheck(ctx context.Context, tb testing.TB, justificati
 		}
 		tb.Logf("Received value %v", place.Value)
 	}
-	query := g.makeQueryForGRPCStream(u, justificationRequired)
+	query := g.makeQueryForGRPCStream(u)
 	utils.QueryIfAuditLogsExistWithRetries(ctx, tb, query, g.Config, "server_stream_fibonacci", int64(places))
 }
 
 // End-to-end test for the addition API, which is a test for client-side streaming.
-func (g *GRPC) runAdditionCheck(ctx context.Context, tb testing.TB, justificationRequired bool) {
+func (g *GRPC) runAdditionCheck(ctx context.Context, tb testing.TB) {
 	tb.Helper()
 
 	u := uuid.New()
@@ -190,12 +189,12 @@ func (g *GRPC) runAdditionCheck(ctx context.Context, tb testing.TB, justificatio
 	}
 	tb.Logf("Value returned: %d", reply.Sum)
 
-	query := g.makeQueryForGRPCStream(u, justificationRequired)
+	query := g.makeQueryForGRPCStream(u)
 	utils.QueryIfAuditLogsExistWithRetries(ctx, tb, query, g.Config, "client_stream_addition", int64(totalNumbers))
 }
 
 // End-to-end test for the hello API, which is a test for unary requests.
-func (g *GRPC) runHelloCheck(ctx context.Context, tb testing.TB, justificationRequired bool) {
+func (g *GRPC) runHelloCheck(ctx context.Context, tb testing.TB) {
 	tb.Helper()
 
 	u := uuid.New()
@@ -203,12 +202,12 @@ func (g *GRPC) runHelloCheck(ctx context.Context, tb testing.TB, justificationRe
 	if err != nil {
 		tb.Errorf("could not greet: %v", err)
 	}
-	query := g.makeQueryForGRPCUnary(u, justificationRequired)
+	query := g.makeQueryForGRPCUnary(u)
 	utils.QueryIfAuditLogExistsWithRetries(ctx, tb, query, g.Config, "unary_hello")
 }
 
 // End-to-end test for the fail API, which is a test for unary failures.
-func (g *GRPC) runFailCheck(ctx context.Context, tb testing.TB, justificationRequired bool) {
+func (g *GRPC) runFailCheck(ctx context.Context, tb testing.TB) {
 	tb.Helper()
 
 	u := uuid.New()
@@ -228,12 +227,12 @@ func (g *GRPC) runFailCheck(ctx context.Context, tb testing.TB, justificationReq
 		tb.Errorf("Did not get err as expected. Instead got reply: %v", reply)
 	}
 
-	query := g.makeQueryForGRPCUnary(u, justificationRequired)
+	query := g.makeQueryForGRPCUnary(u)
 	utils.QueryIfAuditLogExistsWithRetries(ctx, tb, query, g.Config, "unary_fail")
 }
 
 // End-to-end test for the failOnFour API, which is a test for failures during client-side streaming.
-func (g *GRPC) runFailOnFourCheck(ctx context.Context, tb testing.TB, justificationRequired bool) {
+func (g *GRPC) runFailOnFourCheck(ctx context.Context, tb testing.TB) {
 	tb.Helper()
 
 	u := uuid.New()
@@ -265,7 +264,7 @@ func (g *GRPC) runFailOnFourCheck(ctx context.Context, tb testing.TB, justificat
 		tb.Errorf("Did not get err as expected. Instead got reply: %v", reply)
 	}
 
-	query := g.makeQueryForGRPCStream(u, justificationRequired)
+	query := g.makeQueryForGRPCStream(u)
 	// we expect to have 4 audit logs - the last sent number (5) will be after the err ocurred.
 	utils.QueryIfAuditLogsExistWithRetries(ctx, tb, query, g.Config, "stream_fail_on_four", int64(4))
 }
