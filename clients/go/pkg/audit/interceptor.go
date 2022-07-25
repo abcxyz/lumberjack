@@ -278,6 +278,40 @@ func (i *Interceptor) StreamInterceptor(srv interface{}, ss grpc.ServerStream, i
 	}
 	logReq.Payload.AuthenticationInfo = &capi.AuthenticationInfo{PrincipalEmail: principal}
 
+	// If JWT Validator hasn't been added, we don't handle justification JWTs, and just log
+	// without the justification.
+	if i.jwtValidator != nil {
+		// JWT Validator added, look for justification info
+		md, ok := grpcmetadata.FromIncomingContext(ctx)
+		if !ok {
+			return i.handleReturnStream(ctx, ss, handler, status.Errorf(codes.FailedPrecondition, "unable to retreive grpc metadata."))
+		}
+		vals := md.Get("justification_token")
+		if len(vals) == 0 {
+			return i.handleReturnStream(ctx, ss, handler, status.Errorf(codes.Internal,
+				"no justification token found."))
+		}
+		jwtRaw := vals[0]
+		tok, err := i.jwtValidator.ValidateJWT(jwtRaw)
+		if err != nil {
+			return i.handleReturnStream(ctx, ss, handler, status.Errorf(codes.Internal,
+				"audit interceptor failed converting parsing or validating justification token: %v", err))
+		}
+		buf, err := json.Marshal(*tok)
+		if err != nil {
+			return i.handleReturnStream(ctx, ss, handler, status.Errorf(codes.Internal,
+				"couldn't convert token to json: %v", err))
+		}
+		// Note: We don't set metadata before here, so we can directly set it.
+		// If we need to put other data in metadata, this should be modified to not
+		// overwrite it.
+		logReq.Payload.Metadata = &structpb.Struct{
+			Fields: map[string]*structpb.Value{
+				"justification_token": structpb.NewStringValue(string(buf)),
+			},
+		}
+	}
+
 	handlerErr := handler(srv, &serverStreamWrapper{
 		c:              i.Client,
 		baselineLogReq: logReq,

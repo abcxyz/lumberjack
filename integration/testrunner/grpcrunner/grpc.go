@@ -17,21 +17,27 @@ package grpcrunner
 import (
 	"context"
 	"crypto/x509"
+	"encoding/pem"
 	"errors"
 	"fmt"
 	"io"
 	"strings"
 	"testing"
+	"time"
 
 	"cloud.google.com/go/bigquery"
+	jvspb "github.com/abcxyz/jvs/apis/v0"
+	"github.com/abcxyz/jvs/pkg/jvscrypto"
 	"github.com/abcxyz/lumberjack/integration/testrunner/talkerpb"
 	"github.com/abcxyz/lumberjack/integration/testrunner/utils"
+	"github.com/golang-jwt/jwt"
 	"github.com/google/uuid"
 	"golang.org/x/oauth2"
 	rpccode "google.golang.org/genproto/googleapis/rpc/code"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/credentials/oauth"
+	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
 )
 
@@ -44,9 +50,13 @@ type GRPC struct {
 	EndpointURL  string
 	TalkerClient talkerpb.TalkerClient
 
-	Config         *utils.Config
-	BigQueryClient *bigquery.Client
+	Config               *utils.Config
+	BigQueryClient       *bigquery.Client
+	RequireJustification bool
 }
+
+// Matching public key here: https://github.com/abcxyz/lumberjack/pull/261/files#diff-f06321655121106c1e25ed2dd8cf773af6d7d5fb9b129abb2e1c04ba4d6dea5eR48
+const privateKey = "-----BEGIN EC PRIVATE KEY-----\nMHcCAQEEIITZ4357UsTCbhxXu8w8cY54ZLlsAIJj/Aej9ylb/ZfBoAoGCCqGSM49\nAwEHoUQDQgAEhBWj8vw5LkPRWbCr45k0cOarIcWgApM03mSYF911de5q1wGOL7R9\nN8pC7jo2xbS+i1wGsMiz+AWnhhZIQcNTKg==\n-----END EC PRIVATE KEY-----"
 
 // TestGRPCEndpoint runs tests against a GRPC endpoint. The given GRPC must
 // define a projectID and datasetQuery. If a TalkerClient or BigQueryClient are
@@ -74,6 +84,18 @@ func TestGRPCEndpoint(ctx context.Context, tb testing.TB, g *GRPC) {
 		g.TalkerClient = talkerpb.NewTalkerClient(conn)
 	}
 
+	signedToken, err := justificationToken()
+	if err != nil {
+		tb.Fatalf("couldn't generate justification token: %v", err)
+	}
+
+	md, ok := metadata.FromOutgoingContext(ctx)
+	if !ok {
+		md = metadata.New(map[string]string{})
+	}
+	md.Set("justification_token", signedToken)
+	ctx = metadata.NewOutgoingContext(ctx, md)
+
 	if g.BigQueryClient == nil {
 		bqClient, err := utils.MakeClient(ctx, g.ProjectID)
 		if err != nil {
@@ -92,6 +114,29 @@ func TestGRPCEndpoint(ctx context.Context, tb testing.TB, g *GRPC) {
 	g.runFibonacciCheck(ctx, tb)
 	g.runAdditionCheck(ctx, tb)
 	g.runFailOnFourCheck(ctx, tb)
+}
+
+// create a justification token to pass in the call to services.
+func justificationToken() (string, error) {
+	now := time.Now().UTC()
+	claims := jvspb.JVSClaims{
+		StandardClaims: &jwt.StandardClaims{
+			Audience:  "talker-app",
+			ExpiresAt: now.Add(time.Hour).Unix(),
+			Id:        uuid.New().String(),
+			IssuedAt:  now.Unix(),
+			Issuer:    "lumberjack-test-runner",
+			NotBefore: now.Unix(),
+			Subject:   "lumberjack-integ",
+		},
+		Justifications: []*jvspb.Justification{},
+	}
+	token := jwt.NewWithClaims(jwt.SigningMethodES256, claims)
+	token.Header["kid"] = "integ-key"
+
+	block, _ := pem.Decode([]byte(privateKey))
+	key, _ := x509.ParseECPrivateKey(block.Bytes)
+	return jvscrypto.SignToken(token, key)
 }
 
 // End-to-end test for the fibonacci API, which is a test for server-side streaming.
@@ -253,12 +298,19 @@ func createConnection(tb testing.TB, addr string, idToken string) *grpc.ClientCo
 // We specifically look up the log using the UUID specified in the request as we know the server will add that
 // as the resource name, and provides us a unique key to find logs with.
 func (g *GRPC) makeQueryForGRPCUnary(u uuid.UUID) *bigquery.Query {
-	queryString := fmt.Sprintf("SELECT count(*) FROM %s.%s WHERE jsonPayload.resource_name=? LIMIT 1", g.ProjectID, g.DatasetQuery)
+	queryString := fmt.Sprintf("SELECT count(*) FROM %s.%s WHERE jsonPayload.resource_name=?", g.ProjectID, g.DatasetQuery)
+	if g.RequireJustification {
+		queryString += ` AND jsonPayload.metadata.justification_token != ""`
+	}
+	queryString += " LIMIT 1"
 	return utils.MakeQuery(*g.BigQueryClient, u, queryString)
 }
 
 // Similar to the above function, but can return multiple results, which is what we expect for streaming.
 func (g *GRPC) makeQueryForGRPCStream(u uuid.UUID) *bigquery.Query {
 	queryString := fmt.Sprintf("SELECT count(*) FROM %s.%s WHERE jsonPayload.resource_name=?", g.ProjectID, g.DatasetQuery)
+	if g.RequireJustification {
+		queryString += ` AND jsonPayload.metadata.justification_token != ""`
+	}
 	return utils.MakeQuery(*g.BigQueryClient, u, queryString)
 }
