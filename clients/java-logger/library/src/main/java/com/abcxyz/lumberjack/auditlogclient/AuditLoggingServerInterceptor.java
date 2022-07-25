@@ -16,12 +16,15 @@
 
 package com.abcxyz.lumberjack.auditlogclient;
 
+import com.abcxyz.jvs.JvsClient;
 import com.abcxyz.lumberjack.auditlogclient.config.AuditLoggingConfiguration;
 import com.abcxyz.lumberjack.auditlogclient.config.Selector;
 import com.abcxyz.lumberjack.auditlogclient.exceptions.AuthorizationException;
 import com.abcxyz.lumberjack.auditlogclient.processor.LogProcessingException;
 import com.abcxyz.lumberjack.auditlogclient.utils.ConfigUtils;
 import com.abcxyz.lumberjack.v1alpha1.AuditLogRequest;
+import com.auth0.jwk.JwkException;
+import com.auth0.jwt.interfaces.DecodedJWT;
 import com.google.cloud.audit.AuditLog;
 import com.google.cloud.audit.AuthenticationInfo;
 import com.google.inject.Inject;
@@ -57,6 +60,8 @@ import java.util.UUID;
 import java.util.concurrent.ConcurrentLinkedDeque;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.codec.binary.Base64;
+import org.apache.commons.codec.binary.StringUtils;
 
 /** This is intended to allow automatic audit logging for calls from a wrapped server. */
 @RequiredArgsConstructor(onConstructor = @__({@Inject}))
@@ -76,6 +81,7 @@ public class AuditLoggingServerInterceptor<ReqT extends Message> implements Serv
   private final AuditLoggingConfiguration auditLoggingConfiguration;
   private final LoggingClient client;
   private final Clock clock;
+  private final JvsClient jvs;
 
   @Override
   public <ReqT, RespT> Listener<ReqT> interceptCall(
@@ -92,12 +98,11 @@ public class AuditLoggingServerInterceptor<ReqT extends Message> implements Serv
     try {
       principal = auditLoggingConfiguration.getSecurityContext().getPrincipal(headers);
     } catch (AuthorizationException e) {
-      log.warn("Exception while trying to determine principal..");
+      log.warn("Exception while trying to determine principal.");
       if (ConfigUtils.shouldFailClose(auditLoggingConfiguration.getLogMode())) {
         throw new IllegalStateException("Unable to determine principal.", e);
       } else {
-        log.error(
-            "Principal was unable to be determined, " + "continuing without audit logging.", e);
+        log.error("Principal was unable to be determined, continuing without audit logging.", e);
         next.startCall(call, headers);
       }
     }
@@ -116,6 +121,22 @@ public class AuditLoggingServerInterceptor<ReqT extends Message> implements Serv
       log.info("Unable to determine principal for request.");
       next.startCall(call, headers);
     }
+
+    if (auditLoggingConfiguration.isJustificationRequired()) {
+      try {
+        logBuilder.setMetadata(getStructForJustification(headers));
+      } catch (JwkException e) {
+        log.warn("Exception while trying to determine justification.");
+        if (ConfigUtils.shouldFailClose(auditLoggingConfiguration.getLogMode())) {
+          throw new IllegalStateException("Unable to determine justification.", e);
+        } else {
+          log.error(
+              "Justification was unable to be determined, continuing without audit logging.", e);
+          next.startCall(call, headers);
+        }
+      }
+    }
+
     LogEntryOperation logEntryOperation =
         LogEntryOperation.newBuilder()
             .setId(UUID.randomUUID().toString())
@@ -288,5 +309,21 @@ public class AuditLoggingServerInterceptor<ReqT extends Message> implements Serv
     // thread-safe way to update memo
     memo.putIfAbsent(methodIdentifier, mostApplicableSelector);
     return mostApplicableSelector;
+  }
+
+  /**
+   * Get the justification token out of the headers, and create a struct of the correct format for
+   * use in audit logging metadata. We expect the claims from the JWT to be put in JSON format and
+   * put into the struct under the justification_token key.
+   */
+  Struct getStructForJustification(Metadata headers) throws JwkException {
+    Metadata.Key<String> metadataKey =
+        Metadata.Key.of("justification_token", Metadata.ASCII_STRING_MARSHALLER);
+    String jwtString = headers.get(metadataKey);
+    DecodedJWT jwt = jvs.validateJWT(jwtString);
+    String jsonString = StringUtils.newStringUtf8(Base64.decodeBase64(jwt.getPayload()));
+    return Struct.newBuilder()
+        .putFields("justification_token", Value.newBuilder().setStringValue(jsonString).build())
+        .build();
   }
 }
