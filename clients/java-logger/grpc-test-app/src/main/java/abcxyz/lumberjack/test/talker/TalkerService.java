@@ -113,7 +113,7 @@ public class TalkerService {
   static class JWKHandler implements HttpHandler {
     // Matching private key here:
     // https://github.com/abcxyz/lumberjack/blob/main/integration/testrunner/grpcrunner/grpc.go#L59
-    private static String PUBLIC_JWK =
+    private static final String PUBLIC_JWK =
         "{"
             + "\"crv\": \"P-256\","
             + "\"kid\": \"integ-key\","
