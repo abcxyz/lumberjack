@@ -91,7 +91,7 @@ func WithJWTValidator(j JWTValidator) InterceptorOption {
 }
 
 // JWTValidator is intended to provide a method for validating JWTs passed in using the
-// justification_token header.
+// justification-token header.
 type JWTValidator interface {
 	ValidateJWT(jwtStr string) (*jwt.Token, error)
 }
@@ -173,7 +173,7 @@ func (i *Interceptor) UnaryInterceptor(ctx context.Context, req interface{}, inf
 		if !ok {
 			return "", fmt.Errorf("gRPC metadata in incoming context is missing")
 		}
-		vals := md.Get("justification_token")
+		vals := md.Get("justification-token")
 		if len(vals) == 0 {
 			return i.handleReturnUnary(ctx, req, handler, status.Errorf(codes.Internal,
 				"no justification token found."))
@@ -286,7 +286,7 @@ func (i *Interceptor) StreamInterceptor(srv interface{}, ss grpc.ServerStream, i
 		if !ok {
 			return i.handleReturnStream(ctx, ss, handler, status.Errorf(codes.FailedPrecondition, "unable to retreive grpc metadata."))
 		}
-		vals := md.Get("justification_token")
+		vals := md.Get("justification-token")
 		if len(vals) == 0 {
 			return i.handleReturnStream(ctx, ss, handler, status.Errorf(codes.Internal,
 				"no justification token found."))

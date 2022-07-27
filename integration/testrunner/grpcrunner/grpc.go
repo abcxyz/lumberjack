@@ -94,7 +94,7 @@ func TestGRPCEndpoint(ctx context.Context, tb testing.TB, g *GRPC) {
 	if !ok {
 		md = metadata.New(map[string]string{})
 	}
-	md.Set("justification_token", signedToken)
+	md.Set("justification-token", signedToken)
 	ctx = metadata.NewOutgoingContext(ctx, md)
 
 	if g.BigQueryClient == nil {

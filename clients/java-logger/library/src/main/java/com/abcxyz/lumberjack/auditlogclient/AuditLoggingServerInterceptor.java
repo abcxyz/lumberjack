@@ -322,7 +322,7 @@ public class AuditLoggingServerInterceptor<ReqT extends Message> implements Serv
    */
   Struct getStructForJustification(Metadata headers) throws JwkException {
     Metadata.Key<String> metadataKey =
-        Metadata.Key.of("justification_token", Metadata.ASCII_STRING_MARSHALLER);
+        Metadata.Key.of("justification-token", Metadata.ASCII_STRING_MARSHALLER);
     String jwtString = headers.get(metadataKey);
     DecodedJWT jwt = jvs.validateJWT(jwtString);
     String jsonString = StringUtils.newStringUtf8(Base64.decodeBase64(jwt.getPayload()));
