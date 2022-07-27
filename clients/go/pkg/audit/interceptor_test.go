@@ -123,7 +123,7 @@ func TestUnaryInterceptor(t *testing.T) {
 			name: "interceptor_autofills_successful_rpc",
 			ctx: metadata.NewIncomingContext(context.Background(), metadata.New(map[string]string{
 				"authorization":       jwt,
-				"justification_token": justification,
+				"justification-token": justification,
 			})),
 			auditRules: []*api.AuditRule{{
 				Selector:  "/ExampleService/ExampleMethod",
@@ -163,7 +163,7 @@ func TestUnaryInterceptor(t *testing.T) {
 			name: "interceptor_autofills_failed_rpc",
 			ctx: metadata.NewIncomingContext(context.Background(), metadata.New(map[string]string{
 				"authorization":       jwt,
-				"justification_token": justification,
+				"justification-token": justification,
 			})),
 			auditRules: []*api.AuditRule{{
 				Selector:  "*",
@@ -207,7 +207,7 @@ func TestUnaryInterceptor(t *testing.T) {
 			name: "interceptor_autofills_failed_rpc_unknown_err",
 			ctx: metadata.NewIncomingContext(context.Background(), metadata.New(map[string]string{
 				"authorization":       jwt,
-				"justification_token": justification,
+				"justification-token": justification,
 			})),
 			auditRules: []*api.AuditRule{{
 				Selector:  "*",
@@ -251,7 +251,7 @@ func TestUnaryInterceptor(t *testing.T) {
 			name: "default_audit_rule_directive_omits_req_and_resp",
 			ctx: metadata.NewIncomingContext(context.Background(), metadata.New(map[string]string{
 				"authorization":       jwt,
-				"justification_token": justification,
+				"justification-token": justification,
 			})),
 			auditRules: []*api.AuditRule{{
 				Selector:  "/ExampleService/ExampleMethod",
@@ -287,7 +287,7 @@ func TestUnaryInterceptor(t *testing.T) {
 			name: "audit_rule_directive_omits_resp",
 			ctx: metadata.NewIncomingContext(context.Background(), metadata.New(map[string]string{
 				"authorization":       jwt,
-				"justification_token": justification,
+				"justification-token": justification,
 			})),
 			auditRules: []*api.AuditRule{{
 				Selector:  "/ExampleService/ExampleMethod",
@@ -356,7 +356,7 @@ func TestUnaryInterceptor(t *testing.T) {
 		{
 			name: "malformed_method_info_best_effort",
 			ctx: metadata.NewIncomingContext(context.Background(), metadata.New(map[string]string{
-				"justification_token": justification,
+				"justification-token": justification,
 			})),
 			auditRules: []*api.AuditRule{{
 				Selector: "*",
@@ -373,7 +373,7 @@ func TestUnaryInterceptor(t *testing.T) {
 			name: "unable_to_extract_principal_best_effort",
 			ctx: metadata.NewIncomingContext(context.Background(), metadata.New(map[string]string{
 				"authorization":       "bananas",
-				"justification_token": justification,
+				"justification-token": justification,
 			})),
 			auditRules: []*api.AuditRule{{
 				Selector: "*",
@@ -390,7 +390,7 @@ func TestUnaryInterceptor(t *testing.T) {
 			name: "unable_to_extract_principal_fail_close",
 			ctx: metadata.NewIncomingContext(context.Background(), metadata.New(map[string]string{
 				"authorization":       "bananas",
-				"justification_token": justification,
+				"justification-token": justification,
 			})),
 			auditRules: []*api.AuditRule{{
 				Selector: "*",
@@ -408,7 +408,7 @@ func TestUnaryInterceptor(t *testing.T) {
 			name: "unable_to_extract_principal_fail_close",
 			ctx: metadata.NewIncomingContext(context.Background(), metadata.New(map[string]string{
 				"authorization":       "bananas",
-				"justification_token": justification,
+				"justification-token": justification,
 			})),
 			auditRules: []*api.AuditRule{{
 				Selector: "*",
@@ -426,7 +426,7 @@ func TestUnaryInterceptor(t *testing.T) {
 			name: "unable_to_convert_req_to_proto_struct_fail_close",
 			ctx: metadata.NewIncomingContext(context.Background(), metadata.New(map[string]string{
 				"authorization":       jwt,
-				"justification_token": justification,
+				"justification-token": justification,
 			})),
 			auditRules: []*api.AuditRule{{
 				Selector:  "*",
@@ -448,7 +448,7 @@ func TestUnaryInterceptor(t *testing.T) {
 			name: "unable_to_convert_req_to_proto_struct_best_effort",
 			ctx: metadata.NewIncomingContext(context.Background(), metadata.New(map[string]string{
 				"authorization":       jwt,
-				"justification_token": justification,
+				"justification-token": justification,
 			})),
 			auditRules: []*api.AuditRule{{
 				Selector:  "*",

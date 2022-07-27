@@ -243,7 +243,7 @@ public class AuditLoggingServerInterceptorTests {
     // Create Metadata
     Metadata md = new Metadata();
     Metadata.Key<String> metadataKey =
-        Metadata.Key.of("justification_token", Metadata.ASCII_STRING_MARSHALLER);
+        Metadata.Key.of("justification-token", Metadata.ASCII_STRING_MARSHALLER);
     md.put(metadataKey, token);
 
     // Set up JVS mock to return the correct token
@@ -276,7 +276,7 @@ public class AuditLoggingServerInterceptorTests {
     // Create Metadata
     Metadata md = new Metadata();
     Metadata.Key<String> metadataKey =
-        Metadata.Key.of("justification_token", Metadata.ASCII_STRING_MARSHALLER);
+        Metadata.Key.of("justification-token", Metadata.ASCII_STRING_MARSHALLER);
     md.put(metadataKey, token);
 
     // Set up JVS mock to throw exception
