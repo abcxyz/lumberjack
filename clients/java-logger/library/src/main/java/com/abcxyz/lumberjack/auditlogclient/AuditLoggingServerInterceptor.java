@@ -122,9 +122,13 @@ public class AuditLoggingServerInterceptor<ReqT extends Message> implements Serv
       next.startCall(call, headers);
     }
 
+    log.info("Justification Required: " + auditLoggingConfiguration.isJustificationRequired());
     if (auditLoggingConfiguration.isJustificationRequired()) {
+      log.info("Trying to add justification.");
       try {
-        logBuilder.setMetadata(getStructForJustification(headers));
+        Struct struct = getStructForJustification(headers);
+        log.info("Adding Justification: " + struct.toString());
+        logBuilder.setMetadata(struct);
       } catch (JwkException e) {
         log.warn("Exception while trying to determine justification.");
         if (ConfigUtils.shouldFailClose(auditLoggingConfiguration.getLogMode())) {

@@ -50,12 +50,17 @@ import com.abcxyz.lumberjack.test.talker.WhisperResponse;
 import com.google.cloud.audit.AuditLog;
 import com.google.inject.Guice;
 import com.google.inject.Injector;
+import com.sun.net.httpserver.HttpExchange;
+import com.sun.net.httpserver.HttpHandler;
+import com.sun.net.httpserver.HttpServer;
 import io.grpc.Server;
 import io.grpc.ServerBuilder;
 import io.grpc.Status;
 import io.grpc.StatusRuntimeException;
 import io.grpc.stub.StreamObserver;
 import java.io.IOException;
+import java.io.OutputStream;
+import java.net.InetSocketAddress;
 import java.util.HashMap;
 import java.util.Map;
 import lombok.RequiredArgsConstructor;
@@ -105,8 +110,35 @@ public class TalkerService {
     }
   }
 
+  static class JWKHandler implements HttpHandler {
+    // Matching private key here:
+    // https://github.com/abcxyz/lumberjack/blob/main/integration/testrunner/grpcrunner/grpc.go#L59
+    private static final String PUBLIC_JWK =
+        "{"
+            + "\"crv\": \"P-256\","
+            + "\"kid\": \"integ-key\","
+            + "\"kty\": \"EC\","
+            + "\"x\": \"hBWj8vw5LkPRWbCr45k0cOarIcWgApM03mSYF911de4\","
+            + "\"y\": \"atcBji-0fTfKQu46NsW0votcBrDIs_gFp4YWSEHDUyo\""
+            + "}";
+
+    @Override
+    public void handle(HttpExchange t) throws IOException {
+      String response = String.format("{\"keys\": [%s]}", PUBLIC_JWK);
+      t.sendResponseHeaders(200, response.length());
+      OutputStream os = t.getResponseBody();
+      os.write(response.getBytes());
+      os.close();
+    }
+  }
+
   /** Main launches the server from the command line. */
   public static void main(String[] args) throws IOException, InterruptedException {
+    HttpServer jwkServer = HttpServer.create(new InetSocketAddress(8081), 0);
+    jwkServer.createContext("/.well-known/jwks", new JWKHandler());
+    jwkServer.setExecutor(null); // creates a default executor
+    jwkServer.start();
+
     Injector injector = Guice.createInjector(new AuditLoggingModule());
     AuditLoggingServerInterceptor interceptor =
         injector.getInstance(AuditLoggingServerInterceptor.class);

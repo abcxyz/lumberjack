@@ -56,6 +56,7 @@ type GRPC struct {
 }
 
 // Matching public key here: https://github.com/abcxyz/lumberjack/pull/261/files#diff-f06321655121106c1e25ed2dd8cf773af6d7d5fb9b129abb2e1c04ba4d6dea5eR48
+// and here: https://github.com/abcxyz/lumberjack/pull/264/files#diff-6c73b144011b225fa9f7602b77cc3bb4817b74b9852269e4f5f7625bd039ab4dR113
 const privateKey = "-----BEGIN EC PRIVATE KEY-----\nMHcCAQEEIITZ4357UsTCbhxXu8w8cY54ZLlsAIJj/Aej9ylb/ZfBoAoGCCqGSM49\nAwEHoUQDQgAEhBWj8vw5LkPRWbCr45k0cOarIcWgApM03mSYF911de5q1wGOL7R9\nN8pC7jo2xbS+i1wGsMiz+AWnhhZIQcNTKg==\n-----END EC PRIVATE KEY-----"
 
 // TestGRPCEndpoint runs tests against a GRPC endpoint. The given GRPC must
