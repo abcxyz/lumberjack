@@ -48,6 +48,7 @@ public class AuditLoggingModule extends AbstractModule {
   public JvsClient jvsClient(AuditLoggingConfiguration auditLoggingConfiguration) {
     return new JVSClientBuilder()
         .withJvsEndpoint(auditLoggingConfiguration.getJvsEndpoint())
+        .withAllowBreakglass(auditLoggingConfiguration.isBreakglassAllowed())
         .build();
   }
 
