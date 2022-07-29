@@ -14,8 +14,7 @@
 
 syntax = "proto3";
 
-// TODO(b/200983538): Rename proto package name.
-package proto;
+package abcxyz.lumberjack;
 
 import "protos/v1alpha1/audit_log_request.proto";
 
