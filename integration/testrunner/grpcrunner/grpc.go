@@ -299,6 +299,7 @@ func createConnection(tb testing.TB, addr string, idToken string) *grpc.ClientCo
 // We specifically look up the log using the UUID specified in the request as we know the server will add that
 // as the resource name, and provides us a unique key to find logs with.
 func (g *GRPC) makeQueryForGRPCUnary(u uuid.UUID) *bigquery.Query {
+	// Cast to int64 because the result checker expects a number.
 	queryString := fmt.Sprintf("SELECT CAST(EXISTS (SELECT * FROM %s.%s WHERE jsonPayload.resource_name=?", g.ProjectID, g.DatasetQuery)
 	if g.RequireJustification {
 		queryString += ` AND jsonPayload.metadata.justification_token != ""`
