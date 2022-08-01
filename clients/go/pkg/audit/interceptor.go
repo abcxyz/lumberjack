@@ -22,11 +22,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/abcxyz/lumberjack/clients/go/pkg/security"
-	zlogger "github.com/abcxyz/pkg/logging"
 	"github.com/google/uuid"
-	"github.com/lestrrat-go/jwx/v2/jwt"
 	"go.uber.org/zap"
+	capi "google.golang.org/genproto/googleapis/cloud/audit"
 	"google.golang.org/genproto/googleapis/logging/v2"
 	rpccode "google.golang.org/genproto/googleapis/rpc/code"
 	rpcstatus "google.golang.org/genproto/googleapis/rpc/status"
@@ -39,7 +37,9 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	api "github.com/abcxyz/lumberjack/clients/go/apis/v1alpha1"
-	capi "google.golang.org/genproto/googleapis/cloud/audit"
+	"github.com/abcxyz/lumberjack/clients/go/pkg/justification"
+	"github.com/abcxyz/lumberjack/clients/go/pkg/security"
+	zlogger "github.com/abcxyz/pkg/logging"
 )
 
 type auditLogReqKey struct{}
@@ -82,28 +82,21 @@ func WithInterceptorLogMode(m api.AuditLogRequest_LogMode) InterceptorOption {
 	}
 }
 
-// WithJWTValidator configures the interceptor to use the JWTValidator client to add justifications to logs.
-func WithJWTValidator(j JWTValidator) InterceptorOption {
+func WithJustification(j *justification.Processor) InterceptorOption {
 	return func(i *Interceptor) error {
-		i.jwtValidator = j
+		i.justProcessor = j
 		return nil
 	}
-}
-
-// JWTValidator is intended to provide a method for validating JWTs passed in using the
-// justification-token header.
-type JWTValidator interface {
-	ValidateJWT(jwtStr string) (*jwt.Token, error)
 }
 
 // Interceptor contains the fields required for an interceptor
 // to autofill and emit audit logs.
 type Interceptor struct {
 	*Client
-	sc           security.GRPCContext
-	rules        []*api.AuditRule
-	logMode      api.AuditLogRequest_LogMode
-	jwtValidator JWTValidator
+	sc            security.GRPCContext
+	rules         []*api.AuditRule
+	logMode       api.AuditLogRequest_LogMode
+	justProcessor *justification.Processor
 }
 
 // NewInterceptor creates a new interceptor with the given options.
@@ -165,38 +158,8 @@ func (i *Interceptor) UnaryInterceptor(ctx context.Context, req interface{}, inf
 		}
 	}
 
-	// If JWT Validator hasn't been added, we don't handle justification JWTs, and just log
-	// without the justification.
-	if i.jwtValidator != nil {
-		// JWT Validator added, look for justification info
-		md, ok := grpcmetadata.FromIncomingContext(ctx)
-		if !ok {
-			return "", fmt.Errorf("gRPC metadata in incoming context is missing")
-		}
-		vals := md.Get("justification-token")
-		if len(vals) == 0 {
-			return i.handleReturnUnary(ctx, req, handler, status.Errorf(codes.Internal,
-				"no justification token found."))
-		}
-		jwtRaw := vals[0]
-		tok, err := i.jwtValidator.ValidateJWT(jwtRaw)
-		if err != nil {
-			return i.handleReturnUnary(ctx, req, handler, status.Errorf(codes.Internal,
-				"audit interceptor failed converting parsing or validating justification token: %v", err))
-		}
-		buf, err := json.Marshal(*tok)
-		if err != nil {
-			return i.handleReturnUnary(ctx, req, handler, status.Errorf(codes.Internal,
-				"couldn't convert token to json: %v", err))
-		}
-		// Note: We don't set metadata before here, so we can directly set it.
-		// If we need to put other data in metadata, this should be modified to not
-		// overwrite it.
-		logReq.Payload.Metadata = &structpb.Struct{
-			Fields: map[string]*structpb.Value{
-				"justification_token": structpb.NewStringValue(string(buf)),
-			},
-		}
+	if err := i.handleJustification(ctx, logReq); err != nil {
+		return i.handleReturnUnary(ctx, req, handler, err)
 	}
 
 	// Store our log req in the context to make it accessible
@@ -278,38 +241,8 @@ func (i *Interceptor) StreamInterceptor(srv interface{}, ss grpc.ServerStream, i
 	}
 	logReq.Payload.AuthenticationInfo = &capi.AuthenticationInfo{PrincipalEmail: principal}
 
-	// If JWT Validator hasn't been added, we don't handle justification JWTs, and just log
-	// without the justification.
-	if i.jwtValidator != nil {
-		// JWT Validator added, look for justification info
-		md, ok := grpcmetadata.FromIncomingContext(ctx)
-		if !ok {
-			return i.handleReturnStream(ctx, ss, handler, status.Errorf(codes.FailedPrecondition, "unable to retreive grpc metadata."))
-		}
-		vals := md.Get("justification-token")
-		if len(vals) == 0 {
-			return i.handleReturnStream(ctx, ss, handler, status.Errorf(codes.Internal,
-				"no justification token found."))
-		}
-		jwtRaw := vals[0]
-		tok, err := i.jwtValidator.ValidateJWT(jwtRaw)
-		if err != nil {
-			return i.handleReturnStream(ctx, ss, handler, status.Errorf(codes.Internal,
-				"audit interceptor failed converting parsing or validating justification token: %v", err))
-		}
-		buf, err := json.Marshal(*tok)
-		if err != nil {
-			return i.handleReturnStream(ctx, ss, handler, status.Errorf(codes.Internal,
-				"couldn't convert token to json: %v", err))
-		}
-		// Note: We don't set metadata before here, so we can directly set it.
-		// If we need to put other data in metadata, this should be modified to not
-		// overwrite it.
-		logReq.Payload.Metadata = &structpb.Struct{
-			Fields: map[string]*structpb.Value{
-				"justification_token": structpb.NewStringValue(string(buf)),
-			},
-		}
+	if err := i.handleJustification(ctx, logReq); err != nil {
+		return i.handleReturnStream(ctx, ss, handler, err)
 	}
 
 	handlerErr := handler(srv, &serverStreamWrapper{
@@ -327,6 +260,30 @@ func (i *Interceptor) StreamInterceptor(srv interface{}, ss grpc.ServerStream, i
 		}
 	}
 	return handlerErr
+}
+
+func (i *Interceptor) handleJustification(ctx context.Context, logReq *api.AuditLogRequest) error {
+	// If there is no justification processor, we don't handle justification, and just log
+	// without the justification.
+	if i.justProcessor == nil {
+		return nil
+	}
+
+	// Justification processor is present, look for justification info
+	// TODO(#257): If we add justification mode, we need to honor that.
+	jvsToken := ""
+	md, ok := grpcmetadata.FromIncomingContext(ctx)
+	if ok {
+		vals := md.Get("justification-token")
+		if len(vals) > 0 {
+			jvsToken = vals[0]
+		}
+	}
+
+	if err := i.justProcessor.Process(jvsToken, logReq); err != nil {
+		return status.Errorf(codes.Internal, "audit interceptor failed to process justification token: %v", err)
+	}
+	return nil
 }
 
 type serverStreamWrapper struct {
