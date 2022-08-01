@@ -40,6 +40,11 @@ func TestHTTPEndpoint(ctx context.Context, tb testing.TB, endpointURL string,
 		if err != nil {
 			tb.Logf("audit log request failed: %v", err)
 		}
+		defer func() {
+			if err := resp.Body.Close(); err != nil {
+				tb.Log(err)
+			}
+		}()
 
 		if resp.StatusCode == http.StatusOK {
 			// Audit log request succeeded, exit the retry logic with success.
