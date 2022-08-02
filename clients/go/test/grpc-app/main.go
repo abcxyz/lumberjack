@@ -40,6 +40,7 @@ import (
 
 	"github.com/abcxyz/lumberjack/clients/go/pkg/audit"
 	"github.com/abcxyz/lumberjack/clients/go/pkg/auditopt"
+	"github.com/abcxyz/lumberjack/clients/go/pkg/justification"
 	"github.com/abcxyz/lumberjack/clients/go/test/grpc-app/talkerpb"
 )
 
@@ -77,7 +78,9 @@ func realMain() (outErr error) {
 	if err != nil {
 		return fmt.Errorf("failed to create jvs client: %w", err)
 	}
-	interceptor, err := audit.NewInterceptor(auditopt.InterceptorFromConfigFile(ctx, auditopt.DefaultConfigFilePath), audit.WithJWTValidator(jvs))
+	interceptor, err := audit.NewInterceptor(
+		auditopt.InterceptorFromConfigFile(ctx, auditopt.DefaultConfigFilePath),
+		audit.WithJustification(justification.NewProcessor(jvs)))
 	if err != nil {
 		return fmt.Errorf("failed to setup audit interceptor: %w", err)
 	}
