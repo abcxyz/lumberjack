@@ -15,6 +15,7 @@
 package httprunner
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"time"
@@ -23,7 +24,7 @@ import (
 )
 
 func MakeAuditLogRequest(u uuid.UUID, endpointURL string, requestTimeout time.Duration, authToken string) (*http.Response, error) {
-	req, err := http.NewRequest(http.MethodGet, endpointURL, nil)
+	req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, endpointURL, nil)
 	if err != nil {
 		return nil, err
 	}

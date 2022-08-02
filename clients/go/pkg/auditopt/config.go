@@ -35,6 +35,7 @@ import (
 	"github.com/abcxyz/lumberjack/clients/go/pkg/audit"
 	"github.com/abcxyz/lumberjack/clients/go/pkg/cloudlogging"
 	"github.com/abcxyz/lumberjack/clients/go/pkg/filtering"
+	"github.com/abcxyz/lumberjack/clients/go/pkg/justification"
 	"github.com/abcxyz/lumberjack/clients/go/pkg/remote"
 	"github.com/abcxyz/lumberjack/clients/go/pkg/security"
 	"github.com/sethvargo/go-envconfig"
@@ -127,7 +128,7 @@ func interceptorFromConfigFile(ctx context.Context, path string, lookuper envcon
 			if err != nil {
 				return err
 			}
-			audit.WithJWTValidator(jvsClient)
+			audit.WithJustification(justification.NewProcessor(jvsClient))
 		}
 
 		opts := []audit.InterceptorOption{
