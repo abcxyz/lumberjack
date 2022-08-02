@@ -47,7 +47,7 @@ func TestProcess(t *testing.T) {
 			Payload: &audit.AuditLog{
 				Metadata: &structpb.Struct{
 					Fields: map[string]*structpb.Value{
-						"justification_token": structpb.NewStructValue(&structpb.Struct{
+						justificationLogMetadataKey: structpb.NewStructValue(&structpb.Struct{
 							Fields: map[string]*structpb.Value{
 								"iss":   structpb.NewStringValue("test_iss"),
 								"sub":   structpb.NewStringValue("test_sub"),

@@ -302,7 +302,8 @@ func (g *GRPC) makeQueryForGRPCUnary(u uuid.UUID) *bigquery.Query {
 	// Cast to int64 because the result checker expects a number.
 	queryString := fmt.Sprintf("SELECT CAST(EXISTS (SELECT * FROM %s.%s WHERE jsonPayload.resource_name=?", g.ProjectID, g.DatasetQuery)
 	if g.RequireJustification {
-		queryString += ` AND jsonPayload.metadata.justification_token != ""`
+		// TODO(#265): For back-compatibility, we need to ensure justification in either metadata key.
+		queryString += ` AND (jsonPayload.metadata.justification_token IS NOT NULL OR jsonPayload.metadata.justification IS NOT NULL)`
 	}
 	queryString += ") AS INT64)"
 	return utils.MakeQuery(*g.BigQueryClient, u, queryString)
@@ -312,7 +313,8 @@ func (g *GRPC) makeQueryForGRPCUnary(u uuid.UUID) *bigquery.Query {
 func (g *GRPC) makeQueryForGRPCStream(u uuid.UUID) *bigquery.Query {
 	queryString := fmt.Sprintf("SELECT count(*) FROM %s.%s WHERE jsonPayload.resource_name=?", g.ProjectID, g.DatasetQuery)
 	if g.RequireJustification {
-		queryString += ` AND jsonPayload.metadata.justification_token != ""`
+		// TODO(#265): For back-compatibility, we need to ensure justification in either metadata key.
+		queryString += ` AND (jsonPayload.metadata.justification_token IS NOT NULL OR jsonPayload.metadata.justification IS NOT NULL)`
 	}
 	return utils.MakeQuery(*g.BigQueryClient, u, queryString)
 }

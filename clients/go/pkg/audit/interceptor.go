@@ -42,6 +42,10 @@ import (
 	zlogger "github.com/abcxyz/pkg/logging"
 )
 
+const (
+	justificationTokenHeaderKey = "justification-token"
+)
+
 type auditLogReqKey struct{}
 
 // InterceptorOption defines the option func to configure an interceptor.
@@ -274,7 +278,7 @@ func (i *Interceptor) handleJustification(ctx context.Context, logReq *api.Audit
 	jvsToken := ""
 	md, ok := grpcmetadata.FromIncomingContext(ctx)
 	if ok {
-		vals := md.Get("justification-token")
+		vals := md.Get(justificationTokenHeaderKey)
 		if len(vals) > 0 {
 			jvsToken = vals[0]
 		}
