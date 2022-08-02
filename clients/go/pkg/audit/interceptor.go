@@ -88,7 +88,7 @@ func WithInterceptorLogMode(m api.AuditLogRequest_LogMode) InterceptorOption {
 
 func WithJustification(j *justification.Processor) InterceptorOption {
 	return func(i *Interceptor) error {
-		i.justProcessor = j
+		i.justificationProcessor = j
 		return nil
 	}
 }
@@ -97,10 +97,10 @@ func WithJustification(j *justification.Processor) InterceptorOption {
 // to autofill and emit audit logs.
 type Interceptor struct {
 	*Client
-	sc            security.GRPCContext
-	rules         []*api.AuditRule
-	logMode       api.AuditLogRequest_LogMode
-	justProcessor *justification.Processor
+	sc                     security.GRPCContext
+	rules                  []*api.AuditRule
+	logMode                api.AuditLogRequest_LogMode
+	justificationProcessor *justification.Processor
 }
 
 // NewInterceptor creates a new interceptor with the given options.
@@ -269,7 +269,7 @@ func (i *Interceptor) StreamInterceptor(srv interface{}, ss grpc.ServerStream, i
 func (i *Interceptor) handleJustification(ctx context.Context, logReq *api.AuditLogRequest) error {
 	// If there is no justification processor, we don't handle justification, and just log
 	// without the justification.
-	if i.justProcessor == nil {
+	if i.justificationProcessor == nil {
 		return nil
 	}
 
@@ -284,7 +284,7 @@ func (i *Interceptor) handleJustification(ctx context.Context, logReq *api.Audit
 		}
 	}
 
-	if err := i.justProcessor.Process(jvsToken, logReq); err != nil {
+	if err := i.justificationProcessor.Process(jvsToken, logReq); err != nil {
 		return status.Errorf(codes.Internal, "audit interceptor failed to process justification token: %v", err)
 	}
 	return nil

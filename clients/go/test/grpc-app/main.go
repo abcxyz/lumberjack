@@ -80,7 +80,7 @@ func realMain() (outErr error) {
 	}
 	interceptor, err := audit.NewInterceptor(
 		auditopt.InterceptorFromConfigFile(ctx, auditopt.DefaultConfigFilePath),
-		audit.WithJustification(&justification.Processor{Validator: jvs}))
+		audit.WithJustification(justification.NewProcessor(jvs)))
 	if err != nil {
 		return fmt.Errorf("failed to setup audit interceptor: %w", err)
 	}

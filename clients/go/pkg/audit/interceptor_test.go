@@ -533,9 +533,9 @@ func TestUnaryInterceptor(t *testing.T) {
 			t.Parallel()
 
 			i := &Interceptor{
-				rules:         tc.auditRules,
-				logMode:       tc.logMode,
-				justProcessor: &justification.Processor{Validator: tc.jvs},
+				rules:                  tc.auditRules,
+				logMode:                tc.logMode,
+				justificationProcessor: justification.NewProcessor(tc.jvs),
 			}
 
 			r := &fakeServer{}

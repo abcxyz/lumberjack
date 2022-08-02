@@ -85,7 +85,7 @@ func TestProcess(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
-			p := &Processor{Validator: tc.validator}
+			p := &Processor{validator: tc.validator}
 			gotLogReq := &api.AuditLogRequest{Payload: &audit.AuditLog{}}
 			gotErr := p.Process(tc.token, gotLogReq)
 			if (gotErr == nil) == tc.wantErr {

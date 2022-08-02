@@ -128,7 +128,7 @@ func interceptorFromConfigFile(ctx context.Context, path string, lookuper envcon
 			if err != nil {
 				return err
 			}
-			audit.WithJustification(&justification.Processor{Validator: jvsClient})
+			audit.WithJustification(justification.NewProcessor(jvsClient))
 		}
 
 		opts := []audit.InterceptorOption{

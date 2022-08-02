@@ -39,7 +39,14 @@ type Validator interface {
 
 // Processor populates an audit log request with justification.
 type Processor struct {
-	Validator Validator
+	validator Validator
+}
+
+// NewProcessor creates a new justification processor.
+func NewProcessor(v Validator) *Processor {
+	return &Processor{
+		validator: v,
+	}
 }
 
 // Process populates the given audit log request with the justification info from the given token.
@@ -49,7 +56,7 @@ func (p *Processor) Process(jvsToken string, logReq *api.AuditLogRequest) error 
 		return nil
 	}
 
-	tok, err := p.Validator.ValidateJWT(jvsToken)
+	tok, err := p.validator.ValidateJWT(jvsToken)
 	if err != nil {
 		return fmt.Errorf("failed to validate justification token: %w", err)
 	}
