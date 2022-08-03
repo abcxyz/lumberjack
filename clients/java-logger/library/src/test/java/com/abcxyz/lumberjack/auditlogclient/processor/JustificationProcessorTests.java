@@ -146,7 +146,7 @@ public class JustificationProcessorTests {
     AuditLog.Builder gotAuditLogBuilder = auditLog.toBuilder();
 
     JustificationProcessor processor = new JustificationProcessor(jvsClient);
-    processor.setLogJustification(token, gotAuditLogBuilder);
+    gotAuditLogBuilder = processor.auditLogBuilderWithJustification(token, gotAuditLogBuilder);
 
     assertEquals(wantAuditLog, gotAuditLogBuilder.build());
   }
@@ -165,6 +165,6 @@ public class JustificationProcessorTests {
     JustificationProcessor processor = new JustificationProcessor(jvsClient);
     assertThrows(
         LogProcessingException.class,
-        () -> processor.setLogJustification(token, auditLog.toBuilder()));
+        () -> processor.auditLogBuilderWithJustification(token, auditLog.toBuilder()));
   }
 }

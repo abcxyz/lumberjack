@@ -53,7 +53,7 @@ public class JustificationProcessor {
 
     AuditLogRequest.Builder auditLogRequestBuilder = auditLogRequest.toBuilder();
     AuditLog.Builder auditLogBuilder = auditLogRequest.getPayload().toBuilder();
-    this.setLogJustification(jvsToken, auditLogBuilder);
+    auditLogBuilder = this.auditLogBuilderWithJustification(jvsToken, auditLogBuilder);
 
     return auditLogRequestBuilder.setPayload(auditLogBuilder.build()).build();
   }
@@ -64,10 +64,13 @@ public class JustificationProcessor {
    *
    * @param jvsToken A JWT produced by JVS.
    * @param auditLogBuilder Audit log builder.
+   * @return A new audit log builder with justification filled.
    * @throws LogProcessingException when it fails to set the justification info.
    */
-  public void setLogJustification(String jvsToken, AuditLog.Builder auditLogBuilder)
-      throws LogProcessingException {
+  public AuditLog.Builder auditLogBuilderWithJustification(
+      String jvsToken, AuditLog.Builder auditLogBuilder) throws LogProcessingException {
+
+    AuditLog.Builder auditLogBuilderCopy = auditLogBuilder.build().toBuilder();
     try {
       DecodedJWT jwt = jvs.validateJWT(jvsToken);
       String jsonString = StringUtils.newStringUtf8(Base64.decodeBase64(jwt.getPayload()));
@@ -92,18 +95,20 @@ public class JustificationProcessor {
 
       Struct justificationStruct = justificationStructBuilder.build();
 
-      if (!auditLogBuilder.hasMetadata()) {
-        auditLogBuilder.setMetadata(Struct.newBuilder().build());
+      if (!auditLogBuilderCopy.hasMetadata()) {
+        auditLogBuilderCopy.setMetadata(Struct.newBuilder().build());
       }
 
-      Struct.Builder metadataBuilder = auditLogBuilder.getMetadata().toBuilder();
+      Struct.Builder metadataBuilder = auditLogBuilderCopy.getMetadata().toBuilder();
       metadataBuilder.putFields(
           JUSTIFICATION_LOG_METADATA_KEY,
           Value.newBuilder().setStructValue(justificationStruct).build());
-      auditLogBuilder.setMetadata(metadataBuilder.build());
+      auditLogBuilderCopy.setMetadata(metadataBuilder.build());
 
     } catch (JwkException | InvalidProtocolBufferException e) {
       throw new LogProcessingException(e);
     }
+
+    return auditLogBuilderCopy;
   }
 }

@@ -241,7 +241,7 @@ public class AuditLoggingServerInterceptorTests {
     interceptor.setJustification(md, null);
 
     ArgumentCaptor<String> tokenArg = ArgumentCaptor.forClass(String.class);
-    verify(justificationProcessor).setLogJustification(tokenArg.capture(), any());
+    verify(justificationProcessor).auditLogBuilderWithJustification(tokenArg.capture(), any());
     assertEquals("token", tokenArg.getValue());
   }
 
@@ -255,7 +255,7 @@ public class AuditLoggingServerInterceptorTests {
     // Set up JVS mock to throw exception
     doThrow(new LogProcessingException(null))
         .when(justificationProcessor)
-        .setLogJustification(eq("token"), any());
+        .auditLogBuilderWithJustification(eq("token"), any());
     ;
 
     // Validate exception is bubbled up.

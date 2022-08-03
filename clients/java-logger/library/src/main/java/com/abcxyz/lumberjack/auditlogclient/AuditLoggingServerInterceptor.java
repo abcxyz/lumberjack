@@ -122,7 +122,7 @@ public class AuditLoggingServerInterceptor<ReqT extends Message> implements Serv
     if (auditLoggingConfiguration.isJustificationRequired()) {
       log.info("Trying to add justification.");
       try {
-        setJustification(headers, logBuilder);
+        logBuilder = setJustification(headers, logBuilder);
       } catch (LogProcessingException e) {
         log.warn("Exception while trying to determine justification.");
         if (ConfigUtils.shouldFailClose(auditLoggingConfiguration.getLogMode())) {
@@ -144,6 +144,8 @@ public class AuditLoggingServerInterceptor<ReqT extends Message> implements Serv
     // Add the builder into the context, this makes it available to the server code.
     Context ctx = Context.current().withValue(AUDIT_LOG_CTX_KEY, logBuilder);
 
+    // Create a final logBuilder to make lambda happy.
+    final AuditLog.Builder logBuilderFinal = logBuilder;
     // Deques allow for addition/removal at both ends. We use this to keep responses
     // until it is time to log them.
     Deque<ReqT> unloggedRequests = new ConcurrentLinkedDeque<>();
@@ -156,7 +158,7 @@ public class AuditLoggingServerInterceptor<ReqT extends Message> implements Serv
                 // newest message. returns null if empty.
                 ReqT unloggedRequest = unloggedRequests.pollLast();
 
-                auditLog(selector, unloggedRequest, message, logBuilder, logEntryOperation);
+                auditLog(selector, unloggedRequest, message, logBuilderFinal, logEntryOperation);
                 super.sendMessage(message);
               }
             },
@@ -178,7 +180,7 @@ public class AuditLoggingServerInterceptor<ReqT extends Message> implements Serv
           // between the isEmpty() and the poll, another thread could have grabbed it,
           // so we need to check for null.
           if (unloggedRequest != null) {
-            auditLog(selector, unloggedRequest, null, logBuilder, logEntryOperation);
+            auditLog(selector, unloggedRequest, null, logBuilderFinal, logEntryOperation);
           }
         }
         unloggedRequests.add(message);
@@ -196,7 +198,7 @@ public class AuditLoggingServerInterceptor<ReqT extends Message> implements Serv
         } catch (Exception e) {
           log.info("Exception occurred, audit logging it: {}", e.getMessage());
           ReqT unloggedRequest = unloggedRequests.pollFirst(); // try to get the last request
-          logError(selector, unloggedRequest, e, logBuilder, logEntryOperation);
+          logError(selector, unloggedRequest, e, logBuilderFinal, logEntryOperation);
           throw e;
         }
       }
@@ -314,11 +316,11 @@ public class AuditLoggingServerInterceptor<ReqT extends Message> implements Serv
    * use in audit logging metadata. We expect the claims from the JWT to be put in JSON format and
    * put into the struct under the justification_token key.
    */
-  void setJustification(Metadata headers, AuditLog.Builder logBuilder)
+  AuditLog.Builder setJustification(Metadata headers, AuditLog.Builder logBuilder)
       throws LogProcessingException {
     Metadata.Key<String> metadataKey =
         Metadata.Key.of("justification-token", Metadata.ASCII_STRING_MARSHALLER);
     String jvsToken = headers.get(metadataKey);
-    this.justificationProcessor.setLogJustification(jvsToken, logBuilder);
+    return justificationProcessor.auditLogBuilderWithJustification(jvsToken, logBuilder);
   }
 }
