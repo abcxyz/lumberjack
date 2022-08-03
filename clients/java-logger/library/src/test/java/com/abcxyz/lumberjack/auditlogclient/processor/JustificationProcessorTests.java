@@ -28,6 +28,7 @@ import com.auth0.jwt.JWT;
 import com.auth0.jwt.interfaces.DecodedJWT;
 import com.google.cloud.audit.AuditLog;
 import com.google.cloud.audit.AuthenticationInfo;
+import com.google.protobuf.ListValue;
 import com.google.protobuf.Struct;
 import com.google.protobuf.Value;
 import io.jsonwebtoken.Jwts;
@@ -55,7 +56,7 @@ public class JustificationProcessorTests {
     Map<String, Object> claims = new HashMap<>();
     claims.put("id", "jwt-id");
     claims.put("role", "user");
-    String token = Jwts.builder().setClaims(claims).compact();
+    String token = Jwts.builder().setClaims(claims).setAudience("test-aud").compact();
 
     // Set up JVS mock to return the correct token
     DecodedJWT jwt = JWT.decode(token);
@@ -66,6 +67,13 @@ public class JustificationProcessorTests {
         Struct.newBuilder()
             .putFields("id", Value.newBuilder().setStringValue("jwt-id").build())
             .putFields("role", Value.newBuilder().setStringValue("user").build())
+            .putFields(
+                "aud",
+                Value.newBuilder()
+                    .setListValue(
+                        ListValue.newBuilder()
+                            .addValues(Value.newBuilder().setStringValue("test-aud")))
+                    .build())
             .build();
     Struct wantMetadata =
         Struct.newBuilder()
@@ -111,7 +119,7 @@ public class JustificationProcessorTests {
     Map<String, Object> claims = new HashMap<>();
     claims.put("id", "jwt-id");
     claims.put("role", "user");
-    String token = Jwts.builder().setClaims(claims).compact();
+    String token = Jwts.builder().setClaims(claims).setAudience("test-aud").compact();
 
     // Set up JVS mock to return the correct token
     DecodedJWT jwt = JWT.decode(token);
@@ -121,6 +129,13 @@ public class JustificationProcessorTests {
         Struct.newBuilder()
             .putFields("id", Value.newBuilder().setStringValue("jwt-id").build())
             .putFields("role", Value.newBuilder().setStringValue("user").build())
+            .putFields(
+                "aud",
+                Value.newBuilder()
+                    .setListValue(
+                        ListValue.newBuilder()
+                            .addValues(Value.newBuilder().setStringValue("test-aud")))
+                    .build())
             .build();
     Struct wantMetadata =
         Struct.newBuilder()
@@ -132,7 +147,6 @@ public class JustificationProcessorTests {
 
     JustificationProcessor processor = new JustificationProcessor(jvsClient);
     processor.setLogJustification(token, gotAuditLogBuilder);
-    ;
 
     assertEquals(wantAuditLog, gotAuditLogBuilder.build());
   }

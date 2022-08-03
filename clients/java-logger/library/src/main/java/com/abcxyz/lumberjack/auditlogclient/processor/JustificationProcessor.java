@@ -18,10 +18,14 @@ package com.abcxyz.lumberjack.auditlogclient.processor;
 
 import com.abcxyz.jvs.JvsClient;
 import com.abcxyz.lumberjack.v1alpha1.AuditLogRequest;
+import com.auth0.jwk.JwkException;
 import com.auth0.jwt.interfaces.DecodedJWT;
+import com.google.api.client.util.Preconditions;
 import com.google.api.client.util.StringUtils;
 import com.google.cloud.audit.AuditLog;
 import com.google.inject.Inject;
+import com.google.protobuf.InvalidProtocolBufferException;
+import com.google.protobuf.ListValue;
 import com.google.protobuf.Struct;
 import com.google.protobuf.Value;
 import com.google.protobuf.util.JsonFormat;
@@ -44,9 +48,8 @@ public class JustificationProcessor {
    */
   public AuditLogRequest process(String jvsToken, AuditLogRequest auditLogRequest)
       throws LogProcessingException {
-    if (!auditLogRequest.hasPayload()) {
-      throw new IllegalArgumentException("audit log request doesn't have payload");
-    }
+    Preconditions.checkArgument(
+        auditLogRequest.hasPayload(), "audit log request doesn't have payload");
 
     AuditLogRequest.Builder auditLogRequestBuilder = auditLogRequest.toBuilder();
     AuditLog.Builder auditLogBuilder = auditLogRequest.getPayload().toBuilder();
@@ -70,21 +73,36 @@ public class JustificationProcessor {
       String jsonString = StringUtils.newStringUtf8(Base64.decodeBase64(jwt.getPayload()));
       Struct.Builder justificationStructBuilder = Struct.newBuilder();
       JsonFormat.parser().merge(jsonString, justificationStructBuilder);
+
+      // Handle 'aud' claim properly.
+      // Per https://datatracker.ietf.org/doc/html/rfc7519#section-4.1.3, 'aud' is technically a
+      // list.
+      // But in the JWT json payload, often 'aud' is a single value which is acceptable.
+      // This (a list vs. a single value) would cause a difference in the justification proto
+      // struct, and it would cause downstream schema (e.g. BigQuery table) difference.
+      if (justificationStructBuilder.containsFields("aud")) {
+        Value audValue = justificationStructBuilder.getFieldsMap().get("aud");
+        // If we find 'aud' is a single string value, convert it to be a list.
+        if (audValue.hasStringValue()) {
+          Value.Builder audBuilder =
+              Value.newBuilder().setListValue(ListValue.newBuilder().addValues(audValue));
+          justificationStructBuilder.putFields("aud", audBuilder.build());
+        }
+      }
+
       Struct justificationStruct = justificationStructBuilder.build();
 
-      // Add monitored resource to Payload.Metadata as JSON.
       if (!auditLogBuilder.hasMetadata()) {
         auditLogBuilder.setMetadata(Struct.newBuilder().build());
       }
 
-      // add new field with monitoredResource to existing metadata
       Struct.Builder metadataBuilder = auditLogBuilder.getMetadata().toBuilder();
       metadataBuilder.putFields(
           JUSTIFICATION_LOG_METADATA_KEY,
           Value.newBuilder().setStructValue(justificationStruct).build());
       auditLogBuilder.setMetadata(metadataBuilder.build());
 
-    } catch (Exception e) {
+    } catch (JwkException | InvalidProtocolBufferException e) {
       throw new LogProcessingException(e);
     }
   }
