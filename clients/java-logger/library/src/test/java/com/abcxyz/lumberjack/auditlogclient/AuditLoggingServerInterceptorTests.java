@@ -17,20 +17,20 @@
 package com.abcxyz.lumberjack.auditlogclient;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
-import com.abcxyz.jvs.JvsClient;
 import com.abcxyz.lumberjack.auditlogclient.config.AuditLoggingConfiguration;
 import com.abcxyz.lumberjack.auditlogclient.config.Selector;
+import com.abcxyz.lumberjack.auditlogclient.processor.JustificationProcessor;
 import com.abcxyz.lumberjack.auditlogclient.processor.LogProcessingException;
 import com.abcxyz.lumberjack.v1alpha1.AuditLogRequest;
-import com.auth0.jwk.JwkException;
-import com.auth0.jwt.JWT;
-import com.auth0.jwt.interfaces.DecodedJWT;
 import com.google.cloud.audit.AuditLog;
 import com.google.logging.v2.LogEntryOperation;
 import com.google.protobuf.Struct;
@@ -40,15 +40,11 @@ import com.google.rpc.Code;
 import com.google.rpc.Status;
 import io.grpc.Metadata;
 import io.grpc.StatusRuntimeException;
-import io.jsonwebtoken.Jwts;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.Date;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -62,9 +58,13 @@ import org.mockito.junit.jupiter.MockitoExtension;
 public class AuditLoggingServerInterceptorTests {
 
   @Mock LoggingClient loggingClient;
+
   @Mock AuditLoggingConfiguration auditLoggingConfiguration;
+
   @Mock Clock clock;
-  @Mock JvsClient jvsClient;
+
+  @Mock JustificationProcessor justificationProcessor;
+
   @InjectMocks AuditLoggingServerInterceptor interceptor;
 
   @Captor private ArgumentCaptor<AuditLogRequest> auditLogRequestCaptor;
@@ -231,58 +231,34 @@ public class AuditLoggingServerInterceptorTests {
   }
 
   @Test
-  public void getsMetaDataForJustification() throws Exception {
-    // Create JWT
-    Date date = new Date();
-    Map<String, Object> claims = new HashMap<>();
-    claims.put("id", "jwt-id");
-    claims.put("role", "user");
-    claims.put("created", date);
-    String token = Jwts.builder().setClaims(claims).compact();
-
+  public void justificationProcessorCalled() throws Exception {
     // Create Metadata
     Metadata md = new Metadata();
     Metadata.Key<String> metadataKey =
         Metadata.Key.of("justification-token", Metadata.ASCII_STRING_MARSHALLER);
-    md.put(metadataKey, token);
+    md.put(metadataKey, "token");
 
-    // Set up JVS mock to return the correct token
-    DecodedJWT jwt = JWT.decode(token);
-    doReturn(jwt).when(jvsClient).validateJWT(token);
+    interceptor.setJustification(md, null);
 
-    // Set up expected map. We want the claims to be under "justificatino_token" key in json format
-    Map<String, Value> expectedMap = new HashMap<>();
-    expectedMap.put(
-        "justification_token",
-        Value.newBuilder()
-            .setStringValue(
-                "{\"role\":\"user\",\"created\":" + date.getTime() + ",\"id\":\"jwt-id\"}")
-            .build());
-
-    Struct returnVal = interceptor.getStructForJustification(md);
-    assertThat(returnVal.getFieldsMap()).isEqualTo(expectedMap);
+    ArgumentCaptor<String> tokenArg = ArgumentCaptor.forClass(String.class);
+    verify(justificationProcessor).auditLogBuilderWithJustification(tokenArg.capture(), any());
+    assertEquals("token", tokenArg.getValue());
   }
 
   @Test
-  public void getsMetaDataForJustification_Err() throws Exception {
-    // Create JWT
-    Date date = new Date();
-    Map<String, Object> claims = new HashMap<>();
-    claims.put("id", "jwt-id");
-    claims.put("role", "user");
-    claims.put("created", date);
-    String token = Jwts.builder().setClaims(claims).compact();
-
-    // Create Metadata
+  public void justificationProcessorErr() throws Exception {
     Metadata md = new Metadata();
     Metadata.Key<String> metadataKey =
         Metadata.Key.of("justification-token", Metadata.ASCII_STRING_MARSHALLER);
-    md.put(metadataKey, token);
+    md.put(metadataKey, "token");
 
     // Set up JVS mock to throw exception
-    doThrow(new JwkException("")).when(jvsClient).validateJWT(token);
+    doThrow(new LogProcessingException(null))
+        .when(justificationProcessor)
+        .auditLogBuilderWithJustification(eq("token"), any());
+    ;
 
     // Validate exception is bubbled up.
-    assertThrows(JwkException.class, () -> interceptor.getStructForJustification(md));
+    assertThrows(LogProcessingException.class, () -> interceptor.setJustification(md, null));
   }
 }
