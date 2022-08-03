@@ -1,36 +1,33 @@
 /*
  * Copyright 2021 Lumberjack authors (see AUTHORS file)
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
+ * in compliance with the License. You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ * http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing, software distributed under the License
+ * is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express
+ * or implied. See the License for the specific language governing permissions and limitations under
+ * the License.
  */
 
 package com.abcxyz.lumberjack.auditlogclient;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
-
-import com.abcxyz.jvs.JvsClient;
 import com.abcxyz.lumberjack.auditlogclient.config.AuditLoggingConfiguration;
 import com.abcxyz.lumberjack.auditlogclient.config.Selector;
+import com.abcxyz.lumberjack.auditlogclient.processor.JustificationProcessor;
 import com.abcxyz.lumberjack.auditlogclient.processor.LogProcessingException;
 import com.abcxyz.lumberjack.v1alpha1.AuditLogRequest;
-import com.auth0.jwk.JwkException;
-import com.auth0.jwt.JWT;
-import com.auth0.jwt.interfaces.DecodedJWT;
 import com.google.cloud.audit.AuditLog;
 import com.google.logging.v2.LogEntryOperation;
 import com.google.protobuf.Struct;
@@ -40,15 +37,11 @@ import com.google.rpc.Code;
 import com.google.rpc.Status;
 import io.grpc.Metadata;
 import io.grpc.StatusRuntimeException;
-import io.jsonwebtoken.Jwts;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.Date;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -61,13 +54,23 @@ import org.mockito.junit.jupiter.MockitoExtension;
 @ExtendWith(MockitoExtension.class)
 public class AuditLoggingServerInterceptorTests {
 
-  @Mock LoggingClient loggingClient;
-  @Mock AuditLoggingConfiguration auditLoggingConfiguration;
-  @Mock Clock clock;
-  @Mock JvsClient jvsClient;
-  @InjectMocks AuditLoggingServerInterceptor interceptor;
+  @Mock
+  LoggingClient loggingClient;
 
-  @Captor private ArgumentCaptor<AuditLogRequest> auditLogRequestCaptor;
+  @Mock
+  AuditLoggingConfiguration auditLoggingConfiguration;
+
+  @Mock
+  Clock clock;
+
+  @Mock
+  JustificationProcessor justificationProcessor;
+
+  @InjectMocks
+  AuditLoggingServerInterceptor interceptor;
+
+  @Captor
+  private ArgumentCaptor<AuditLogRequest> auditLogRequestCaptor;
 
   @Test
   public void convertsMessageToStruct() {
@@ -76,8 +79,8 @@ public class AuditLoggingServerInterceptorTests {
     builder.setMethodName("test-method");
     Struct struct = interceptor.messageToStruct(builder.build());
     Struct.Builder structBuilder = Struct.newBuilder();
-    structBuilder.putFields(
-        "serviceName", Value.newBuilder().setStringValue("test-service").build());
+    structBuilder.putFields("serviceName",
+        Value.newBuilder().setStringValue("test-service").build());
     structBuilder.putFields("methodName", Value.newBuilder().setStringValue("test-method").build());
     assertThat(struct).isEqualTo(structBuilder.build());
   }
@@ -104,8 +107,7 @@ public class AuditLoggingServerInterceptorTests {
     Struct actual = interceptor.messagesToStruct(messages);
 
     Struct.Builder structBuilder = Struct.newBuilder();
-    structBuilder.putFields(
-        "request_list",
+    structBuilder.putFields("request_list",
         Value.newBuilder()
             .setStringValue(
                 "[service_name: \"test-service\"method_name: \"test-method\", service_name:"
@@ -162,23 +164,13 @@ public class AuditLoggingServerInterceptorTests {
     Selector selector = new Selector("*", null, null);
     AuditLog.Builder builder = AuditLog.newBuilder();
     doReturn(Clock.systemUTC().instant()).when(clock).instant();
-    interceptor.logError(
-        selector,
-        null,
-        new RuntimeException("Test Message"),
-        builder,
+    interceptor.logError(selector, null, new RuntimeException("Test Message"), builder,
         LogEntryOperation.getDefaultInstance());
-    AuditLog.Builder expectedBuilder =
-        AuditLog.newBuilder()
-            .setStatus(
-                Status.newBuilder()
-                    .setMessage(Code.INTERNAL.name())
-                    .setCode(Code.INTERNAL.getNumber())
-                    .build());
+    AuditLog.Builder expectedBuilder = AuditLog.newBuilder().setStatus(Status.newBuilder()
+        .setMessage(Code.INTERNAL.name()).setCode(Code.INTERNAL.getNumber()).build());
     verify(loggingClient).log(auditLogRequestCaptor.capture());
     assertThat(auditLogRequestCaptor.getValue().getPayload().getStatus())
-        .isEqualTo(expectedBuilder.getStatus())
-        .usingRecursiveComparison();
+        .isEqualTo(expectedBuilder.getStatus()).usingRecursiveComparison();
   }
 
   @Test
@@ -186,23 +178,15 @@ public class AuditLoggingServerInterceptorTests {
     Selector selector = new Selector("*", null, null);
     AuditLog.Builder builder = AuditLog.newBuilder();
     doReturn(Clock.systemUTC().instant()).when(clock).instant();
-    interceptor.logError(
-        selector,
-        null,
-        new StatusRuntimeException(io.grpc.Status.FAILED_PRECONDITION),
-        builder,
+    interceptor.logError(selector, null,
+        new StatusRuntimeException(io.grpc.Status.FAILED_PRECONDITION), builder,
         LogEntryOperation.getDefaultInstance());
-    AuditLog.Builder expectedBuilder =
-        AuditLog.newBuilder()
-            .setStatus(
-                Status.newBuilder()
-                    .setMessage(Code.FAILED_PRECONDITION.name())
-                    .setCode(Code.FAILED_PRECONDITION.getNumber())
-                    .build());
+    AuditLog.Builder expectedBuilder = AuditLog.newBuilder()
+        .setStatus(Status.newBuilder().setMessage(Code.FAILED_PRECONDITION.name())
+            .setCode(Code.FAILED_PRECONDITION.getNumber()).build());
     verify(loggingClient).log(auditLogRequestCaptor.capture());
     assertThat(auditLogRequestCaptor.getValue().getPayload().getStatus())
-        .isEqualTo(expectedBuilder.getStatus())
-        .usingRecursiveComparison();
+        .isEqualTo(expectedBuilder.getStatus()).usingRecursiveComparison();
   }
 
   @Test
@@ -211,78 +195,42 @@ public class AuditLoggingServerInterceptorTests {
     AuditLog.Builder builder = AuditLog.newBuilder();
     Instant now = Instant.parse("2022-04-18T22:11:22.333333Z");
     doReturn(now).when(clock).instant();
-    interceptor.logError(
-        selector,
-        null,
-        new StatusRuntimeException(io.grpc.Status.FAILED_PRECONDITION),
-        builder,
+    interceptor.logError(selector, null,
+        new StatusRuntimeException(io.grpc.Status.FAILED_PRECONDITION), builder,
         LogEntryOperation.getDefaultInstance());
     verify(loggingClient).log(auditLogRequestCaptor.capture());
     assertThat(auditLogRequestCaptor.getValue().hasTimestamp()).isTrue();
-    assertThat(
-        auditLogRequestCaptor
-            .getValue()
-            .getTimestamp()
-            .equals(
-                Timestamp.newBuilder()
-                    .setSeconds(now.getEpochSecond())
-                    .setNanos(now.getNano())
-                    .build()));
+    assertThat(auditLogRequestCaptor.getValue().getTimestamp().equals(
+        Timestamp.newBuilder().setSeconds(now.getEpochSecond()).setNanos(now.getNano()).build()));
   }
 
   @Test
-  public void getsMetaDataForJustification() throws Exception {
-    // Create JWT
-    Date date = new Date();
-    Map<String, Object> claims = new HashMap<>();
-    claims.put("id", "jwt-id");
-    claims.put("role", "user");
-    claims.put("created", date);
-    String token = Jwts.builder().setClaims(claims).compact();
-
+  public void justificationProcessorCalled() throws Exception {
     // Create Metadata
     Metadata md = new Metadata();
     Metadata.Key<String> metadataKey =
         Metadata.Key.of("justification-token", Metadata.ASCII_STRING_MARSHALLER);
-    md.put(metadataKey, token);
+    md.put(metadataKey, "token");
 
-    // Set up JVS mock to return the correct token
-    DecodedJWT jwt = JWT.decode(token);
-    doReturn(jwt).when(jvsClient).validateJWT(token);
+    interceptor.setJustification(md, null);
 
-    // Set up expected map. We want the claims to be under "justificatino_token" key in json format
-    Map<String, Value> expectedMap = new HashMap<>();
-    expectedMap.put(
-        "justification_token",
-        Value.newBuilder()
-            .setStringValue(
-                "{\"role\":\"user\",\"created\":" + date.getTime() + ",\"id\":\"jwt-id\"}")
-            .build());
-
-    Struct returnVal = interceptor.getStructForJustification(md);
-    assertThat(returnVal.getFieldsMap()).isEqualTo(expectedMap);
+    ArgumentCaptor<String> tokenArg = ArgumentCaptor.forClass(String.class);
+    verify(justificationProcessor).setLogJustification(tokenArg.capture(), any());
+    assertEquals("token", tokenArg.getValue());
   }
 
   @Test
-  public void getsMetaDataForJustification_Err() throws Exception {
-    // Create JWT
-    Date date = new Date();
-    Map<String, Object> claims = new HashMap<>();
-    claims.put("id", "jwt-id");
-    claims.put("role", "user");
-    claims.put("created", date);
-    String token = Jwts.builder().setClaims(claims).compact();
-
-    // Create Metadata
+  public void justificationProcessorErr() throws Exception {
     Metadata md = new Metadata();
     Metadata.Key<String> metadataKey =
         Metadata.Key.of("justification-token", Metadata.ASCII_STRING_MARSHALLER);
-    md.put(metadataKey, token);
+    md.put(metadataKey, "token");
 
     // Set up JVS mock to throw exception
-    doThrow(new JwkException("")).when(jvsClient).validateJWT(token);
+    doThrow(new LogProcessingException(null)).when(justificationProcessor)
+        .setLogJustification(eq("token"), any());;
 
     // Validate exception is bubbled up.
-    assertThrows(JwkException.class, () -> interceptor.getStructForJustification(md));
+    assertThrows(LogProcessingException.class, () -> interceptor.setJustification(md, null));
   }
 }
