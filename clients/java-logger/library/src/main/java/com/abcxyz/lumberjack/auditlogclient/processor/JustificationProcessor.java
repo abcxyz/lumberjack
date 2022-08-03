@@ -1,30 +1,32 @@
 /*
  * Copyright 2022 Lumberjack authors (see AUTHORS file)
  *
- * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
- * in compliance with the License. You may obtain a copy of the License at
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ *      http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software distributed under the License
- * is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express
- * or implied. See the License for the specific language governing permissions and limitations under
- * the License.
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 
 package com.abcxyz.lumberjack.auditlogclient.processor;
 
 import com.abcxyz.jvs.JvsClient;
 import com.abcxyz.lumberjack.v1alpha1.AuditLogRequest;
+import com.auth0.jwt.interfaces.DecodedJWT;
 import com.google.api.client.util.StringUtils;
 import com.google.cloud.audit.AuditLog;
-import com.auth0.jwt.interfaces.DecodedJWT;
-import org.apache.commons.codec.binary.Base64;
 import com.google.inject.Inject;
 import com.google.protobuf.Struct;
 import com.google.protobuf.Value;
 import com.google.protobuf.util.JsonFormat;
 import lombok.AllArgsConstructor;
+import org.apache.commons.codec.binary.Base64;
 
 @AllArgsConstructor(onConstructor = @__({@Inject}))
 public class JustificationProcessor {
@@ -54,8 +56,8 @@ public class JustificationProcessor {
   }
 
   /**
-   * Validates the given {@code jvsToken} and sets the justification info in the given
-   * {@code auditLogBuilder}.
+   * Validates the given {@code jvsToken} and sets the justification info in the given {@code
+   * auditLogBuilder}.
    *
    * @param jvsToken A JWT produced by JVS.
    * @param auditLogBuilder Audit log builder.
@@ -77,7 +79,8 @@ public class JustificationProcessor {
 
       // add new field with monitoredResource to existing metadata
       Struct.Builder metadataBuilder = auditLogBuilder.getMetadata().toBuilder();
-      metadataBuilder.putFields(JUSTIFICATION_LOG_METADATA_KEY,
+      metadataBuilder.putFields(
+          JUSTIFICATION_LOG_METADATA_KEY,
           Value.newBuilder().setStructValue(justificationStruct).build());
       auditLogBuilder.setMetadata(metadataBuilder.build());
 

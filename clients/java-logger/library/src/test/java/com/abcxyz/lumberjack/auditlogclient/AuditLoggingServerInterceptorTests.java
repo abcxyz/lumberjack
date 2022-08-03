@@ -1,15 +1,17 @@
 /*
  * Copyright 2021 Lumberjack authors (see AUTHORS file)
  *
- * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
- * in compliance with the License. You may obtain a copy of the License at
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ *      http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software distributed under the License
- * is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express
- * or implied. See the License for the specific language governing permissions and limitations under
- * the License.
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 
 package com.abcxyz.lumberjack.auditlogclient;
@@ -23,6 +25,7 @@ import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+
 import com.abcxyz.lumberjack.auditlogclient.config.AuditLoggingConfiguration;
 import com.abcxyz.lumberjack.auditlogclient.config.Selector;
 import com.abcxyz.lumberjack.auditlogclient.processor.JustificationProcessor;
@@ -54,23 +57,17 @@ import org.mockito.junit.jupiter.MockitoExtension;
 @ExtendWith(MockitoExtension.class)
 public class AuditLoggingServerInterceptorTests {
 
-  @Mock
-  LoggingClient loggingClient;
+  @Mock LoggingClient loggingClient;
 
-  @Mock
-  AuditLoggingConfiguration auditLoggingConfiguration;
+  @Mock AuditLoggingConfiguration auditLoggingConfiguration;
 
-  @Mock
-  Clock clock;
+  @Mock Clock clock;
 
-  @Mock
-  JustificationProcessor justificationProcessor;
+  @Mock JustificationProcessor justificationProcessor;
 
-  @InjectMocks
-  AuditLoggingServerInterceptor interceptor;
+  @InjectMocks AuditLoggingServerInterceptor interceptor;
 
-  @Captor
-  private ArgumentCaptor<AuditLogRequest> auditLogRequestCaptor;
+  @Captor private ArgumentCaptor<AuditLogRequest> auditLogRequestCaptor;
 
   @Test
   public void convertsMessageToStruct() {
@@ -79,8 +76,8 @@ public class AuditLoggingServerInterceptorTests {
     builder.setMethodName("test-method");
     Struct struct = interceptor.messageToStruct(builder.build());
     Struct.Builder structBuilder = Struct.newBuilder();
-    structBuilder.putFields("serviceName",
-        Value.newBuilder().setStringValue("test-service").build());
+    structBuilder.putFields(
+        "serviceName", Value.newBuilder().setStringValue("test-service").build());
     structBuilder.putFields("methodName", Value.newBuilder().setStringValue("test-method").build());
     assertThat(struct).isEqualTo(structBuilder.build());
   }
@@ -107,7 +104,8 @@ public class AuditLoggingServerInterceptorTests {
     Struct actual = interceptor.messagesToStruct(messages);
 
     Struct.Builder structBuilder = Struct.newBuilder();
-    structBuilder.putFields("request_list",
+    structBuilder.putFields(
+        "request_list",
         Value.newBuilder()
             .setStringValue(
                 "[service_name: \"test-service\"method_name: \"test-method\", service_name:"
@@ -164,13 +162,23 @@ public class AuditLoggingServerInterceptorTests {
     Selector selector = new Selector("*", null, null);
     AuditLog.Builder builder = AuditLog.newBuilder();
     doReturn(Clock.systemUTC().instant()).when(clock).instant();
-    interceptor.logError(selector, null, new RuntimeException("Test Message"), builder,
+    interceptor.logError(
+        selector,
+        null,
+        new RuntimeException("Test Message"),
+        builder,
         LogEntryOperation.getDefaultInstance());
-    AuditLog.Builder expectedBuilder = AuditLog.newBuilder().setStatus(Status.newBuilder()
-        .setMessage(Code.INTERNAL.name()).setCode(Code.INTERNAL.getNumber()).build());
+    AuditLog.Builder expectedBuilder =
+        AuditLog.newBuilder()
+            .setStatus(
+                Status.newBuilder()
+                    .setMessage(Code.INTERNAL.name())
+                    .setCode(Code.INTERNAL.getNumber())
+                    .build());
     verify(loggingClient).log(auditLogRequestCaptor.capture());
     assertThat(auditLogRequestCaptor.getValue().getPayload().getStatus())
-        .isEqualTo(expectedBuilder.getStatus()).usingRecursiveComparison();
+        .isEqualTo(expectedBuilder.getStatus())
+        .usingRecursiveComparison();
   }
 
   @Test
@@ -178,15 +186,23 @@ public class AuditLoggingServerInterceptorTests {
     Selector selector = new Selector("*", null, null);
     AuditLog.Builder builder = AuditLog.newBuilder();
     doReturn(Clock.systemUTC().instant()).when(clock).instant();
-    interceptor.logError(selector, null,
-        new StatusRuntimeException(io.grpc.Status.FAILED_PRECONDITION), builder,
+    interceptor.logError(
+        selector,
+        null,
+        new StatusRuntimeException(io.grpc.Status.FAILED_PRECONDITION),
+        builder,
         LogEntryOperation.getDefaultInstance());
-    AuditLog.Builder expectedBuilder = AuditLog.newBuilder()
-        .setStatus(Status.newBuilder().setMessage(Code.FAILED_PRECONDITION.name())
-            .setCode(Code.FAILED_PRECONDITION.getNumber()).build());
+    AuditLog.Builder expectedBuilder =
+        AuditLog.newBuilder()
+            .setStatus(
+                Status.newBuilder()
+                    .setMessage(Code.FAILED_PRECONDITION.name())
+                    .setCode(Code.FAILED_PRECONDITION.getNumber())
+                    .build());
     verify(loggingClient).log(auditLogRequestCaptor.capture());
     assertThat(auditLogRequestCaptor.getValue().getPayload().getStatus())
-        .isEqualTo(expectedBuilder.getStatus()).usingRecursiveComparison();
+        .isEqualTo(expectedBuilder.getStatus())
+        .usingRecursiveComparison();
   }
 
   @Test
@@ -195,13 +211,23 @@ public class AuditLoggingServerInterceptorTests {
     AuditLog.Builder builder = AuditLog.newBuilder();
     Instant now = Instant.parse("2022-04-18T22:11:22.333333Z");
     doReturn(now).when(clock).instant();
-    interceptor.logError(selector, null,
-        new StatusRuntimeException(io.grpc.Status.FAILED_PRECONDITION), builder,
+    interceptor.logError(
+        selector,
+        null,
+        new StatusRuntimeException(io.grpc.Status.FAILED_PRECONDITION),
+        builder,
         LogEntryOperation.getDefaultInstance());
     verify(loggingClient).log(auditLogRequestCaptor.capture());
     assertThat(auditLogRequestCaptor.getValue().hasTimestamp()).isTrue();
-    assertThat(auditLogRequestCaptor.getValue().getTimestamp().equals(
-        Timestamp.newBuilder().setSeconds(now.getEpochSecond()).setNanos(now.getNano()).build()));
+    assertThat(
+        auditLogRequestCaptor
+            .getValue()
+            .getTimestamp()
+            .equals(
+                Timestamp.newBuilder()
+                    .setSeconds(now.getEpochSecond())
+                    .setNanos(now.getNano())
+                    .build()));
   }
 
   @Test
@@ -227,8 +253,10 @@ public class AuditLoggingServerInterceptorTests {
     md.put(metadataKey, "token");
 
     // Set up JVS mock to throw exception
-    doThrow(new LogProcessingException(null)).when(justificationProcessor)
-        .setLogJustification(eq("token"), any());;
+    doThrow(new LogProcessingException(null))
+        .when(justificationProcessor)
+        .setLogJustification(eq("token"), any());
+    ;
 
     // Validate exception is bubbled up.
     assertThrows(LogProcessingException.class, () -> interceptor.setJustification(md, null));

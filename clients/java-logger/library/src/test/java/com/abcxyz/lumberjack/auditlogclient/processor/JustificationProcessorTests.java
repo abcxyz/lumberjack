@@ -1,23 +1,26 @@
 /*
  * Copyright 2022 Lumberjack authors (see AUTHORS file)
  *
- * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
- * in compliance with the License. You may obtain a copy of the License at
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ *      http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software distributed under the License
- * is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express
- * or implied. See the License for the specific language governing permissions and limitations under
- * the License.
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 
 package com.abcxyz.lumberjack.auditlogclient.processor;
 
-import java.util.Map;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
+import static org.junit.Assert.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.doThrow;
+
 import com.abcxyz.jvs.JvsClient;
 import com.abcxyz.lumberjack.v1alpha1.AuditLogRequest;
 import com.auth0.jwk.JwkException;
@@ -27,19 +30,18 @@ import com.google.cloud.audit.AuditLog;
 import com.google.cloud.audit.AuthenticationInfo;
 import com.google.protobuf.Struct;
 import com.google.protobuf.Value;
-import static org.junit.Assert.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.mockito.Mockito.doReturn;
-import static org.mockito.Mockito.doThrow;
-import java.util.HashMap;
 import io.jsonwebtoken.Jwts;
+import java.util.HashMap;
+import java.util.Map;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
 
 @ExtendWith(MockitoExtension.class)
 public class JustificationProcessorTests {
 
-  @Mock
-  JvsClient jvsClient;
+  @Mock JvsClient jvsClient;
 
   // auditLogRequest
   AuthenticationInfo authenticationInfo =
@@ -61,11 +63,15 @@ public class JustificationProcessorTests {
 
     AuditLogRequest wantAuditLogReq = AuditLogRequest.parseFrom(auditLogRequest.toByteArray());
     Struct wantJustification =
-        Struct.newBuilder().putFields("id", Value.newBuilder().setStringValue("jwt-id").build())
-            .putFields("role", Value.newBuilder().setStringValue("user").build()).build();
-    Struct wantMetadata = Struct.newBuilder()
-        .putFields("justification", Value.newBuilder().setStructValue(wantJustification).build())
-        .build();
+        Struct.newBuilder()
+            .putFields("id", Value.newBuilder().setStringValue("jwt-id").build())
+            .putFields("role", Value.newBuilder().setStringValue("user").build())
+            .build();
+    Struct wantMetadata =
+        Struct.newBuilder()
+            .putFields(
+                "justification", Value.newBuilder().setStructValue(wantJustification).build())
+            .build();
     AuditLog wantAuditLog =
         wantAuditLogReq.getPayload().toBuilder().setMetadata(wantMetadata).build();
     wantAuditLogReq = wantAuditLogReq.toBuilder().setPayload(wantAuditLog).build();
@@ -94,7 +100,8 @@ public class JustificationProcessorTests {
   @Test
   public void processShouldThrowExceptionWithoutLogReqPayload() throws Exception {
     JustificationProcessor processor = new JustificationProcessor(jvsClient);
-    assertThrows(IllegalArgumentException.class,
+    assertThrows(
+        IllegalArgumentException.class,
         () -> processor.process("token", AuditLogRequest.newBuilder().build()));
   }
 
@@ -111,16 +118,21 @@ public class JustificationProcessorTests {
     doReturn(jwt).when(jvsClient).validateJWT(token);
 
     Struct wantJustification =
-        Struct.newBuilder().putFields("id", Value.newBuilder().setStringValue("jwt-id").build())
-            .putFields("role", Value.newBuilder().setStringValue("user").build()).build();
-    Struct wantMetadata = Struct.newBuilder()
-        .putFields("justification", Value.newBuilder().setStructValue(wantJustification).build())
-        .build();
+        Struct.newBuilder()
+            .putFields("id", Value.newBuilder().setStringValue("jwt-id").build())
+            .putFields("role", Value.newBuilder().setStringValue("user").build())
+            .build();
+    Struct wantMetadata =
+        Struct.newBuilder()
+            .putFields(
+                "justification", Value.newBuilder().setStructValue(wantJustification).build())
+            .build();
     AuditLog wantAuditLog = auditLog.toBuilder().setMetadata(wantMetadata).build();
     AuditLog.Builder gotAuditLogBuilder = auditLog.toBuilder();
 
     JustificationProcessor processor = new JustificationProcessor(jvsClient);
-    processor.setLogJustification(token, gotAuditLogBuilder);;
+    processor.setLogJustification(token, gotAuditLogBuilder);
+    ;
 
     assertEquals(wantAuditLog, gotAuditLogBuilder.build());
   }
@@ -137,7 +149,8 @@ public class JustificationProcessorTests {
     doThrow(new JwkException("")).when(jvsClient).validateJWT(token);
 
     JustificationProcessor processor = new JustificationProcessor(jvsClient);
-    assertThrows(LogProcessingException.class,
+    assertThrows(
+        LogProcessingException.class,
         () -> processor.setLogJustification(token, auditLog.toBuilder()));
   }
 }
