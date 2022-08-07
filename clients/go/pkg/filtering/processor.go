@@ -85,12 +85,20 @@ func NewPrincipalEmailMatcher(opts ...Option) (*PrincipalEmailMatcher, error) {
 	return m, nil
 }
 
-// Process with receiver PrincipalEmailMatcher filters log requests when the principal email
-// matches an `include` or `exclude` regular expression. We use the following filtering logic:
-//   1. If include == nil and exclude == nil, we pass the request.
-//   2. If include != nil and exclude == nil, we only pass the request when the principal matches include.
-//   3. If include == nil and exclude != nil, we only drop the request when the principal matches exclude.
-//   4. If include != nil and exclude != nil, we drop the request when the principal doesn't match include and matches exclude.
+// Process with receiver PrincipalEmailMatcher filters log requests when the
+// principal email matches an `include` or `exclude` regular expression. We use
+// the following filtering logic:
+//
+//  1. If include == nil and exclude == nil, we pass the request.
+//
+//  2. If include != nil and exclude == nil, we only pass the request when the
+//     principal matches include.
+//
+//  3. If include == nil and exclude != nil, we only drop the request when the
+//     principal matches exclude.
+//
+//  4. If include != nil and exclude != nil, we drop the request when the
+//     principal doesn't match include and matches exclude.
 func (p *PrincipalEmailMatcher) Process(_ context.Context, logReq *api.AuditLogRequest) error {
 	if len(p.includes) == 0 && len(p.excludes) == 0 {
 		return nil

@@ -28,7 +28,7 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
-	"io/ioutil"
+	"os"
 
 	"cloud.google.com/go/logging"
 	"github.com/abcxyz/jvs/client-lib/go/client"
@@ -57,7 +57,7 @@ func MustFromConfigFile(path string) audit.Option {
 // for testing.
 func mustFromConfigFile(path string, lookuper envconfig.Lookuper) audit.Option {
 	return func(c *audit.Client) error {
-		fc, err := ioutil.ReadFile(path)
+		fc, err := os.ReadFile(path)
 		if err != nil {
 			return err
 		}
@@ -84,7 +84,7 @@ func fromConfigFile(path string, lookuper envconfig.Lookuper) audit.Option {
 		if path == "" {
 			path = DefaultConfigFilePath
 		}
-		fc, err := ioutil.ReadFile(path)
+		fc, err := os.ReadFile(path)
 		// We ignore ErrNotExist when reading the file because we
 		// still use env vars and defaults to setup the client.
 		if err != nil && !errors.Is(err, fs.ErrNotExist) {
@@ -109,7 +109,7 @@ func InterceptorFromConfigFile(ctx context.Context, path string) audit.Intercept
 // custom lookuper for testing.
 func interceptorFromConfigFile(ctx context.Context, path string, lookuper envconfig.Lookuper) audit.InterceptorOption {
 	return func(i *audit.Interceptor) error {
-		fc, err := ioutil.ReadFile(path)
+		fc, err := os.ReadFile(path)
 		if err != nil {
 			return fmt.Errorf("failed to read config file: %w", err)
 		}

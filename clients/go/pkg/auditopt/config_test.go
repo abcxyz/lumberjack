@@ -17,7 +17,6 @@ package auditopt
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path"
 	"path/filepath"
@@ -201,7 +200,7 @@ security_context:
 			path := filepath.Join(t.TempDir(), "config.yaml")
 			// Add address of the fake server to the config file.
 			content := fmt.Sprintf(tc.fileContent, addr)
-			if err := ioutil.WriteFile(path, []byte(content), 0o600); err != nil {
+			if err := os.WriteFile(path, []byte(content), 0o600); err != nil {
 				t.Fatal(err)
 			}
 
@@ -250,7 +249,7 @@ backend:
 	dir := t.TempDir()
 	for name, content := range configFileContentByName {
 		path := filepath.Join(dir, name)
-		if err := ioutil.WriteFile(path, []byte(content), 0o600); err != nil {
+		if err := os.WriteFile(path, []byte(content), 0o600); err != nil {
 			t.Fatal(err)
 		}
 		t.Cleanup(func() {
@@ -480,11 +479,11 @@ require_justification: true
 			t.Parallel()
 
 			path := filepath.Join(t.TempDir(), "config.yaml")
-			if err := ioutil.WriteFile(path, []byte(tc.fileContent), 0o600); err != nil {
+			if err := os.WriteFile(path, []byte(tc.fileContent), 0o600); err != nil {
 				t.Fatal(err)
 			}
 
-			fc, err := ioutil.ReadFile(path)
+			fc, err := os.ReadFile(path)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -617,7 +616,7 @@ rules:
 			t.Parallel()
 
 			path := filepath.Join(t.TempDir(), "config.yaml")
-			if err := ioutil.WriteFile(path, []byte(tc.fileContent), 0o600); err != nil {
+			if err := os.WriteFile(path, []byte(tc.fileContent), 0o600); err != nil {
 				t.Fatal(err)
 			}
 			t.Cleanup(func() {

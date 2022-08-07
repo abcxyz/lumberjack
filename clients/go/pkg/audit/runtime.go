@@ -17,7 +17,6 @@ package audit
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"strings"
 
@@ -193,7 +192,7 @@ func detectKubernetesResource() *mrpb.MonitoredResource {
 	if err != nil {
 		return nil
 	}
-	namespaceBytes, err := ioutil.ReadFile("/var/run/secrets/kubernetes.io/serviceaccount/namespace")
+	namespaceBytes, err := os.ReadFile("/var/run/secrets/kubernetes.io/serviceaccount/namespace")
 	namespaceName := ""
 	if err == nil {
 		namespaceName = string(namespaceBytes)

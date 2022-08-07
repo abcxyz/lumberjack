@@ -50,11 +50,11 @@ func WithLoggingClient(client *logging.Client) Option {
 // WithDefaultBestEffort sets the default logging mode of operation to best
 // effort. There are two possible logging modes of operation:
 //   - fail-close. Without this option, this is default. The Cloud Logging
-//   client blocks to emit a log, and immediately returns an error when
-//   there's a failure.
+//     client blocks to emit a log, and immediately returns an error when
+//     there's a failure.
 //   - best effort. The Cloud Logging client emits logs asynchronously
-//   and does not return an error on failure. Calling `Stop()` flushes
-//   the logs and returns all previously encountered errors.
+//     and does not return an error on failure. Calling `Stop()` flushes
+//     the logs and returns all previously encountered errors.
 //
 // TODO(b/203776475): individual log requests can specify failclose or
 // besteffort logging.
