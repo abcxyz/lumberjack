@@ -60,9 +60,10 @@ type Processor struct {
 // NewProcessor creates a new remote audit log processor.
 //
 // E.g.
-//   p, err := NewProcessor("localhost:8080", WithDefaultAuth())
-//   if err != nil { ... }
-//   defer p.Close()
+//
+//	p, err := NewProcessor("localhost:8080", WithDefaultAuth())
+//	if err != nil { ... }
+//	defer p.Close()
 func NewProcessor(address string, opts ...Option) (*Processor, error) {
 	p := &Processor{address: address}
 	for _, o := range opts {
