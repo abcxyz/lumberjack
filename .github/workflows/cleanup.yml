@@ -72,7 +72,7 @@ jobs:
           service_account: 'gh-access-sa@lumberjack-dev-infra.iam.gserviceaccount.com'
 
       - name: 'Remove old container images'
-        uses: 'docker://us-docker.pkg.dev/gcr-cleaner/gcr-cleaner/gcr-cleaner-cli@sha256:e15fb64f6703067b066ed181a97f6304b63540bfc8743420a3f20453ab018fed' # ratchet:docker://us-docker.pkg.dev/gcr-cleaner/gcr-cleaner/gcr-cleaner-cli
+        uses: 'docker://us-docker.pkg.dev/gcr-cleaner/gcr-cleaner/gcr-cleaner-cli' # ratchet:ignore old image versions are removed
         with:
           args: >-
             -repo=us-docker.pkg.dev/lumberjack-dev-infra/images/lumberjack-server
