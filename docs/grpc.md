@@ -1,66 +1,28 @@
-# Lumberjack Spec
+# Lumberjack for gRPC services
 
-## Audit logging server (gRPC) API
+**Lumberjack is not an official Google product.**
 
--   The gRPC service definition is
-    [audit_log_agent.proto](protos/v1alpha1/audit_log_agent.proto)
--   The log request definition is
-    [audit_log_request.proto](protos/v1alpha1/audit_log_request.proto)
-    -   Notice that the essential log payload has type
-        `google.cloud.audit.AuditLog` which is the same as Google
-        [Cloud Audit Logs](https://github.com/googleapis/googleapis/blob/master/google/cloud/audit/audit_log.proto).
+The auto audit logging can be added to your gRPC service via gRPC interceptor.
 
-## Audit logging client config
+## Config
 
-For the canonical config spec, reference comments in
-[config.go](clients/go/apis/v1alpha1/config.go). The config file must be written
-in `yaml` format.
+Config blocks `security_context` and `rules` are only used in auto audit logging
+setup. Setting these fields *don't* automatically enable auto audit logging.
+Code change is still required (see below).
 
-### Explicit audit logging examples
-
-Config the client to send audit logs
-
--   whose request principal is not a IAM service account
--   to an audit logging server at `audit-logging.example.com:443`
-
-```yaml
-version: v1alpha1
-backend:
-  remote:
-    address: audit-logging.example.com:443
-condition:
-  regex:
-    exclude: ".*\\.iam\\.gserviceaccount\\.com$"
-```
-
-Config the client to audit log all requests and write the logs to the same audit
-logging server.
-
-```yaml
-version: v1alpha1
-backend:
-  remote:
-    address: audit-logging.example.com:443
-# No condition means audit log all requests.
-```
-
-### Auto audit logging in gRPC examples
-
-Blocks `security_context` and `rules` are only used in auto audit logging setup.
-Setting these fields *don't* automatically enable auto audit logging. Code
-change is still required (TODO: link examples).
+## Examples
 
 Config the client to
 
 -   look up authentication info (request principal) from a JWT without
     validation (assuming application code already handles it)
--   and enable audit logging for all gRPC method
+-   and enable audit logging for *all* gRPC method
 
 ```yaml
 version: v1alpha1
 backend:
-  remote:
-    address: audit-logging.example.com:443
+  cloudlogging:
+    default_project: true
 condition:
   regex:
     exclude: ".*\\.iam\\.gserviceaccount\\.com$"
@@ -80,8 +42,8 @@ Config the client to
 ```yaml
 version: v1alpha1
 backend:
-  remote:
-    address: audit-logging.example.com:443
+  cloudlogging:
+    default_project: true
 condition:
   regex:
     exclude: ".*\\.iam\\.gserviceaccount\\.com$"
@@ -95,62 +57,40 @@ rules:
   Directive: AUDIT_REQUEST_AND_RESPONSE # Audit both req and resp
 ```
 
-Config the client to add default labels to each audit log. These labels will be
-added to the labels section of each audit log, and will not overwrite labels
-that are explicitly added elsewhere in code.
+## Go interceptor
 
-```yaml
-version: v1alpha1
-backend:
-  remote:
-    address: audit-logging.example.com:443
-condition:
-  regex:
-    exclude: ".*\\.iam\\.gserviceaccount\\.com$"
-security_context:
-  from_raw_jwt:
-  - key: authorization
-    prefix: "Bearer "
-rules:
-- selector: *
-labels:
-  example_label: "example_value"
-  second_example_label: "second_example_value"
+```go
+// Similar to how you would create an audit client.
+interceptor, err := audit.NewInterceptor(auditopt.InterceptorFromConfigFile(ctx, auditopt.DefaultConfigFilePath)
+if err != nil {
+  // handle err
+}
+defer func() {
+  if err := interceptor.Stop(); err != nil {
+    // handle err
+  }
+}()
+// Add the interceptors to the gRPC server.
+s := grpc.NewServer(grpc.UnaryInterceptor(interceptor.UnaryInterceptor), grpc.StreamInterceptor(interceptor.StreamInterceptor))
 ```
 
-Config the client to also verify the JWT (warning: not implemented).
+In case you have other interceptors of your own, use
+[`ChainUnaryInterceptor`](https://pkg.go.dev/google.golang.org/grpc#ChainUnaryInterceptor)
+and
+[`ChainStreamInterceptor`](https://pkg.go.dev/google.golang.org/grpc#ChainStreamInterceptor)
+instead.
 
-```yaml
-version: v1alpha1
-backend:
-  remote:
-    address: audit-logging.example.com:443
-condition:
-  regex:
-    exclude: ".*\\.iam\\.gserviceaccount\\.com$"
-security_context:
-  from_raw_jwt:
-  - key: authorization
-    prefix: "Bearer "
-    jwks:
-      endpoint: https://example.com/jwks
-rules:
-- selector: /com.example.Foo/Bar
-  Directive: AUDIT_REQUEST_AND_RESPONSE # Audit both req and resp
-```
+## Java interceptor
 
-### Overwritable configs
+TODO
 
-The following configs can be overwritten with env vars.
-
--   `AUDIT_CLIENT_BACKEND_REMOTE_ADDRESS` - to overwrite backend address
--   `AUDIT_CLIENT_BACKEND_REMOTE_INSECURE_ENABLED` - to force using insecure connection
--   `AUDIT_CLIENT_BACKEND_REMOTE_IMPERSONATE_ACCOUNT` - to impersonate a service
-
-# Auto Audit Logging Behavior
+## Behaviors
 
 ## Unary Calls
-Unary calls are single request/response pairs. In this case, a single audit log will be generated that includes all relevant fields, as well as both the request and response. 
+
+Unary calls are single request/response pairs. In this case, a single audit log
+will be generated that includes all relevant fields, as well as both the request
+and response.
 
 Example (edited for brevity):
 
