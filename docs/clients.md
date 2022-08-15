@@ -4,8 +4,8 @@
 
 Lumberjack client consists of the following processors and they run in order:
 
-1.  Validator(s): To validate audit log requests
-2.  Mutator(s): To mutate audit log request, e.g. applying common labels
+1.  Validator(s): To validate the audit log requests
+2.  Mutator(s): To mutate the audit log requests, e.g. applying common labels
 3.  Backend(s): Specifying where to send the logs.
 
 You can use a [config file](./config.md) to ease the client initialization or
@@ -29,7 +29,7 @@ if err != nil {
 // client.Log(ctx, req)
 ```
 
-### "Assemable" a client in code
+### "Assemble" a client in code
 
 ```go
 m, err := filtering.NewPrincipalEmailMatcher(filtering.WithIncludes(`@example1\.com$|@example2\.com$`))
@@ -66,7 +66,7 @@ labels:
   common_label_1: foobar
 ```
 
-### Exend
+### Extend
 
 Say if you want to add custom "mutator". Implement the `audit.LogProcessor`
 interface and provide it as a mutator as an `audit.Option`.

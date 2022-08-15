@@ -58,7 +58,7 @@ condition:
 
 ## Log Mode
 
-By defualt, the client won't return error when logging is failed to avoid
+By default, the client won't return error when logging is failed to avoid
 breaking the application. However, certain applications might prefer failing the
 request if audit logging is failed ("fail-close"). Add the following block in
 the config to enable fail-close mode:
@@ -87,36 +87,18 @@ TODO
 
 ## Supported env vars
 
-| ENV VAR name                                      | Description              |
-| ------------------------------------------------- | ------------------------ |
-| AUDIT_CLIENT_BACKEND_CLOUDLOGGING_DEFAULT_PROJECT | Audit logging directly   |
-:                                                   : to cloud logging in the  :
-:                                                   : default project          :
-| AUDIT_CLIENT_BACKEND_CLOUDLOGGING_PROJECT         | Audit logging directly   |
-:                                                   : to cloud logging in the  :
-:                                                   : given project            :
-| AUDIT_CLIENT_BACKEND_REMOTE_ADDRESS               | Audit logging to an      |
-:                                                   : ingestion gRPC service   :
-:                                                   : in the given address     :
-| AUDIT_CLIENT_BACKEND_REMOTE_INSECURE_ENABLED      | Audit logging to an      |
-:                                                   : ingestion gRPC service   :
-:                                                   : insecurely               :
-| AUDIT_CLIENT_BACKEND_REMOTE_IMPERSONATE_ACCOUNT   | Audit logging to an      |
-:                                                   : ingestion gRPC service   :
-:                                                   : impersonating the given  :
-:                                                   : service account          :
-| AUDIT_CLIENT_CONDITION_REGEX_PRINCIPAL_INCLUDE    | Include the matching     |
-:                                                   : request principals in    :
-:                                                   : audit logging            :
-| AUDIT_CLIENT_CONDITION_REGEX_PRINCIPAL_EXCLUDE    | Exclude the matching     |
-:                                                   : request principals in    :
-:                                                   : audit logging            :
-| AUDIT_CLIENT_LOG_MODE                             | Whether to fail-close    |
-:                                                   : audit logging            :
-| AUDIT_CLIENT_JVS_ENDPOINT                         | (Experimental) The JVS   |
-:                                                   : JWKs address             :
-| AUDIT_CLIENT_REQUIRE_JUSTIFICATION                | (Experimental) Whether   |
-:                                                   : to require justification :
+| ENV VAR name                                      | Description                                                                        |
+| ------------------------------------------------- | ---------------------------------------------------------------------------------- |
+| AUDIT_CLIENT_BACKEND_CLOUDLOGGING_DEFAULT_PROJECT | Audit logging directly to cloud logging in the default project                     |
+| AUDIT_CLIENT_BACKEND_CLOUDLOGGING_PROJECT         | Audit logging directly to cloud logging in the given project                       |
+| AUDIT_CLIENT_BACKEND_REMOTE_ADDRESS               | Audit logging to an ingestion gRPC service in the given address                    |
+| AUDIT_CLIENT_BACKEND_REMOTE_INSECURE_ENABLED      | Audit logging to an ingestion gRPC service insecurely                              |
+| AUDIT_CLIENT_BACKEND_REMOTE_IMPERSONATE_ACCOUNT   | Audit logging to an ingestion gRPC service impersonating the given service account |
+| AUDIT_CLIENT_CONDITION_REGEX_PRINCIPAL_INCLUDE    | Include the matching request principals in audit logging                           |
+| AUDIT_CLIENT_CONDITION_REGEX_PRINCIPAL_EXCLUDE    | Exclude the matching request principals in audit logging                           |
+| AUDIT_CLIENT_LOG_MODE                             | Whether to fail-close audit logging                                                |
+| AUDIT_CLIENT_JVS_ENDPOINT                         | (Experimental) The JVS JWKs address                                                |
+| AUDIT_CLIENT_REQUIRE_JUSTIFICATION                | (Experimental) Whether to require justification                                    |
 
 ## Examples
 
