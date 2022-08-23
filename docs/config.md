@@ -81,9 +81,23 @@ labels:
 
 Please refer to the [gRPC guide](./grpc.md).
 
-## (WIP) Justification
+## Justification
 
-TODO
+By default, the client will use `localhost:8080` as the endpoint to retrieve public keys from the JVS.
+These public keys will be used to validate JWT tokens that are passed in through the "justification_token" header.
+Add the following block in the config to override the default endpoint:
+
+```yaml
+jvs_endpoint: example.com
+```
+
+By default, justifications will not be added to audit logs, even if provided.
+Add the following block in the config to enable adding justification information to audit logs
+(all manual calls are expected to pass in a justification in the "justification_token" header).
+
+```yaml
+enable_justification: true
+```
 
 ## Supported env vars
 
