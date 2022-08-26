@@ -19,6 +19,7 @@ package abcxyz.lumberjack;
 import "google/cloud/audit/audit_log.proto";
 import "google/logging/v2/log_entry.proto";
 import "google/protobuf/descriptor.proto";
+import "google/protobuf/struct.proto";
 import "google/protobuf/timestamp.proto";
 
 option go_package = "github.com/abcxyz/lumberjack/clients/go/apis/v1alpha1";
@@ -81,4 +82,9 @@ message AuditLogRequest {
   google.logging.v2.LogEntryOperation operation = 5;
 
   google.protobuf.Timestamp timestamp = 6;
+
+  // Contextual info associated with the log request.
+  // Such info is meant for log processors and may not be directly
+  // reflected in the final audit log.
+  google.protobuf.Struct context = 7;
 }
