@@ -450,7 +450,7 @@ security_context:
   from_raw_jwt:
   - key: authorization
 justification:
-  jvs_public_keys_endpoint: example.com:123
+  public_keys_endpoint: example.com:123
   enabled: true
 `,
 			wantCfg: &api.Config{
