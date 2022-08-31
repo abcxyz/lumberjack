@@ -56,7 +56,7 @@ labels:
   mylabel2: myvalue2
 log_mode: BEST_EFFORT
 justification:
-  jvs_public_keys_endpoint: example.com
+  public_keys_endpoint: example.com
   enabled: true`,
 		wantConfig: &Config{
 			Version: "v1alpha1",
@@ -91,8 +91,8 @@ justification:
 			},
 			LogMode: "BEST_EFFORT",
 			Justification: &Justification{
-				JVSPublicKeysEndpoint: "example.com",
-				Enabled:               true,
+				PublicKeysEndpoint: "example.com",
+				Enabled:            true,
 			},
 		},
 		wantLogMode: AuditLogRequest_BEST_EFFORT,
@@ -179,8 +179,8 @@ func TestValidate(t *testing.T) {
 					LogType:   "DATA_ACCESS",
 				}},
 				Justification: &Justification{
-					JVSPublicKeysEndpoint: "example.com",
-					Enabled:               true,
+					PublicKeysEndpoint: "example.com",
+					Enabled:            true,
 				},
 			},
 		},
@@ -369,7 +369,7 @@ func TestValidate(t *testing.T) {
 					Enabled: true,
 				},
 			},
-			wantErr: `jvs_public_keys_endpoint must be specified when justification is enabled`,
+			wantErr: `public_keys_endpoint must be specified when justification is enabled`,
 		},
 	}
 

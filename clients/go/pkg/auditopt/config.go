@@ -124,7 +124,7 @@ func interceptorFromConfigFile(ctx context.Context, path string, lookuper envcon
 		}
 
 		if cfg.Justification != nil && cfg.Justification.Enabled {
-			jvsClient, err := client.NewJVSClient(ctx, &client.JVSConfig{JVSEndpoint: cfg.Justification.JVSPublicKeysEndpoint})
+			jvsClient, err := client.NewJVSClient(ctx, &client.JVSConfig{JVSEndpoint: cfg.Justification.PublicKeysEndpoint})
 			if err != nil {
 				return err
 			}

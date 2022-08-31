@@ -458,8 +458,8 @@ justification:
 				Backend:         &api.Backend{Remote: &api.Remote{Address: "foo:443", InsecureEnabled: true}},
 				SecurityContext: &api.SecurityContext{FromRawJWT: []*api.FromRawJWT{{Key: "authorization"}}},
 				Justification: &api.Justification{
-					JVSPublicKeysEndpoint: "example.com:123",
-					Enabled:               true,
+					PublicKeysEndpoint: "example.com:123",
+					Enabled:            true,
 				},
 			},
 		},
