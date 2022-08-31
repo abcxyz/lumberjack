@@ -152,184 +152,194 @@ func TestValidate(t *testing.T) {
 		name    string
 		cfg     *Config
 		wantErr string
-	}{{
-		name: "valid",
-		cfg: &Config{
-			Version: "v1alpha1",
-			SecurityContext: &SecurityContext{
-				FromRawJWT: []*FromRawJWT{{
-					Key: "authorization",
+	}{
+		{
+			name: "valid",
+			cfg: &Config{
+				Version: "v1alpha1",
+				SecurityContext: &SecurityContext{
+					FromRawJWT: []*FromRawJWT{{
+						Key: "authorization",
+					}},
+				},
+				Backend: &Backend{
+					Remote: &Remote{
+						Address: "foo",
+					},
+					CloudLogging: &CloudLogging{
+						DefaultProject: true,
+					},
+				},
+				Condition: &Condition{
+					Regex: &RegexCondition{},
+				},
+				Rules: []*AuditRule{{
+					Selector:  "*",
+					Directive: "AUDIT_REQUEST_ONLY",
+					LogType:   "DATA_ACCESS",
+				}},
+				Justification: &Justification{
+					JVSPublicKeysEndpoint: "example.com",
+					Enabled:               true,
+				},
+			},
+		},
+		{
+			name: "invalid_version",
+			cfg: &Config{
+				Version: "random",
+				SecurityContext: &SecurityContext{
+					FromRawJWT: []*FromRawJWT{},
+				},
+				Condition: &Condition{
+					Regex: &RegexCondition{},
+				},
+				Rules: []*AuditRule{{Selector: "*"}},
+			},
+			wantErr: `unexpected Version "random" want "v1alpha1"`,
+		},
+		{
+			name: "missing_rule_selector",
+			cfg: &Config{
+				Version: "v1alpha1",
+				SecurityContext: &SecurityContext{
+					FromRawJWT: []*FromRawJWT{},
+				},
+				Condition: &Condition{
+					Regex: &RegexCondition{},
+				},
+				Rules: []*AuditRule{{}},
+			},
+			wantErr: "audit rule selector is empty",
+		},
+		{
+			name: "invalid_rule_directive",
+			cfg: &Config{
+				Version: "v1alpha1",
+				SecurityContext: &SecurityContext{
+					FromRawJWT: []*FromRawJWT{},
+				},
+				Condition: &Condition{
+					Regex: &RegexCondition{},
+				},
+				Rules: []*AuditRule{{
+					Selector:  "*",
+					Directive: "random",
+					LogType:   "DATA_ACCESS",
 				}},
 			},
-			Backend: &Backend{
-				Remote: &Remote{
-					Address: "foo",
+			wantErr: `unexpected rule.Directive "random" want one of ["AUDIT", "AUDIT_REQUEST_ONLY"`,
+		},
+		{
+			name: "invalid_rule_log_type",
+			cfg: &Config{
+				Version: "v1alpha1",
+				SecurityContext: &SecurityContext{
+					FromRawJWT: []*FromRawJWT{},
 				},
-				CloudLogging: &CloudLogging{
-					DefaultProject: true,
+				Condition: &Condition{
+					Regex: &RegexCondition{},
 				},
-			},
-			Condition: &Condition{
-				Regex: &RegexCondition{},
-			},
-			Rules: []*AuditRule{{
-				Selector:  "*",
-				Directive: "AUDIT_REQUEST_ONLY",
-				LogType:   "DATA_ACCESS",
-			}},
-			Justification: &Justification{
-				JVSPublicKeysEndpoint: "example.com",
-				Enabled:               true,
-			},
-		},
-	}, {
-		name: "invalid_version",
-		cfg: &Config{
-			Version: "random",
-			SecurityContext: &SecurityContext{
-				FromRawJWT: []*FromRawJWT{},
-			},
-			Condition: &Condition{
-				Regex: &RegexCondition{},
-			},
-			Rules: []*AuditRule{{Selector: "*"}},
-		},
-		wantErr: `unexpected Version "random" want "v1alpha1"`,
-	}, {
-		name: "missing_rule_selector",
-		cfg: &Config{
-			Version: "v1alpha1",
-			SecurityContext: &SecurityContext{
-				FromRawJWT: []*FromRawJWT{},
-			},
-			Condition: &Condition{
-				Regex: &RegexCondition{},
-			},
-			Rules: []*AuditRule{{}},
-		},
-		wantErr: "audit rule selector is empty",
-	}, {
-		name: "invalid_rule_directive",
-		cfg: &Config{
-			Version: "v1alpha1",
-			SecurityContext: &SecurityContext{
-				FromRawJWT: []*FromRawJWT{},
-			},
-			Condition: &Condition{
-				Regex: &RegexCondition{},
-			},
-			Rules: []*AuditRule{{
-				Selector:  "*",
-				Directive: "random",
-				LogType:   "DATA_ACCESS",
-			}},
-		},
-		wantErr: `unexpected rule.Directive "random" want one of ["AUDIT", "AUDIT_REQUEST_ONLY"`,
-	}, {
-		name: "invalid_rule_log_type",
-		cfg: &Config{
-			Version: "v1alpha1",
-			SecurityContext: &SecurityContext{
-				FromRawJWT: []*FromRawJWT{},
-			},
-			Condition: &Condition{
-				Regex: &RegexCondition{},
-			},
-			Rules: []*AuditRule{{
-				Selector:  "*",
-				Directive: "AUDIT_REQUEST_ONLY",
-				LogType:   "random",
-			}},
-		},
-		wantErr: `unexpected rule.LogType "random" want one of ["ADMIN_ACTIVITY", "DATA_ACCESS"]`,
-	}, {
-		name: "combination_of_errors",
-		cfg: &Config{
-			Version: "random",
-			Backend: &Backend{
-				Remote: &Remote{Address: "fake"},
-			},
-			Rules: []*AuditRule{{}},
-		},
-		wantErr: `unexpected Version "random" want "v1alpha1"; audit rule selector is empty`,
-	}, {
-		name: "invalid_security_context",
-		cfg: &Config{
-			Version: "v1alpha1",
-			SecurityContext: &SecurityContext{
-				FromRawJWT: []*FromRawJWT{{
-					Key: "",
+				Rules: []*AuditRule{{
+					Selector:  "*",
+					Directive: "AUDIT_REQUEST_ONLY",
+					LogType:   "random",
 				}},
 			},
-			Backend: &Backend{
-				Remote: &Remote{
-					Address: "foo",
+			wantErr: `unexpected rule.LogType "random" want one of ["ADMIN_ACTIVITY", "DATA_ACCESS"]`,
+		},
+		{
+			name: "combination_of_errors",
+			cfg: &Config{
+				Version: "random",
+				Backend: &Backend{
+					Remote: &Remote{Address: "fake"},
+				},
+				Rules: []*AuditRule{{}},
+			},
+			wantErr: `unexpected Version "random" want "v1alpha1"; audit rule selector is empty`,
+		},
+		{
+			name: "invalid_security_context",
+			cfg: &Config{
+				Version: "v1alpha1",
+				SecurityContext: &SecurityContext{
+					FromRawJWT: []*FromRawJWT{{
+						Key: "",
+					}},
+				},
+				Backend: &Backend{
+					Remote: &Remote{
+						Address: "foo",
+					},
 				},
 			},
+			wantErr: `FromRawJWT[0]: key must be specified`,
 		},
-		wantErr: `FromRawJWT[0]: key must be specified`,
-	}, {
-		name: "invalid_log_mode",
-		cfg: &Config{
-			Version: "v1alpha1",
-			Backend: &Backend{
-				Remote: &Remote{
-					Address: "foo",
+		{
+			name: "invalid_log_mode",
+			cfg: &Config{
+				Version: "v1alpha1",
+				Backend: &Backend{
+					Remote: &Remote{
+						Address: "foo",
+					},
 				},
+				LogMode: "random",
 			},
-			LogMode: "random",
+			wantErr: `invalid LogMode "random"`,
 		},
-		wantErr: `invalid LogMode "random"`,
-	}, {
-		name: "invalid_backend_cloudlogging_use_default",
-		cfg: &Config{
-			Version: "v1alpha1",
-			SecurityContext: &SecurityContext{
-				FromRawJWT: []*FromRawJWT{{
-					Key: "authorization",
+		{
+			name: "invalid_backend_cloudlogging_use_default",
+			cfg: &Config{
+				Version: "v1alpha1",
+				SecurityContext: &SecurityContext{
+					FromRawJWT: []*FromRawJWT{{
+						Key: "authorization",
+					}},
+				},
+				Backend: &Backend{
+					CloudLogging: &CloudLogging{
+						DefaultProject: true,
+						Project:        "my-other-proj",
+					},
+				},
+				Condition: &Condition{
+					Regex: &RegexCondition{},
+				},
+				Rules: []*AuditRule{{
+					Selector:  "*",
+					Directive: "AUDIT_REQUEST_ONLY",
+					LogType:   "DATA_ACCESS",
 				}},
 			},
-			Backend: &Backend{
-				CloudLogging: &CloudLogging{
-					DefaultProject: true,
-					Project:        "my-other-proj",
-				},
-			},
-			Condition: &Condition{
-				Regex: &RegexCondition{},
-			},
-			Rules: []*AuditRule{{
-				Selector:  "*",
-				Directive: "AUDIT_REQUEST_ONLY",
-				LogType:   "DATA_ACCESS",
-			}},
+			wantErr: `backend cloudlogging project is set while using default project`,
 		},
-		wantErr: `backend cloudlogging project is set while using default project`,
-	}, {
-		name: "invalid_backend_cloudlogging_no_default",
-		cfg: &Config{
-			Version: "v1alpha1",
-			SecurityContext: &SecurityContext{
-				FromRawJWT: []*FromRawJWT{{
-					Key: "authorization",
+		{
+			name: "invalid_backend_cloudlogging_no_default",
+			cfg: &Config{
+				Version: "v1alpha1",
+				SecurityContext: &SecurityContext{
+					FromRawJWT: []*FromRawJWT{{
+						Key: "authorization",
+					}},
+				},
+				Backend: &Backend{
+					CloudLogging: &CloudLogging{
+						DefaultProject: false,
+					},
+				},
+				Condition: &Condition{
+					Regex: &RegexCondition{},
+				},
+				Rules: []*AuditRule{{
+					Selector:  "*",
+					Directive: "AUDIT_REQUEST_ONLY",
+					LogType:   "DATA_ACCESS",
 				}},
 			},
-			Backend: &Backend{
-				CloudLogging: &CloudLogging{
-					DefaultProject: false,
-				},
-			},
-			Condition: &Condition{
-				Regex: &RegexCondition{},
-			},
-			Rules: []*AuditRule{{
-				Selector:  "*",
-				Directive: "AUDIT_REQUEST_ONLY",
-				LogType:   "DATA_ACCESS",
-			}},
+			wantErr: `backend cloudlogging no project or using default project is set`,
 		},
-		wantErr: `backend cloudlogging no project or using default project is set`,
-	},
 		{
 			name: "invalid_justification",
 			cfg: &Config{
