@@ -65,15 +65,8 @@ type Config struct {
 	// and then continue without impeding the application in any way.
 	LogMode string `yaml:"log_mode,omitempty" env:"LOG_MODE,overwrite"`
 
-	// JVSEndpoint is the endpoint where public keys may be retrieved from the JVS.
-	// These will be used to validate JWT tokens that are passed in through the
-	// "justification-token" header.
-	JVSEndpoint string `yaml:"jvs_endpoint,omitempty" env:"JVS_ENDPOINT,overwrite,default=localhost:8080"`
-
-	// RequireJustification enables adding justification information to audit logs. If this is enabled,
-	// all manual calls are expected to pass in a justification in the "justification-token" header.
-	// If omitted, justifications will not be added to logs, even if provided.
-	RequireJustification bool `yaml:"require_justification,omitempty" env:"REQUIRE_JUSTIFICATION,overwrite,default=false"`
+	// Justification specifies the config used to integrate with JVS.
+	Justification *Justification `yaml:"justification,omitempty" env:",noinit"`
 }
 
 // Validate checks if the config is valid.
@@ -108,15 +101,13 @@ func (cfg *Config) Validate() error {
 		}
 	}
 
-	return err
-}
-
-// ValidateSecurityContext checks if the config SecurityContext is valid.
-func (cfg *Config) ValidateSecurityContext() error {
-	if cfg.SecurityContext == nil {
-		return fmt.Errorf("SecurityContext is nil")
+	if cfg.Justification != nil {
+		if serr := cfg.Justification.Validate(); serr != nil {
+			err = multierr.Append(err, serr)
+		}
 	}
-	return cfg.SecurityContext.Validate()
+
+	return err
 }
 
 // SetDefault sets default for the config.
@@ -357,4 +348,25 @@ func (r *AuditRule) SetDefault() {
 	if r.LogType == "" {
 		r.LogType = AuditLogRequest_DATA_ACCESS.String()
 	}
+}
+
+// Justification specifies the config used to integrate with JVS.
+type Justification struct {
+	// JVSPublicKeysEndpoint is the endpoint where public keys may be retrieved from the JVS.
+	// These will be used to validate JWT tokens that are passed in through the
+	// "justification-token" header.
+	JVSPublicKeysEndpoint string `yaml:"jvs_public_keys_endpoint,omitempty"`
+
+	// Enabled indicates whether enables adding justification information to audit logs or not. If this is enabled,
+	// all manual calls are expected to pass in a justification in the "justification-token" header.
+	// If omitted, justifications will not be added to logs, even if provided.
+	Enabled bool `yaml:"enabled,omitempty"`
+}
+
+// Validate validates the Justification.
+func (justification *Justification) Validate() error {
+	if justification.Enabled && justification.JVSPublicKeysEndpoint == "" {
+		return fmt.Errorf("jvs_public_keys_endpoint must be specified when justification is enabled")
+	}
+	return nil
 }

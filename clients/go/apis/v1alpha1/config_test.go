@@ -55,8 +55,9 @@ labels:
   mylabel1: myvalue1
   mylabel2: myvalue2
 log_mode: BEST_EFFORT
-jvs_endpoint: example.com
-require_justification: true`,
+justification:
+  jvs_public_keys_endpoint: example.com
+  enabled: true`,
 		wantConfig: &Config{
 			Version: "v1alpha1",
 			Backend: &Backend{
@@ -88,9 +89,11 @@ require_justification: true`,
 				"mylabel1": "myvalue1",
 				"mylabel2": "myvalue2",
 			},
-			LogMode:              "BEST_EFFORT",
-			JVSEndpoint:          "example.com",
-			RequireJustification: true,
+			LogMode: "BEST_EFFORT",
+			Justification: &Justification{
+				JVSPublicKeysEndpoint: "example.com",
+				Enabled:               true,
+			},
 		},
 		wantLogMode: AuditLogRequest_BEST_EFFORT,
 	}, {
@@ -174,6 +177,10 @@ func TestValidate(t *testing.T) {
 				Directive: "AUDIT_REQUEST_ONLY",
 				LogType:   "DATA_ACCESS",
 			}},
+			Justification: &Justification{
+				JVSPublicKeysEndpoint: "example.com",
+				Enabled:               true,
+			},
 		},
 	}, {
 		name: "invalid_version",
@@ -322,7 +329,39 @@ func TestValidate(t *testing.T) {
 			}},
 		},
 		wantErr: `backend cloudlogging no project or using default project is set`,
-	}}
+	},
+		{
+			name: "invalid_justification",
+			cfg: &Config{
+				Version: "v1alpha1",
+				SecurityContext: &SecurityContext{
+					FromRawJWT: []*FromRawJWT{{
+						Key: "authorization",
+					}},
+				},
+				Backend: &Backend{
+					Remote: &Remote{
+						Address: "foo",
+					},
+					CloudLogging: &CloudLogging{
+						DefaultProject: true,
+					},
+				},
+				Condition: &Condition{
+					Regex: &RegexCondition{},
+				},
+				Rules: []*AuditRule{{
+					Selector:  "*",
+					Directive: "AUDIT_REQUEST_ONLY",
+					LogType:   "DATA_ACCESS",
+				}},
+				Justification: &Justification{
+					Enabled: true,
+				},
+			},
+			wantErr: `jvs_public_keys_endpoint must be specified when justification is enabled`,
+		},
+	}
 
 	for _, tc := range cases {
 		tc := tc
