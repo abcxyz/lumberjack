@@ -27,9 +27,8 @@ if [ -z "${REPO:-}" ]; then
   echo "✋ Missing REPO!" >&2
 fi
 
-docker build \
+docker buildx build \
   --file="$(dirname "$0")/server.dockerfile" \
   --tag="${REPO}/lumberjack-server:${TAG}" \
+  --push \
   ${ROOT}
-
-docker push "${REPO}/lumberjack-server:${TAG}"

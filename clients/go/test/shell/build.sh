@@ -34,5 +34,8 @@ fi
 GO_ROOT="$(cd "$(dirname "$0")/../.." &>/dev/null; pwd -P)"
 IMAGE_NAME=${REPO}/${APP_NAME}:${TAG}
 
-docker build -f ${GO_ROOT}/test/shell/Dockerfile -t ${IMAGE_NAME} ${GO_ROOT}
-docker push ${IMAGE_NAME}
+docker buildx build \
+  --file ${GO_ROOT}/test/shell/Dockerfile \
+  --tag ${IMAGE_NAME} \
+  --push \
+  ${GO_ROOT}

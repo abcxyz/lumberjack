@@ -21,15 +21,23 @@ The main goal of this "shell" app is to provide the wrapper app that imports the
 #### Steps:
 
 1.  Clean the workspace and build the package from the project directory (where `pom.xml` is located):
+
     ```sh
     mvn clean package
     ```
+
 1.  Package into a container and push the container to Artifact Registry:
+
     ```sh
-    docker build -t ${REPO_REGION}-docker.pkg.dev/${PROJECT_ID}/${REPO_NAME}/logging-shell . && \
-    docker push ${REPO_REGION}-docker.pkg.dev/${PROJECT_ID}/${REPO_NAME}/logging-shell
+    docker buildx build \
+      --file "server_app.dockerfile" \
+      --tag "${REPO_REGION}-docker.pkg.dev/${PROJECT_ID}/${REPO_NAME}/logging-shell" \
+      --push \
+      .
     ```
+
 1.  Deploy to Cloud Run:
+
     ```sh
     gcloud run deploy ${CLOUD_RUN_SERVICE_NAME} \
     --image=${REPO_REGION}-docker.pkg.dev/${PROJECT_ID}/${REPO_NAME}/logging-shell \
@@ -38,11 +46,14 @@ The main goal of this "shell" app is to provide the wrapper app that imports the
     --project=${PROJECT_ID} \
     --quiet
     ```
+
 1.  Create a log by triggering the deployed service:
+
     ```sh
     curl -H "Authorization: Bearer $(gcloud auth print-identity-token )" \
     "${SERVICE_URL_RETURNED_IN_PREVIOUS_STEP}?trace_id=${ID_STRING}"
     ```
+
 1.  Audit log should appear in Logs Explorer in Cloud Console with `lumberjack_trace_id` as `${ID_STRING}` from previous step.
 
 #### Notes:

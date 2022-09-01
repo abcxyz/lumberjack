@@ -40,5 +40,8 @@ fi
 ROOT="$(cd "$(dirname "$0")/.." &>/dev/null; pwd -P)"
 IMAGE_NAME=${REPO}/${APP_NAME}:${TAG}
 
-docker build -f ${DOCKER_FILE} -t ${IMAGE_NAME} ${ROOT}/../..
-docker push ${IMAGE_NAME}
+docker buildx build \
+  --file ${DOCKER_FILE} \
+  --tag ${IMAGE_NAME} \
+  --push \
+  ${ROOT}/../..
