@@ -46,16 +46,14 @@ automated and manual testing.
     ```
 
 1.  Execute the following steps from the Lumberjack Go client directory, where
-    `go.mod` is located. Build and package the Shell app into a container:
+    `go.mod` is located. Build and push the Shell app into a container:
 
     ```sh
-    docker build -t us-docker.pkg.dev/${APP_PROJECT}/images/logging-shell:${LDAP} -f test/shell/Dockerfile .
-    ```
-
-1.  Push the container to Artifact Registry:
-
-    ```sh
-    docker push us-docker.pkg.dev/${APP_PROJECT}/images/logging-shell:${LDAP}
+    docker buildx build \
+      --file "test/shell/Dockerfile" \
+      --tag "us-docker.pkg.dev/${APP_PROJECT}/images/logging-shell:${LDAP}" \
+      --push \
+      .
     ```
 
 1.  Deploy the Shell app to Cloud Run

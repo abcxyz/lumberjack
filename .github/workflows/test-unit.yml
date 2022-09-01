@@ -18,26 +18,26 @@ jobs:
   go_lint_server:
     uses: 'abcxyz/pkg/.github/workflows/go-lint.yml@main'
     with:
-      go_version: '1.18'
+      go_version: '1.19'
 
   go_test_server:
     uses: 'abcxyz/pkg/.github/workflows/go-test.yml@main'
     with:
-      go_version: '1.18'
+      go_version: '1.19'
       go_packages: './cmd/... ./pkg/... ./third_party/...'
 
   # Go client
   go_lint_client:
     uses: 'abcxyz/pkg/.github/workflows/go-lint.yml@main'
     with:
-      go_version: '1.18'
+      go_version: '1.19'
       directory: 'clients/go'
 
   go_test_client:
     uses: 'abcxyz/pkg/.github/workflows/go-test.yml@main'
     with:
       directory: 'clients/go'
-      go_version: '1.18'
+      go_version: '1.19'
       go_packages: './...'
 
   # Java client
