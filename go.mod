@@ -1,6 +1,6 @@
 module github.com/abcxyz/lumberjack
 
-go 1.18
+go 1.19
 
 require (
 	cloud.google.com/go/bigquery v1.32.0
