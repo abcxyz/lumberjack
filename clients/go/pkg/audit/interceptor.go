@@ -126,15 +126,14 @@ func (i *Interceptor) UnaryInterceptor(ctx context.Context, req interface{}, inf
 		Mode:      i.logMode,
 		Timestamp: timestamppb.New(time.Now().UTC()),
 	}
-	// set justification token, look for justification info
-	jvsToken := i.getJVSToken(ctx)
-	if jvsToken != "" {
+	// look for justification info and set justification token.
+	if i.getJVSToken(ctx) != "" {
 		if logReq.Context == nil {
 			logReq.Context = &structpb.Struct{
 				Fields: map[string]*structpb.Value{},
 			}
 		}
-		logReq.Context.Fields[justification.TokenHeaderKey] = structpb.NewStringValue(jvsToken)
+		logReq.Context.Fields[justification.TokenHeaderKey] = structpb.NewStringValue(i.getJVSToken(ctx))
 	}
 
 	// Set log type.
@@ -224,15 +223,14 @@ func (i *Interceptor) StreamInterceptor(srv interface{}, ss grpc.ServerStream, i
 		Timestamp: timestamppb.New(time.Now().UTC()),
 	}
 
-	// set justification token, look for justification info
-	jvsToken := i.getJVSToken(ctx)
-	if jvsToken != "" {
+	// look for justification info and set justification token.
+	if i.getJVSToken(ctx) != "" {
 		if logReq.Context == nil {
 			logReq.Context = &structpb.Struct{
 				Fields: map[string]*structpb.Value{},
 			}
 		}
-		logReq.Context.Fields[justification.TokenHeaderKey] = structpb.NewStringValue(jvsToken)
+		logReq.Context.Fields[justification.TokenHeaderKey] = structpb.NewStringValue(i.getJVSToken(ctx))
 	}
 
 	// Set log type.
