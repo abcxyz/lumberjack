@@ -360,7 +360,7 @@ type Justification struct {
 	// Enabled indicates whether enables adding justification information to audit logs or not. If this is enabled,
 	// all manual calls are expected to pass in a justification in the "justification-token" header.
 	// If omitted, justifications will not be added to logs, even if provided.
-	Enabled bool `yaml:"enabled,omitempty" env:"JUSTIFICATION_ENABLED,overwrite"`
+	Enabled bool `yaml:"enabled,omitempty" env:"JUSTIFICATIONJUSTIFICATION_PUBLIC_KEYS_ENDPOINT,overwrite"`
 }
 
 // Validate validates the Justification.

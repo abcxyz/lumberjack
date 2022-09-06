@@ -17,8 +17,10 @@
 package justification
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
+	"log"
 
 	"github.com/lestrrat-go/jwx/v2/jwt"
 	"google.golang.org/protobuf/encoding/protojson"
@@ -28,6 +30,7 @@ import (
 )
 
 const (
+	TokenHeaderKey              = "justification-token"
 	justificationLogMetadataKey = "justification"
 )
 
@@ -51,12 +54,15 @@ func NewProcessor(v Validator) *Processor {
 
 // Process populates the given audit log request with the justification info from the given token.
 // If the token is empty, this function does nothing.
-func (p *Processor) Process(jvsToken string, logReq *api.AuditLogRequest) error {
-	if jvsToken == "" {
+func (p *Processor) Process(ctx context.Context, logReq *api.AuditLogRequest) error {
+	jvsToken, ok := logReq.Context.GetFields()[TokenHeaderKey]
+	jvsTokenStr := jvsToken.GetStringValue()
+	if !ok || jvsTokenStr == "" {
+		log.Println("don't find justification token in field 'context' of AuditLogRequest")
 		return nil
 	}
 
-	tok, err := p.validator.ValidateJWT(jvsToken)
+	tok, err := p.validator.ValidateJWT(jvsTokenStr)
 	if err != nil {
 		return fmt.Errorf("failed to validate justification token: %w", err)
 	}

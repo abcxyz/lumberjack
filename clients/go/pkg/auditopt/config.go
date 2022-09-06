@@ -46,40 +46,17 @@ import (
 
 const DefaultConfigFilePath = "/etc/lumberjack/config.yaml"
 
-// MustFromConfigFile specifies a config file to configure the
-// audit client. `path` is required, and if the config file is
-// missing, we return an error.
-func MustFromConfigFile(path string) audit.Option {
-	return mustFromConfigFile(path, envconfig.OsLookuper())
-}
-
-// mustFromConfigFile is like MustFromConfigFile, but exposes a custom lookuper
-// for testing.
-func mustFromConfigFile(path string, lookuper envconfig.Lookuper) audit.Option {
-	return func(c *audit.Client) error {
-		fc, err := os.ReadFile(path)
-		if err != nil {
-			return err
-		}
-		cfg, err := loadConfig(fc, lookuper)
-		if err != nil {
-			return err
-		}
-		return clientFromConfig(c, cfg)
-	}
-}
-
 // FromConfigFile specifies a config file to configure the
 // audit client. If `path` is nil, we use a default well known
 // path. If the config file is not found, we keep going by
 // using env vars and default values to configure the client.
-func FromConfigFile(path string) audit.Option {
-	return fromConfigFile(path, envconfig.OsLookuper())
+func FromConfigFile(ctx context.Context, path string) audit.Option {
+	return fromConfigFile(ctx, path, envconfig.OsLookuper())
 }
 
 // fromConfigFile is like FromConfigFile, but exposes a custom lookuper for
 // testing.
-func fromConfigFile(path string, lookuper envconfig.Lookuper) audit.Option {
+func fromConfigFile(ctx context.Context, path string, lookuper envconfig.Lookuper) audit.Option {
 	return func(c *audit.Client) error {
 		if path == "" {
 			path = DefaultConfigFilePath
@@ -94,7 +71,7 @@ func fromConfigFile(path string, lookuper envconfig.Lookuper) audit.Option {
 		if err != nil {
 			return err
 		}
-		return clientFromConfig(c, cfg)
+		return clientFromConfig(ctx, c, cfg)
 	}
 }
 
@@ -123,14 +100,6 @@ func interceptorFromConfigFile(ctx context.Context, path string, lookuper envcon
 			return fmt.Errorf("SecurityContext must be provided to use interceptor")
 		}
 
-		if cfg.Justification != nil && cfg.Justification.Enabled {
-			jvsClient, err := client.NewJVSClient(ctx, &client.JVSConfig{JVSEndpoint: cfg.Justification.PublicKeysEndpoint})
-			if err != nil {
-				return err
-			}
-			audit.WithJustification(justification.NewProcessor(jvsClient))
-		}
-
 		opts := []audit.InterceptorOption{
 			audit.WithInterceptorLogMode(cfg.GetLogMode()),
 			audit.WithAuditRules(cfg.Rules...),
@@ -151,7 +120,7 @@ func interceptorFromConfigFile(ctx context.Context, path string, lookuper envcon
 
 		// Add audit client to interceptor.
 		auditOpt := func(c *audit.Client) error {
-			return clientFromConfig(c, cfg)
+			return clientFromConfig(ctx, c, cfg)
 		}
 		auditClient, err := audit.NewClient(auditOpt)
 		if err != nil {
@@ -169,7 +138,7 @@ func interceptorFromConfigFile(ctx context.Context, path string, lookuper envcon
 	}
 }
 
-func clientFromConfig(c *audit.Client, cfg *api.Config) error {
+func clientFromConfig(ctx context.Context, c *audit.Client, cfg *api.Config) error {
 	opts := []audit.Option{audit.WithRuntimeInfo()}
 
 	withPrincipalFilter, err := principalFilterFromConfig(cfg)
@@ -188,6 +157,14 @@ func clientFromConfig(c *audit.Client, cfg *api.Config) error {
 
 	withLabels := labelsFromConfig(cfg)
 	opts = append(opts, withLabels)
+
+	if cfg.Justification != nil && cfg.Justification.Enabled {
+		withJustification, err := justificationFromConfig(ctx, cfg)
+		if err != nil {
+			return err
+		}
+		opts = append(opts, withJustification)
+	}
 
 	for _, o := range opts {
 		if err := o(c); err != nil {
@@ -267,6 +244,15 @@ func backendsFromConfig(cfg *api.Config) ([]audit.Option, error) {
 func labelsFromConfig(cfg *api.Config) audit.Option {
 	lp := audit.LabelProcessor{DefaultLabels: cfg.Labels}
 	return audit.WithMutator(&lp)
+}
+
+func justificationFromConfig(ctx context.Context, cfg *api.Config) (audit.Option, error) {
+	jvsClient, err := client.NewJVSClient(ctx, &client.JVSConfig{JVSEndpoint: cfg.Justification.PublicKeysEndpoint})
+	if err != nil {
+		return nil, err
+	}
+	lp := justification.NewProcessor(jvsClient)
+	return audit.WithMutator(lp), nil
 }
 
 func loadConfig(b []byte, lookuper envconfig.Lookuper) (*api.Config, error) {

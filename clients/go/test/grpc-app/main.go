@@ -21,6 +21,11 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"github.com/lestrrat-go/jwx/v2/jwk"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/reflection"
+	"google.golang.org/grpc/status"
 	"io"
 	"log"
 	"net"
@@ -29,18 +34,9 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
-	"time"
-
-	"github.com/abcxyz/jvs/client-lib/go/client"
-	"github.com/lestrrat-go/jwx/v2/jwk"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/reflection"
-	"google.golang.org/grpc/status"
 
 	"github.com/abcxyz/lumberjack/clients/go/pkg/audit"
 	"github.com/abcxyz/lumberjack/clients/go/pkg/auditopt"
-	"github.com/abcxyz/lumberjack/clients/go/pkg/justification"
 	"github.com/abcxyz/lumberjack/clients/go/test/grpc-app/talkerpb"
 )
 
@@ -65,22 +61,25 @@ func realMain() (outErr error) {
 	}
 	defer shutdown()
 
+	// set Justification config via environment variables.
+	// can't set it via yaml file because we don't know pubKeyEndpoint when we write yaml file.
+	if err := os.Setenv("AUDIT_CLIENT_JUSTIFICATION_PUBLIC_KEYS_ENDPOINT", pubKeyEndpoint); err != nil {
+		return err
+	}
+	if err := os.Setenv("AUDIT_CLIENT_JUSTIFICATION_ENABLED", "true"); err != nil {
+		return err
+	}
+
 	flag.Parse()
 	lis, err := net.Listen("tcp", fmt.Sprintf(":%d", *port))
 	if err != nil {
 		return fmt.Errorf("failed to listen: %w", err)
 	}
-	jvs, err := client.NewJVSClient(ctx, &client.JVSConfig{
-		Version:      1,
-		JVSEndpoint:  pubKeyEndpoint,
-		CacheTimeout: time.Minute * 5,
-	})
 	if err != nil {
 		return fmt.Errorf("failed to create jvs client: %w", err)
 	}
 	interceptor, err := audit.NewInterceptor(
-		auditopt.InterceptorFromConfigFile(ctx, auditopt.DefaultConfigFilePath),
-		audit.WithJustification(justification.NewProcessor(jvs)))
+		auditopt.InterceptorFromConfigFile(ctx, auditopt.DefaultConfigFilePath))
 	if err != nil {
 		return fmt.Errorf("failed to setup audit interceptor: %w", err)
 	}
