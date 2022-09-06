@@ -18,8 +18,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/abcxyz/lumberjack/clients/go/pkg/justification"
-	grpcmetadata "google.golang.org/grpc/metadata"
 	"regexp"
 	"sync"
 	"time"
@@ -32,12 +30,14 @@ import (
 	rpcstatus "google.golang.org/genproto/googleapis/rpc/status"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
+	grpcmetadata "google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/structpb"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	api "github.com/abcxyz/lumberjack/clients/go/apis/v1alpha1"
+	"github.com/abcxyz/lumberjack/clients/go/pkg/justification"
 	"github.com/abcxyz/lumberjack/clients/go/pkg/security"
 	zlogger "github.com/abcxyz/pkg/logging"
 )

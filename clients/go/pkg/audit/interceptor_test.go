@@ -18,9 +18,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/abcxyz/lumberjack/clients/go/pkg/justification"
 	"testing"
 
+	"github.com/abcxyz/lumberjack/clients/go/pkg/justification"
 	"github.com/abcxyz/lumberjack/clients/go/pkg/remote"
 	"github.com/abcxyz/lumberjack/clients/go/pkg/security"
 	"github.com/abcxyz/lumberjack/clients/go/pkg/testutil"
@@ -163,7 +163,8 @@ func TestUnaryInterceptor(t *testing.T) {
 				Context: &structpb.Struct{
 					Fields: map[string]*structpb.Value{
 						justification.TokenHeaderKey: structpb.NewStringValue("justification"),
-					}},
+					},
+				},
 			},
 		},
 		{
@@ -212,7 +213,8 @@ func TestUnaryInterceptor(t *testing.T) {
 				Context: &structpb.Struct{
 					Fields: map[string]*structpb.Value{
 						justification.TokenHeaderKey: structpb.NewStringValue("justification"),
-					}},
+					},
+				},
 			},
 		},
 		{
@@ -261,7 +263,8 @@ func TestUnaryInterceptor(t *testing.T) {
 				Context: &structpb.Struct{
 					Fields: map[string]*structpb.Value{
 						justification.TokenHeaderKey: structpb.NewStringValue("justification"),
-					}},
+					},
+				},
 			},
 		},
 		{
@@ -302,7 +305,8 @@ func TestUnaryInterceptor(t *testing.T) {
 				Context: &structpb.Struct{
 					Fields: map[string]*structpb.Value{
 						justification.TokenHeaderKey: structpb.NewStringValue("justification"),
-					}},
+					},
+				},
 			},
 		},
 		{
@@ -344,7 +348,8 @@ func TestUnaryInterceptor(t *testing.T) {
 				Context: &structpb.Struct{
 					Fields: map[string]*structpb.Value{
 						justification.TokenHeaderKey: structpb.NewStringValue("justification"),
-					}},
+					},
+				},
 			},
 		},
 		{
