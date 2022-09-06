@@ -2,4 +2,4 @@
 
 **Lumberjack is not an official Google product.**
 
-TODO
+Reference integration testing [doc](../integration/testrunner/README.md).
