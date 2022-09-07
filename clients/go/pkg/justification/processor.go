@@ -20,6 +20,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+
 	zlogger "github.com/abcxyz/pkg/logging"
 	"github.com/lestrrat-go/jwx/v2/jwt"
 	"google.golang.org/protobuf/encoding/protojson"
