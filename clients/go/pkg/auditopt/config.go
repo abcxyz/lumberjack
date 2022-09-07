@@ -251,8 +251,8 @@ func justificationFromConfig(ctx context.Context, cfg *api.Config) (audit.Option
 	if err != nil {
 		return nil, err
 	}
-	lp := justification.NewProcessor(jvsClient)
-	return audit.WithMutator(lp), nil
+	p := justification.NewProcessor(jvsClient)
+	return audit.WithMutator(p), nil
 }
 
 func loadConfig(b []byte, lookuper envconfig.Lookuper) (*api.Config, error) {

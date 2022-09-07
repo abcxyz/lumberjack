@@ -126,15 +126,9 @@ func (i *Interceptor) UnaryInterceptor(ctx context.Context, req interface{}, inf
 		Mode:      i.logMode,
 		Timestamp: timestamppb.New(time.Now().UTC()),
 	}
-	// look for justification info and set justification token.
-	if i.getJVSToken(ctx) != "" {
-		if logReq.Context == nil {
-			logReq.Context = &structpb.Struct{
-				Fields: map[string]*structpb.Value{},
-			}
-		}
-		logReq.Context.Fields[justification.TokenHeaderKey] = structpb.NewStringValue(i.getJVSToken(ctx))
-	}
+
+	// Set JVS Token
+	fillJVSToken(ctx, logReq)
 
 	// Set log type.
 	logReq.Type = api.AuditLogRequest_UNSPECIFIED
@@ -223,15 +217,8 @@ func (i *Interceptor) StreamInterceptor(srv interface{}, ss grpc.ServerStream, i
 		Timestamp: timestamppb.New(time.Now().UTC()),
 	}
 
-	// look for justification info and set justification token.
-	if i.getJVSToken(ctx) != "" {
-		if logReq.Context == nil {
-			logReq.Context = &structpb.Struct{
-				Fields: map[string]*structpb.Value{},
-			}
-		}
-		logReq.Context.Fields[justification.TokenHeaderKey] = structpb.NewStringValue(i.getJVSToken(ctx))
-	}
+	// Set JVS Token
+	fillJVSToken(ctx, logReq)
 
 	// Set log type.
 	logReq.Type = api.AuditLogRequest_UNSPECIFIED
@@ -265,7 +252,8 @@ func (i *Interceptor) StreamInterceptor(srv interface{}, ss grpc.ServerStream, i
 	return handlerErr
 }
 
-func (i *Interceptor) getJVSToken(ctx context.Context) string {
+func fillJVSToken(ctx context.Context, logReq *api.AuditLogRequest) {
+	// look for justification info and set justification token.
 	jvsToken := ""
 	md, ok := grpcmetadata.FromIncomingContext(ctx)
 	if ok {
@@ -274,7 +262,14 @@ func (i *Interceptor) getJVSToken(ctx context.Context) string {
 			jvsToken = vals[0]
 		}
 	}
-	return jvsToken
+	if jvsToken != "" {
+		if logReq.Context == nil {
+			logReq.Context = &structpb.Struct{
+				Fields: map[string]*structpb.Value{},
+			}
+		}
+		logReq.Context.Fields[justification.TokenHeaderKey] = structpb.NewStringValue(jvsToken)
+	}
 }
 
 type serverStreamWrapper struct {
