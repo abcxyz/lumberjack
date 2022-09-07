@@ -16,7 +16,6 @@ package auditopt
 
 import (
 	"context"
-	"fmt"
 	"os"
 	"path"
 	"path/filepath"
@@ -42,190 +41,6 @@ type fakeServer struct {
 func (s *fakeServer) ProcessLog(_ context.Context, logReq *api.AuditLogRequest) (*api.AuditLogResponse, error) {
 	s.gotReq = logReq
 	return &api.AuditLogResponse{Result: logReq}, nil
-}
-
-func TestMustFromConfigFile(t *testing.T) {
-	t.Parallel()
-
-	cases := []struct {
-		name          string
-		envs          map[string]string
-		fileContent   string
-		req           *api.AuditLogRequest
-		wantReq       *api.AuditLogRequest
-		wantErrSubstr string
-	}{
-		{
-			name: "principal_exclude_set",
-			fileContent: `
-version: v1alpha1
-condition:
-  regex:
-    principal_exclude: user@example.com$
-security_context:
-  from_raw_jwt:
-  - key: authorization
-backend:
-  remote:
-    address: %s
-    insecure_enabled: true
-`,
-			req:     testutil.NewRequest(testutil.WithPrincipal("abc@project.iam.gserviceaccount.com")),
-			wantReq: testutil.NewRequest(testutil.WithPrincipal("abc@project.iam.gserviceaccount.com")),
-		},
-		{
-			name: "condition_not_set_log_all",
-			fileContent: `
-version: v1alpha1
-security_context:
-  from_raw_jwt:
-  - key: authorization
-backend:
-  remote:
-    address: %s
-    insecure_enabled: true
-`,
-			req:     testutil.NewRequest(testutil.WithPrincipal("abc@project.iam.gserviceaccount.com")),
-			wantReq: testutil.NewRequest(testutil.WithPrincipal("abc@project.iam.gserviceaccount.com")),
-		},
-		{
-			name: "env_var_overwrites_config_file",
-			envs: map[string]string{
-				"AUDIT_CLIENT_CONDITION_REGEX_PRINCIPAL_EXCLUDE": "user@example.com",
-			},
-			fileContent: `
-version: v1alpha1
-condition:
-  regex:
-    principal_exclude: abc@project.iam.gserviceaccount.com$
-backend:
-  remote:
-    address: %s
-    insecure_enabled: true
-security_context:
-  from_raw_jwt:
-  - key: authorization
-`,
-			req:     testutil.NewRequest(testutil.WithPrincipal("abc@project.iam.gserviceaccount.com")),
-			wantReq: testutil.NewRequest(testutil.WithPrincipal("abc@project.iam.gserviceaccount.com")),
-		},
-		{
-			name: "explicitly_include_service_account",
-			fileContent: `
-version: v1alpha1
-condition:
-  regex:
-    principal_include: abc@project.iam.gserviceaccount.com
-    principal_exclude: .iam.gserviceaccount.com$
-backend:
-  remote:
-    address: %s
-    insecure_enabled: true
-security_context:
-  from_raw_jwt:
-  - key: authorization
-`,
-			req:     testutil.NewRequest(testutil.WithPrincipal("abc@project.iam.gserviceaccount.com")),
-			wantReq: testutil.NewRequest(testutil.WithPrincipal("abc@project.iam.gserviceaccount.com")),
-		},
-		{
-			name: "empty_string_allowed_for_regex_filter",
-			fileContent: `
-version: v1alpha1
-condition:
-  regex:
-    principal_include: ""
-    principal_exclude: .iam.gserviceaccount.com$
-backend:
-  remote:
-    address: %s
-    insecure_enabled: true
-security_context:
-  from_raw_jwt:
-  - key: authorization
-`,
-			req: testutil.NewRequest(testutil.WithPrincipal("abc@project.iam.gserviceaccount.com")),
-		},
-		{
-			name:          "invalid_config_file_should_error",
-			fileContent:   `bananas`,
-			wantErrSubstr: "cannot unmarshal",
-		},
-		{
-			name: "nil_backend_address_should_error",
-			envs: map[string]string{
-				"AUDIT_CLIENT_BACKEND_REMOTE_ADDRESS": "",
-			},
-			fileContent: `
-version: v1alpha1
-backend:
-  remote:
-    address:
-noop: %s
-`,
-			wantErrSubstr: "backend address is nil",
-		},
-		{
-			name: "wrong_version_should_error",
-			fileContent: `
-version: v2
-condition:
-  regex:
-    principal_include: ""
-    principal_exclude: .iam.gserviceaccount.com$
-backend:
-  remote:
-    address: %s
-    insecure_enabled: true
-security_context:
-  from_raw_jwt:
-  - key: authorization
-`,
-			wantErrSubstr: `unexpected Version "v2" want "v1alpha1"`,
-		},
-	}
-
-	for _, tc := range cases {
-		tc := tc
-
-		t.Run(tc.name, func(t *testing.T) {
-			t.Parallel()
-
-			r := &fakeServer{}
-
-			addr, _ := testutil.TestFakeGRPCServer(t, func(s *grpc.Server) {
-				api.RegisterAuditLogAgentServer(s, r)
-			})
-
-			path := filepath.Join(t.TempDir(), "config.yaml")
-			// Add address of the fake server to the config file.
-			content := fmt.Sprintf(tc.fileContent, addr)
-			if err := os.WriteFile(path, []byte(content), 0o600); err != nil {
-				t.Fatal(err)
-			}
-
-			c, err := audit.NewClient(mustFromConfigFile(path, envconfig.MapLookuper(tc.envs)))
-			if diff := pkgtestutil.DiffErrString(err, tc.wantErrSubstr); diff != "" {
-				t.Errorf("audit.NewClient(FromConfigFile(%v)) got unexpected error substring: %v", path, diff)
-			}
-			if err != nil {
-				return
-			}
-			if err := c.Log(context.Background(), tc.req); err != nil {
-				t.Fatal(err)
-			}
-			cmpopts := []cmp.Option{
-				protocmp.Transform(),
-				// We ignore `AuditLog.Metadata` because it contains the
-				// runtime information which varies depending on the
-				// environment executing the unit test.
-				protocmp.IgnoreFields(&capi.AuditLog{}, "metadata"),
-			}
-			if diff := cmp.Diff(tc.wantReq, r.gotReq, cmpopts...); diff != "" {
-				t.Errorf("audit logging backend got request (-want,+got):\n%s", diff)
-			}
-		})
-	}
 }
 
 func TestFromConfigFile(t *testing.T) {
@@ -306,13 +121,14 @@ backend:
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
+			ctx := context.Background()
 			r := &fakeServer{}
 
 			addr, _ := testutil.TestFakeGRPCServer(t, func(s *grpc.Server) {
 				api.RegisterAuditLogAgentServer(s, r)
 			})
 
-			c, err := audit.NewClient(fromConfigFile(tc.path, envconfig.MultiLookuper(
+			c, err := audit.NewClient(fromConfigFile(ctx, tc.path, envconfig.MultiLookuper(
 				envconfig.MapLookuper(map[string]string{"AUDIT_CLIENT_BACKEND_REMOTE_ADDRESS": addr}),
 				envconfig.MapLookuper(tc.envs))))
 			if diff := pkgtestutil.DiffErrString(err, tc.wantErrSubstr); diff != "" {

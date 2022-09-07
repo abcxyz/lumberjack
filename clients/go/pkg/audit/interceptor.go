@@ -42,10 +42,6 @@ import (
 	zlogger "github.com/abcxyz/pkg/logging"
 )
 
-const (
-	justificationTokenHeaderKey = "justification-token"
-)
-
 type auditLogReqKey struct{}
 
 // InterceptorOption defines the option func to configure an interceptor.
@@ -86,21 +82,13 @@ func WithInterceptorLogMode(m api.AuditLogRequest_LogMode) InterceptorOption {
 	}
 }
 
-func WithJustification(j *justification.Processor) InterceptorOption {
-	return func(i *Interceptor) error {
-		i.justificationProcessor = j
-		return nil
-	}
-}
-
 // Interceptor contains the fields required for an interceptor
 // to autofill and emit audit logs.
 type Interceptor struct {
 	*Client
-	sc                     security.GRPCContext
-	rules                  []*api.AuditRule
-	logMode                api.AuditLogRequest_LogMode
-	justificationProcessor *justification.Processor
+	sc      security.GRPCContext
+	rules   []*api.AuditRule
+	logMode api.AuditLogRequest_LogMode
 }
 
 // NewInterceptor creates a new interceptor with the given options.
@@ -139,6 +127,9 @@ func (i *Interceptor) UnaryInterceptor(ctx context.Context, req interface{}, inf
 		Timestamp: timestamppb.New(time.Now().UTC()),
 	}
 
+	// Set JVS Token
+	fillJVSToken(ctx, logReq)
+
 	// Set log type.
 	logReq.Type = api.AuditLogRequest_UNSPECIFIED
 	if t, ok := api.AuditLogRequest_LogType_value[r.LogType]; ok {
@@ -160,10 +151,6 @@ func (i *Interceptor) UnaryInterceptor(ctx context.Context, req interface{}, inf
 			return i.handleReturnUnary(ctx, req, handler, status.Errorf(codes.Internal,
 				"audit interceptor failed converting req into a Google struct proto: %v", err))
 		}
-	}
-
-	if err := i.handleJustification(ctx, logReq); err != nil {
-		return i.handleReturnUnary(ctx, req, handler, err)
 	}
 
 	// Store our log req in the context to make it accessible
@@ -230,6 +217,9 @@ func (i *Interceptor) StreamInterceptor(srv interface{}, ss grpc.ServerStream, i
 		Timestamp: timestamppb.New(time.Now().UTC()),
 	}
 
+	// Set JVS Token
+	fillJVSToken(ctx, logReq)
+
 	// Set log type.
 	logReq.Type = api.AuditLogRequest_UNSPECIFIED
 	if t, ok := api.AuditLogRequest_LogType_value[r.LogType]; ok {
@@ -244,10 +234,6 @@ func (i *Interceptor) StreamInterceptor(srv interface{}, ss grpc.ServerStream, i
 			zap.Any("security_context", i.sc), zap.Error(err)))
 	}
 	logReq.Payload.AuthenticationInfo = &capi.AuthenticationInfo{PrincipalEmail: principal}
-
-	if err := i.handleJustification(ctx, logReq); err != nil {
-		return i.handleReturnStream(ctx, ss, handler, err)
-	}
 
 	handlerErr := handler(srv, &serverStreamWrapper{
 		c:              i.Client,
@@ -266,28 +252,24 @@ func (i *Interceptor) StreamInterceptor(srv interface{}, ss grpc.ServerStream, i
 	return handlerErr
 }
 
-func (i *Interceptor) handleJustification(ctx context.Context, logReq *api.AuditLogRequest) error {
-	// If there is no justification processor, we don't handle justification, and just log
-	// without the justification.
-	if i.justificationProcessor == nil {
-		return nil
-	}
-
-	// Justification processor is present, look for justification info
-	// TODO(#257): If we add justification mode, we need to honor that.
+func fillJVSToken(ctx context.Context, logReq *api.AuditLogRequest) {
+	// Look for justification info and set justification token.
 	jvsToken := ""
 	md, ok := grpcmetadata.FromIncomingContext(ctx)
 	if ok {
-		vals := md.Get(justificationTokenHeaderKey)
+		vals := md.Get(justification.TokenHeaderKey)
 		if len(vals) > 0 {
 			jvsToken = vals[0]
 		}
 	}
-
-	if err := i.justificationProcessor.Process(jvsToken, logReq); err != nil {
-		return status.Errorf(codes.Internal, "audit interceptor failed to process justification token: %v", err)
+	if jvsToken != "" {
+		if logReq.Context == nil {
+			logReq.Context = &structpb.Struct{
+				Fields: map[string]*structpb.Value{},
+			}
+		}
+		logReq.Context.Fields[justification.TokenHeaderKey] = structpb.NewStringValue(jvsToken)
 	}
-	return nil
 }
 
 type serverStreamWrapper struct {
