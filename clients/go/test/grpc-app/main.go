@@ -29,9 +29,7 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
-	"time"
 
-	"github.com/abcxyz/jvs/client-lib/go/client"
 	"github.com/lestrrat-go/jwx/v2/jwk"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -40,7 +38,6 @@ import (
 
 	"github.com/abcxyz/lumberjack/clients/go/pkg/audit"
 	"github.com/abcxyz/lumberjack/clients/go/pkg/auditopt"
-	"github.com/abcxyz/lumberjack/clients/go/pkg/justification"
 	"github.com/abcxyz/lumberjack/clients/go/test/grpc-app/talkerpb"
 )
 
@@ -65,22 +62,21 @@ func realMain() (outErr error) {
 	}
 	defer shutdown()
 
+	// Override JVS public key endpoint since we start a local one here in test.
+	if err := os.Setenv("AUDIT_CLIENT_JUSTIFICATION_PUBLIC_KEYS_ENDPOINT", pubKeyEndpoint); err != nil {
+		return err
+	}
+
 	flag.Parse()
 	lis, err := net.Listen("tcp", fmt.Sprintf(":%d", *port))
 	if err != nil {
 		return fmt.Errorf("failed to listen: %w", err)
 	}
-	jvs, err := client.NewJVSClient(ctx, &client.JVSConfig{
-		Version:      1,
-		JVSEndpoint:  pubKeyEndpoint,
-		CacheTimeout: time.Minute * 5,
-	})
 	if err != nil {
 		return fmt.Errorf("failed to create jvs client: %w", err)
 	}
 	interceptor, err := audit.NewInterceptor(
-		auditopt.InterceptorFromConfigFile(ctx, auditopt.DefaultConfigFilePath),
-		audit.WithJustification(justification.NewProcessor(jvs)))
+		auditopt.InterceptorFromConfigFile(ctx, auditopt.DefaultConfigFilePath))
 	if err != nil {
 		return fmt.Errorf("failed to setup audit interceptor: %w", err)
 	}

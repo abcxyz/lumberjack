@@ -20,3 +20,7 @@ security_context:
 rules:
 - selector: "*"
   directive: AUDIT_REQUEST_AND_RESPONSE
+justification:
+  enabled: true
+  # fake public_keys_endpoint, will get overridden by environment variables.
+  public_keys_endpoint: "localhost:8080"
