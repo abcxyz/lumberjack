@@ -253,7 +253,7 @@ func (i *Interceptor) StreamInterceptor(srv interface{}, ss grpc.ServerStream, i
 }
 
 func fillJVSToken(ctx context.Context, logReq *api.AuditLogRequest) {
-	// look for justification info and set justification token.
+	// Look for justification info and set justification token.
 	jvsToken := ""
 	md, ok := grpcmetadata.FromIncomingContext(ctx)
 	if ok {

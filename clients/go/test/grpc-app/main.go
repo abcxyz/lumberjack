@@ -62,12 +62,8 @@ func realMain() (outErr error) {
 	}
 	defer shutdown()
 
-	// set Justification config via environment variables.
-	// can't set it via yaml file because we don't know pubKeyEndpoint when we write yaml file.
+	// Override JVS public key endpoint since we start a local one here in test.
 	if err := os.Setenv("AUDIT_CLIENT_JUSTIFICATION_PUBLIC_KEYS_ENDPOINT", pubKeyEndpoint); err != nil {
-		return err
-	}
-	if err := os.Setenv("AUDIT_CLIENT_JUSTIFICATION_ENABLED", "true"); err != nil {
 		return err
 	}
 

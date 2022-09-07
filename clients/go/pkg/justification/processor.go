@@ -60,7 +60,7 @@ func (p *Processor) Process(ctx context.Context, logReq *api.AuditLogRequest) er
 	// TODO(#257): We will enforce the token in the future.
 	jvsToken, ok := logReq.Context.GetFields()[TokenHeaderKey]
 	if !ok || jvsToken.GetStringValue() == "" {
-		logger.Info("don't find justification token in field 'context' of AuditLogRequest")
+		logger.Info("no justification token found in AuditLogRequest")
 		return nil
 	}
 
