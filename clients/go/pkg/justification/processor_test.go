@@ -15,6 +15,7 @@
 package justification
 
 import (
+	"context"
 	"fmt"
 	"testing"
 
@@ -35,19 +36,32 @@ func TestProcess(t *testing.T) {
 		name       string
 		token      string
 		validator  *fakeValidator
+		logReq     *api.AuditLogRequest
 		wantLogReq *api.AuditLogRequest
 		wantErr    bool
 	}{{
-		name:  "success",
-		token: "token",
+		name: "success",
 		validator: &fakeValidator{
 			justifications: []*jvsapi.Justification{{Category: "explanation", Value: "need-access"}},
 		},
+		logReq: &api.AuditLogRequest{
+			Context: &structpb.Struct{
+				Fields: map[string]*structpb.Value{
+					TokenHeaderKey: structpb.NewStringValue("token"),
+				},
+			},
+			Payload: &audit.AuditLog{},
+		},
 		wantLogReq: &api.AuditLogRequest{
+			Context: &structpb.Struct{
+				Fields: map[string]*structpb.Value{
+					TokenHeaderKey: structpb.NewStringValue("token"),
+				},
+			},
 			Payload: &audit.AuditLog{
 				Metadata: &structpb.Struct{
 					Fields: map[string]*structpb.Value{
-						justificationLogMetadataKey: structpb.NewStructValue(&structpb.Struct{
+						LogMetadataKey: structpb.NewStructValue(&structpb.Struct{
 							Fields: map[string]*structpb.Value{
 								"iss":   structpb.NewStringValue("test_iss"),
 								"sub":   structpb.NewStringValue("test_sub"),
@@ -71,13 +85,28 @@ func TestProcess(t *testing.T) {
 		validator: &fakeValidator{
 			justifications: []*jvsapi.Justification{{Category: "explanation", Value: "need-access"}},
 		},
+		logReq:     &api.AuditLogRequest{Payload: &audit.AuditLog{}},
 		wantLogReq: &api.AuditLogRequest{Payload: &audit.AuditLog{}},
 	}, {
-		name:       "validation_err",
-		token:      "token",
-		validator:  &fakeValidator{returnErr: true},
-		wantLogReq: &api.AuditLogRequest{Payload: &audit.AuditLog{}},
-		wantErr:    true,
+		name:      "validation_err",
+		validator: &fakeValidator{returnErr: true},
+		logReq: &api.AuditLogRequest{
+			Context: &structpb.Struct{
+				Fields: map[string]*structpb.Value{
+					TokenHeaderKey: structpb.NewStringValue("token"),
+				},
+			},
+			Payload: &audit.AuditLog{},
+		},
+		wantLogReq: &api.AuditLogRequest{
+			Context: &structpb.Struct{
+				Fields: map[string]*structpb.Value{
+					TokenHeaderKey: structpb.NewStringValue("token"),
+				},
+			},
+			Payload: &audit.AuditLog{},
+		},
+		wantErr: true,
 	}}
 
 	for _, tc := range cases {
@@ -85,13 +114,13 @@ func TestProcess(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
+			ctx := context.Background()
 			p := &Processor{validator: tc.validator}
-			gotLogReq := &api.AuditLogRequest{Payload: &audit.AuditLog{}}
-			gotErr := p.Process(tc.token, gotLogReq)
+			gotErr := p.Process(ctx, tc.logReq)
 			if (gotErr == nil) == tc.wantErr {
 				t.Errorf("Process got err=%v, want err %v", gotErr, tc.wantErr)
 			}
-			if diff := cmp.Diff(tc.wantLogReq, gotLogReq, protocmp.Transform()); diff != "" {
+			if diff := cmp.Diff(tc.wantLogReq, tc.logReq, protocmp.Transform()); diff != "" {
 				t.Errorf("Process got log request (-want,+got):\n%s", diff)
 			}
 		})

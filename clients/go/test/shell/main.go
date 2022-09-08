@@ -120,7 +120,7 @@ func main() {
 //   - listening to incoming requests in a goroutine
 func realMain(ctx context.Context) error {
 	// Create a ServeMux with a handler containing the audit client.
-	client, err := audit.NewClient(auditopt.FromConfigFile(""))
+	client, err := audit.NewClient(auditopt.FromConfigFile(ctx, ""))
 	if err != nil {
 		return fmt.Errorf("failed to init audit client: %w", err)
 	}

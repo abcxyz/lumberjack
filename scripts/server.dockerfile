@@ -1,15 +1,19 @@
-FROM golang:1.18 AS builder
+FROM --platform=$BUILDPLATFORM golang:1.19 AS builder
+
+ENV PORT=8080
+ENV CGO_ENABLED=0
+ENV GOPROXY=https://proxy.golang.org,direct
 
 WORKDIR /go/src/app
 COPY . .
 
-ENV CGO_ENABLED=0
 RUN go build \
   -a \
   -trimpath \
-  -ldflags "-s -w -extldflags '-static'" \
+  -ldflags "-s -w -extldflags='-static'" \
   -o /go/bin/server \
   ./cmd/server
+
 RUN strip -s /go/bin/server
 
 RUN echo "nobody:*:65534:65534:nobody:/:/bin/false" > /tmp/etc-passwd
@@ -21,5 +25,5 @@ COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
 COPY --from=builder /go/bin/server /server
 USER nobody
 
-ENV PORT 8080
+EXPOSE 8080
 ENTRYPOINT ["/server"]
