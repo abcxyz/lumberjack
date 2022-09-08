@@ -16,12 +16,15 @@
 
 package com.abcxyz.lumberjack.auditlogclient.processor;
 
-import static org.junit.Assert.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.verifyNoInteractions;
 
 import com.abcxyz.jvs.JvsClient;
+import com.abcxyz.lumberjack.auditlogclient.AuditLoggingServerInterceptor;
 import com.abcxyz.lumberjack.v1alpha1.AuditLogRequest;
 import com.auth0.jwk.JwkException;
 import com.auth0.jwt.JWT;
@@ -57,12 +60,13 @@ public class JustificationProcessorTests {
     claims.put("id", "jwt-id");
     claims.put("role", "user");
     String token = Jwts.builder().setClaims(claims).setAudience("test-aud").compact();
+    AuditLogRequest auditLogReqWithToken = getAuditLogRequest(token);
 
     // Set up JVS mock to return the correct token
     DecodedJWT jwt = JWT.decode(token);
     doReturn(jwt).when(jvsClient).validateJWT(token);
 
-    AuditLogRequest wantAuditLogReq = AuditLogRequest.parseFrom(auditLogRequest.toByteArray());
+    AuditLogRequest wantAuditLogReq = AuditLogRequest.parseFrom(auditLogReqWithToken.toByteArray());
     Struct wantJustification =
         Struct.newBuilder()
             .putFields("id", Value.newBuilder().setStringValue("jwt-id").build())
@@ -85,7 +89,7 @@ public class JustificationProcessorTests {
     wantAuditLogReq = wantAuditLogReq.toBuilder().setPayload(wantAuditLog).build();
 
     JustificationProcessor processor = new JustificationProcessor(jvsClient);
-    AuditLogRequest gotAuditLogReq = processor.process(token, auditLogRequest);
+    AuditLogRequest gotAuditLogReq = processor.process(auditLogReqWithToken);
 
     assertEquals(wantAuditLogReq, gotAuditLogReq);
   }
@@ -102,7 +106,7 @@ public class JustificationProcessorTests {
     doThrow(new JwkException("")).when(jvsClient).validateJWT(token);
 
     JustificationProcessor processor = new JustificationProcessor(jvsClient);
-    assertThrows(LogProcessingException.class, () -> processor.process(token, auditLogRequest));
+    assertThrows(LogProcessingException.class, () -> processor.process(getAuditLogRequest(token)));
   }
 
   @Test
@@ -110,7 +114,17 @@ public class JustificationProcessorTests {
     JustificationProcessor processor = new JustificationProcessor(jvsClient);
     assertThrows(
         IllegalArgumentException.class,
-        () -> processor.process("token", AuditLogRequest.newBuilder().build()));
+        () -> processor.process(AuditLogRequest.newBuilder().build()));
+  }
+
+  @Test
+  public void processLogReqWithNullJVSToken() throws Exception {
+    verifyNoOp(auditLogRequest);
+  }
+
+  @Test
+  public void processLogReqWithEmptyJVSToken() throws Exception {
+    verifyNoOp(getAuditLogRequest(""));
   }
 
   @Test
@@ -166,5 +180,23 @@ public class JustificationProcessorTests {
     assertThrows(
         LogProcessingException.class,
         () -> processor.auditLogBuilderWithJustification(token, auditLog.toBuilder()));
+  }
+
+  private AuditLogRequest getAuditLogRequest(String token) {
+    Struct context =
+        Struct.newBuilder()
+            .putFields(
+                AuditLoggingServerInterceptor.JUSTIFICATION_TOKEN_HEADER_KEY,
+                Value.newBuilder().setStringValue(token).build())
+            .build();
+    return auditLogRequest.toBuilder().setContext(context).build();
+  }
+
+  private void verifyNoOp(AuditLogRequest request) throws Exception {
+    JustificationProcessor processor = new JustificationProcessor(jvsClient);
+    AuditLogRequest gotAuditLogReq = processor.process(request);
+
+    assertSame(request, gotAuditLogReq);
+    verifyNoInteractions(jvsClient);
   }
 }

@@ -17,6 +17,8 @@
 package com.abcxyz.lumberjack.auditlogclient.processor;
 
 import com.abcxyz.jvs.JvsClient;
+import com.abcxyz.lumberjack.auditlogclient.AuditLoggingServerInterceptor;
+import com.abcxyz.lumberjack.auditlogclient.processor.LogProcessor.LogMutator;
 import com.abcxyz.lumberjack.v1alpha1.AuditLogRequest;
 import com.auth0.jwk.JwkException;
 import com.auth0.jwt.interfaces.DecodedJWT;
@@ -30,30 +32,43 @@ import com.google.protobuf.Struct;
 import com.google.protobuf.Value;
 import com.google.protobuf.util.JsonFormat;
 import lombok.AllArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.codec.binary.Base64;
 
+@Slf4j
 @AllArgsConstructor(onConstructor = @__({@Inject}))
-public class JustificationProcessor {
+public class JustificationProcessor implements LogMutator {
   private static final String JUSTIFICATION_LOG_METADATA_KEY = "justification";
   private final JvsClient jvs;
 
   /**
-   * Validates the given {@code jvsToken} and populates the {@link AuditLogRequest} with the
+   * Extracts and validates the {@code jvsToken} and populates the {@link AuditLogRequest} with the
    * justification info.
    *
-   * @param jvsToken A JWT produced by JVS.
    * @param auditLogRequest Audit log request to be processed.
    * @return The {@link AuditLogRequest} with justification filled.
    * @throws LogProcessingException when it fails to populate the justification info.
    */
-  public AuditLogRequest process(String jvsToken, AuditLogRequest auditLogRequest)
-      throws LogProcessingException {
+  @Override
+  public AuditLogRequest process(AuditLogRequest auditLogRequest) throws LogProcessingException {
     Preconditions.checkArgument(
         auditLogRequest.hasPayload(), "audit log request doesn't have payload");
 
     AuditLogRequest.Builder auditLogRequestBuilder = auditLogRequest.toBuilder();
     AuditLog.Builder auditLogBuilder = auditLogRequest.getPayload().toBuilder();
-    auditLogBuilder = this.auditLogBuilderWithJustification(jvsToken, auditLogBuilder);
+
+    Value jvsToken =
+        auditLogRequest
+            .getContext()
+            .getFieldsMap()
+            .get(AuditLoggingServerInterceptor.JUSTIFICATION_TOKEN_HEADER_KEY);
+    if (jvsToken == null || "".equals(jvsToken.getStringValue())) {
+      log.info("no justification token found in AuditLogRequest");
+      return auditLogRequest;
+    }
+
+    auditLogBuilder =
+        this.auditLogBuilderWithJustification(jvsToken.getStringValue(), auditLogBuilder);
 
     return auditLogRequestBuilder.setPayload(auditLogBuilder.build()).build();
   }

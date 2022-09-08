@@ -19,6 +19,7 @@ package com.abcxyz.lumberjack.auditlogclient;
 import com.abcxyz.lumberjack.auditlogclient.config.AuditLoggingConfiguration;
 import com.abcxyz.lumberjack.auditlogclient.processor.CloudLoggingProcessor;
 import com.abcxyz.lumberjack.auditlogclient.processor.FilteringProcessor;
+import com.abcxyz.lumberjack.auditlogclient.processor.JustificationProcessor;
 import com.abcxyz.lumberjack.auditlogclient.processor.LabelProcessor;
 import com.abcxyz.lumberjack.auditlogclient.processor.LocalLogProcessor;
 import com.abcxyz.lumberjack.auditlogclient.processor.LogProcessor;
@@ -64,6 +65,10 @@ public class LoggingClientBuilder {
   @Getter(lazy = true)
   private final LocalLogProcessor localLogProcessor = getProcessor(LocalLogProcessor.class);
 
+  @Getter(lazy = true)
+  private final JustificationProcessor justificationProcessor =
+      getProcessor(JustificationProcessor.class);
+
   private final LinkedHashSet<LogValidator> validators = new LinkedHashSet<>();
   private final LinkedHashSet<LogMutator> mutators = new LinkedHashSet<>();
   private final LinkedHashSet<LogBackend> backends = new LinkedHashSet<>();
@@ -74,14 +79,19 @@ public class LoggingClientBuilder {
 
   /**
    * Provides a {@link LoggingClientBuilder} with default {@link LogProcessor}s; {@link
-   * ValidationProcessor}, {@link RuntimeInfoProcessor}, and {@link RemoteProcessor}. }
+   * ValidationProcessor}, {@link RuntimeInfoProcessor}, {@link RemoteProcessor}, and when required,
+   * {@link JustificationProcessor}. }
    */
   public LoggingClientBuilder withDefaultProcessors() {
-    return withValidationProcessor()
+    withValidationProcessor()
         .withFilteringProcessor()
         .withRuntimeInfoProcessor()
         .withDefaultLogBackends()
         .withLabelProcessor();
+    if (auditLoggingConfiguration.isJustificationRequired()) {
+      withJustificationProcessor();
+    }
+    return this;
   }
 
   /** Provides a {@link LoggingClientBuilder} with {@link CloudLoggingProcessor}. */
@@ -99,6 +109,12 @@ public class LoggingClientBuilder {
   /** Provides a {@link LoggingClientBuilder} with {@link RuntimeInfoProcessor}. */
   public LoggingClientBuilder withRuntimeInfoProcessor() {
     mutators.add(getRuntimeInfoProcessor());
+    return this;
+  }
+
+  /** Provides a {@link LoggingClientBuilder} with {@link JustificationProcessor}. */
+  public LoggingClientBuilder withJustificationProcessor() {
+    mutators.add(getJustificationProcessor());
     return this;
   }
 
