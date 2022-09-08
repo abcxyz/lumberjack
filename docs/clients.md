@@ -32,19 +32,27 @@ if err != nil {
 ### "Assemble" a client in code
 
 ```go
+ctx := context.Background()
 m, err := filtering.NewPrincipalEmailMatcher(filtering.WithIncludes(`@example1\.com$|@example2\.com$`))
 if err != nil {
   // Handle err
 }
-p, err := cloudlogging.NewProcessor(context.Background())
+clp, err := cloudlogging.NewProcessor(ctx)
 if err != nil {
   // Handle err
 }
-l := &audit.LabelProcessor{DefaultLabels: map[string]string{
+lp := &audit.LabelProcessor{DefaultLabels: map[string]string{
   "common_label_1": "foobar",
 }}
 
-client, err = audit.NewClient(audit.WithValidator(m), audit.WithBackend(p), audit.WithMutator(l))
+// Create JVS Client
+jvsClient, err := client.NewJVSClient(ctx, &client.JVSConfig{JVSEndpoint: "example.com"})
+if err != nil {
+  // Handle err
+}
+jp := justification.NewProcessor(jvsClient)
+
+client, err = audit.NewClient(audit.WithValidator(m), audit.WithBackend(clp), audit.WithMutator(lp), audit.WithMutator(jp))
 if err != nil {
   // Handle err
 }
@@ -64,6 +72,9 @@ backend:
     default_project: true
 labels:
   common_label_1: foobar
+justification:
+  enabled: true
+  public_keys_endpoint: "example.com"
 ```
 
 ### Extend

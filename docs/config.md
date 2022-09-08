@@ -83,26 +83,22 @@ Please refer to the [gRPC guide](./grpc.md).
 
 ## Justification
 
-By default, the client will use `localhost:8080` as the endpoint to retrieve public keys from the JVS.
-These public keys will be used to validate JWTs that are passed in through the `justification_token` header.
-Add the following block in the config to override the default endpoint:
-
-```yaml
-jvs_endpoint: example.com
-```
-
 By default, justifications will not be added to audit logs, even if provided.
-Add the following block in the config to enable adding justification information to audit logs
-(all manual calls are expected to pass in a justification in the `justification_token` header).
+When enabling adding justification, `public_keys_endpoint` must be provided to
+fetch the public keys which is used to validate JWTs that are passed in through
+the `justification_token` header. To enable adding justification information to
+audit logs, add the following block in the config:
 
 ```yaml
-enable_justification: true
+justification:
+  enabled: true
+  public_keys_endpoint: example.com
 ```
 
 ## Supported env vars
 
 | ENV VAR name                                      | Description                                                                        |
-| ------------------------------------------------- | ---------------------------------------------------------------------------------- |
+|---------------------------------------------------|------------------------------------------------------------------------------------|
 | AUDIT_CLIENT_BACKEND_CLOUDLOGGING_DEFAULT_PROJECT | Audit logging directly to cloud logging in the default project                     |
 | AUDIT_CLIENT_BACKEND_CLOUDLOGGING_PROJECT         | Audit logging directly to cloud logging in the given project                       |
 | AUDIT_CLIENT_BACKEND_REMOTE_ADDRESS               | Audit logging to an ingestion gRPC service in the given address                    |
@@ -111,8 +107,8 @@ enable_justification: true
 | AUDIT_CLIENT_CONDITION_REGEX_PRINCIPAL_INCLUDE    | Include the matching request principals in audit logging                           |
 | AUDIT_CLIENT_CONDITION_REGEX_PRINCIPAL_EXCLUDE    | Exclude the matching request principals in audit logging                           |
 | AUDIT_CLIENT_LOG_MODE                             | Whether to fail-close audit logging                                                |
-| AUDIT_CLIENT_JVS_ENDPOINT                         | (Experimental) The JVS JWKs address                                                |
-| AUDIT_CLIENT_REQUIRE_JUSTIFICATION                | (Experimental) Whether to require justification                                    |
+| AUDIT_CLIENT_JUSTIFICATION_PUBLIC_KEYS_ENDPOINT   | (Experimental) The JVS JWKs address                                                |
+| AUDIT_CLIENT_JUSTIFICATION_ENABLED                | (Experimental) Whether to enable justification                                     |
 
 ## Examples
 
