@@ -60,7 +60,7 @@ public class JustificationProcessorTests {
     claims.put("id", "jwt-id");
     claims.put("role", "user");
     String token = Jwts.builder().setClaims(claims).setAudience("test-aud").compact();
-    AuditLogRequest auditLogReqWithToken = getAuditLogRequest(token);
+    AuditLogRequest auditLogReqWithToken = getAuditLogRequestWithJvsToken(token);
 
     // Set up JVS mock to return the correct token
     DecodedJWT jwt = JWT.decode(token);
@@ -106,7 +106,9 @@ public class JustificationProcessorTests {
     doThrow(new JwkException("")).when(jvsClient).validateJWT(token);
 
     JustificationProcessor processor = new JustificationProcessor(jvsClient);
-    assertThrows(LogProcessingException.class, () -> processor.process(getAuditLogRequest(token)));
+    assertThrows(
+        LogProcessingException.class,
+        () -> processor.process(getAuditLogRequestWithJvsToken(token)));
   }
 
   @Test
@@ -124,7 +126,7 @@ public class JustificationProcessorTests {
 
   @Test
   public void processLogReqWithEmptyJVSToken() throws Exception {
-    verifyNoOp(getAuditLogRequest(""));
+    verifyNoOp(getAuditLogRequestWithJvsToken(""));
   }
 
   @Test
@@ -182,7 +184,7 @@ public class JustificationProcessorTests {
         () -> processor.auditLogBuilderWithJustification(token, auditLog.toBuilder()));
   }
 
-  private AuditLogRequest getAuditLogRequest(String token) {
+  private AuditLogRequest getAuditLogRequestWithJvsToken(String token) {
     Struct context =
         Struct.newBuilder()
             .putFields(

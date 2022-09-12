@@ -119,7 +119,7 @@ public class AuditLoggingServerInterceptor<ReqT extends Message> implements Serv
       next.startCall(call, headers);
     }
 
-    final Struct auditLogReqCtx = getAuditLogRequestContext(headers);
+    final Struct auditLogRequestContext = getAuditLogRequestContext(headers);
 
     LogEntryOperation logEntryOperation =
         LogEntryOperation.newBuilder()
@@ -146,7 +146,7 @@ public class AuditLoggingServerInterceptor<ReqT extends Message> implements Serv
 
                 auditLog(
                     selector,
-                    auditLogReqCtx,
+                    auditLogRequestContext,
                     unloggedRequest,
                     message,
                     logBuilderFinal,
@@ -174,7 +174,7 @@ public class AuditLoggingServerInterceptor<ReqT extends Message> implements Serv
           if (unloggedRequest != null) {
             auditLog(
                 selector,
-                auditLogReqCtx,
+                auditLogRequestContext,
                 unloggedRequest,
                 null,
                 logBuilderFinal,
@@ -197,7 +197,12 @@ public class AuditLoggingServerInterceptor<ReqT extends Message> implements Serv
           log.info("Exception occurred, audit logging it: {}", e.getMessage());
           ReqT unloggedRequest = unloggedRequests.pollFirst(); // try to get the last request
           logError(
-              selector, auditLogReqCtx, unloggedRequest, e, logBuilderFinal, logEntryOperation);
+              selector,
+              auditLogRequestContext,
+              unloggedRequest,
+              e,
+              logBuilderFinal,
+              logEntryOperation);
           throw e;
         }
       }
@@ -206,7 +211,7 @@ public class AuditLoggingServerInterceptor<ReqT extends Message> implements Serv
 
   <ReqT, RespT> void auditLog(
       Selector selector,
-      Struct auditLogReqCtx,
+      Struct auditLogRequestContext,
       ReqT request,
       RespT response,
       AuditLog.Builder logBuilder,
@@ -226,7 +231,7 @@ public class AuditLoggingServerInterceptor<ReqT extends Message> implements Serv
     Instant now = clock.instant();
     builder.setTimestamp(
         Timestamp.newBuilder().setSeconds(now.getEpochSecond()).setNanos(now.getNano()));
-    builder.setContext(auditLogReqCtx);
+    builder.setContext(auditLogRequestContext);
 
     try {
       log.info("Audit logging...");
@@ -242,7 +247,7 @@ public class AuditLoggingServerInterceptor<ReqT extends Message> implements Serv
    */
   <ReqT, RespT> void logError(
       Selector selector,
-      Struct auditLogReqCtx,
+      Struct auditLogRequestContext,
       ReqT request,
       Exception e,
       AuditLog.Builder logBuilder,
@@ -256,7 +261,7 @@ public class AuditLoggingServerInterceptor<ReqT extends Message> implements Serv
     }
     logBuilder.setStatus(
         Status.newBuilder().setCode(code.getNumber()).setMessage(code.name()).build());
-    auditLog(selector, auditLogReqCtx, request, null, logBuilder, logEntryOperation);
+    auditLog(selector, auditLogRequestContext, request, null, logBuilder, logEntryOperation);
   }
 
   /**
@@ -319,7 +324,7 @@ public class AuditLoggingServerInterceptor<ReqT extends Message> implements Serv
    */
   Struct getAuditLogRequestContext(Metadata headers) {
     String jvsToken = headers.get(JUSTIFICATION_METADATA_KEY);
-    if (jvsToken != null && jvsToken.length() > 0) {
+    if (jvsToken != null && !jvsToken.isEmpty()) {
       return Struct.newBuilder()
           .putFields(
               JUSTIFICATION_TOKEN_HEADER_KEY, Value.newBuilder().setStringValue(jvsToken).build())

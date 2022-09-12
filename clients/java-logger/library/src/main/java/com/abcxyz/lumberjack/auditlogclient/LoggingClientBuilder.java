@@ -83,15 +83,12 @@ public class LoggingClientBuilder {
    * {@link JustificationProcessor}. }
    */
   public LoggingClientBuilder withDefaultProcessors() {
-    withValidationProcessor()
+    return withValidationProcessor()
         .withFilteringProcessor()
         .withRuntimeInfoProcessor()
         .withDefaultLogBackends()
-        .withLabelProcessor();
-    if (auditLoggingConfiguration.isJustificationRequired()) {
-      withJustificationProcessor();
-    }
-    return this;
+        .withLabelProcessor()
+        .withJustificationProcessor();
   }
 
   /** Provides a {@link LoggingClientBuilder} with {@link CloudLoggingProcessor}. */
@@ -114,7 +111,9 @@ public class LoggingClientBuilder {
 
   /** Provides a {@link LoggingClientBuilder} with {@link JustificationProcessor}. */
   public LoggingClientBuilder withJustificationProcessor() {
-    mutators.add(getJustificationProcessor());
+    if (auditLoggingConfiguration.isJustificationRequired()) {
+      mutators.add(getJustificationProcessor());
+    }
     return this;
   }
 

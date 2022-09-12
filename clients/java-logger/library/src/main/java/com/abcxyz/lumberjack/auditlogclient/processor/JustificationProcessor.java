@@ -62,7 +62,8 @@ public class JustificationProcessor implements LogMutator {
             .getContext()
             .getFieldsMap()
             .get(AuditLoggingServerInterceptor.JUSTIFICATION_TOKEN_HEADER_KEY);
-    if (jvsToken == null || "".equals(jvsToken.getStringValue())) {
+    // TODO(#257): JVS token might be required in the future
+    if (jvsToken == null || jvsToken.getStringValue().isEmpty()) {
       log.info("no justification token found in AuditLogRequest");
       return auditLogRequest;
     }
