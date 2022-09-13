@@ -21,6 +21,18 @@
 // Each location takes precedence on the one below it. For example,
 // if you set the config variable `FOO` in both env vars and a config
 // file, the env var value overwrites the config file value.
+//
+// Usually, auditopt should be used once on program initialization (e.g. in main.go).
+// For example, in main.go:
+//
+//	opts, err := auditopt.FromConfigFile("path/to/config.yaml")
+//	if err != nil {
+//		// Handle err
+//	}
+//	client, err := audit.NewClient(opts...)
+//	if err != nil {
+//		// Handle err
+//	}
 package auditopt
 
 import (
