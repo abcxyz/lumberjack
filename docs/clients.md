@@ -45,7 +45,7 @@ lp := &audit.LabelProcessor{DefaultLabels: map[string]string{
   "common_label_1": "foobar",
 }}
 
-// Create JVS Client
+// If justification is required, create a JVS client.
 jvsClient, err := client.NewJVSClient(ctx, &client.JVSConfig{JVSEndpoint: "example.com"})
 if err != nil {
   // Handle err
