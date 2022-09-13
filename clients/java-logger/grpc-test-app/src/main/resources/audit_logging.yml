@@ -9,5 +9,6 @@ rules:
   directive: AUDIT_REQUEST_AND_RESPONSE
 - selector: "abcxyz.test.Talker/Whisper"
   directive: AUDIT
-require_justification: true
-jvs_endpoint: "http://0.0.0.0:8081/.well-known/jwks"
+justification:
+  public_keys_endpoint: "http://0.0.0.0:8081/.well-known/jwks"
+  enabled: true

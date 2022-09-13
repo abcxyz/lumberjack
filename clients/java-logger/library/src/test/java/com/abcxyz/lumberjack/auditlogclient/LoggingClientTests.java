@@ -26,8 +26,10 @@ import static org.mockito.Mockito.when;
 
 import com.abcxyz.lumberjack.auditlogclient.config.AuditLoggingConfiguration;
 import com.abcxyz.lumberjack.auditlogclient.config.BackendContext;
+import com.abcxyz.lumberjack.auditlogclient.config.Justification;
 import com.abcxyz.lumberjack.auditlogclient.processor.CloudLoggingProcessor;
 import com.abcxyz.lumberjack.auditlogclient.processor.FilteringProcessor;
+import com.abcxyz.lumberjack.auditlogclient.processor.JustificationProcessor;
 import com.abcxyz.lumberjack.auditlogclient.processor.LabelProcessor;
 import com.abcxyz.lumberjack.auditlogclient.processor.LocalLogProcessor;
 import com.abcxyz.lumberjack.auditlogclient.processor.LogProcessingException;
@@ -53,9 +55,11 @@ public class LoggingClientTests {
   @Mock LocalLogProcessor localLogProcessor;
   @Mock FilteringProcessor filteringProcessor;
   @Mock RuntimeInfoProcessor runtimeInfoProcessor;
+  @Mock JustificationProcessor justificationProcessor;
   @Mock AuditLoggingConfiguration auditLoggingConfiguration;
   @Mock LabelProcessor labelProcessor;
   @Mock BackendContext backendContext;
+  @Mock Justification justification;
   @Mock Injector injector;
 
   @InjectMocks LoggingClientBuilder loggingClientBuilder;
@@ -69,6 +73,9 @@ public class LoggingClientTests {
     lenient().doReturn(false).when(backendContext).cloudLoggingEnabled();
     lenient().doReturn(true).when(backendContext).remoteEnabled();
     lenient().doReturn(backendContext).when(auditLoggingConfiguration).getBackend();
+
+    lenient().doReturn(justification).when(auditLoggingConfiguration).getJustification();
+    lenient().doReturn(false).when(justification).isEnabled();
 
     lenient().doReturn(validationProcessor).when(injector).getInstance(ValidationProcessor.class);
     lenient()
@@ -154,6 +161,29 @@ public class LoggingClientTests {
     // We want filtering to occur before other mutators
     assertThat(loggingClient.getMutators().get(0).equals(filteringProcessor));
     assertThat(loggingClient.getMutators().get(1).equals(runtimeInfoProcessor));
+  }
+
+  @Test
+  void successfulClientCreate_JustificationEnabled() {
+    // Ensure justification is enabled
+    doReturn(true).when(justification).isEnabled();
+    lenient()
+        .doReturn(justificationProcessor)
+        .when(injector)
+        .getInstance(JustificationProcessor.class);
+
+    LoggingClient loggingClient = loggingClientBuilder.withDefaultProcessors().build();
+    assertThat(loggingClient.getValidators().size()).isEqualTo(1);
+    assertThat(loggingClient.getMutators().size()).isEqualTo(4);
+    assertThat(loggingClient.getBackends().size()).isEqualTo(1);
+
+    // We want filtering to occur before other mutators
+    assertThat(loggingClient.getMutators().get(0).equals(filteringProcessor));
+    assertThat(loggingClient.getMutators().get(1).equals(runtimeInfoProcessor));
+    assertThat(loggingClient.getMutators().get(3).equals(justificationProcessor));
+
+    // If local is disabled and remote is enabled, only backend processor should be remote.
+    assertThat(loggingClient.getBackends().get(0).equals(remoteProcessor));
   }
 
   @Test

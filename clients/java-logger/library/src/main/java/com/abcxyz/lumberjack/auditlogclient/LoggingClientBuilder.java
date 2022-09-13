@@ -79,7 +79,7 @@ public class LoggingClientBuilder {
 
   /**
    * Provides a {@link LoggingClientBuilder} with default {@link LogProcessor}s; {@link
-   * ValidationProcessor}, {@link RuntimeInfoProcessor}, {@link RemoteProcessor}, and when required,
+   * ValidationProcessor}, {@link RuntimeInfoProcessor}, {@link RemoteProcessor}, and when enabled,
    * {@link JustificationProcessor}. }
    */
   public LoggingClientBuilder withDefaultProcessors() {
@@ -88,7 +88,7 @@ public class LoggingClientBuilder {
         .withRuntimeInfoProcessor()
         .withDefaultLogBackends()
         .withLabelProcessor()
-        .withJustificationProcessor();
+        .withJustificationProcessorIfEnabled();
   }
 
   /** Provides a {@link LoggingClientBuilder} with {@link CloudLoggingProcessor}. */
@@ -110,8 +110,8 @@ public class LoggingClientBuilder {
   }
 
   /** Provides a {@link LoggingClientBuilder} with {@link JustificationProcessor}. */
-  public LoggingClientBuilder withJustificationProcessor() {
-    if (auditLoggingConfiguration.isJustificationRequired()) {
+  public LoggingClientBuilder withJustificationProcessorIfEnabled() {
+    if (auditLoggingConfiguration.getJustification().isEnabled()) {
       mutators.add(getJustificationProcessor());
     }
     return this;

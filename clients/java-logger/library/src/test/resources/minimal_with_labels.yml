@@ -21,5 +21,6 @@ rules:
 labels:
   mylabel1: myvalue1
   mylabel2: myvalue2
-jvs_endpoint: example.com:123
-require_justification: true
+justification:
+  public_keys_endpoint: example.com:123
+  enabled: true

@@ -26,4 +26,4 @@ then
   chmod a+x .local/$JAR_NAME
 fi
 
-java -jar .local/$JAR_NAME -i **/*
+java -jar .local/$JAR_NAME -i $(find . -type f -name "*.java" | grep ".*/src/.*java")

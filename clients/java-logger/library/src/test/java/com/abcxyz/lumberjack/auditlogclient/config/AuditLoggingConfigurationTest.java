@@ -42,8 +42,8 @@ public class AuditLoggingConfigurationTest {
     assertThat(config.getConditions()).isNull();
     assertThat(config.getRules().size()).isEqualTo(1);
     assertThat(config.getLogMode()).isEqualTo(LogMode.LOG_MODE_UNSPECIFIED);
-    assertThat(config.isJustificationRequired()).isEqualTo(false);
-    assertThat(config.getJvsEndpoint()).isEqualTo("localhost:8080");
+    assertThat(config.getJustification().isEnabled()).isEqualTo(false);
+    assertThat(config.getJustification().getPublicKeysEndpoint()).isEqualTo("localhost:8080");
 
     assertThat(module.backendContext(config)).isEqualTo(expectedBackendContext);
     assertThat(module.filters(config)).isEqualTo(new Filters());
@@ -68,8 +68,8 @@ public class AuditLoggingConfigurationTest {
 
     assertThat(module.backendContext(config)).isEqualTo(expectedBackendContext);
     assertThat(module.filters(config)).isEqualTo(new Filters());
-    assertThat(config.isJustificationRequired()).isEqualTo(true);
-    assertThat(config.getJvsEndpoint()).isEqualTo("example.com:123");
+    assertThat(config.getJustification().isEnabled()).isEqualTo(true);
+    assertThat(config.getJustification().getPublicKeysEndpoint()).isEqualTo("example.com:123");
 
     Map<String, String> expectedLabels = new HashMap<>();
     expectedLabels.put("mylabel1", "myvalue1");
