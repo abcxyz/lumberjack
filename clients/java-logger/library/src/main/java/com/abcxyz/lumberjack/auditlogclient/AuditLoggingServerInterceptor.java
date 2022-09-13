@@ -63,10 +63,11 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public class AuditLoggingServerInterceptor<ReqT extends Message> implements ServerInterceptor {
   public static final String JUSTIFICATION_TOKEN_HEADER_KEY = "justification-token";
-  private static final Metadata.Key<String> JUSTIFICATION_METADATA_KEY =
-      Metadata.Key.of(JUSTIFICATION_TOKEN_HEADER_KEY, Metadata.ASCII_STRING_MARSHALLER);
   public static final Context.Key<AuditLog.Builder> AUDIT_LOG_CTX_KEY = Context.key("audit-log");
   public static final String UNSPECIFIED_RESORCE = "GRPC_STREAM_RESOURCE_NAME_PLACEHOLDER";
+
+  private static final Metadata.Key<String> JUSTIFICATION_METADATA_KEY =
+      Metadata.Key.of(JUSTIFICATION_TOKEN_HEADER_KEY, Metadata.ASCII_STRING_MARSHALLER);
 
   /**
    * Keeps track of the relevant selectors for specific methods. As the selectors that are relevant
