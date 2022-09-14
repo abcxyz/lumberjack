@@ -16,6 +16,7 @@
 
 package com.abcxyz.lumberjack.auditlogclient.config;
 
+import com.abcxyz.lumberjack.auditlogclient.utils.ConfigUtils;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Data;
 
@@ -40,21 +41,18 @@ public class RemoteConfiguration {
   private boolean insecureEnabled; // meant for use in unit tests only
 
   public String getAddress() {
-    return System.getenv().getOrDefault(ADDRESS_ENV_KEY, address);
+    return ConfigUtils.getEnvOrDefault(ADDRESS_ENV_KEY, address);
   }
 
   public String getAuthAudience() {
-    return System.getenv().getOrDefault(AUTH_AUDIENCE_ENV_KEY, authAudience);
+    return ConfigUtils.getEnvOrDefault(AUTH_AUDIENCE_ENV_KEY, authAudience);
   }
 
   public String getImpersonateAccount() {
-    return System.getenv().getOrDefault(IMPERSONATE_ACC_ENV_KEY, impersonateAccount);
+    return ConfigUtils.getEnvOrDefault(IMPERSONATE_ACC_ENV_KEY, impersonateAccount);
   }
 
   public boolean getInsecureEnabled() {
-    if (System.getenv().containsKey(INSECURE_ENABLED_ENV_KEY)) {
-      return Boolean.valueOf(System.getenv().get(INSECURE_ENABLED_ENV_KEY));
-    }
-    return insecureEnabled;
+    return ConfigUtils.getEnvOrDefault(INSECURE_ENABLED_ENV_KEY, insecureEnabled);
   }
 }

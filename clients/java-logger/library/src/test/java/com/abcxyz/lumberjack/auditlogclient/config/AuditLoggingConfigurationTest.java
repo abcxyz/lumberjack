@@ -42,8 +42,7 @@ public class AuditLoggingConfigurationTest {
     assertThat(config.getConditions()).isNull();
     assertThat(config.getRules().size()).isEqualTo(1);
     assertThat(config.getLogMode()).isEqualTo(LogMode.LOG_MODE_UNSPECIFIED);
-    assertThat(config.getJustification().isEnabled()).isEqualTo(false);
-    assertThat(config.getJustification().getPublicKeysEndpoint()).isEqualTo("localhost:8080");
+    assertThat(config.getJustification()).isNull();
 
     assertThat(module.backendContext(config)).isEqualTo(expectedBackendContext);
     assertThat(module.filters(config)).isEqualTo(new Filters());
@@ -54,7 +53,7 @@ public class AuditLoggingConfigurationTest {
     AuditLoggingConfigurationModule configModule = new AuditLoggingConfigurationModule();
     AuditLoggingModule module = new AuditLoggingModule();
     AuditLoggingConfiguration config =
-        configModule.auditLoggingConfiguration("minimal_with_labels.yml");
+        configModule.auditLoggingConfiguration("minimal_with_labels_jvs.yml");
 
     BackendContext expectedBackendContext = new BackendContext();
     LocalConfiguration local = new LocalConfiguration();
@@ -75,5 +74,27 @@ public class AuditLoggingConfigurationTest {
     expectedLabels.put("mylabel1", "myvalue1");
     expectedLabels.put("mylabel2", "myvalue2");
     assertThat(config.getLabels()).isEqualTo(expectedLabels);
+  }
+
+  @Test
+  public void testMinimalConfiguration_Conditions() throws IOException {
+    AuditLoggingConfigurationModule configModule = new AuditLoggingConfigurationModule();
+    AuditLoggingConfiguration config =
+        configModule.auditLoggingConfiguration("minimal_with_condition.yml");
+    AuditLoggingModule module = new AuditLoggingModule();
+
+    BackendContext expectedBackendContext = new BackendContext();
+    LocalConfiguration local = new LocalConfiguration();
+    local.setLogOutEnabled(true);
+    expectedBackendContext.setLocal(local);
+    assertThat(config.getBackend()).isEqualTo(expectedBackendContext);
+
+    assertThat(config.getFilters().getIncludes()).isEqualTo("*.include.example.com");
+    assertThat(config.getFilters().getExcludes()).isEqualTo("*.exclude.example.com");
+    assertThat(config.getRules().size()).isEqualTo(1);
+    assertThat(config.getLogMode()).isEqualTo(LogMode.LOG_MODE_UNSPECIFIED);
+    assertThat(config.getJustification()).isNull();
+
+    assertThat(module.backendContext(config)).isEqualTo(expectedBackendContext);
   }
 }

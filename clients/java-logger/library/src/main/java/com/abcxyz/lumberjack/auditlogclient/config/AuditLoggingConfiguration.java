@@ -47,7 +47,7 @@ public class AuditLoggingConfiguration {
   private SecurityContext securityContext;
 
   @JsonProperty("justification")
-  private Justification justification = new Justification();
+  private Justification justification;
 
   @JsonProperty(value = "breakglass_allowed")
   private boolean breakglassAllowed = false;
@@ -60,6 +60,13 @@ public class AuditLoggingConfiguration {
 
   public LogMode getLogMode() {
     return logMode == null ? LogMode.LOG_MODE_UNSPECIFIED : logMode;
+  }
+
+  public Justification getJustificaiton() {
+    if (justification != null) {
+      justification.validate();
+    }
+    return justification;
   }
 
   @Data

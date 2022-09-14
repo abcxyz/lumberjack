@@ -18,6 +18,7 @@ package com.abcxyz.lumberjack.auditlogclient.config;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import org.junit.jupiter.api.Test;
@@ -43,5 +44,25 @@ public class JustificationTest {
 
     justification.setEnabled(false);
     assertFalse(justification.isEnabled());
+  }
+
+  @Test
+  public void validate() {
+    String publicKeysEndpoint = "*.example.com";
+    justification.setPublicKeysEndpoint(publicKeysEndpoint);
+    justification.setEnabled(true);
+    justification.validate();
+
+    justification.setEnabled(false);
+    justification.validate();
+  }
+
+  @Test
+  public void validate_Exception() {
+    justification.setEnabled(true);
+    assertThrows(IllegalArgumentException.class, () -> justification.validate());
+
+    justification.setPublicKeysEndpoint("");
+    assertThrows(IllegalArgumentException.class, () -> justification.validate());
   }
 }

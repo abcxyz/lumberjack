@@ -1,5 +1,5 @@
 /*
- * Copyright 2021 Lumberjack authors (see AUTHORS file)
+ * Copyright 2022 Lumberjack authors (see AUTHORS file)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,6 +16,7 @@
 
 package com.abcxyz.lumberjack.auditlogclient.config;
 
+import com.abcxyz.lumberjack.auditlogclient.utils.ConfigUtils;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Data;
 
@@ -26,20 +27,24 @@ public class Justification {
   private static final String JUSTIFICATION_ENABLED_ENV_KEY = "AUDIT_CLIENT_JUSTIFICATION_ENABLED";
 
   @JsonProperty("public_keys_endpoint")
-  private String publicKeysEndpoint = "localhost:8080";
+  private String publicKeysEndpoint;
 
   @JsonProperty("enabled")
   private boolean enabled;
 
   public String getPublicKeysEndpoint() {
-    return System.getenv()
-        .getOrDefault(JUSTIFICATION_PUBLIC_KEYS_ENDPOINT_ENV_KEY, publicKeysEndpoint);
+    return ConfigUtils.getEnvOrDefault(
+        JUSTIFICATION_PUBLIC_KEYS_ENDPOINT_ENV_KEY, publicKeysEndpoint);
   }
 
   public boolean isEnabled() {
-    if (System.getenv().containsKey(JUSTIFICATION_ENABLED_ENV_KEY)) {
-      return Boolean.valueOf(System.getenv().get(JUSTIFICATION_ENABLED_ENV_KEY));
+    return ConfigUtils.getEnvOrDefault(JUSTIFICATION_ENABLED_ENV_KEY, enabled);
+  }
+
+  public void validate() {
+    if (isEnabled() && (publicKeysEndpoint == null || publicKeysEndpoint.isEmpty())) {
+      throw new IllegalArgumentException(
+          "public_keys_endpoint must be specified when justification is enabled");
     }
-    return enabled;
   }
 }

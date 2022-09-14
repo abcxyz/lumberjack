@@ -17,6 +17,7 @@
 package com.abcxyz.lumberjack.auditlogclient;
 
 import com.abcxyz.lumberjack.auditlogclient.config.AuditLoggingConfiguration;
+import com.abcxyz.lumberjack.auditlogclient.config.Justification;
 import com.abcxyz.lumberjack.auditlogclient.processor.CloudLoggingProcessor;
 import com.abcxyz.lumberjack.auditlogclient.processor.FilteringProcessor;
 import com.abcxyz.lumberjack.auditlogclient.processor.JustificationProcessor;
@@ -109,9 +110,10 @@ public class LoggingClientBuilder {
     return this;
   }
 
-  /** Provides a {@link LoggingClientBuilder} with {@link JustificationProcessor}. */
+  /** Provides a {@link LoggingClientBuilder} with {@link JustificationProcessor} if enabled. */
   public LoggingClientBuilder withJustificationProcessorIfEnabled() {
-    if (auditLoggingConfiguration.getJustification().isEnabled()) {
+    final Justification justification = auditLoggingConfiguration.getJustification();
+    if (justification != null && justification.isEnabled()) {
       mutators.add(getJustificationProcessor());
     }
     return this;
