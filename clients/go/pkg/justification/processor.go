@@ -23,6 +23,8 @@ import (
 
 	zlogger "github.com/abcxyz/pkg/logging"
 	"github.com/lestrrat-go/jwx/v2/jwt"
+	"google.golang.org/genproto/googleapis/cloud/audit"
+	"google.golang.org/genproto/googleapis/rpc/context/attribute_context"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/types/known/structpb"
 
@@ -90,6 +92,22 @@ func (p *Processor) Process(ctx context.Context, logReq *api.AuditLogRequest) er
 	}
 
 	logReq.Payload.Metadata.Fields[LogMetadataKey] = structpb.NewStructValue(&tokStruct)
-	// TODO(#266): Also populate RequestAttribute.Reason.
+
+	justs, ok := (*tok).Get("justs")
+	if !ok {
+		return fmt.Errorf("can't find 'justs' in claims, denying")
+	}
+	justsBytes, err := json.Marshal(justs)
+	if err != nil {
+		return fmt.Errorf("failed to marshal 'justs', denying")
+	}
+	if logReq.Payload.RequestMetadata == nil {
+		logReq.Payload.RequestMetadata = &audit.RequestMetadata{}
+	}
+	if logReq.Payload.RequestMetadata.RequestAttributes == nil {
+		logReq.Payload.RequestMetadata.RequestAttributes = &attribute_context.AttributeContext_Request{}
+	}
+	logReq.Payload.RequestMetadata.RequestAttributes.Reason = string(justsBytes)
+
 	return nil
 }
