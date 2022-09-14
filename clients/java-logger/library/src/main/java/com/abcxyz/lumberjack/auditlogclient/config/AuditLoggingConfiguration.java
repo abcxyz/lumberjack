@@ -46,11 +46,8 @@ public class AuditLoggingConfiguration {
   @JsonProperty("security_context")
   private SecurityContext securityContext;
 
-  @JsonProperty(value = "jvs_endpoint")
-  private String jvsEndpoint = "localhost:8080";
-
-  @JsonProperty(value = "require_justification")
-  private boolean justificationRequired = false;
+  @JsonProperty("justification")
+  private Justification justification;
 
   @JsonProperty(value = "breakglass_allowed")
   private boolean breakglassAllowed = false;
@@ -63,6 +60,13 @@ public class AuditLoggingConfiguration {
 
   public LogMode getLogMode() {
     return logMode == null ? LogMode.LOG_MODE_UNSPECIFIED : logMode;
+  }
+
+  public Justification getJustificaiton() {
+    if (justification != null) {
+      justification.validate();
+    }
+    return justification;
   }
 
   @Data

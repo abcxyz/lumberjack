@@ -16,6 +16,7 @@
 
 package com.abcxyz.lumberjack.auditlogclient.config;
 
+import com.abcxyz.lumberjack.auditlogclient.utils.ConfigUtils;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.EqualsAndHashCode;
 import lombok.Setter;
@@ -32,13 +33,10 @@ public class CloudLoggingConfiguration {
   private String project;
 
   public String getProject() {
-    return System.getenv().getOrDefault(CLOUD_LOG_PROJECT_KEY, project);
+    return ConfigUtils.getEnvOrDefault(CLOUD_LOG_PROJECT_KEY, project);
   }
 
   public boolean useDefaultProject() {
-    if (System.getenv().containsKey(CLOUD_LOG_DEFAULT_KEY)) {
-      return Boolean.valueOf(System.getenv().get(CLOUD_LOG_DEFAULT_KEY));
-    }
-    return defaultProject;
+    return ConfigUtils.getEnvOrDefault(CLOUD_LOG_DEFAULT_KEY, defaultProject);
   }
 }

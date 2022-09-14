@@ -17,6 +17,7 @@
 package com.abcxyz.lumberjack.auditlogclient.modules;
 
 import com.abcxyz.lumberjack.auditlogclient.config.AuditLoggingConfiguration;
+import com.abcxyz.lumberjack.auditlogclient.utils.ConfigUtils;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 import com.google.inject.AbstractModule;
@@ -45,8 +46,6 @@ public class AuditLoggingConfigurationModule extends AbstractModule {
   @Provides
   @Named("AuditClientConfigName")
   public String configName() {
-    return System.getenv().containsKey(CONFIG_ENV_KEY)
-        ? System.getenv().get(CONFIG_ENV_KEY)
-        : DEFAULT_CONFIG_LOCATION;
+    return ConfigUtils.getEnvOrDefault(CONFIG_ENV_KEY, DEFAULT_CONFIG_LOCATION);
   }
 }

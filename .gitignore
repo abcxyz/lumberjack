@@ -61,3 +61,6 @@ buildNumber.properties
 
 # Go workspace file
 go.work
+
+### Visual Studio Code IDEA ###
+.vscode

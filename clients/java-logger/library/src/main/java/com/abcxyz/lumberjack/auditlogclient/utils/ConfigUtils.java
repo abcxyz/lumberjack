@@ -30,4 +30,16 @@ public class ConfigUtils {
   public static boolean shouldFailClose(LogMode logMode) {
     return logMode.equals(LogMode.FAIL_CLOSE);
   }
+
+  /** Returns the env var or the default value if unspecified. */
+  public static String getEnvOrDefault(String envKey, String defaultValue) {
+    return System.getenv().getOrDefault(envKey, defaultValue);
+  }
+
+  /** Returns the env var boolean value or the default value if unspecified. */
+  public static boolean getEnvOrDefault(String envKey, boolean defaultValue) {
+    return System.getenv().containsKey(envKey)
+        ? Boolean.valueOf(System.getenv().get(envKey))
+        : defaultValue;
+  }
 }
