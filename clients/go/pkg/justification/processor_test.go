@@ -81,7 +81,7 @@ func TestProcess(t *testing.T) {
 				},
 				RequestMetadata: &audit.RequestMetadata{
 					RequestAttributes: &attribute_context.AttributeContext_Request{
-						Reason: "[{\"category\":\"explanation\",\"value\":\"need-access\"}]",
+						Reason: `[{"category":"explanation","value":"need-access"}]`,
 					},
 				},
 			},

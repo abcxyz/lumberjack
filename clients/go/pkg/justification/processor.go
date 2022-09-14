@@ -95,19 +95,20 @@ func (p *Processor) Process(ctx context.Context, logReq *api.AuditLogRequest) er
 
 	justs, ok := (*tok).Get("justs")
 	if !ok {
-		return fmt.Errorf("can't find 'justs' in claims, denying")
+		logger.Warn("can't find 'justs' in claims")
+	} else {
+		justsBytes, err := json.Marshal(justs)
+		if err != nil {
+			return fmt.Errorf("failed to marshal 'justs'")
+		}
+		if logReq.Payload.RequestMetadata == nil {
+			logReq.Payload.RequestMetadata = &audit.RequestMetadata{}
+		}
+		if logReq.Payload.RequestMetadata.RequestAttributes == nil {
+			logReq.Payload.RequestMetadata.RequestAttributes = &attribute_context.AttributeContext_Request{}
+		}
+		logReq.Payload.RequestMetadata.RequestAttributes.Reason = string(justsBytes)
 	}
-	justsBytes, err := json.Marshal(justs)
-	if err != nil {
-		return fmt.Errorf("failed to marshal 'justs', denying")
-	}
-	if logReq.Payload.RequestMetadata == nil {
-		logReq.Payload.RequestMetadata = &audit.RequestMetadata{}
-	}
-	if logReq.Payload.RequestMetadata.RequestAttributes == nil {
-		logReq.Payload.RequestMetadata.RequestAttributes = &attribute_context.AttributeContext_Request{}
-	}
-	logReq.Payload.RequestMetadata.RequestAttributes.Reason = string(justsBytes)
 
 	return nil
 }
