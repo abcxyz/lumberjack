@@ -17,6 +17,7 @@
 package com.abcxyz.lumberjack.auditlogclient;
 
 import com.abcxyz.lumberjack.auditlogclient.config.AuditLoggingConfiguration;
+import com.abcxyz.lumberjack.auditlogclient.config.Justification;
 import com.abcxyz.lumberjack.auditlogclient.processor.CloudLoggingProcessor;
 import com.abcxyz.lumberjack.auditlogclient.processor.FilteringProcessor;
 import com.abcxyz.lumberjack.auditlogclient.processor.JustificationProcessor;
@@ -79,7 +80,7 @@ public class LoggingClientBuilder {
 
   /**
    * Provides a {@link LoggingClientBuilder} with default {@link LogProcessor}s; {@link
-   * ValidationProcessor}, {@link RuntimeInfoProcessor}, {@link RemoteProcessor}, and when required,
+   * ValidationProcessor}, {@link RuntimeInfoProcessor}, {@link RemoteProcessor}, and when enabled,
    * {@link JustificationProcessor}. }
    */
   public LoggingClientBuilder withDefaultProcessors() {
@@ -88,7 +89,7 @@ public class LoggingClientBuilder {
         .withRuntimeInfoProcessor()
         .withDefaultLogBackends()
         .withLabelProcessor()
-        .withJustificationProcessor();
+        .withJustificationProcessorIfEnabled();
   }
 
   /** Provides a {@link LoggingClientBuilder} with {@link CloudLoggingProcessor}. */
@@ -109,9 +110,10 @@ public class LoggingClientBuilder {
     return this;
   }
 
-  /** Provides a {@link LoggingClientBuilder} with {@link JustificationProcessor}. */
-  public LoggingClientBuilder withJustificationProcessor() {
-    if (auditLoggingConfiguration.isJustificationRequired()) {
+  /** Provides a {@link LoggingClientBuilder} with {@link JustificationProcessor} if enabled. */
+  public LoggingClientBuilder withJustificationProcessorIfEnabled() {
+    final Justification justification = auditLoggingConfiguration.getJustification();
+    if (justification != null && justification.isEnabled()) {
       mutators.add(getJustificationProcessor());
     }
     return this;

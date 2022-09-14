@@ -16,6 +16,7 @@
 
 package com.abcxyz.lumberjack.auditlogclient.config;
 
+import com.abcxyz.lumberjack.auditlogclient.utils.ConfigUtils;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Data;
 
@@ -31,15 +32,10 @@ public class Filters {
   private String excludes;
 
   public String getIncludes() {
-    return getEnvOrDefault(PRINCIPAL_INCLUDE_ENV_KEY, includes);
+    return ConfigUtils.getEnvOrDefault(PRINCIPAL_INCLUDE_ENV_KEY, includes);
   }
 
   public String getExcludes() {
-    return getEnvOrDefault(PRINCIPAL_EXCLUDE_ENV_KEY, excludes);
-  }
-
-  /** TODO: there are other classes that use similar functionality, could create a shared util. */
-  String getEnvOrDefault(String envKey, String defaultValue) {
-    return System.getenv().getOrDefault(envKey, defaultValue);
+    return ConfigUtils.getEnvOrDefault(PRINCIPAL_EXCLUDE_ENV_KEY, excludes);
   }
 }

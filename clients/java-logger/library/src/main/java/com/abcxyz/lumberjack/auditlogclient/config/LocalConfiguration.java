@@ -16,6 +16,7 @@
 
 package com.abcxyz.lumberjack.auditlogclient.config;
 
+import com.abcxyz.lumberjack.auditlogclient.utils.ConfigUtils;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Data;
 
@@ -27,9 +28,6 @@ public class LocalConfiguration {
   private boolean logOutEnabled;
 
   public boolean logOutEnabled() {
-    if (System.getenv().containsKey(LOG_OUT_ENABLED_KEY)) {
-      return Boolean.valueOf(System.getenv().get(LOG_OUT_ENABLED_KEY));
-    }
-    return logOutEnabled;
+    return ConfigUtils.getEnvOrDefault(LOG_OUT_ENABLED_KEY, logOutEnabled);
   }
 }

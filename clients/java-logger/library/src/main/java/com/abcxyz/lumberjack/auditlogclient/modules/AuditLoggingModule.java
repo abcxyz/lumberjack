@@ -23,6 +23,7 @@ import com.abcxyz.lumberjack.auditlogclient.LoggingClientBuilder;
 import com.abcxyz.lumberjack.auditlogclient.config.AuditLoggingConfiguration;
 import com.abcxyz.lumberjack.auditlogclient.config.BackendContext;
 import com.abcxyz.lumberjack.auditlogclient.config.Filters;
+import com.abcxyz.lumberjack.auditlogclient.config.Justification;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.inject.AbstractModule;
 import com.google.inject.Inject;
@@ -46,10 +47,14 @@ public class AuditLoggingModule extends AbstractModule {
 
   @Provides
   public JvsClient jvsClient(AuditLoggingConfiguration auditLoggingConfiguration) {
-    return new JVSClientBuilder()
-        .withJvsEndpoint(auditLoggingConfiguration.getJvsEndpoint())
-        .withAllowBreakglass(auditLoggingConfiguration.isBreakglassAllowed())
-        .build();
+    final Justification justification = auditLoggingConfiguration.getJustification();
+    if (justification != null && justification.isEnabled()) {
+      return new JVSClientBuilder()
+          .withJvsEndpoint(justification.getPublicKeysEndpoint())
+          .withAllowBreakglass(auditLoggingConfiguration.isBreakglassAllowed())
+          .build();
+    }
+    return null;
   }
 
   @Provides
