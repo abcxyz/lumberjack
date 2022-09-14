@@ -19,7 +19,6 @@ package com.abcxyz.lumberjack.auditlogclient;
 import com.abcxyz.lumberjack.auditlogclient.config.AuditLoggingConfiguration;
 import com.abcxyz.lumberjack.auditlogclient.config.Selector;
 import com.abcxyz.lumberjack.auditlogclient.exceptions.AuthorizationException;
-import com.abcxyz.lumberjack.auditlogclient.processor.JustificationProcessor;
 import com.abcxyz.lumberjack.auditlogclient.processor.LogProcessingException;
 import com.abcxyz.lumberjack.auditlogclient.utils.ConfigUtils;
 import com.abcxyz.lumberjack.v1alpha1.AuditLogRequest;
@@ -63,8 +62,12 @@ import lombok.extern.slf4j.Slf4j;
 @RequiredArgsConstructor(onConstructor = @__({@Inject}))
 @Slf4j
 public class AuditLoggingServerInterceptor<ReqT extends Message> implements ServerInterceptor {
+  public static final String JUSTIFICATION_TOKEN_HEADER_KEY = "justification-token";
   public static final Context.Key<AuditLog.Builder> AUDIT_LOG_CTX_KEY = Context.key("audit-log");
   public static final String UNSPECIFIED_RESORCE = "GRPC_STREAM_RESOURCE_NAME_PLACEHOLDER";
+
+  private static final Metadata.Key<String> JUSTIFICATION_METADATA_KEY =
+      Metadata.Key.of(JUSTIFICATION_TOKEN_HEADER_KEY, Metadata.ASCII_STRING_MARSHALLER);
 
   /**
    * Keeps track of the relevant selectors for specific methods. As the selectors that are relevant
@@ -77,7 +80,6 @@ public class AuditLoggingServerInterceptor<ReqT extends Message> implements Serv
   private final AuditLoggingConfiguration auditLoggingConfiguration;
   private final LoggingClient client;
   private final Clock clock;
-  private final JustificationProcessor justificationProcessor;
 
   @Override
   public <ReqT, RespT> Listener<ReqT> interceptCall(
@@ -118,22 +120,7 @@ public class AuditLoggingServerInterceptor<ReqT extends Message> implements Serv
       next.startCall(call, headers);
     }
 
-    log.info("Justification Required: " + auditLoggingConfiguration.isJustificationRequired());
-    if (auditLoggingConfiguration.isJustificationRequired()) {
-      log.info("Trying to add justification.");
-      try {
-        logBuilder = setJustification(headers, logBuilder);
-      } catch (LogProcessingException e) {
-        log.warn("Exception while trying to determine justification.");
-        if (ConfigUtils.shouldFailClose(auditLoggingConfiguration.getLogMode())) {
-          throw new IllegalStateException("Unable to determine justification.", e);
-        } else {
-          log.error(
-              "Justification was unable to be determined, continuing without audit logging.", e);
-          next.startCall(call, headers);
-        }
-      }
-    }
+    final Struct auditLogRequestContext = getAuditLogRequestContext(headers);
 
     LogEntryOperation logEntryOperation =
         LogEntryOperation.newBuilder()
@@ -158,7 +145,13 @@ public class AuditLoggingServerInterceptor<ReqT extends Message> implements Serv
                 // newest message. returns null if empty.
                 ReqT unloggedRequest = unloggedRequests.pollLast();
 
-                auditLog(selector, unloggedRequest, message, logBuilderFinal, logEntryOperation);
+                auditLog(
+                    selector,
+                    auditLogRequestContext,
+                    unloggedRequest,
+                    message,
+                    logBuilderFinal,
+                    logEntryOperation);
                 super.sendMessage(message);
               }
             },
@@ -180,7 +173,13 @@ public class AuditLoggingServerInterceptor<ReqT extends Message> implements Serv
           // between the isEmpty() and the poll, another thread could have grabbed it,
           // so we need to check for null.
           if (unloggedRequest != null) {
-            auditLog(selector, unloggedRequest, null, logBuilderFinal, logEntryOperation);
+            auditLog(
+                selector,
+                auditLogRequestContext,
+                unloggedRequest,
+                null,
+                logBuilderFinal,
+                logEntryOperation);
           }
         }
         unloggedRequests.add(message);
@@ -198,7 +197,13 @@ public class AuditLoggingServerInterceptor<ReqT extends Message> implements Serv
         } catch (Exception e) {
           log.info("Exception occurred, audit logging it: {}", e.getMessage());
           ReqT unloggedRequest = unloggedRequests.pollFirst(); // try to get the last request
-          logError(selector, unloggedRequest, e, logBuilderFinal, logEntryOperation);
+          logError(
+              selector,
+              auditLogRequestContext,
+              unloggedRequest,
+              e,
+              logBuilderFinal,
+              logEntryOperation);
           throw e;
         }
       }
@@ -207,6 +212,7 @@ public class AuditLoggingServerInterceptor<ReqT extends Message> implements Serv
 
   <ReqT, RespT> void auditLog(
       Selector selector,
+      Struct auditLogRequestContext,
       ReqT request,
       RespT response,
       AuditLog.Builder logBuilder,
@@ -226,6 +232,7 @@ public class AuditLoggingServerInterceptor<ReqT extends Message> implements Serv
     Instant now = clock.instant();
     builder.setTimestamp(
         Timestamp.newBuilder().setSeconds(now.getEpochSecond()).setNanos(now.getNano()));
+    builder.setContext(auditLogRequestContext);
 
     try {
       log.info("Audit logging...");
@@ -241,6 +248,7 @@ public class AuditLoggingServerInterceptor<ReqT extends Message> implements Serv
    */
   <ReqT, RespT> void logError(
       Selector selector,
+      Struct auditLogRequestContext,
       ReqT request,
       Exception e,
       AuditLog.Builder logBuilder,
@@ -254,7 +262,7 @@ public class AuditLoggingServerInterceptor<ReqT extends Message> implements Serv
     }
     logBuilder.setStatus(
         Status.newBuilder().setCode(code.getNumber()).setMessage(code.name()).build());
-    auditLog(selector, request, null, logBuilder, logEntryOperation);
+    auditLog(selector, auditLogRequestContext, request, null, logBuilder, logEntryOperation);
   }
 
   /**
@@ -313,14 +321,17 @@ public class AuditLoggingServerInterceptor<ReqT extends Message> implements Serv
 
   /**
    * Get the justification token out of the headers, and create a struct of the correct format for
-   * use in audit logging metadata. We expect the claims from the JWT to be put in JSON format and
-   * put into the struct under the justification_token key.
+   * use in audit logging context.
    */
-  AuditLog.Builder setJustification(Metadata headers, AuditLog.Builder logBuilder)
-      throws LogProcessingException {
-    Metadata.Key<String> metadataKey =
-        Metadata.Key.of("justification-token", Metadata.ASCII_STRING_MARSHALLER);
-    String jvsToken = headers.get(metadataKey);
-    return justificationProcessor.auditLogBuilderWithJustification(jvsToken, logBuilder);
+  Struct getAuditLogRequestContext(Metadata headers) {
+    String jvsToken = headers.get(JUSTIFICATION_METADATA_KEY);
+    if (jvsToken != null && !jvsToken.isEmpty()) {
+      return Struct.newBuilder()
+          .putFields(
+              JUSTIFICATION_TOKEN_HEADER_KEY, Value.newBuilder().setStringValue(jvsToken).build())
+          .build();
+    } else {
+      return Struct.getDefaultInstance();
+    }
   }
 }

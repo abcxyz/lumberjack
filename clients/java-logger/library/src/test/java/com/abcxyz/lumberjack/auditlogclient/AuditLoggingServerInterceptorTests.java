@@ -18,17 +18,13 @@ package com.abcxyz.lumberjack.auditlogclient;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.mockito.Mockito.doReturn;
-import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
 import com.abcxyz.lumberjack.auditlogclient.config.AuditLoggingConfiguration;
 import com.abcxyz.lumberjack.auditlogclient.config.Selector;
-import com.abcxyz.lumberjack.auditlogclient.processor.JustificationProcessor;
 import com.abcxyz.lumberjack.auditlogclient.processor.LogProcessingException;
 import com.abcxyz.lumberjack.v1alpha1.AuditLogRequest;
 import com.google.cloud.audit.AuditLog;
@@ -62,8 +58,6 @@ public class AuditLoggingServerInterceptorTests {
   @Mock AuditLoggingConfiguration auditLoggingConfiguration;
 
   @Mock Clock clock;
-
-  @Mock JustificationProcessor justificationProcessor;
 
   @InjectMocks AuditLoggingServerInterceptor interceptor;
 
@@ -164,6 +158,7 @@ public class AuditLoggingServerInterceptorTests {
     doReturn(Clock.systemUTC().instant()).when(clock).instant();
     interceptor.logError(
         selector,
+        Struct.getDefaultInstance(),
         null,
         new RuntimeException("Test Message"),
         builder,
@@ -188,6 +183,7 @@ public class AuditLoggingServerInterceptorTests {
     doReturn(Clock.systemUTC().instant()).when(clock).instant();
     interceptor.logError(
         selector,
+        Struct.getDefaultInstance(),
         null,
         new StatusRuntimeException(io.grpc.Status.FAILED_PRECONDITION),
         builder,
@@ -213,6 +209,7 @@ public class AuditLoggingServerInterceptorTests {
     doReturn(now).when(clock).instant();
     interceptor.logError(
         selector,
+        Struct.getDefaultInstance(),
         null,
         new StatusRuntimeException(io.grpc.Status.FAILED_PRECONDITION),
         builder,
@@ -231,34 +228,20 @@ public class AuditLoggingServerInterceptorTests {
   }
 
   @Test
-  public void justificationProcessorCalled() throws Exception {
+  public void getAuditLogRequestContext() throws Exception {
     // Create Metadata
     Metadata md = new Metadata();
     Metadata.Key<String> metadataKey =
         Metadata.Key.of("justification-token", Metadata.ASCII_STRING_MARSHALLER);
     md.put(metadataKey, "token");
 
-    interceptor.setJustification(md, null);
-
-    ArgumentCaptor<String> tokenArg = ArgumentCaptor.forClass(String.class);
-    verify(justificationProcessor).auditLogBuilderWithJustification(tokenArg.capture(), any());
-    assertEquals("token", tokenArg.getValue());
+    Struct context = interceptor.getAuditLogRequestContext(md);
+    assertEquals("token", context.getFieldsMap().get("justification-token").getStringValue());
   }
 
   @Test
-  public void justificationProcessorErr() throws Exception {
-    Metadata md = new Metadata();
-    Metadata.Key<String> metadataKey =
-        Metadata.Key.of("justification-token", Metadata.ASCII_STRING_MARSHALLER);
-    md.put(metadataKey, "token");
-
-    // Set up JVS mock to throw exception
-    doThrow(new LogProcessingException(null))
-        .when(justificationProcessor)
-        .auditLogBuilderWithJustification(eq("token"), any());
-    ;
-
-    // Validate exception is bubbled up.
-    assertThrows(LogProcessingException.class, () -> interceptor.setJustification(md, null));
+  public void getAuditLogRequestContext_Empty() throws Exception {
+    Struct context = interceptor.getAuditLogRequestContext(new Metadata());
+    assertNull(context.getFieldsMap().get("justification-token"));
   }
 }
