@@ -22,6 +22,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/lestrrat-go/jwx/v2/jwt"
 	"google.golang.org/genproto/googleapis/cloud/audit"
+	"google.golang.org/genproto/googleapis/rpc/context/attribute_context"
 	"google.golang.org/protobuf/testing/protocmp"
 	"google.golang.org/protobuf/types/known/structpb"
 
@@ -76,6 +77,11 @@ func TestProcess(t *testing.T) {
 								}),
 							},
 						}),
+					},
+				},
+				RequestMetadata: &audit.RequestMetadata{
+					RequestAttributes: &attribute_context.AttributeContext_Request{
+						Reason: `[{"category":"explanation","value":"need-access"}]`,
 					},
 				},
 			},
