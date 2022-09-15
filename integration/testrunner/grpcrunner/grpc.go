@@ -157,7 +157,8 @@ func (g *GRPC) runFibonacciCheck(ctx context.Context, tb testing.TB) {
 			break
 		}
 		if err != nil {
-			tb.Errorf("Err while reading fibonacci stream: %v", err)
+			tb.Errorf("failed to read fibonacci stream: %v", err)
+			break
 		}
 		tb.Logf("Received value %v", place.Value)
 	}
