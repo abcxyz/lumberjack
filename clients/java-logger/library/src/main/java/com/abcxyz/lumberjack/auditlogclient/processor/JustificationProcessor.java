@@ -35,6 +35,7 @@ import com.google.protobuf.Struct;
 import com.google.protobuf.Value;
 import com.google.protobuf.util.JsonFormat;
 import com.google.rpc.context.AttributeContext.Request;
+import java.util.List;
 import java.util.Map;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -129,17 +130,23 @@ public class JustificationProcessor implements LogMutator {
       Claim justificationsClaim = jwt.getClaim("justs");
       if (justificationsClaim.isNull()) {
         log.warn("can't find 'justs' in claims");
-      } else {
-        RequestMetadata.Builder requestMetadataBuilder =
-            auditLogBuilderCopy.getRequestMetadataBuilder();
-        Request.Builder requestAttributesBuilder =
-            requestMetadataBuilder
-                .getRequestAttributesBuilder()
-                .setReason(new Gson().toJson(justificationsClaim.asList(Map.class)));
-        requestMetadataBuilder =
-            requestMetadataBuilder.setRequestAttributes(requestAttributesBuilder);
-        auditLogBuilderCopy.setRequestMetadata(requestMetadataBuilder);
+        return auditLogBuilderCopy;
       }
+      List<Map> justificationsList = justificationsClaim.asList(Map.class);
+      if (justificationsList == null || justificationsList.isEmpty()) {
+        log.warn("justs in claims is null or empty");
+        return auditLogBuilderCopy;
+      }
+
+      RequestMetadata.Builder requestMetadataBuilder =
+          auditLogBuilderCopy.getRequestMetadataBuilder();
+      Request.Builder requestAttributesBuilder =
+          requestMetadataBuilder
+              .getRequestAttributesBuilder()
+              .setReason(new Gson().toJson(justificationsList));
+      requestMetadataBuilder =
+          requestMetadataBuilder.setRequestAttributes(requestAttributesBuilder);
+      auditLogBuilderCopy.setRequestMetadata(requestMetadataBuilder);
     } catch (JwkException | InvalidProtocolBufferException e) {
       throw new LogProcessingException(e);
     }
