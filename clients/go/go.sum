@@ -72,12 +72,12 @@ github.com/GoogleCloudPlatform/opentelemetry-operations-go v1.0.0/go.mod h1:geb4
 github.com/GoogleCloudPlatform/opentelemetry-operations-go/exporter/trace v1.0.0 h1:38fNtfhHY6bs22b/D6+hDzO6JR0rDzpGPD36dY2uPL4=
 github.com/GoogleCloudPlatform/opentelemetry-operations-go/exporter/trace v1.0.0/go.mod h1:jE23wM1jvwSKgdGcoOkj5j9n1VWtncW36pL2bK1JU+0=
 github.com/OneOfOne/xxhash v1.2.2/go.mod h1:HSdplMjZKSmBqAxg5vPj2TmRDmfkzw+cTzAElWljhcU=
-github.com/abcxyz/jvs v0.0.0-20220713181819-5cc3eb83dc6b h1:uhx0EiUkwUoy/1Hem9pwZpSI0cZuJ9BVlqjTvOYDAPg=
-github.com/abcxyz/jvs v0.0.0-20220713181819-5cc3eb83dc6b/go.mod h1:6XWVLVHrfIBFXN76Fh072E8nd0RSmSyYr9MKArSRAr8=
-github.com/abcxyz/jvs/client-lib/go v0.0.0-20220713181819-5cc3eb83dc6b h1:CSIaB0wokXj9Jg/WWi5yGjD7dZh+U+0lmhcwE9HDpT0=
-github.com/abcxyz/jvs/client-lib/go v0.0.0-20220713181819-5cc3eb83dc6b/go.mod h1:NfOLJjKgctTBVl2JdDON861Ei6JGLSP6itlUn28Odc4=
-github.com/abcxyz/pkg v0.0.0-20220627210229-493bf5fec862 h1:DEU4U/AgVWsxWhrO9rBUytuuXL6tznVPDxx2q2DI6c0=
-github.com/abcxyz/pkg v0.0.0-20220627210229-493bf5fec862/go.mod h1:Sz/e+0vW0XIIeeIS4KDLIeh1Bb/CPAvQiZOdOTBiW4k=
+github.com/abcxyz/jvs v0.0.2-0.20220915004312-db26d444b9ae h1:M3yMSghNGXElhcEOJBxqlO8QQRs3cVmM5ncDl69C00I=
+github.com/abcxyz/jvs v0.0.2-0.20220915004312-db26d444b9ae/go.mod h1:m9PZgVFkkLDtncjzrcwXbvBhMwpOCvggWqsAwMxNtQg=
+github.com/abcxyz/jvs/client-lib/go v0.0.0-20220915004312-db26d444b9ae h1:kFhazhdgrLp52yDe4p3nLjGjeELbb/9YhjlckEAN6e4=
+github.com/abcxyz/jvs/client-lib/go v0.0.0-20220915004312-db26d444b9ae/go.mod h1:MEmok7HO/fVqapbrQIBulDK805eHE0ZXvHgRCPFRV6s=
+github.com/abcxyz/pkg v0.0.0-20220719233420-62c7b76c10e9 h1:ROwNYAzdaFBjS9dTzmTjwgW84QaKQWxUFm3zlSbP77I=
+github.com/abcxyz/pkg v0.0.0-20220719233420-62c7b76c10e9/go.mod h1:Sz/e+0vW0XIIeeIS4KDLIeh1Bb/CPAvQiZOdOTBiW4k=
 github.com/antihax/optional v1.0.0/go.mod h1:uupD/76wgC+ih3iEmQUL+0Ugr19nfwCT1kdvxnR2qWY=
 github.com/benbjohnson/clock v1.1.0 h1:Q92kusRqC1XV2MjkWETPvjJVqKetz1OzxZB7mHJLju8=
 github.com/benbjohnson/clock v1.1.0/go.mod h1:J11/hYXuz8f4ySSvYwY0FKfm+ezbsZBKZxNJlLklBHA=
@@ -96,8 +96,6 @@ github.com/cncf/xds/go v0.0.0-20210312221358-fbca930ec8ed/go.mod h1:eXthEFrGJvWH
 github.com/cncf/xds/go v0.0.0-20210805033703-aa0b78936158/go.mod h1:eXthEFrGJvWHgFFCl3hGmgk+/aYT6PnTQLykKQRLhEs=
 github.com/cncf/xds/go v0.0.0-20210922020428-25de7278fc84/go.mod h1:eXthEFrGJvWHgFFCl3hGmgk+/aYT6PnTQLykKQRLhEs=
 github.com/cncf/xds/go v0.0.0-20211001041855-01bcc9b48dfe/go.mod h1:eXthEFrGJvWHgFFCl3hGmgk+/aYT6PnTQLykKQRLhEs=
-github.com/cncf/xds/go v0.0.0-20211011173535-cb28da3451f1/go.mod h1:eXthEFrGJvWHgFFCl3hGmgk+/aYT6PnTQLykKQRLhEs=
-github.com/cncf/xds/go v0.0.0-20211011173535-cb28da3451f1/go.mod h1:eXthEFrGJvWHgFFCl3hGmgk+/aYT6PnTQLykKQRLhEs=
 github.com/cncf/xds/go v0.0.0-20211011173535-cb28da3451f1/go.mod h1:eXthEFrGJvWHgFFCl3hGmgk+/aYT6PnTQLykKQRLhEs=
 github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/davecgh/go-spew v1.1.1 h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c=
