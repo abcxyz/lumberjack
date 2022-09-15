@@ -77,7 +77,7 @@ type fakeJVS struct {
 	returnErr bool
 }
 
-func (j *fakeJVS) ValidateJWT(_ string) (*jwt.Token, error) {
+func (j *fakeJVS) ValidateJWT(_ string) (jwt.Token, error) {
 	if j.returnErr {
 		return nil, fmt.Errorf("validate jwt error")
 	}
@@ -91,7 +91,7 @@ func (j *fakeJVS) ValidateJWT(_ string) (*jwt.Token, error) {
 	if err := t.Set(jwt.JwtIDKey, "123"); err != nil {
 		return nil, err
 	}
-	return &t, nil
+	return t, nil
 }
 
 func TestUnaryInterceptor(t *testing.T) {
