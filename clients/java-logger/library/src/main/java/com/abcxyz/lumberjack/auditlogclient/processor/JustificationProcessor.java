@@ -21,16 +21,21 @@ import com.abcxyz.lumberjack.auditlogclient.AuditLoggingServerInterceptor;
 import com.abcxyz.lumberjack.auditlogclient.processor.LogProcessor.LogMutator;
 import com.abcxyz.lumberjack.v1alpha1.AuditLogRequest;
 import com.auth0.jwk.JwkException;
+import com.auth0.jwt.interfaces.Claim;
 import com.auth0.jwt.interfaces.DecodedJWT;
 import com.google.api.client.util.Preconditions;
 import com.google.api.client.util.StringUtils;
 import com.google.cloud.audit.AuditLog;
+import com.google.cloud.audit.RequestMetadata;
+import com.google.gson.Gson;
 import com.google.inject.Inject;
 import com.google.protobuf.InvalidProtocolBufferException;
 import com.google.protobuf.ListValue;
 import com.google.protobuf.Struct;
 import com.google.protobuf.Value;
 import com.google.protobuf.util.JsonFormat;
+import com.google.rpc.context.AttributeContext.Request;
+import java.util.Map;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.codec.binary.Base64;
@@ -121,6 +126,20 @@ public class JustificationProcessor implements LogMutator {
           Value.newBuilder().setStructValue(justificationStruct).build());
       auditLogBuilderCopy.setMetadata(metadataBuilder.build());
 
+      Claim justificationsClaim = jwt.getClaim("justs");
+      if (justificationsClaim.isNull()) {
+        log.warn("can't find 'justs' in claims");
+      } else {
+        RequestMetadata.Builder requestMetadataBuilder =
+            auditLogBuilderCopy.getRequestMetadataBuilder();
+        Request.Builder requestAttributesBuilder =
+            requestMetadataBuilder
+                .getRequestAttributesBuilder()
+                .setReason(new Gson().toJson(justificationsClaim.asList(Map.class)));
+        requestMetadataBuilder =
+            requestMetadataBuilder.setRequestAttributes(requestAttributesBuilder);
+        auditLogBuilderCopy.setRequestMetadata(requestMetadataBuilder);
+      }
     } catch (JwkException | InvalidProtocolBufferException e) {
       throw new LogProcessingException(e);
     }

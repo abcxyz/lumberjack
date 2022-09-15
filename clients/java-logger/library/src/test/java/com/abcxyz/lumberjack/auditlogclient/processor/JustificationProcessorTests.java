@@ -31,11 +31,14 @@ import com.auth0.jwt.JWT;
 import com.auth0.jwt.interfaces.DecodedJWT;
 import com.google.cloud.audit.AuditLog;
 import com.google.cloud.audit.AuthenticationInfo;
+import com.google.cloud.audit.RequestMetadata;
 import com.google.protobuf.ListValue;
 import com.google.protobuf.Struct;
 import com.google.protobuf.Value;
+import com.google.rpc.context.AttributeContext.Request;
 import io.jsonwebtoken.Jwts;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -59,6 +62,12 @@ public class JustificationProcessorTests {
     Map<String, Object> claims = new HashMap<>();
     claims.put("id", "jwt-id");
     claims.put("role", "user");
+
+    Map<String, String> justification = new HashMap<>();
+    justification.put("category", "explanation");
+    justification.put("value", "need-access");
+    claims.put("justs", List.of(justification));
+
     String token = Jwts.builder().setClaims(claims).setAudience("test-aud").compact();
     AuditLogRequest auditLogReqWithToken = getAuditLogRequestWithJvsToken(token);
 
@@ -67,6 +76,11 @@ public class JustificationProcessorTests {
     doReturn(jwt).when(jvsClient).validateJWT(token);
 
     AuditLogRequest wantAuditLogReq = AuditLogRequest.parseFrom(auditLogReqWithToken.toByteArray());
+    Struct wantJustificationsClaim =
+        Struct.newBuilder()
+            .putFields("category", Value.newBuilder().setStringValue("explanation").build())
+            .putFields("value", Value.newBuilder().setStringValue("need-access").build())
+            .build();
     Struct wantJustification =
         Struct.newBuilder()
             .putFields("id", Value.newBuilder().setStringValue("jwt-id").build())
@@ -78,14 +92,31 @@ public class JustificationProcessorTests {
                         ListValue.newBuilder()
                             .addValues(Value.newBuilder().setStringValue("test-aud")))
                     .build())
+            .putFields(
+                "justs",
+                Value.newBuilder()
+                    .setListValue(
+                        ListValue.newBuilder()
+                            .addValues(Value.newBuilder().setStructValue(wantJustificationsClaim)))
+                    .build())
             .build();
     Struct wantMetadata =
         Struct.newBuilder()
             .putFields(
                 "justification", Value.newBuilder().setStructValue(wantJustification).build())
             .build();
+    RequestMetadata wantRequestMetadata =
+        RequestMetadata.newBuilder()
+            .setRequestAttributes(
+                Request.newBuilder()
+                    .setReason("[{\"category\":\"explanation\",\"value\":\"need-access\"}]")
+                    .build())
+            .build();
     AuditLog wantAuditLog =
-        wantAuditLogReq.getPayload().toBuilder().setMetadata(wantMetadata).build();
+        wantAuditLogReq.getPayload().toBuilder()
+            .setMetadata(wantMetadata)
+            .setRequestMetadata(wantRequestMetadata)
+            .build();
     wantAuditLogReq = wantAuditLogReq.toBuilder().setPayload(wantAuditLog).build();
 
     JustificationProcessor processor = new JustificationProcessor(jvsClient);
