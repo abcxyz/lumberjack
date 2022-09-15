@@ -80,6 +80,8 @@ github.com/GoogleCloudPlatform/opentelemetry-operations-go/exporter/trace v1.0.0
 github.com/OneOfOne/xxhash v1.2.2/go.mod h1:HSdplMjZKSmBqAxg5vPj2TmRDmfkzw+cTzAElWljhcU=
 github.com/abcxyz/jvs v0.0.2-0.20220915004312-db26d444b9ae h1:M3yMSghNGXElhcEOJBxqlO8QQRs3cVmM5ncDl69C00I=
 github.com/abcxyz/jvs v0.0.2-0.20220915004312-db26d444b9ae/go.mod h1:m9PZgVFkkLDtncjzrcwXbvBhMwpOCvggWqsAwMxNtQg=
+github.com/abcxyz/jvs/client-lib/go v0.0.0-20220915005309-051e121fe9e7 h1:MALP8jzdBvd/dv5OqsTVQGV0+FIv8PIQ2fmZvNPq1DE=
+github.com/abcxyz/jvs/client-lib/go v0.0.0-20220915005309-051e121fe9e7/go.mod h1:PCD2jd5m1Da0gYGAfDBUXyB4tZIqR2WlF8SGAlH5f5I=
 github.com/abcxyz/pkg v0.0.0-20220719233420-62c7b76c10e9 h1:ROwNYAzdaFBjS9dTzmTjwgW84QaKQWxUFm3zlSbP77I=
 github.com/abcxyz/pkg v0.0.0-20220719233420-62c7b76c10e9/go.mod h1:Sz/e+0vW0XIIeeIS4KDLIeh1Bb/CPAvQiZOdOTBiW4k=
 github.com/antihax/optional v1.0.0/go.mod h1:uupD/76wgC+ih3iEmQUL+0Ugr19nfwCT1kdvxnR2qWY=

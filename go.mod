@@ -7,7 +7,6 @@ require (
 	cloud.google.com/go/compute v1.6.1
 	cloud.google.com/go/logging v1.4.2
 	github.com/abcxyz/jvs v0.0.2-0.20220915004312-db26d444b9ae
-	github.com/abcxyz/lumberjack/clients/go v0.0.0-20220914222408-78ac8bddca38
 	github.com/abcxyz/pkg v0.0.0-20220719233420-62c7b76c10e9
 	github.com/golang-jwt/jwt v3.2.2+incompatible
 	github.com/google/go-cmp v0.5.8
@@ -30,6 +29,7 @@ require (
 	cloud.google.com/go/trace v1.0.0 // indirect
 	github.com/GoogleCloudPlatform/opentelemetry-operations-go v1.0.0 // indirect
 	github.com/GoogleCloudPlatform/opentelemetry-operations-go/exporter/trace v1.0.0 // indirect
+	github.com/abcxyz/jvs/client-lib/go v0.0.0-20220915005309-051e121fe9e7 // indirect
 	github.com/decred/dcrd/dcrec/secp256k1/v4 v4.0.1 // indirect
 	github.com/go-logr/logr v1.2.3 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
