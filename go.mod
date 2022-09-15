@@ -6,9 +6,9 @@ require (
 	cloud.google.com/go/bigquery v1.32.0
 	cloud.google.com/go/compute v1.6.1
 	cloud.google.com/go/logging v1.4.2
-	github.com/abcxyz/jvs v0.0.1
+	github.com/abcxyz/jvs v0.0.2-0.20220915004312-db26d444b9ae
 	github.com/abcxyz/lumberjack/clients/go v0.0.0-00010101000000-000000000000
-	github.com/abcxyz/pkg v0.0.0-20220627210229-493bf5fec862
+	github.com/abcxyz/pkg v0.0.0-20220719233420-62c7b76c10e9
 	github.com/golang-jwt/jwt v3.2.2+incompatible
 	github.com/google/go-cmp v0.5.8
 	github.com/google/uuid v1.3.0

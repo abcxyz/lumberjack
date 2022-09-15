@@ -263,7 +263,7 @@ func justificationFromConfig(ctx context.Context, cfg *api.Config) (audit.Option
 	// TODO(#299): allow overriding these values via JVS env var.
 	jvsconfig := &client.JVSConfig{
 		JVSEndpoint:  cfg.Justification.PublicKeysEndpoint,
-		Version:      1,
+		Version:      "1",
 		CacheTimeout: 5 * time.Minute,
 	}
 	jvsClient, err := client.NewJVSClient(ctx, jvsconfig)

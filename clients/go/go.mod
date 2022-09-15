@@ -34,9 +34,9 @@ require (
 	cloud.google.com/go/compute v1.6.1
 	github.com/GoogleCloudPlatform/opentelemetry-operations-go v1.0.0
 	github.com/GoogleCloudPlatform/opentelemetry-operations-go/exporter/trace v1.0.0
-	github.com/abcxyz/jvs v0.0.0-20220713181819-5cc3eb83dc6b
-	github.com/abcxyz/jvs/client-lib/go v0.0.0-20220713181819-5cc3eb83dc6b
-	github.com/abcxyz/pkg v0.0.0-20220627210229-493bf5fec862
+	github.com/abcxyz/jvs v0.0.2-0.20220915004312-db26d444b9ae
+	github.com/abcxyz/jvs/client-lib/go v0.0.0-20220915004312-db26d444b9ae
+	github.com/abcxyz/pkg v0.0.0-20220719233420-62c7b76c10e9
 	github.com/golang-jwt/jwt v3.2.2+incompatible
 	github.com/google/uuid v1.3.0
 	github.com/lestrrat-go/jwx/v2 v2.0.3
