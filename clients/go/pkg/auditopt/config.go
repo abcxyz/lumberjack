@@ -41,6 +41,7 @@ import (
 	"fmt"
 	"io/fs"
 	"os"
+	"time"
 
 	"cloud.google.com/go/logging"
 	"github.com/abcxyz/jvs/client-lib/go/client"
@@ -259,7 +260,13 @@ func labelsFromConfig(cfg *api.Config) audit.Option {
 }
 
 func justificationFromConfig(ctx context.Context, cfg *api.Config) (audit.Option, error) {
-	jvsClient, err := client.NewJVSClient(ctx, &client.JVSConfig{JVSEndpoint: cfg.Justification.PublicKeysEndpoint})
+	// TODO(#299): allow overriding these values via JVS env var.
+	jvsconfig := &client.JVSConfig{
+		JVSEndpoint:  cfg.Justification.PublicKeysEndpoint,
+		Version:      1,
+		CacheTimeout: 5 * time.Minute,
+	}
+	jvsClient, err := client.NewJVSClient(ctx, jvsconfig)
 	if err != nil {
 		return nil, err
 	}
