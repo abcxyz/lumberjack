@@ -17,6 +17,7 @@
 package com.abcxyz.lumberjack.auditlogclient.processor;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.doReturn;
@@ -213,6 +214,60 @@ public class JustificationProcessorTests {
     assertThrows(
         LogProcessingException.class,
         () -> processor.auditLogBuilderWithJustification(token, auditLog.toBuilder()));
+  }
+
+  @Test
+  public void getJustificationList() {
+    Map<String, String> justification = new HashMap<>();
+    justification.put("category", "explanation");
+    justification.put("value", "need-access");
+    Map<String, Object> claims = Map.of("justs", List.of(justification));
+
+    String token = Jwts.builder().setClaims(claims).compact();
+    DecodedJWT jwt = JWT.decode(token);
+
+    JustificationProcessor processor = new JustificationProcessor(jvsClient);
+    assertEquals(List.of(justification), processor.getJustificationList(jwt));
+  }
+
+  @Test
+  public void getJustificationList_JustsNotFound() {
+    Map<String, Object> claims = Map.of("id", "jwt-id");
+    String token = Jwts.builder().setClaims(claims).compact();
+    DecodedJWT jwt = JWT.decode(token);
+
+    JustificationProcessor processor = new JustificationProcessor(jvsClient);
+    assertNull(processor.getJustificationList(jwt));
+  }
+
+  @Test
+  public void getJustificationList_JustsNotAList() {
+    Map<String, Object> claims = Map.of("justs", "not a list");
+    String token = Jwts.builder().setClaims(claims).compact();
+    DecodedJWT jwt = JWT.decode(token);
+
+    JustificationProcessor processor = new JustificationProcessor(jvsClient);
+    assertNull(processor.getJustificationList(jwt));
+  }
+
+  @Test
+  public void getJustificationList_JustsIsEmpty() {
+    Map<String, Object> claims = Map.of("justs", List.of());
+    String token = Jwts.builder().setClaims(claims).compact();
+    DecodedJWT jwt = JWT.decode(token);
+
+    JustificationProcessor processor = new JustificationProcessor(jvsClient);
+    assertNull(processor.getJustificationList(jwt));
+  }
+
+  @Test
+  public void getJustificationList_JustNotAMap() {
+    Map<String, Object> claims = Map.of("justs", List.of("not a map"));
+    String token = Jwts.builder().setClaims(claims).compact();
+    DecodedJWT jwt = JWT.decode(token);
+
+    JustificationProcessor processor = new JustificationProcessor(jvsClient);
+    assertNull(processor.getJustificationList(jwt));
   }
 
   private AuditLogRequest getAuditLogRequestWithJvsToken(String token) {

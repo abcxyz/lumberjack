@@ -21,12 +21,14 @@ import com.abcxyz.lumberjack.auditlogclient.AuditLoggingServerInterceptor;
 import com.abcxyz.lumberjack.auditlogclient.processor.LogProcessor.LogMutator;
 import com.abcxyz.lumberjack.v1alpha1.AuditLogRequest;
 import com.auth0.jwk.JwkException;
+import com.auth0.jwt.exceptions.JWTDecodeException;
 import com.auth0.jwt.interfaces.Claim;
 import com.auth0.jwt.interfaces.DecodedJWT;
 import com.google.api.client.util.Preconditions;
 import com.google.api.client.util.StringUtils;
 import com.google.cloud.audit.AuditLog;
 import com.google.cloud.audit.RequestMetadata;
+import com.google.common.annotations.VisibleForTesting;
 import com.google.gson.Gson;
 import com.google.inject.Inject;
 import com.google.protobuf.InvalidProtocolBufferException;
@@ -45,6 +47,7 @@ import org.apache.commons.codec.binary.Base64;
 @AllArgsConstructor(onConstructor = @__({@Inject}))
 public class JustificationProcessor implements LogMutator {
   private static final String JUSTIFICATION_LOG_METADATA_KEY = "justification";
+  private static final String JUSTIFICATIONS_CLAIM_NAME = "justs";
   private final JvsClient jvs;
 
   /**
@@ -127,33 +130,51 @@ public class JustificationProcessor implements LogMutator {
           Value.newBuilder().setStructValue(justificationStruct).build());
       auditLogBuilderCopy.setMetadata(metadataBuilder.build());
 
-      Claim justificationsClaim = jwt.getClaim("justs");
-
       // Continue without populating RequestMetadata.RequestAttributes.Reason if the justifications
-      // claim is null or empty.
-      if (justificationsClaim.isNull()) {
-        log.warn("can't find 'justs' in claims");
-        return auditLogBuilderCopy;
+      // in claim is null or empty.
+      List<Map> justificationList = getJustificationList(jwt);
+      if (justificationList != null) {
+        RequestMetadata requestMetadata = auditLogBuilderCopy.getRequestMetadata();
+        Request requestAttributes =
+            requestMetadata.getRequestAttributes().toBuilder()
+                .setReason(new Gson().toJson(justificationList))
+                .build();
+        requestMetadata =
+            requestMetadata.toBuilder().setRequestAttributes(requestAttributes).build();
+        auditLogBuilderCopy.setRequestMetadata(requestMetadata);
       }
-      List<Map> justificationsList = justificationsClaim.asList(Map.class);
-      if (justificationsList == null || justificationsList.isEmpty()) {
-        log.warn("justs in claims is null or empty");
-        return auditLogBuilderCopy;
-      }
-
-      RequestMetadata.Builder requestMetadataBuilder =
-          auditLogBuilderCopy.getRequestMetadataBuilder();
-      Request.Builder requestAttributesBuilder =
-          requestMetadataBuilder
-              .getRequestAttributesBuilder()
-              .setReason(new Gson().toJson(justificationsList));
-      requestMetadataBuilder =
-          requestMetadataBuilder.setRequestAttributes(requestAttributesBuilder);
-      auditLogBuilderCopy.setRequestMetadata(requestMetadataBuilder);
     } catch (JwkException | InvalidProtocolBufferException e) {
       throw new LogProcessingException(e);
     }
 
     return auditLogBuilderCopy;
+  }
+
+  /**
+   * Get the Justifications as a list or null if it is not found or empty in the given decoded JWT
+   * token.
+   *
+   * @param jwt decoded JWT token.
+   * @return a list of Justifications or null if it is not found or empty.
+   */
+  @VisibleForTesting
+  List<Map> getJustificationList(DecodedJWT jwt) {
+    Claim justificationsClaim = jwt.getClaim(JUSTIFICATIONS_CLAIM_NAME);
+    if (justificationsClaim.isNull()) {
+      log.warn("can't find 'justs' in claims");
+      return null;
+    }
+
+    try {
+      List<Map> justificationsList = justificationsClaim.asList(Map.class);
+      if (justificationsList == null || justificationsList.isEmpty()) {
+        log.warn("justs in claims is null or empty");
+      } else {
+        return justificationsList;
+      }
+    } catch (JWTDecodeException e) {
+      log.warn("justs in claims cannot be converted to list of maps");
+    }
+    return null;
   }
 }
