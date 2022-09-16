@@ -128,17 +128,16 @@ public class JustificationProcessor implements LogMutator {
       auditLogBuilderCopy.setMetadata(metadataBuilder.build());
 
       Claim justificationsClaim = jwt.getClaim("justs");
+
+      // Continue without populating RequestMetadata.RequestAttributes.Reason if the justifications
+      // claim is null or empty.
       if (justificationsClaim.isNull()) {
-        log.warn(
-            "can't find 'justs' in claims, continue without logging"
-                + " RequestMetadata.RequestAttributes.Reason");
+        log.warn("can't find 'justs' in claims");
         return auditLogBuilderCopy;
       }
       List<Map> justificationsList = justificationsClaim.asList(Map.class);
       if (justificationsList == null || justificationsList.isEmpty()) {
-        log.warn(
-            "justs in claims is null or empty, continue without logging"
-                + " RequestMetadata.RequestAttributes.Reason");
+        log.warn("justs in claims is null or empty");
         return auditLogBuilderCopy;
       }
 
