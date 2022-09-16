@@ -120,6 +120,7 @@ resource "google_cloud_run_service" "server" {
       }
     }
 
+
     metadata {
       annotations = merge(
         local.default_server_revision_annotations,

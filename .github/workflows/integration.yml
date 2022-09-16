@@ -1,0 +1,164 @@
+name: 'integration-test'
+on:
+  workflow_call:
+    inputs:
+      env-context:
+        required: true
+        type: string
+        description: 'Shared environment data from the calling workflow'
+jobs:
+
+  deploy-infra:
+    runs-on: 'ubuntu-latest'
+    permissions:
+      contents: 'read'
+      id-token: 'write'
+    env:
+      tf_module_dir: './terraform/modules/ci'
+    outputs:
+      grpc_endpoints: ${{ steps.tf_apply.outputs.grpc_endpoints }}
+      http_endpoints: ${{ steps.tf_apply.outputs.http_endpoints }}
+    steps:
+      - name: 'Configure environment variables'
+        if: ${{ inputs.env-context != '{}' }}
+        run: |-
+          jq -r <<< '${{ inputs.env-context }}' | jq -r "to_entries | map(\"\(.key)=\(.value|tostring)\") | .[]" >> $GITHUB_ENV
+      - name: 'Checkout'
+        uses: 'actions/checkout@2541b1294d2704b0964813337f33b291d3f8596b' # ratchet:actions/checkout@v3
+      - id: 'auth'
+        name: 'Authenticate to Google Cloud'
+        uses: 'google-github-actions/auth@ceee102ec2387dd9e844e01b530ccd4ec87ce955' # ratchet:google-github-actions/auth@v0
+        with:
+          workload_identity_provider: '${{ env.wif_provider }}'
+          service_account: '${{ env.wif_service_account }}'
+          token_format: 'access_token' # Needed for Terraform workaround
+      # TODO: Workload Identity doesn't work with GCS Provider.
+      # https://github.com/google-github-actions/auth/issues/89
+      - name: 'Workaround Terraform issue'
+        shell: 'bash'
+        run: |-
+          echo "GOOGLE_OAUTH_ACCESS_TOKEN=${{ steps.auth.outputs.access_token }}" >> $GITHUB_ENV
+      - name: 'Setup Terraform'
+        uses: hashicorp/setup-terraform@17d4c9b8043b238f6f35641cdd8433da1e6f3867 # ratchet:hashicorp/setup-terraform@v2
+        with:
+          terraform_wrapper: false
+      - name: 'Init the terraform infrastructure'
+        run: terraform -chdir=${{ env.tf_module_dir }} init -backend-config="bucket=${{ env.tf_state_bucket }}"
+      - name: 'Apply the infrastructure updates'
+        id: 'tf_apply'
+        env:
+          client_images_grpc: '[\"ljc-go-grpc\",\"ljc-java-grpc\"]'
+          client_images_http: '[\"ljc-go-http\",\"ljc-java-http\"]'
+          server_image: 'lumberjack-server'
+        run: |-
+          terraform -chdir=${{ env.tf_module_dir}} apply -auto-approve \
+            -var="server_project_id=${{ env.server_project_id }}" \
+            -var="server_image=${{ env.server_image }}" \
+            -var="client_project_id=${{ env.client_project_id }}" \
+            -var="docker_repo=${{ env.docker_repo }}" \
+            -var="docker_tag=${{ env.docker_tag }}" \
+            -var="grpc_client_images=${{ env.client_images_grpc }}" \
+            -var="http_client_images=${{ env.client_images_http }}" ;
+          terraform -chdir=${{ env.tf_module_dir}} output -json | jq -c > output.json
+
+          grpc_endpoints=$(cat output.json | jq -c '.grpc_client_urls.value')
+          http_endpoints=$(cat output.json | jq -c '.http_client_urls.value')
+
+          echo "::set-output name=grpc_endpoints::$(echo ${grpc_endpoints})"
+          echo "::set-output name=http_endpoints::$(echo ${http_endpoints})"
+
+  run-integration-tests:
+    runs-on: 'ubuntu-latest'
+    needs: 'deploy-infra'
+    permissions:
+      contents: 'read'
+      id-token: 'write'
+    env:
+      grpc_endpoints: ${{ needs.deploy-infra.outputs.grpc_endpoints }}
+      http_endpoints: ${{ needs.deploy-infra.outputs.http_endpoints }}
+    steps:
+      - name: 'Configure environment variables'
+        if: ${{ inputs.env-context != '{}' }}
+        run: |-
+          jq -r <<< '${{ inputs.env-context }}' | jq -r "to_entries | map(\"\(.key)=\(.value|tostring)\") | .[]" >> $GITHUB_ENV
+      - name: 'Checkout'
+        uses: 'actions/checkout@2541b1294d2704b0964813337f33b291d3f8596b' # ratchet:actions/checkout@v3
+      - name: 'Setup Go'
+        uses: 'actions/setup-go@fcdc43634adb5f7ae75a9d7a9b9361790f7293e2' # ratchet:actions/setup-go@v3
+        with:
+          go-version: '1.19'
+      - name: 'Cache dependencies'
+        uses: 'actions/cache@48af2dc4a9e8278b89d7fa154b955c30c6aaab09' # ratchet:actions/cache@v3
+        with:
+          path: |-
+            ~/go/pkg/mod
+          key: ${{ runner.os }}-go-test-${{ hashFiles('**/go.sum') }}
+          restore-keys: |-
+            ${{ runner.os }}-go-
+            ${{ runner.os }}-go-test-
+      - id: 'auth'
+        name: 'Authenticate to Google Cloud'
+        uses: 'google-github-actions/auth@ceee102ec2387dd9e844e01b530ccd4ec87ce955' # ratchet:goe-github-actions/auth@v0
+        with:
+          workload_identity_provider: '${{ env.wif_provider }}'
+          service_account: '${{ env.wif_service_account }}'
+          token_format: 'access_token'
+      - name: 'Run tests'
+        id: 'run-tests'
+        run: |-
+          export GRPC_ENDPOINTS='${{ env.grpc_endpoints }}';
+          export HTTP_ENDPOINTS='${{ env.http_endpoints }}';
+          export ID_TOKEN=$(gcloud auth print-identity-token --impersonate-service-account=${{ env.wif_service_account }} --include-email)
+
+          go test ./integration/testrunner \
+            -id-token=${ID_TOKEN} \
+            -project-id=${{ env.server_project_id }} \
+            -dataset-query=${{ env.bigquery_dataset_id }}
+  destroy-infra:
+    runs-on: 'ubuntu-latest'
+    permissions:
+      contents: 'read'
+      id-token: 'write'
+    needs: [deploy-infra, run-integration-tests]
+    if: always()
+    env:
+      tf_module_dir: './terraform/modules/ci'
+    steps:
+      - name: 'Configure environment variables'
+        if: ${{ inputs.env-context != '{}' }}
+        run: |-
+          jq -r <<< '${{ inputs.env-context }}' | jq -r "to_entries | map(\"\(.key)=\(.value|tostring)\") | .[]" >> $GITHUB_ENV
+      - name: 'Checkout'
+        uses: 'actions/checkout@2541b1294d2704b0964813337f33b291d3f8596b' # ratchet:actions/checkout@v3
+      - id: 'auth'
+        name: 'Authenticate to Google Cloud'
+        uses: 'google-github-actions/auth@ceee102ec2387dd9e844e01b530ccd4ec87ce955' # ratchet:google-github-actions/auth@v0
+        with:
+          workload_identity_provider: '${{ env.wif_provider }}'
+          service_account: '${{ env.wif_service_account }}'
+          token_format: 'access_token' # Needed for Terraform workaround
+      # TODO: Workload Identity doesn't work with GCS Provider.
+      # https://github.com/google-github-actions/auth/issues/89
+      - name: 'Workaround Terraform issue'
+        shell: 'bash'
+        run: |-
+          echo "GOOGLE_OAUTH_ACCESS_TOKEN=${{ steps.auth.outputs.access_token }}" >> $GITHUB_ENV
+      - name: 'Setup Terraform'
+        uses: hashicorp/setup-terraform@17d4c9b8043b238f6f35641cdd8433da1e6f3867 # ratchet:hashicorp/setup-terraform@v2
+      - name: 'Init the terraform infrastructure'
+        run: terraform -chdir=${{ env.tf_module_dir }} init -backend-config="bucket=${{ env.tf_state_bucket }}"
+      - name: 'Destroy the infrastructure updates'
+        id: 'tf_destroy'
+        env:
+          client_images_grpc: '[\"ljc-go-grpc\",\"ljc-java-grpc\"]'
+          client_images_http: '[\"ljc-go-http\",\"ljc-java-http\"]'
+          server_image: 'lumberjack-server'
+        run: |-
+          terraform -chdir=${{ env.tf_module_dir}} destroy -auto-approve \
+            -var="server_project_id=${{ env.server_project_id }}" \
+            -var="server_image=${{ env.server_image }}" \
+            -var="client_project_id=${{ env.client_project_id }}" \
+            -var="docker_repo=${{ env.docker_repo }}" \
+            -var="docker_tag=${{ env.docker_tag }}" \
+            -var="grpc_client_images=${{ env.client_images_grpc }}" \
+            -var="http_client_images=${{ env.client_images_http }}" ;

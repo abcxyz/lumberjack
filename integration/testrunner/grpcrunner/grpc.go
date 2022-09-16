@@ -330,7 +330,7 @@ func createConnection(tb testing.TB, addr string, idToken string) *grpc.ClientCo
 // as the resource name, and provides us a unique key to find logs with.
 func (g *GRPC) makeQueryForGRPCUnary(id string) *bigquery.Query {
 	// Cast to int64 because the result checker expects a number.
-	queryString := fmt.Sprintf("SELECT CAST(EXISTS (SELECT * FROM %s.%s WHERE jsonPayload.resource_name=?", g.ProjectID, g.DatasetQuery)
+	queryString := fmt.Sprintf("SELECT CAST(EXISTS (SELECT * FROM `%s.%s` WHERE jsonPayload.resource_name=?", g.ProjectID, g.DatasetQuery)
 	if g.RequireJustification {
 		// TODO(#265): For back-compatibility, we need to ensure justification in either metadata key.
 		queryString += ` AND jsonPayload.metadata.justification IS NOT NULL`
@@ -341,7 +341,7 @@ func (g *GRPC) makeQueryForGRPCUnary(id string) *bigquery.Query {
 
 // Similar to the above function, but can return multiple results, which is what we expect for streaming.
 func (g *GRPC) makeQueryForGRPCStream(id string) *bigquery.Query {
-	queryString := fmt.Sprintf("SELECT count(*) FROM %s.%s WHERE jsonPayload.resource_name=?", g.ProjectID, g.DatasetQuery)
+	queryString := fmt.Sprintf("SELECT count(*) FROM `%s.%s` WHERE jsonPayload.resource_name=?", g.ProjectID, g.DatasetQuery)
 	if g.RequireJustification {
 		// TODO(#265): For back-compatibility, we need to ensure justification in either metadata key.
 		queryString += ` AND jsonPayload.metadata.justification IS NOT NULL`

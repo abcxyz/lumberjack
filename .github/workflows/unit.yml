@@ -1,0 +1,37 @@
+name: 'unit'
+on:
+  workflow_call:
+concurrency:
+  group: '${{ github.workflow }}-${{ github.head_ref || github.ref }}'
+  cancel-in-progress: true
+jobs:
+  go_test:
+    uses: 'abcxyz/pkg/.github/workflows/go-test.yml@cc2b918b16df0f627b933ed8dddf0d846fa9108b' # ratchet:abcxyz/pkg/.github/workflows/go-test.yml@main
+    with:
+      go_version: '1.19'
+      go_packages: |-
+        $(go list ./... | grep -v -E 'lumberjack/third_party|lumberjack/integration')
+  java_test:
+    runs-on: 'ubuntu-latest'
+    steps:
+      - uses: 'actions/checkout@93ea575cb5d8a053eaa0ac8fa3b40d7e05a33cc8' # ratchet:actions/checkout@v3
+      - name: Set up JDK 11
+        uses: actions/setup-java@a18c333f3f14249953dab3e186e5e21bf3390f1d # ratchet:actions/setup-java@v3
+        with:
+          java-version: '11'
+          distribution: 'adopt'
+      - name: Run tests with Maven
+        run: |-
+          mvn clean test --no-transfer-progress -f clients/java-logger
+
+# TODO: enable coverage for java
+# cover: no required module provides package github.com/abcxyz/lumberjack/clients/go/pkg/audit:
+# go.mod file not found in current directory or any parent directory; see 'go help modules'
+# - name: go-coverage
+#   shell: bash
+#   run: |-
+#     OUTPUT="$(go tool cover -func=./clients/go/coverage.out)"
+#     TOTAL="$(echo $OUTPUT | awk 'END{print $NF}')"
+#     echo "::group::Coverage (${TOTAL})"
+#     echo "${OUTPUT}"
+#     echo "::endgroup::"

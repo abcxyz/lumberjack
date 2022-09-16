@@ -1,0 +1,33 @@
+name: 'lint'
+on:
+  workflow_call:
+
+concurrency:
+  group: '${{ github.workflow }}-${{ github.head_ref || github.ref }}'
+  cancel-in-progress: true
+jobs:
+  terraform_lint:
+    uses: 'abcxyz/pkg/.github/workflows/terraform-lint.yml@cc2b918b16df0f627b933ed8dddf0d846fa9108b' # ratchet:abcxyz/pkg/.github/workflows/terraform-lint.yml@main
+    with:
+      directory: 'terraform'
+      terraform_version: '1.2'
+  go_lint_cmd:
+    uses: 'abcxyz/pkg/.github/workflows/go-lint.yml@cc2b918b16df0f627b933ed8dddf0d846fa9108b' # ratchet:abcxyz/pkg/.github/workflows/go-lint.yml@main
+    with:
+      directory: 'cmd'
+      go_version: '1.19'
+  go_lint_pkg:
+    uses: 'abcxyz/pkg/.github/workflows/go-lint.yml@cc2b918b16df0f627b933ed8dddf0d846fa9108b' # ratchet:abcxyz/pkg/.github/workflows/go-lint.yml@main
+    with:
+      directory: 'pkg'
+      go_version: '1.19'
+  go_lint_integration:
+    uses: 'abcxyz/pkg/.github/workflows/go-lint.yml@cc2b918b16df0f627b933ed8dddf0d846fa9108b' # ratchet:abcxyz/pkg/.github/workflows/go-lint.yml@main
+    with:
+      directory: 'integration'
+      go_version: '1.19'
+  java_lint:
+    uses: 'abcxyz/pkg/.github/workflows/java-lint.yml@cc2b918b16df0f627b933ed8dddf0d846fa9108b' # ratchet:abcxyz/pkg/.github/workflows/java-lint.yml@main
+    with:
+      directory: 'clients/java-logger'
+      java_version: '11'

@@ -50,7 +50,11 @@ func QueryIfAuditLogExists(ctx context.Context, tb testing.TB, query *bigquery.Q
 
 	// Check if the matching row count is equal to expected, if yes, then the audit log exists.
 	tb.Logf("Found %d matching rows", row[0])
-	return row[0] == expectedNum, nil
+	result, ok := row[0].(int64)
+	if !ok {
+		return false, fmt.Errorf("error converting query results to integer value")
+	}
+	return result >= expectedNum, nil
 }
 
 func MakeQuery(bqClient bigquery.Client, id string, queryString string) *bigquery.Query {
