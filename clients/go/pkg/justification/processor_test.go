@@ -26,7 +26,7 @@ import (
 	"google.golang.org/protobuf/testing/protocmp"
 	"google.golang.org/protobuf/types/known/structpb"
 
-	jvsapi "github.com/abcxyz/jvs/apis/v0"
+	jvspb "github.com/abcxyz/jvs/apis/v0"
 	api "github.com/abcxyz/lumberjack/clients/go/apis/v1alpha1"
 )
 
@@ -43,7 +43,7 @@ func TestProcess(t *testing.T) {
 	}{{
 		name: "success",
 		validator: &fakeValidator{
-			justifications: []*jvsapi.Justification{{Category: "explanation", Value: "need-access"}},
+			justifications: []*jvspb.Justification{{Category: "explanation", Value: "need-access"}},
 		},
 		logReq: &api.AuditLogRequest{
 			Context: &structpb.Struct{
@@ -89,7 +89,7 @@ func TestProcess(t *testing.T) {
 	}, {
 		name: "empty_token_no_action",
 		validator: &fakeValidator{
-			justifications: []*jvsapi.Justification{{Category: "explanation", Value: "need-access"}},
+			justifications: []*jvspb.Justification{{Category: "explanation", Value: "need-access"}},
 		},
 		logReq:     &api.AuditLogRequest{Payload: &audit.AuditLog{}},
 		wantLogReq: &api.AuditLogRequest{Payload: &audit.AuditLog{}},
@@ -135,7 +135,7 @@ func TestProcess(t *testing.T) {
 
 type fakeValidator struct {
 	returnErr      bool
-	justifications []*jvsapi.Justification
+	justifications []*jvspb.Justification
 }
 
 func (v *fakeValidator) ValidateJWT(jvsToken string) (jwt.Token, error) {

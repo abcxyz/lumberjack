@@ -27,11 +27,12 @@ import (
 
 	"cloud.google.com/go/bigquery"
 	jvspb "github.com/abcxyz/jvs/apis/v0"
-	"github.com/abcxyz/jvs/pkg/jvscrypto"
 	"github.com/abcxyz/lumberjack/integration/testrunner/talkerpb"
 	"github.com/abcxyz/lumberjack/integration/testrunner/utils"
-	"github.com/golang-jwt/jwt"
 	"github.com/google/uuid"
+	"github.com/lestrrat-go/jwx/v2/jwa"
+	"github.com/lestrrat-go/jwx/v2/jws"
+	"github.com/lestrrat-go/jwx/v2/jwt"
 	"golang.org/x/oauth2"
 	rpccode "google.golang.org/genproto/googleapis/rpc/code"
 	"google.golang.org/grpc"
@@ -55,9 +56,19 @@ type GRPC struct {
 	RequireJustification bool
 }
 
-// Matching public key here: https://github.com/abcxyz/lumberjack/pull/261/files#diff-f06321655121106c1e25ed2dd8cf773af6d7d5fb9b129abb2e1c04ba4d6dea5eR48
-// and here: https://github.com/abcxyz/lumberjack/pull/264/files#diff-6c73b144011b225fa9f7602b77cc3bb4817b74b9852269e4f5f7625bd039ab4dR113
-const privateKey = "-----BEGIN EC PRIVATE KEY-----\nMHcCAQEEIITZ4357UsTCbhxXu8w8cY54ZLlsAIJj/Aej9ylb/ZfBoAoGCCqGSM49\nAwEHoUQDQgAEhBWj8vw5LkPRWbCr45k0cOarIcWgApM03mSYF911de5q1wGOL7R9\nN8pC7jo2xbS+i1wGsMiz+AWnhhZIQcNTKg==\n-----END EC PRIVATE KEY-----"
+// Matching public key here: https://github.com/abcxyz/lumberjack/blob/92782c326681157221df37e0897ba234c5a22240/clients/go/test/grpc-app/main.go#L47
+const privateKeyString = `
+-----BEGIN EC PRIVATE KEY-----
+MHcCAQEEIITZ4357UsTCbhxXu8w8cY54ZLlsAIJj/Aej9ylb/ZfBoAoGCCqGSM49
+AwEHoUQDQgAEhBWj8vw5LkPRWbCr45k0cOarIcWgApM03mSYF911de5q1wGOL7R9
+N8pC7jo2xbS+i1wGsMiz+AWnhhZIQcNTKg==
+-----END EC PRIVATE KEY-----
+`
+
+var (
+	privateKeyPEM, _ = pem.Decode([]byte(strings.TrimSpace(privateKeyString)))
+	privateKey, _    = x509.ParseECPrivateKey(privateKeyPEM.Bytes)
+)
 
 // TestGRPCEndpoint runs tests against a GRPC endpoint. The given GRPC must
 // define a projectID and datasetQuery. If a TalkerClient or BigQueryClient are
@@ -120,24 +131,42 @@ func TestGRPCEndpoint(ctx context.Context, tb testing.TB, g *GRPC) {
 // create a justification token to pass in the call to services.
 func justificationToken() (string, error) {
 	now := time.Now().UTC()
-	claims := jvspb.JVSClaims{
-		StandardClaims: &jwt.StandardClaims{
-			Audience:  "talker-app",
-			ExpiresAt: now.Add(time.Hour).Unix(),
-			Id:        uuid.New().String(),
-			IssuedAt:  now.Unix(),
-			Issuer:    "lumberjack-test-runner",
-			NotBefore: now.Unix(),
-			Subject:   "lumberjack-integ",
-		},
-		Justifications: []*jvspb.Justification{},
-	}
-	token := jwt.NewWithClaims(jwt.SigningMethodES256, claims)
-	token.Header["kid"] = "integ-key"
 
-	block, _ := pem.Decode([]byte(privateKey))
-	key, _ := x509.ParseECPrivateKey(block.Bytes)
-	return jvscrypto.SignToken(token, key)
+	token, err := jwt.NewBuilder().
+		Audience([]string{"talker-app"}).
+		Expiration(now.Add(time.Hour)).
+		JwtID(uuid.New().String()).
+		IssuedAt(now).
+		Issuer("lumberjack-test-runner").
+		NotBefore(now).
+		Subject("lumberjack-integ").
+		Build()
+	if err != nil {
+		return "", fmt.Errorf("failed to build justification token: %w", err)
+	}
+
+	if err := jvspb.SetJustifications(token, []*jvspb.Justification{
+		{
+			Category: "test",
+			Value:    "test",
+		},
+	}); err != nil {
+		return "", fmt.Errorf("failed to set justifications: %w", err)
+	}
+
+	// Build custom headers and set the "kid" as the signer ID.
+	headers := jws.NewHeaders()
+	if err := headers.Set(jws.KeyIDKey, "integ-key"); err != nil {
+		return "", fmt.Errorf("failed to set header: %w", err)
+	}
+
+	// Sign the token.
+	b, err := jwt.Sign(token, jwt.WithKey(jwa.ES256, privateKey,
+		jws.WithProtectedHeaders(headers)))
+	if err != nil {
+		return "", fmt.Errorf("failed to sign token: %w", err)
+	}
+	return string(b), nil
 }
 
 // End-to-end test for the fibonacci API, which is a test for server-side streaming.

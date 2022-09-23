@@ -28,6 +28,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 
 	"github.com/lestrrat-go/jwx/v2/jwk"
@@ -43,8 +44,13 @@ import (
 
 var port = flag.Int("port", 8080, "The server port")
 
-// Matching private key here: https://github.com/abcxyz/lumberjack/pull/261/files#diff-499009010e3b24ec9e364f0c66e4f3e88898ea2788f81f8a866a81944a8655fbR57
-const pubKey = "-----BEGIN PUBLIC KEY-----\nMFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEhBWj8vw5LkPRWbCr45k0cOarIcWg\nApM03mSYF911de5q1wGOL7R9N8pC7jo2xbS+i1wGsMiz+AWnhhZIQcNTKg==\n-----END PUBLIC KEY-----\n"
+// Matching private key here: https://github.com/abcxyz/lumberjack/blob/92782c326681157221df37e0897ba234c5a22240/integration/testrunner/grpcrunner/grpc.go#L60
+const publicKeyString = `
+-----BEGIN PUBLIC KEY-----
+MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEhBWj8vw5LkPRWbCr45k0cOarIcWg
+ApM03mSYF911de5q1wGOL7R9N8pC7jo2xbS+i1wGsMiz+AWnhhZIQcNTKg==
+-----END PUBLIC KEY-----
+`
 
 func main() {
 	if err := realMain(); err != nil {
@@ -112,7 +118,7 @@ func realMain() (outErr error) {
 // Parse pre-made key and set up a server to host it in JWKS format.
 // This is intended to stand in for the JVS in the integration tests.
 func startLocalPublicKeyServer() (string, func(), error) {
-	block, _ := pem.Decode([]byte(pubKey))
+	block, _ := pem.Decode([]byte(strings.TrimSpace(publicKeyString)))
 	key, err := x509.ParsePKIXPublicKey(block.Bytes)
 	if err != nil {
 		log.Printf("Err when parsing key %v", err)
