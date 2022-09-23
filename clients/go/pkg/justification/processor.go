@@ -28,6 +28,7 @@ import (
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/types/known/structpb"
 
+	jvspb "github.com/abcxyz/jvs/apis/v0"
 	api "github.com/abcxyz/lumberjack/clients/go/apis/v1alpha1"
 )
 
@@ -66,12 +67,12 @@ func (p *Processor) Process(ctx context.Context, logReq *api.AuditLogRequest) er
 		return nil
 	}
 
-	tok, err := p.validator.ValidateJWT(jvsToken.GetStringValue())
+	token, err := p.validator.ValidateJWT(jvsToken.GetStringValue())
 	if err != nil {
 		return fmt.Errorf("failed to validate justification token: %w", err)
 	}
 
-	b, err := json.Marshal(tok)
+	b, err := json.Marshal(token)
 	if err != nil {
 		return fmt.Errorf("failed to encode justification token: %w", err)
 	}
@@ -93,22 +94,27 @@ func (p *Processor) Process(ctx context.Context, logReq *api.AuditLogRequest) er
 
 	logReq.Payload.Metadata.Fields[LogMetadataKey] = structpb.NewStructValue(&tokStruct)
 
-	justs, ok := tok.Get("justs")
-	if !ok {
-		logger.Warn("can't find 'justs' in claims")
-	} else {
-		justsBytes, err := json.Marshal(justs)
-		if err != nil {
-			return fmt.Errorf("failed to marshal 'justs'")
-		}
-		if logReq.Payload.RequestMetadata == nil {
-			logReq.Payload.RequestMetadata = &audit.RequestMetadata{}
-		}
-		if logReq.Payload.RequestMetadata.RequestAttributes == nil {
-			logReq.Payload.RequestMetadata.RequestAttributes = &attribute_context.AttributeContext_Request{}
-		}
-		logReq.Payload.RequestMetadata.RequestAttributes.Reason = string(justsBytes)
+	justifications, err := jvspb.GetJustifications(token)
+	if err != nil {
+		logger.Warnw("failed to extract justifications from token", "error", err)
+		return nil
 	}
+
+	if len(justifications) == 0 {
+		return nil
+	}
+
+	justificationBytes, err := json.Marshal(justifications)
+	if err != nil {
+		return fmt.Errorf("failed to marshal justifications: %w", err)
+	}
+	if logReq.Payload.RequestMetadata == nil {
+		logReq.Payload.RequestMetadata = &audit.RequestMetadata{}
+	}
+	if logReq.Payload.RequestMetadata.RequestAttributes == nil {
+		logReq.Payload.RequestMetadata.RequestAttributes = &attribute_context.AttributeContext_Request{}
+	}
+	logReq.Payload.RequestMetadata.RequestAttributes.Reason = string(justificationBytes)
 
 	return nil
 }

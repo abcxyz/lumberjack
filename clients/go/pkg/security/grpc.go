@@ -21,7 +21,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/golang-jwt/jwt"
+	"github.com/lestrrat-go/jwx/v2/jwt"
 	grpcmetadata "google.golang.org/grpc/metadata"
 
 	"github.com/abcxyz/lumberjack/clients/go/apis/v1alpha1"
@@ -43,8 +43,8 @@ type FromRawJWT struct {
 	FromRawJWT []*v1alpha1.FromRawJWT
 }
 
-// RequestPrincipal extracts the JWT principal from the grpcmetadata in the context.
-// This method does not verify the JWT.
+// RequestPrincipal extracts the JWT principal from the grpcmetadata in the
+// context. This method does not verify the JWT.
 func (j *FromRawJWT) RequestPrincipal(ctx context.Context) (string, error) {
 	md, ok := grpcmetadata.FromIncomingContext(ctx)
 	if !ok {
@@ -56,27 +56,25 @@ func (j *FromRawJWT) RequestPrincipal(ctx context.Context) (string, error) {
 		return "", err
 	}
 
-	// Parse the JWT into claims.
-	p := &jwt.Parser{}
-	claims := jwt.MapClaims{}
-	if _, _, err := p.ParseUnverified(idToken, claims); err != nil {
-		return "", fmt.Errorf("unable to parse JWT: %w", err)
+	token, err := jwt.ParseString(idToken, jwt.WithVerify(false))
+	if err != nil {
+		return "", fmt.Errorf("failed to parse jwt: %w", err)
 	}
 
-	// Retrieve the principal from claims.
-	principalRaw, ok := claims[emailKey]
+	// Extract the email claim.
+	emailRaw, ok := token.Get(emailKey)
 	if !ok {
-		return "", fmt.Errorf("jwt claims are missing the email key %q", emailKey)
+		return "", fmt.Errorf("missing claim %q", emailKey)
 	}
-	principal, ok := principalRaw.(string)
+	email, ok := emailRaw.(string)
 	if !ok {
-		return "", fmt.Errorf("expecting string in jwt claims %q, got %T", emailKey, principalRaw)
+		return "", fmt.Errorf("claim %q is not of type %T (got %T)", emailKey, "", emailRaw)
 	}
-	if principal == "" {
-		return "", fmt.Errorf("nil principal under claims %q", emailKey)
+	if email == "" {
+		return "", fmt.Errorf("claim %q cannot be blank", emailKey)
 	}
 
-	return principal, nil
+	return email, nil
 }
 
 // findJWT looks for a JWT from the gRPC metadata that matches the rules.

@@ -17,19 +17,29 @@ package testutil
 import (
 	"testing"
 
-	"github.com/golang-jwt/jwt"
+	"github.com/lestrrat-go/jwx/v2/jwa"
+	"github.com/lestrrat-go/jwx/v2/jwt"
 )
 
-// JWTFromClaims is a testing helper that builds a JWT from the
-// given claims.
-func JWTFromClaims(tb testing.TB, claims map[string]interface{}) string {
+const signingString = "this-is-definitely-not-a-secret-string-for-signing-jwts-look-the-other-way-please-and-thank-you"
+
+// JWTFromClaims is a testing helper that builds a JWT from the given claims.
+func JWTFromClaims(tb testing.TB, claims map[string]any) string {
 	tb.Helper()
 
-	var jwtMapClaims jwt.MapClaims = claims
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwtMapClaims)
-	signedToken, err := token.SignedString([]byte("secureSecretText"))
+	tokenBuilder := jwt.NewBuilder()
+	for k, v := range claims {
+		tokenBuilder = tokenBuilder.Claim(k, v)
+	}
+
+	token, err := tokenBuilder.Build()
 	if err != nil {
 		tb.Fatal(err)
 	}
-	return signedToken
+
+	b, err := jwt.Sign(token, jwt.WithKey(jwa.HS512, []byte(signingString)))
+	if err != nil {
+		tb.Fatal(err)
+	}
+	return string(b)
 }
