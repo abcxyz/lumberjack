@@ -17,6 +17,7 @@ package httprunner
 import (
 	"context"
 	"fmt"
+	"io"
 	"net/http"
 	"testing"
 
@@ -31,49 +32,48 @@ func TestHTTPEndpoint(ctx context.Context, tb testing.TB, endpointURL string,
 ) {
 	tb.Helper()
 
-	u := uuid.New()
-	tb.Logf("Generated UUID: %s", u.String())
+	id := uuid.New().String()
+	tb.Logf("using uuid %s", id)
 
 	b := retry.NewExponential(cfg.AuditLogRequestWait)
 	if err := retry.Do(ctx, retry.WithMaxRetries(cfg.MaxAuditLogRequestTries, b), func(ctx context.Context) error {
-		resp, err := MakeAuditLogRequest(u, endpointURL, cfg.AuditLogRequestTimeout, idToken)
+		resp, err := MakeAuditLogRequest(id, endpointURL, cfg.AuditLogRequestTimeout, idToken)
 		if err != nil {
-			tb.Logf("audit log request failed: %v", err)
+			return fmt.Errorf("failed to make audit log request: %w", err)
 		}
-		defer func() {
-			if err := resp.Body.Close(); err != nil {
-				tb.Log(err)
-			}
-		}()
+		defer resp.Body.Close()
 
+		// Audit log request succeeded, exit the retry logic with success.
 		if resp.StatusCode == http.StatusOK {
-			// Audit log request succeeded, exit the retry logic with success.
 			return nil
 		}
 
-		tb.Logf("Audit log failed with status: %v.", resp.Status)
+		b, err := io.ReadAll(io.LimitReader(resp.Body, 64*1_000))
+		if err != nil {
+			err = fmt.Errorf("failed to read response body: %w", err)
+			return retry.RetryableError(err)
+		}
+
+		tb.Logf("bad response (%d):\n\n%s\n\n",
+			resp.StatusCode, string(b))
+
 		return retry.RetryableError(fmt.Errorf("audit logging failed, retrying"))
 	}); err != nil {
-		tb.Fatalf("Retry failed: %v.", err)
+		tb.Fatal(err)
 	}
 
 	bqClient, err := utils.MakeClient(ctx, projectID)
 	if err != nil {
-		tb.Fatalf("BigQuery request failed: %v.", err)
+		tb.Fatal(err)
 	}
+	defer bqClient.Close()
 
-	defer func() {
-		if err := bqClient.Close(); err != nil {
-			tb.Logf("Failed to close the BQ client: %v.", err)
-		}
-	}()
-
-	bqQuery := makeQueryForHTTP(*bqClient, u, projectID, datasetQuery)
+	bqQuery := makeQueryForHTTP(*bqClient, id, projectID, datasetQuery)
 	utils.QueryIfAuditLogExistsWithRetries(ctx, tb, bqQuery, cfg, "httpEndpointTest")
 }
 
-func makeQueryForHTTP(client bigquery.Client, u uuid.UUID, projectID string, datasetQuery string) *bigquery.Query {
+func makeQueryForHTTP(client bigquery.Client, id string, projectID string, datasetQuery string) *bigquery.Query {
 	// Cast to int64 because the result checker expects a number.
 	queryString := fmt.Sprintf("SELECT CAST(EXISTS (SELECT * FROM %s.%s WHERE labels.trace_id=?) AS INT64)", projectID, datasetQuery)
-	return utils.MakeQuery(client, u, queryString)
+	return utils.MakeQuery(client, id, queryString)
 }

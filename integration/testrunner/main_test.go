@@ -56,27 +56,30 @@ func TestMain(m *testing.M) {
 
 func TestHTTPEndpoints(t *testing.T) {
 	t.Parallel()
+
 	testsData := cfg.HTTPEndpoints
 	var tests []string
 	if err := json.Unmarshal([]byte(testsData), &tests); err != nil {
 		t.Fatalf("Unable to parse HTTP endpoints: %v.", err)
 	}
 
-	for i, test := range tests {
-		test := test
-		t.Run(test, func(t *testing.T) {
+	for i, tc := range tests {
+		tc := tc
+
+		t.Run(tc, func(t *testing.T) {
 			t.Parallel()
-			if test == "" {
+
+			if tc == "" {
 				t.Fatalf("URL for test with index %v not found.", i)
 			}
 
-			idToken, err := resolveIDToken(test)
+			idToken, err := resolveIDToken(tc)
 			if err != nil {
 				t.Fatalf("Resolving ID Token failed: %v.", err)
 			}
 
 			ctx := context.Background()
-			httprunner.TestHTTPEndpoint(ctx, t, test, idToken, *projectIDPtr, *datasetQueryPtr, cfg)
+			httprunner.TestHTTPEndpoint(ctx, t, tc, idToken, *projectIDPtr, *datasetQueryPtr, cfg)
 		})
 	}
 }

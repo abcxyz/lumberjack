@@ -19,11 +19,9 @@ import (
 	"fmt"
 	"net/http"
 	"time"
-
-	"github.com/google/uuid"
 )
 
-func MakeAuditLogRequest(u uuid.UUID, endpointURL string, requestTimeout time.Duration, authToken string) (*http.Response, error) {
+func MakeAuditLogRequest(id string, endpointURL string, requestTimeout time.Duration, authToken string) (*http.Response, error) {
 	req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, endpointURL, nil)
 	if err != nil {
 		return nil, err
@@ -33,7 +31,7 @@ func MakeAuditLogRequest(u uuid.UUID, endpointURL string, requestTimeout time.Du
 
 	// Insert the UUID used in tracing the log as a query parameter.
 	q := req.URL.Query()
-	q.Add("trace_id", u.String())
+	q.Add("trace_id", id)
 	req.URL.RawQuery = q.Encode()
 
 	httpClient := &http.Client{Timeout: requestTimeout}
