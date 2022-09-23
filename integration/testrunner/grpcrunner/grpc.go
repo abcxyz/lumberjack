@@ -144,9 +144,9 @@ func justificationToken() (string, error) {
 func (g *GRPC) runFibonacciCheck(ctx context.Context, tb testing.TB) {
 	tb.Helper()
 
-	u := uuid.New()
+	id := uuid.New().String()
 	places := 5
-	stream, err := g.TalkerClient.Fibonacci(ctx, &talkerpb.FibonacciRequest{Places: uint32(places), Target: u.String()})
+	stream, err := g.TalkerClient.Fibonacci(ctx, &talkerpb.FibonacciRequest{Places: uint32(places), Target: id})
 	if err != nil {
 		tb.Errorf("fibonacci call failed: %v", err)
 	}
@@ -162,7 +162,7 @@ func (g *GRPC) runFibonacciCheck(ctx context.Context, tb testing.TB) {
 		}
 		tb.Logf("Received value %v", place.Value)
 	}
-	query := g.makeQueryForGRPCStream(u)
+	query := g.makeQueryForGRPCStream(id)
 	utils.QueryIfAuditLogsExistWithRetries(ctx, tb, query, g.Config, "server_stream_fibonacci", int64(places))
 }
 
@@ -170,7 +170,7 @@ func (g *GRPC) runFibonacciCheck(ctx context.Context, tb testing.TB) {
 func (g *GRPC) runAdditionCheck(ctx context.Context, tb testing.TB) {
 	tb.Helper()
 
-	u := uuid.New()
+	id := uuid.New().String()
 	stream, err := g.TalkerClient.Addition(ctx)
 	if err != nil {
 		tb.Errorf("addition call failed: %v", err)
@@ -179,7 +179,7 @@ func (g *GRPC) runAdditionCheck(ctx context.Context, tb testing.TB) {
 	for i := 0; i < totalNumbers; i++ {
 		if err := stream.Send(&talkerpb.AdditionRequest{
 			Addend: uint32(i),
-			Target: u.String(),
+			Target: id,
 		}); err != nil {
 			tb.Errorf("sending value to addition failed: %v", err)
 		}
@@ -190,7 +190,7 @@ func (g *GRPC) runAdditionCheck(ctx context.Context, tb testing.TB) {
 	}
 	tb.Logf("Value returned: %d", reply.Sum)
 
-	query := g.makeQueryForGRPCStream(u)
+	query := g.makeQueryForGRPCStream(id)
 	utils.QueryIfAuditLogsExistWithRetries(ctx, tb, query, g.Config, "client_stream_addition", int64(totalNumbers))
 }
 
@@ -198,12 +198,12 @@ func (g *GRPC) runAdditionCheck(ctx context.Context, tb testing.TB) {
 func (g *GRPC) runHelloCheck(ctx context.Context, tb testing.TB) {
 	tb.Helper()
 
-	u := uuid.New()
-	_, err := g.TalkerClient.Hello(ctx, &talkerpb.HelloRequest{Message: "Some Message", Target: u.String()})
+	id := uuid.New().String()
+	_, err := g.TalkerClient.Hello(ctx, &talkerpb.HelloRequest{Message: "Some Message", Target: id})
 	if err != nil {
 		tb.Errorf("could not greet: %v", err)
 	}
-	query := g.makeQueryForGRPCUnary(u)
+	query := g.makeQueryForGRPCUnary(id)
 	utils.QueryIfAuditLogExistsWithRetries(ctx, tb, query, g.Config, "unary_hello")
 }
 
@@ -211,8 +211,8 @@ func (g *GRPC) runHelloCheck(ctx context.Context, tb testing.TB) {
 func (g *GRPC) runFailCheck(ctx context.Context, tb testing.TB) {
 	tb.Helper()
 
-	u := uuid.New()
-	reply, err := g.TalkerClient.Fail(ctx, &talkerpb.FailRequest{Message: "Some Message", Target: u.String()})
+	id := uuid.New().String()
+	reply, err := g.TalkerClient.Fail(ctx, &talkerpb.FailRequest{Message: "Some Message", Target: id})
 
 	if err != nil {
 		returnStatus, ok := status.FromError(err)
@@ -228,7 +228,7 @@ func (g *GRPC) runFailCheck(ctx context.Context, tb testing.TB) {
 		tb.Errorf("Did not get err as expected. Instead got reply: %v", reply)
 	}
 
-	query := g.makeQueryForGRPCUnary(u)
+	query := g.makeQueryForGRPCUnary(id)
 	utils.QueryIfAuditLogExistsWithRetries(ctx, tb, query, g.Config, "unary_fail")
 }
 
@@ -236,7 +236,7 @@ func (g *GRPC) runFailCheck(ctx context.Context, tb testing.TB) {
 func (g *GRPC) runFailOnFourCheck(ctx context.Context, tb testing.TB) {
 	tb.Helper()
 
-	u := uuid.New()
+	id := uuid.New().String()
 	stream, err := g.TalkerClient.FailOnFour(ctx)
 	if err != nil {
 		tb.Errorf("addition call failed: %v", err)
@@ -245,7 +245,7 @@ func (g *GRPC) runFailOnFourCheck(ctx context.Context, tb testing.TB) {
 	for i := 1; i <= totalNumbers; i++ {
 		if err := stream.Send(&talkerpb.FailOnFourRequest{
 			Value:  uint32(i),
-			Target: u.String(),
+			Target: id,
 		}); err != nil {
 			tb.Errorf("sending value to addition failed: %v", err)
 		}
@@ -265,7 +265,7 @@ func (g *GRPC) runFailOnFourCheck(ctx context.Context, tb testing.TB) {
 		tb.Errorf("Did not get err as expected. Instead got reply: %v", reply)
 	}
 
-	query := g.makeQueryForGRPCStream(u)
+	query := g.makeQueryForGRPCStream(id)
 	// we expect to have 4 audit logs - the last sent number (5) will be after the err ocurred.
 	utils.QueryIfAuditLogsExistWithRetries(ctx, tb, query, g.Config, "stream_fail_on_four", int64(4))
 }
@@ -299,7 +299,7 @@ func createConnection(tb testing.TB, addr string, idToken string) *grpc.ClientCo
 // This query is used to find the relevant audit log in BigQuery, which we assume will be added by the server.
 // We specifically look up the log using the UUID specified in the request as we know the server will add that
 // as the resource name, and provides us a unique key to find logs with.
-func (g *GRPC) makeQueryForGRPCUnary(u uuid.UUID) *bigquery.Query {
+func (g *GRPC) makeQueryForGRPCUnary(id string) *bigquery.Query {
 	// Cast to int64 because the result checker expects a number.
 	queryString := fmt.Sprintf("SELECT CAST(EXISTS (SELECT * FROM %s.%s WHERE jsonPayload.resource_name=?", g.ProjectID, g.DatasetQuery)
 	if g.RequireJustification {
@@ -307,15 +307,15 @@ func (g *GRPC) makeQueryForGRPCUnary(u uuid.UUID) *bigquery.Query {
 		queryString += ` AND jsonPayload.metadata.justification IS NOT NULL`
 	}
 	queryString += ") AS INT64)"
-	return utils.MakeQuery(*g.BigQueryClient, u, queryString)
+	return utils.MakeQuery(*g.BigQueryClient, id, queryString)
 }
 
 // Similar to the above function, but can return multiple results, which is what we expect for streaming.
-func (g *GRPC) makeQueryForGRPCStream(u uuid.UUID) *bigquery.Query {
+func (g *GRPC) makeQueryForGRPCStream(id string) *bigquery.Query {
 	queryString := fmt.Sprintf("SELECT count(*) FROM %s.%s WHERE jsonPayload.resource_name=?", g.ProjectID, g.DatasetQuery)
 	if g.RequireJustification {
 		// TODO(#265): For back-compatibility, we need to ensure justification in either metadata key.
 		queryString += ` AND jsonPayload.metadata.justification IS NOT NULL`
 	}
-	return utils.MakeQuery(*g.BigQueryClient, u, queryString)
+	return utils.MakeQuery(*g.BigQueryClient, id, queryString)
 }
