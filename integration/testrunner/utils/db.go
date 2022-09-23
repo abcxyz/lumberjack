@@ -20,7 +20,6 @@ import (
 	"testing"
 
 	"cloud.google.com/go/bigquery"
-	"github.com/google/uuid"
 	"github.com/sethvargo/go-retry"
 )
 
@@ -54,9 +53,9 @@ func QueryIfAuditLogExists(ctx context.Context, tb testing.TB, query *bigquery.Q
 	return row[0] == expectedNum, nil
 }
 
-func MakeQuery(bqClient bigquery.Client, u uuid.UUID, queryString string) *bigquery.Query {
+func MakeQuery(bqClient bigquery.Client, id string, queryString string) *bigquery.Query {
 	bqQuery := bqClient.Query(queryString)
-	bqQuery.Parameters = []bigquery.QueryParameter{{Value: u.String()}}
+	bqQuery.Parameters = []bigquery.QueryParameter{{Value: id}}
 	return bqQuery
 }
 
