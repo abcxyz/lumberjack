@@ -86,7 +86,7 @@ func TestFromRawJWT_RequestPrincipal(t *testing.T) {
 				Key:    "authorization",
 				Prefix: "Bearer ",
 			}},
-			wantErrSubstr: `jwt claims are missing the email key "email"`,
+			wantErrSubstr: `missing claim "email"`,
 		},
 		{
 			name: "error_from_slice_as_jwt_email_claim",
@@ -99,7 +99,7 @@ func TestFromRawJWT_RequestPrincipal(t *testing.T) {
 				Key:    "authorization",
 				Prefix: "Bearer ",
 			}},
-			wantErrSubstr: `expecting string in jwt claims "email", got []interface {}`,
+			wantErrSubstr: `claim "email" is not of type string`,
 		},
 		{
 			name:          "error_from_missing_grpc_metadata",
@@ -135,7 +135,7 @@ func TestFromRawJWT_RequestPrincipal(t *testing.T) {
 				Key:    "authorization",
 				Prefix: "",
 			}},
-			wantErrSubstr: `unable to parse JWT: token contains an invalid number of segments`,
+			wantErrSubstr: `failed to parse jwt`,
 		},
 		{
 			name: "error_from_unparsable_jwt",
@@ -146,7 +146,7 @@ func TestFromRawJWT_RequestPrincipal(t *testing.T) {
 				Key:    "authorization",
 				Prefix: "",
 			}},
-			wantErrSubstr: "unable to parse JWT",
+			wantErrSubstr: "failed to parse jwt",
 		},
 	}
 	for _, tc := range tests {

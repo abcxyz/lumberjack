@@ -24,15 +24,18 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
-	"github.com/golang-jwt/jwt"
+	"github.com/lestrrat-go/jwx/v2/jwt"
+	"go.uber.org/zap"
 	cal "google.golang.org/genproto/googleapis/cloud/audit"
 
 	"github.com/abcxyz/lumberjack/clients/go/apis/v1alpha1"
 	"github.com/abcxyz/lumberjack/clients/go/pkg/audit"
 	"github.com/abcxyz/lumberjack/clients/go/pkg/auditopt"
+	"github.com/abcxyz/pkg/logging"
 )
 
 const (
@@ -42,44 +45,60 @@ const (
 
 // handler implements ServeHTTP by using the audit client.
 type handler struct {
+	logger *zap.SugaredLogger
 	client *audit.Client
 }
 
-// ServeHTTP emits an application audit log with a traceID. To verify
-// that our audit logging solution works end-to-end, we can check
-// that a log entry with the same traceID successfully reached the
-// final log storage (e.g. BigQuery log sink).
+// ServeHTTP emits an application audit log with a traceID. To verify that our
+// audit logging solution works end-to-end, we can check that a log entry with
+// the same traceID successfully reached the final log storage (e.g. BigQuery
+// log sink).
 func (h *handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	log.Printf("Received request at %s", r.URL)
+	ctx := r.Context()
+	logger := h.logger
+
+	logger.Debugw("received request", "url", r.URL)
+
 	// Get the traceID from URL.
 	traceID := r.URL.Query().Get(traceIDKey)
 	if traceID == "" {
-		http.Error(w, "Missing traceID in the request, add one by appending the URL with ?trace_id=$TRACE_ID.", 400)
+		http.Error(w, "missing trace_id in the request, add one by appending the URL with ?trace_id=$TRACE_ID.", http.StatusBadRequest)
 		return
 	}
-	log.Printf("Using trace ID: %v.", traceID)
 
-	// "Bearer " has 7 characters. Trim that.
-	idToken := r.Header.Get("Authorization")[7:]
-	p := &jwt.Parser{}
-	claims := jwt.MapClaims{}
-	_, _, err := p.ParseUnverified(idToken, claims)
+	logger = logger.With("trace_id", traceID)
+	logger.Debugw("found trace id")
+
+	// Parse the JWT. We do not verify the JWT because:
+	//
+	//   - This app is only for testing purposes. It should never be used for anything else.
+	//   - This runs as a Cloud Run service, and Cloud IAM verifies the JWT.
+	//   - Cloud Run actually strips the signature, so there is no signature to verify.
+	idToken := idTokenFrom(r.Header.Get("Authorization"))
+	token, err := jwt.ParseString(idToken, jwt.WithVerify(false))
 	if err != nil {
-		http.Error(w, fmt.Sprintf("malformated ID token: %v", err), http.StatusBadRequest)
+		http.Error(w, fmt.Sprintf("failed to parse id token: %s", err), http.StatusBadRequest)
 		return
 	}
-	email, ok := claims["email"].(string)
+
+	// Extract the email claim.
+	emailRaw, ok := token.Get("email")
 	if !ok {
-		http.Error(w, fmt.Sprintf("email claim is not a string (got %T)", claims["email"]), http.StatusBadRequest)
+		http.Error(w, "email claim is missing", http.StatusBadRequest)
+		return
+	}
+	email, ok := emailRaw.(string)
+	if !ok {
+		http.Error(w, fmt.Sprintf("email claim is not %T (got %T)", "", emailRaw), http.StatusBadRequest)
 		return
 	}
 	if email == "" {
-		http.Error(w, fmt.Sprintf("ID token doesn't have email in the claims: %v", err), http.StatusBadRequest)
+		http.Error(w, "email claim cannot be blank", http.StatusBadRequest)
 		return
 	}
 
-	// Generate a minimal and valid AuditLogRequest that
-	// stores the traceID in the labels.
+	// Generate a minimal and valid AuditLogRequest that stores the traceID in the
+	// labels.
 	auditLogRequest := &v1alpha1.AuditLogRequest{
 		Type: v1alpha1.AuditLogRequest_DATA_ACCESS,
 		Payload: &cal.AuditLog{
@@ -93,13 +112,14 @@ func (h *handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	// Use the audit client to emit an application audit
 	// log synchronously.
-	if err := h.client.Log(r.Context(), auditLogRequest); err != nil {
-		msg := fmt.Sprintf("Error emiting application audit log: %v.", err)
-		http.Error(w, msg, 500)
+	if err := h.client.Log(ctx, auditLogRequest); err != nil {
+		http.Error(w, fmt.Sprintf("failed to emit application audit log: %s", err), http.StatusInternalServerError)
 		return
 	}
 	success := fmt.Sprintf("Successfully emitted application audit log with trace ID %v.", traceID)
-	log.Print(success)
+
+	logger.Debugw("finished request", "success", success)
+
 	fmt.Fprint(w, success) // automatically calls `w.WriteHeader(http.StatusOK)`
 }
 
@@ -127,6 +147,7 @@ func realMain(ctx context.Context) error {
 
 	mux := http.NewServeMux()
 	mux.Handle("/", &handler{
+		logger: logging.NewFromEnv("SHELL_"),
 		client: client,
 	})
 
@@ -167,4 +188,14 @@ func realMain(ctx context.Context) error {
 		return fmt.Errorf("failed to shutdown server: %w", err)
 	}
 	return nil
+}
+
+// idTokenFrom extracts the ID token from the given input string. It assumes the
+// input string is from a header that might include the "Bearer" prefix.
+func idTokenFrom(s string) string {
+	s = strings.TrimSpace(s)
+	if len(s) >= 7 && strings.EqualFold(s[:7], "bearer ") {
+		return strings.TrimSpace(s[7:])
+	}
+	return ""
 }

@@ -262,7 +262,7 @@ func labelsFromConfig(cfg *api.Config) audit.Option {
 func justificationFromConfig(ctx context.Context, cfg *api.Config) (audit.Option, error) {
 	// TODO(#299): allow overriding these values via JVS env var.
 	jvsconfig := &client.JVSConfig{
-		JVSEndpoint:  cfg.Justification.PublicKeysEndpoint,
+		JWKSEndpoint: cfg.Justification.PublicKeysEndpoint,
 		Version:      "1",
 		CacheTimeout: 5 * time.Minute,
 	}
