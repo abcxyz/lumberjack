@@ -31,11 +31,11 @@ if [ -z "${TAG:-}" ]; then
   exit 1
 fi
 
-GO_ROOT="$(cd "$(dirname "$0")/../.." &>/dev/null; pwd -P)"
+GO_ROOT="$(cd "$(dirname "$0")/../../../.." &>/dev/null; pwd -P)"
 IMAGE_NAME=${REPO}/${APP_NAME}:${TAG}
 
 docker buildx build \
-  --file ${GO_ROOT}/test/shell/Dockerfile \
+  --file ${GO_ROOT}/clients/go/test/shell/Dockerfile \
   --tag ${IMAGE_NAME} \
   --push \
   ${GO_ROOT}

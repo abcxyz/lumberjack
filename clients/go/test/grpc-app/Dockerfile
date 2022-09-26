@@ -12,7 +12,7 @@ RUN go build \
   -trimpath \
   -ldflags "-s -w -extldflags='-static'" \
   -o /go/bin/app \
-  ./test/grpc-app
+  ./clients/go/test/grpc-app
 
 RUN strip -s /go/bin/app
 
