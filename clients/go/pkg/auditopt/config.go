@@ -260,7 +260,9 @@ func labelsFromConfig(cfg *api.Config) audit.Option {
 }
 
 func justificationFromConfig(ctx context.Context, cfg *api.Config) (audit.Option, error) {
-	var jvsconfig client.JVSConfig
+	jvsconfig := client.JVSConfig{
+		JWKSEndpoint: cfg.Justification.PublicKeysEndpoint,
+	}
 	if err := cfgloader.Load(ctx, &jvsconfig, cfgloader.WithEnvPrefix("JVS_")); err != nil {
 		return nil, fmt.Errorf("failed to load JVS config: %w", err)
 	}
