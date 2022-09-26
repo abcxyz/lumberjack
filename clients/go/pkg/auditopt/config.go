@@ -52,7 +52,6 @@ import (
 	"github.com/abcxyz/lumberjack/clients/go/pkg/security"
 	"github.com/abcxyz/pkg/cfgloader"
 	"github.com/sethvargo/go-envconfig"
-	"gopkg.in/yaml.v2"
 
 	api "github.com/abcxyz/lumberjack/clients/go/apis/v1alpha1"
 )
@@ -80,7 +79,7 @@ func fromConfigFile(ctx context.Context, path string, lookuper envconfig.Lookupe
 		if err != nil && !errors.Is(err, fs.ErrNotExist) {
 			return err
 		}
-		cfg, err := loadConfig(fc, lookuper)
+		cfg, err := loadConfig(ctx, fc, lookuper)
 		if err != nil {
 			return err
 		}
@@ -103,7 +102,7 @@ func interceptorFromConfigFile(ctx context.Context, path string, lookuper envcon
 		if err != nil {
 			return fmt.Errorf("failed to read config file: %w", err)
 		}
-		cfg, err := loadConfig(fc, lookuper)
+		cfg, err := loadConfig(ctx, fc, lookuper)
 		if err != nil {
 			return err
 		}
@@ -274,22 +273,15 @@ func justificationFromConfig(ctx context.Context, cfg *api.Config) (audit.Option
 	return audit.WithMutator(p), nil
 }
 
-func loadConfig(b []byte, lookuper envconfig.Lookuper) (*api.Config, error) {
-	cfg := &api.Config{}
-	if err := yaml.Unmarshal(b, cfg); err != nil {
-		return nil, err
+func loadConfig(ctx context.Context, b []byte, lookuper envconfig.Lookuper) (*api.Config, error) {
+	var cfg api.Config
+	loadOpts := []cfgloader.Option{
+		cfgloader.WithEnvPrefix("AUDIT_CLIENT_"),
+		cfgloader.WithYAML(b),
+		cfgloader.WithLookuper(lookuper),
 	}
-
-	// Process overrides from env vars.
-	l := envconfig.PrefixLookuper("AUDIT_CLIENT_", lookuper)
-	if err := envconfig.ProcessWith(context.Background(), cfg, l); err != nil {
-		return nil, err
+	if err := cfgloader.Load(ctx, &cfg, loadOpts...); err != nil {
+		return nil, fmt.Errorf("failed to load config: %w", err)
 	}
-
-	cfg.SetDefault()
-	if err := cfg.Validate(); err != nil {
-		return nil, fmt.Errorf("failed validating config %+v: %w", cfg, err)
-	}
-
-	return cfg, nil
+	return &cfg, nil
 }

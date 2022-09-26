@@ -71,6 +71,8 @@ type Config struct {
 
 // Validate checks if the config is valid.
 func (cfg *Config) Validate() error {
+	cfg.SetDefault()
+
 	// TODO: do validations for each field if necessary.
 	var err error
 	if cfg.Version != Version {

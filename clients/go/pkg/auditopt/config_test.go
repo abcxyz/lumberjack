@@ -296,7 +296,7 @@ justification:
 			if err != nil {
 				t.Fatal(err)
 			}
-			cfg, err := loadConfig(fc, envconfig.MapLookuper(nil))
+			cfg, err := loadConfig(context.Background(), fc, envconfig.MapLookuper(nil))
 			if err != nil {
 				t.Errorf("loadConfig() got unexpected error: %v", err)
 			}
