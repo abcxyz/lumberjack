@@ -4,12 +4,13 @@
 
 Lumberjack client consists of the following processors and they run in order:
 
-1.  Validator(s): To validate the audit log requests
-2.  Mutator(s): To mutate the audit log requests, e.g. applying common labels
-3.  Backend(s): Specifying where to send the logs.
+1. Validator(s): To validate the audit log requests
+2. Mutator(s): To mutate the audit log requests, e.g. applying common labels
+3. Backend(s): Specifying where to send the logs.
 
-You can use a [config file](./config.md) to ease the client initialization or
-"assemble" a client by yourself in code. See exampels below.
+You can use a [config file](./config.md) to ease the client initialization, or
+"assemble" a client by yourself in code if you are onboarding to Go client.
+See exampels below.
 
 ## Go
 
@@ -108,4 +109,23 @@ if err != nil {
 
 ## Java
 
-TODO
+It is not recommended and supported to "assemble" a client in code,
+please use config file. The default config path is `audit_logging.yml`, or
+if it is overwritten via env var, AUDIT_CLIENT_CONFIG_PATH.
+
+### Create a client from a config file
+
+```java
+Injector injector = Guice.createInjector(new AuditLoggingModule());
+
+// For gRPC services, use AuditLoggingServerInterceptor.
+AuditLoggingServerInterceptor interceptor =
+        injector.getInstance(AuditLoggingServerInterceptor.class);
+
+// Otherwise, use LoggingClient directly.
+LoggingClient client = injector.getInstance(LoggingClient.class);
+```
+
+### Extend
+
+Extending with custom processors is not supported at the moment, please file an issue if needed.
