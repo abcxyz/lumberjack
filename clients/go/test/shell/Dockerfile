@@ -12,7 +12,7 @@ RUN go build \
   -trimpath \
   -ldflags "-s -w -extldflags='-static'" \
   -o /go/bin/app \
-  ./test/shell
+  ./clients/go/test/shell
 
 RUN strip -s /go/bin/app
 
