@@ -41,7 +41,6 @@ import (
 	"fmt"
 	"io/fs"
 	"os"
-	"time"
 
 	"cloud.google.com/go/logging"
 	"github.com/abcxyz/jvs/client-lib/go/client"
@@ -51,6 +50,7 @@ import (
 	"github.com/abcxyz/lumberjack/clients/go/pkg/justification"
 	"github.com/abcxyz/lumberjack/clients/go/pkg/remote"
 	"github.com/abcxyz/lumberjack/clients/go/pkg/security"
+	"github.com/abcxyz/pkg/cfgloader"
 	"github.com/sethvargo/go-envconfig"
 	"gopkg.in/yaml.v2"
 
@@ -260,13 +260,13 @@ func labelsFromConfig(cfg *api.Config) audit.Option {
 }
 
 func justificationFromConfig(ctx context.Context, cfg *api.Config) (audit.Option, error) {
-	// TODO(#299): allow overriding these values via JVS env var.
-	jvsconfig := &client.JVSConfig{
+	jvsconfig := client.JVSConfig{
 		JWKSEndpoint: cfg.Justification.PublicKeysEndpoint,
-		Version:      "1",
-		CacheTimeout: 5 * time.Minute,
 	}
-	jvsClient, err := client.NewJVSClient(ctx, jvsconfig)
+	if err := cfgloader.Load(ctx, &jvsconfig, cfgloader.WithEnvPrefix("JVS_")); err != nil {
+		return nil, fmt.Errorf("failed to load JVS config: %w", err)
+	}
+	jvsClient, err := client.NewJVSClient(ctx, &jvsconfig)
 	if err != nil {
 		return nil, err
 	}
