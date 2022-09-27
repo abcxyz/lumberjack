@@ -316,31 +316,6 @@ func TestValidate(t *testing.T) {
 			wantErr: `backend cloudlogging project is set while using default project`,
 		},
 		{
-			name: "invalid_backend_cloudlogging_no_default",
-			cfg: &Config{
-				Version: "v1alpha1",
-				SecurityContext: &SecurityContext{
-					FromRawJWT: []*FromRawJWT{{
-						Key: "authorization",
-					}},
-				},
-				Backend: &Backend{
-					CloudLogging: &CloudLogging{
-						DefaultProject: false,
-					},
-				},
-				Condition: &Condition{
-					Regex: &RegexCondition{},
-				},
-				Rules: []*AuditRule{{
-					Selector:  "*",
-					Directive: "AUDIT_REQUEST_ONLY",
-					LogType:   "DATA_ACCESS",
-				}},
-			},
-			wantErr: `backend cloudlogging no project or using default project is set`,
-		},
-		{
 			name: "invalid_justification",
 			cfg: &Config{
 				Version: "v1alpha1",
