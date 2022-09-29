@@ -1,4 +1,4 @@
-// Copyright 2021 Google LLC
+// Copyright 2022 Google LLC
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -229,6 +229,8 @@ message Taxonomy {
   // The name can't start or end with spaces, must contain only Unicode letters,
   // numbers, underscores, dashes, and spaces, and be at most 200 bytes long
   // when encoded in UTF-8.
+  //
+  // The taxonomy display name must be unique within an organization.
   string display_name = 2 [(google.api.field_behavior) = REQUIRED];
 
   // Optional. Description of this taxonomy. If not set, defaults to empty.
@@ -269,8 +271,7 @@ message PolicyTag {
 
   // Output only. Resource name of this policy tag in the URL format.
   //
-  // The policy tag manager generates unique taxonomy IDs and policy tag IDs.<br
-  // /><br />
+  // The policy tag manager generates unique taxonomy IDs and policy tag IDs.
   string name = 1 [(google.api.field_behavior) = OUTPUT_ONLY];
 
   // Required. User-defined name of this policy tag.
@@ -391,8 +392,7 @@ message GetTaxonomyRequest {
 // Request message for
 // [CreatePolicyTag][google.cloud.datacatalog.v1.PolicyTagManager.CreatePolicyTag].
 message CreatePolicyTagRequest {
-  // Required. Resource name of the taxonomy that the policy tag will belong to.<br /><br
-  // />
+  // Required. Resource name of the taxonomy that the policy tag will belong to.
   string parent = 1 [
     (google.api.field_behavior) = REQUIRED,
     (google.api.resource_reference) = {

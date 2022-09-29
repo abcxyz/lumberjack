@@ -1,4 +1,4 @@
-// Copyright 2021 Google LLC
+// Copyright 2022 Google LLC
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -94,6 +94,13 @@ message SearchCatalogResult {
   //
   // `dataproc_metastore:PROJECT_ID.LOCATION_ID.INSTANCE_ID.DATABASE_ID.TABLE_ID`
   string fully_qualified_name = 10;
+
+  // The display name of the result.
+  string display_name = 12;
+
+  // Entry description that can consist of several sentences or paragraphs that
+  // describe entry contents.
+  string description = 13;
 }
 
 // The resource types that can be returned in search results.

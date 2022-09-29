@@ -21,7 +21,7 @@ proto_library(
 proto_library_with_info(
     name = "source_proto_with_info",
     deps = [
-      ":source_proto",
+        ":source_proto",
     ],
 )
 
@@ -30,6 +30,7 @@ proto_library_with_info(
 ##############################################################################
 load(
     "@com_google_googleapis_imports//:imports.bzl",
+    "java_gapic_assembly_gradle_pkg",
     "java_grpc_library",
     "java_proto_library",
 )
@@ -43,6 +44,19 @@ java_grpc_library(
     name = "source_java_grpc",
     srcs = [":source_proto"],
     deps = [":source_java_proto"],
+)
+
+# Please DO-NOT-REMOVE this section.
+# This is required to generate java files for these protos.
+# Open Source Packages
+java_gapic_assembly_gradle_pkg(
+    name = "google-devtools-source-v1-java",
+    transport = "grpc+rest",
+    deps = [
+        ":source_java_grpc",
+        ":source_java_proto",
+        ":source_proto",
+    ],
 )
 
 ##############################################################################
@@ -68,8 +82,8 @@ go_proto_library(
 ##############################################################################
 load(
     "@com_google_googleapis_imports//:imports.bzl",
-    "py_gapic_library",
     "py_gapic_assembly_pkg",
+    "py_gapic_library",
 )
 
 py_gapic_library(
@@ -80,6 +94,7 @@ py_gapic_library(
         "python-gapic-namespace=google.cloud",
         "python-gapic-name=source_context",
     ],
+    transport = "grpc",
 )
 
 # Open Source Packages
@@ -118,7 +133,6 @@ load(
     "nodejs_gapic_assembly_pkg",
     "nodejs_gapic_library",
 )
-
 
 ##############################################################################
 # Ruby
@@ -163,4 +177,20 @@ csharp_grpc_library(
 ##############################################################################
 # C++
 ##############################################################################
-# Put your C++ code here
+load(
+    "@com_google_googleapis_imports//:imports.bzl",
+    "cc_grpc_library",
+    "cc_proto_library",
+)
+
+cc_proto_library(
+    name = "source_cc_proto",
+    deps = [":source_proto"],
+)
+
+cc_grpc_library(
+    name = "source_cc_grpc",
+    srcs = [":source_proto"],
+    grpc_only = True,
+    deps = [":source_cc_proto"],
+)

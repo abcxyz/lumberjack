@@ -1,4 +1,4 @@
-// Copyright 2021 Google LLC
+// Copyright 2022 Google LLC
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -34,9 +34,9 @@ option java_package = "com.google.cloud.aiplatform.v1";
 option php_namespace = "Google\\Cloud\\AIPlatform\\V1";
 option ruby_package = "Google::Cloud::AIPlatform::V1";
 
-// Vertex Vizier API.
+// Vertex AI Vizier API.
 //
-// Vizier service is a GCP service to solve blackbox optimization problems,
+// Vertex AI Vizier is a service to solve blackbox optimization problems,
 // such as tuning machine learning hyperparameters and searching over deep
 // learning architectures.
 service VizierService {
@@ -88,7 +88,7 @@ service VizierService {
   }
 
   // Adds one or more Trials to a Study, with parameter values
-  // suggested by Vertex Vizier. Returns a long-running
+  // suggested by Vertex AI Vizier. Returns a long-running
   // operation associated with the generation of Trial suggestions.
   // When this long-running operation succeeds, it will contain
   // a [SuggestTrialsResponse][google.cloud.ml.v1.SuggestTrialsResponse].
@@ -285,7 +285,7 @@ message SuggestTrialsRequest {
     }
   ];
 
-  // Required. The number of suggestions requested.
+  // Required. The number of suggestions requested. It must be positive.
   int32 suggestion_count = 2 [(google.api.field_behavior) = REQUIRED];
 
   // Required. The identifier of the client that is requesting the suggestion.

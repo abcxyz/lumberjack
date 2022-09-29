@@ -59,7 +59,7 @@ option objc_class_prefix = "RW";
 //
 // Keys are not context sensitive.
 //
-// See goo.gl/NurY8g for more information on the Worker message.
+// See http://goo.gl/NurY8g for more information on the Worker message.
 message Worker {
   // A global property; see the `properties` field for more information.
   message Property {
