@@ -5,6 +5,8 @@ title: Dialogflow API
 
 apis:
 - name: google.cloud.dialogflow.cx.v3beta1.Agents
+- name: google.cloud.dialogflow.cx.v3beta1.Changelogs
+- name: google.cloud.dialogflow.cx.v3beta1.Deployments
 - name: google.cloud.dialogflow.cx.v3beta1.EntityTypes
 - name: google.cloud.dialogflow.cx.v3beta1.Environments
 - name: google.cloud.dialogflow.cx.v3beta1.Experiments
@@ -18,11 +20,15 @@ apis:
 - name: google.cloud.dialogflow.cx.v3beta1.TransitionRouteGroups
 - name: google.cloud.dialogflow.cx.v3beta1.Versions
 - name: google.cloud.dialogflow.cx.v3beta1.Webhooks
+- name: google.cloud.location.Locations
+- name: google.longrunning.Operations
 
 types:
 - name: google.cloud.dialogflow.cx.v3beta1.BatchRunTestCasesMetadata
 - name: google.cloud.dialogflow.cx.v3beta1.BatchRunTestCasesResponse
 - name: google.cloud.dialogflow.cx.v3beta1.CreateVersionOperationMetadata
+- name: google.cloud.dialogflow.cx.v3beta1.DeployFlowMetadata
+- name: google.cloud.dialogflow.cx.v3beta1.DeployFlowResponse
 - name: google.cloud.dialogflow.cx.v3beta1.ExportAgentResponse
 - name: google.cloud.dialogflow.cx.v3beta1.ExportFlowResponse
 - name: google.cloud.dialogflow.cx.v3beta1.ExportTestCasesMetadata
@@ -68,6 +74,14 @@ backend:
   rules:
   - selector: 'google.cloud.dialogflow.cx.v3beta1.Agents.*'
     deadline: 60.0
+  - selector: google.cloud.dialogflow.cx.v3beta1.Changelogs.GetChangelog
+    deadline: 60.0
+  - selector: google.cloud.dialogflow.cx.v3beta1.Changelogs.ListChangelogs
+    deadline: 60.0
+  - selector: google.cloud.dialogflow.cx.v3beta1.Deployments.GetDeployment
+    deadline: 60.0
+  - selector: google.cloud.dialogflow.cx.v3beta1.Deployments.ListDeployments
+    deadline: 60.0
   - selector: 'google.cloud.dialogflow.cx.v3beta1.EntityTypes.*'
     deadline: 60.0
   - selector: 'google.cloud.dialogflow.cx.v3beta1.Environments.*'
@@ -106,6 +120,8 @@ backend:
     deadline: 60.0
   - selector: 'google.longrunning.Operations.*'
     deadline: 60.0
+  - selector: google.longrunning.Operations.ListOperations
+    deadline: 180.0
 
 http:
   rules:
@@ -129,6 +145,26 @@ http:
 authentication:
   rules:
   - selector: 'google.cloud.dialogflow.cx.v3beta1.Agents.*'
+    oauth:
+      canonical_scopes: |-
+        https://www.googleapis.com/auth/cloud-platform,
+        https://www.googleapis.com/auth/dialogflow
+  - selector: google.cloud.dialogflow.cx.v3beta1.Changelogs.GetChangelog
+    oauth:
+      canonical_scopes: |-
+        https://www.googleapis.com/auth/cloud-platform,
+        https://www.googleapis.com/auth/dialogflow
+  - selector: google.cloud.dialogflow.cx.v3beta1.Changelogs.ListChangelogs
+    oauth:
+      canonical_scopes: |-
+        https://www.googleapis.com/auth/cloud-platform,
+        https://www.googleapis.com/auth/dialogflow
+  - selector: google.cloud.dialogflow.cx.v3beta1.Deployments.GetDeployment
+    oauth:
+      canonical_scopes: |-
+        https://www.googleapis.com/auth/cloud-platform,
+        https://www.googleapis.com/auth/dialogflow
+  - selector: google.cloud.dialogflow.cx.v3beta1.Deployments.ListDeployments
     oauth:
       canonical_scopes: |-
         https://www.googleapis.com/auth/cloud-platform,

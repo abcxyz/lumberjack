@@ -1,4 +1,4 @@
-// Copyright 2021 Google LLC
+// Copyright 2022 Google LLC
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -113,6 +113,21 @@ message Webhook {
     // The HTTP request headers to send together with webhook
     // requests.
     map<string, string> request_headers = 4;
+
+    // Optional. Specifies a list of allowed custom CA certificates (in DER format) for
+    // HTTPS verification. This overrides the default SSL trust store. If this
+    // is empty or unspecified, Dialogflow will use Google's default trust store
+    // to verify certificates.
+    // N.B. Make sure the HTTPS server certificates are signed with "subject alt
+    // name". For instance a certificate can be self-signed using the following
+    // command,
+    // ```
+    //    openssl x509 -req -days 200 -in example.com.csr \
+    //      -signkey example.com.key \
+    //      -out example.com.crt \
+    //      -extfile <(printf "\nsubjectAltName='DNS:www.example.com'")
+    // ```
+    repeated bytes allowed_ca_certs = 5 [(google.api.field_behavior) = OPTIONAL];
   }
 
   // Represents configuration for a [Service
@@ -258,11 +273,17 @@ message DeleteWebhookRequest {
 
 // The request message for a webhook call. The request is sent as a JSON object
 // and the field names will be presented in camel cases.
+//
+// You may see undocumented fields in an actual request. These fields are used
+// internally by Dialogflow and should be ignored.
 message WebhookRequest {
   // Represents fulfillment information communicated to the webhook.
   message FulfillmentInfo {
-    // Always present. The tag used to identify which fulfillment is being
-    // called.
+    // Always present.
+    // The value of the [Fulfillment.tag][google.cloud.dialogflow.cx.v3.Fulfillment.tag] field will be populated in this
+    // field by Dialogflow when the associated webhook is called.
+    // The tag is typically used by the webhook service to identify which
+    // fulfillment is being called, but it could be used for other purposes.
     string tag = 1;
   }
 
@@ -495,6 +516,10 @@ message PageInfo {
   string current_page = 1 [(google.api.resource_reference) = {
                              type: "dialogflow.googleapis.com/Page"
                            }];
+
+  // Always present for [WebhookRequest][google.cloud.dialogflow.cx.v3.WebhookRequest]. Ignored for [WebhookResponse][google.cloud.dialogflow.cx.v3.WebhookResponse].
+  // The display name of the current page.
+  string display_name = 4;
 
   // Optional for both [WebhookRequest][google.cloud.dialogflow.cx.v3.WebhookRequest] and [WebhookResponse][google.cloud.dialogflow.cx.v3.WebhookResponse].
   // Information about the form.

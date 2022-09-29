@@ -1,4 +1,4 @@
-// Copyright 2021 Google LLC
+// Copyright 2022 Google LLC
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -20,7 +20,6 @@ import "google/api/field_behavior.proto";
 import "google/api/resource.proto";
 import "google/protobuf/duration.proto";
 import "google/protobuf/timestamp.proto";
-import "google/api/annotations.proto";
 
 option csharp_namespace = "Google.Cloud.ContactCenterInsights.V1";
 option go_package = "google.golang.org/genproto/googleapis/cloud/contactcenterinsights/v1;contactcenterinsights";
@@ -73,6 +72,16 @@ message Conversation {
         float confidence = 4;
       }
 
+      // Metadata from Dialogflow relating to the current transcript segment.
+      message DialogflowSegmentMetadata {
+        // Whether the transcript segment was covered under the configured smart
+        // reply allowlist in Agent Assist.
+        bool smart_reply_allowlist_covered = 1;
+      }
+
+      // The time that the message occurred, if provided.
+      google.protobuf.Timestamp message_time = 6;
+
       // The text of this segment.
       string text = 1;
 
@@ -96,6 +105,12 @@ message Conversation {
 
       // The participant of this segment.
       ConversationParticipant segment_participant = 9;
+
+      // CCAI metadata relating to the current transcript segment.
+      DialogflowSegmentMetadata dialogflow_segment_metadata = 10;
+
+      // The sentiment for this transcript segment.
+      SentimentData sentiment = 11;
     }
 
     // A list of sequential transcript segments that comprise the conversation.
@@ -104,7 +119,7 @@ message Conversation {
 
   // Possible media for the conversation.
   enum Medium {
-    // Default value.
+    // Default value, if unspecified will default to PHONE_CALL.
     MEDIUM_UNSPECIFIED = 0;
 
     // The format for conversations that took place over the phone.
@@ -165,7 +180,7 @@ message Conversation {
   // Output only. The conversation transcript.
   Transcript transcript = 8 [(google.api.field_behavior) = OUTPUT_ONLY];
 
-  // Immutable. The conversation medium.
+  // Immutable. The conversation medium, if unspecified will default to PHONE_CALL.
   Medium medium = 9 [(google.api.field_behavior) = IMMUTABLE];
 
   // Output only. The duration of the conversation.
@@ -185,6 +200,9 @@ message Conversation {
   // Dialogflow intent, format:
   // projects/{project}/agent/{agent}/intents/{intent}
   map<string, DialogflowIntent> dialogflow_intents = 18 [(google.api.field_behavior) = OUTPUT_ONLY];
+
+  // Obfuscated user ID which the customer sent to us.
+  string obfuscated_user_id = 21;
 }
 
 // The analysis resource.
@@ -282,7 +300,10 @@ message AnalysisResult {
 // Issue Modeling result on a conversation.
 message IssueModelResult {
   // Issue model that generates the result.
-  string issue_model = 1;
+  // Format: projects/{project}/locations/{location}/issueModels/{issue_model}
+  string issue_model = 1 [(google.api.resource_reference) = {
+                            type: "contactcenterinsights.googleapis.com/IssueModel"
+                          }];
 
   // All the matched issues.
   repeated IssueAssignment issues = 2;
@@ -567,11 +588,17 @@ message IssueModel {
 
   // Configs for the input data used to create the issue model.
   message InputDataConfig {
-    // Required. Medium of conversations used in training data.
-    Conversation.Medium medium = 1 [(google.api.field_behavior) = REQUIRED];
+    // Medium of conversations used in training data. This field is being
+    // deprecated. To specify the medium to be used in training a new issue
+    // model, set the `medium` field on `filter`.
+    Conversation.Medium medium = 1 [deprecated = true];
 
     // Output only. Number of conversations used in training. Output only.
     int64 training_conversations_count = 2 [(google.api.field_behavior) = OUTPUT_ONLY];
+
+    // A filter to reduce the conversations used for training the model to a
+    // specific subset.
+    string filter = 3;
   }
 
   // State of the model.
@@ -656,6 +683,9 @@ message IssueModelLabelStats {
 
     // Number of conversations attached to the issue at this point in time.
     int64 labeled_conversations_count = 2;
+
+    // Display name of the issue.
+    string display_name = 3;
   }
 
   // Number of conversations the issue model has analyzed at this point in time.
@@ -730,6 +760,9 @@ message PhraseMatcher {
   // against. If the role is ROLE_UNSPECIFIED it will be matched against any
   // utterances in the transcript.
   ConversationParticipant.Role role_match = 10;
+
+  // Output only. The most recent time at which the phrase matcher was updated.
+  google.protobuf.Timestamp update_time = 11 [(google.api.field_behavior) = OUTPUT_ONLY];
 }
 
 // A message representing a rule in the phrase matcher.
@@ -924,9 +957,9 @@ message ArticleSuggestionData {
   // that it originates from.
   map<string, string> metadata = 4;
 
-  // Name of the query record.
+  // The name of the answer record.
   // Format:
-  // projects/{project}/locations/{location}/queryRecords/{query_record}
+  // projects/{project}/locations/{location}/answerRecords/{answer_record}
   string query_record = 5;
 
   // The knowledge document that this answer was extracted from.
@@ -952,9 +985,9 @@ message FaqAnswerData {
   // it originates from.
   map<string, string> metadata = 4;
 
-  // Name of the query record.
+  // The name of the answer record.
   // Format:
-  // projects/{project}/locations/{location}/queryRecords/{query_record}.
+  // projects/{project}/locations/{location}/answerRecords/{answer_record}
   string query_record = 5;
 
   // The knowledge document that this answer was extracted from.
@@ -977,9 +1010,9 @@ message SmartReplyData {
   // which it originates.
   map<string, string> metadata = 3;
 
-  // Name of the query record.
+  // The name of the answer record.
   // Format:
-  // projects/{project}/locations/{location}/queryRecords/{query_record}
+  // projects/{project}/locations/{location}/answerRecords/{answer_record}
   string query_record = 4;
 }
 
@@ -997,9 +1030,9 @@ message SmartComposeSuggestionData {
   // document from which it originates.
   map<string, string> metadata = 3;
 
-  // Name of the query record.
+  // The name of the answer record.
   // Format:
-  // projects/{project}/locations/{location}/queryRecords/{query_record}
+  // projects/{project}/locations/{location}/answerRecords/{answer_record}
   string query_record = 4;
 }
 
@@ -1050,6 +1083,34 @@ message ConversationParticipant {
   // projects/{project}/locations/{location}/conversations/{conversation}/participants/{participant}
   string dialogflow_participant = 1 [deprecated = true];
 
+  // Obfuscated user ID from Dialogflow.
+  string obfuscated_external_user_id = 3;
+
   // The role of the participant.
   Role role = 2;
+}
+
+// The View resource.
+message View {
+  option (google.api.resource) = {
+    type: "contactcenterinsights.googleapis.com/View"
+    pattern: "projects/{project}/locations/{location}/views/{view}"
+  };
+
+  // Immutable. The resource name of the view.
+  // Format:
+  // projects/{project}/locations/{location}/views/{view}
+  string name = 1 [(google.api.field_behavior) = IMMUTABLE];
+
+  // The human-readable display name of the view.
+  string display_name = 2;
+
+  // Output only. The time at which this view was created.
+  google.protobuf.Timestamp create_time = 3 [(google.api.field_behavior) = OUTPUT_ONLY];
+
+  // Output only. The most recent time at which the view was updated.
+  google.protobuf.Timestamp update_time = 4 [(google.api.field_behavior) = OUTPUT_ONLY];
+
+  // String with specific view properties.
+  string value = 5;
 }
