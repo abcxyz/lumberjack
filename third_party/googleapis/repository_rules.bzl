@@ -65,6 +65,7 @@ def switched_rules_by_language(
         python = False,
         ruby = False,
         csharp = False,
+        go_test = False,
         rules_override = {}):
     """Switches rules in the generated imports.bzl between no-op and the actual implementation.
 
@@ -77,9 +78,9 @@ def switched_rules_by_language(
     For example, to use this rule and enable Java and Go rules, add the following in the external
     repository which imports com_google_googleapis repository and its corresponding dependencies:
 
-        load("@com_google_googleapis//:repository_rules.bzl", "enabled_rules")
+        load("@com_google_googleapis//:repository_rules.bzl", "switched_rules_by_language")
 
-        enabled_rules(
+        switched_rules_by_language(
             name = "com_google_googleapis_imports",
             grpc = True,
             gapic = True,
@@ -106,6 +107,9 @@ def switched_rules_by_language(
         ruby (bool): Enable Ruby specific rules. False by default.
         python (bool): Enable Python-specific rules. False by default.
         csharp (bool): Enable C# specific rules. False by default.
+        go_test (bool): A special temporary flag to disable only go_test targets. This is needed to
+            support rules_go version 0.24.0+, which made importmap duplicates an error instead of a
+            warning. More details: https://github.com/bazelbuild/rules_go/issues/1986.
         rules_override (dict): Custom rule overrides (for advanced usage).
     """
 
@@ -162,6 +166,10 @@ def switched_rules_by_language(
         python and grpc and gapic,
         "@gapic_generator_python//rules_python_gapic:py_gapic.bzl",
     )
+    rules["py_test"] = _switch(
+        python and grpc and gapic,
+        "native.py_test",
+    )
     rules["py_gapic_assembly_pkg"] = _switch(
         python and grpc and gapic,
         "@gapic_generator_python//rules_python_gapic:py_gapic_pkg.bzl",
@@ -179,7 +187,7 @@ def switched_rules_by_language(
         "@io_bazel_rules_go//go:def.bzl",
     )
     rules["go_test"] = _switch(
-        go and grpc and gapic,
+        go and grpc and gapic and go_test,
         "@io_bazel_rules_go//go:def.bzl",
     )
     rules["go_gapic_library"] = _switch(
@@ -271,11 +279,11 @@ def switched_rules_by_language(
     #
     rules["csharp_proto_library"] = _switch(
         csharp,
-        "@gapic_generator_csharp//rules_csharp_gapic:csharp_gapic.bzl",
+        "@rules_gapic//csharp:csharp_gapic.bzl",
     )
     rules["csharp_grpc_library"] = _switch(
         csharp and grpc,
-        "@gapic_generator_csharp//rules_csharp_gapic:csharp_gapic.bzl",
+        "@rules_gapic//csharp:csharp_gapic.bzl",
     )
     rules["csharp_gapic_library"] = _switch(
         csharp and grpc and gapic,

@@ -1,4 +1,4 @@
-// Copyright 2021 Google LLC
+// Copyright 2022 Google LLC
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -108,4 +108,7 @@ message BigQueryDateShardedSpec {
 
   // Output only. Total number of shards.
   int64 shard_count = 3 [(google.api.field_behavior) = OUTPUT_ONLY];
+
+  // Output only. BigQuery resource name of the latest shard.
+  string latest_shard_resource = 4 [(google.api.field_behavior) = OUTPUT_ONLY];
 }
