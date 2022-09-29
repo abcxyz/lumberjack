@@ -16,7 +16,6 @@ syntax = "proto3";
 
 package google.cloud.servicedirectory.v1;
 
-import "google/api/annotations.proto";
 import "google/api/field_behavior.proto";
 import "google/api/resource.proto";
 
@@ -39,7 +38,7 @@ message Namespace {
   };
 
   // Immutable. The resource name for the namespace in the format
-  // 'projects/*/locations/*/namespaces/*'.
+  // `projects/*/locations/*/namespaces/*`.
   string name = 1 [(google.api.field_behavior) = IMMUTABLE];
 
   // Optional. Resource labels associated with this Namespace.

@@ -22,7 +22,6 @@ import "google/api/field_behavior.proto";
 import "google/api/resource.proto";
 import "google/longrunning/operations.proto";
 import "google/protobuf/timestamp.proto";
-import "google/rpc/status.proto";
 
 option cc_enable_arenas = true;
 option csharp_namespace = "Google.Cloud.Translate.V3Beta1";
@@ -120,6 +119,8 @@ service TranslationService {
       post: "/v3beta1/{parent=projects/*/locations/*}:batchTranslateDocument"
       body: "*"
     };
+    option (google.api.method_signature) =
+        "parent,source_language_code,target_language_codes,input_configs,output_config";
     option (google.longrunning.operation_info) = {
       response_type: "BatchTranslateDocumentResponse"
       metadata_type: "BatchTranslateDocumentMetadata"

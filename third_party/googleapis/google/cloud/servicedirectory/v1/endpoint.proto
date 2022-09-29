@@ -15,7 +15,6 @@ syntax = "proto3";
 
 package google.cloud.servicedirectory.v1;
 
-import "google/api/annotations.proto";
 import "google/api/field_behavior.proto";
 import "google/api/resource.proto";
 
@@ -38,7 +37,7 @@ message Endpoint {
   };
 
   // Immutable. The resource name for the endpoint in the format
-  // 'projects/*/locations/*/namespaces/*/services/*/endpoints/*'.
+  // `projects/*/locations/*/namespaces/*/services/*/endpoints/*`.
   string name = 1 [(google.api.field_behavior) = IMMUTABLE];
   // Optional. An IPv4 or IPv6 address. Service Directory will reject bad
   // addresses like:

@@ -1,4 +1,4 @@
-// Copyright 2021 Google LLC
+// Copyright 2022 Google LLC
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -17,11 +17,10 @@ syntax = "proto3";
 package google.cloud.dialogflow.cx.v3beta1;
 
 import "google/api/annotations.proto";
+import "google/api/client.proto";
 import "google/api/field_behavior.proto";
 import "google/api/resource.proto";
-import "google/cloud/dialogflow/cx/v3beta1/advanced_settings.proto";
 import "google/cloud/dialogflow/cx/v3beta1/audio_config.proto";
-import "google/cloud/dialogflow/cx/v3beta1/flow.proto";
 import "google/cloud/dialogflow/cx/v3beta1/intent.proto";
 import "google/cloud/dialogflow/cx/v3beta1/page.proto";
 import "google/cloud/dialogflow/cx/v3beta1/response_message.proto";
@@ -30,7 +29,6 @@ import "google/protobuf/duration.proto";
 import "google/protobuf/struct.proto";
 import "google/rpc/status.proto";
 import "google/type/latlng.proto";
-import "google/api/client.proto";
 
 option cc_enable_arenas = true;
 option csharp_namespace = "Google.Cloud.Dialogflow.Cx.V3Beta1";
@@ -201,7 +199,7 @@ message DetectIntentResponse {
 // Multiple request messages should be sent in order:
 //
 // 1.  The first message must contain
-// [session][google.cloud.dialogflow.cx.v3beta1.StreamingDetectIntentRequest.session],
+//     [session][google.cloud.dialogflow.cx.v3beta1.StreamingDetectIntentRequest.session],
 //     [query_input][google.cloud.dialogflow.cx.v3beta1.StreamingDetectIntentRequest.query_input] plus optionally
 //     [query_params][google.cloud.dialogflow.cx.v3beta1.StreamingDetectIntentRequest.query_params]. If the client
 //     wants to receive an audio response, it should also contain
@@ -261,21 +259,29 @@ message StreamingDetectIntentRequest {
   bool enable_partial_response = 5;
 }
 
-// The top-level message returned from the `StreamingDetectIntent` method.
+// The top-level message returned from the
+// [StreamingDetectIntent][google.cloud.dialogflow.cx.v3beta1.Sessions.StreamingDetectIntent] method.
 //
-// Multiple response messages can be returned in order:
+// Multiple response messages (N) can be returned in order.
 //
-// 1.  If the input was set to streaming audio, the first one or more messages
-//     contain `recognition_result`. Each `recognition_result` represents a more
-//     complete transcript of what the user said. The last `recognition_result`
-//     has `is_final` set to `true`.
+// The first (N-1) responses set either the `recognition_result` or
+// `detect_intent_response` field, depending on the request:
 //
-// 2.  If `enable_partial_response` is true, the following N messages
-//     (currently 1 <= N <= 4) contain `detect_intent_response`. The first (N-1)
-//     `detect_intent_response`s will have `response_type` set to `PARTIAL`.
-//     The last `detect_intent_response` has `response_type` set to `FINAL`.
-//     If `response_type` is false, response stream only contains
-//     the final `detect_intent_response`.
+// *   If the `StreamingDetectIntentRequest.query_input.audio` field was
+//     set, and the `StreamingDetectIntentRequest.enable_partial_response`
+//     field was false, the `recognition_result` field is populated for each
+//     of the (N-1) responses.
+//     See the [StreamingRecognitionResult][google.cloud.dialogflow.cx.v3beta1.StreamingRecognitionResult] message for details
+//     about the result message sequence.
+//
+// *   If the `StreamingDetectIntentRequest.enable_partial_response` field was
+//     true, the `detect_intent_response` field is populated for each
+//     of the (N-1) responses, where 1 <= N <= 4.
+//     These responses set the [DetectIntentResponse.response_type][google.cloud.dialogflow.cx.v3beta1.DetectIntentResponse.response_type] field
+//     to `PARTIAL`.
+//
+// For the final Nth response message, the `detect_intent_response` is fully
+// populated, and [DetectIntentResponse.response_type][google.cloud.dialogflow.cx.v3beta1.DetectIntentResponse.response_type] is set to `FINAL`.
 message StreamingDetectIntentResponse {
   // The output response.
   oneof response {
@@ -291,35 +297,39 @@ message StreamingDetectIntentResponse {
 // that is currently being processed or an indication that this is the end
 // of the single requested utterance.
 //
-// Example:
+// While end-user audio is being processed, Dialogflow sends a series of
+// results. Each result may contain a `transcript` value. A transcript
+// represents a portion of the utterance. While the recognizer is processing
+// audio, transcript values may be interim values or finalized values.
+// Once a transcript is finalized, the `is_final` value is set to true and
+// processing continues for the next transcript.
 //
-// 1.  transcript: "tube"
+// If `StreamingDetectIntentRequest.query_input.audio.config.single_utterance`
+// was true, and the recognizer has completed processing audio,
+// the `message_type` value is set to `END_OF_SINGLE_UTTERANCE and the
+// following (last) result contains the last finalized transcript.
 //
-// 2.  transcript: "to be a"
+// The complete end-user utterance is determined by concatenating the
+// finalized transcript values received for the series of results.
 //
-// 3.  transcript: "to be"
+// In the following example, single utterance is enabled. In the case where
+// single utterance is not enabled, result 7 would not occur.
 //
-// 4.  transcript: "to be or not to be"
-//     is_final: true
+// ```
+// Num | transcript              | message_type            | is_final
+// --- | ----------------------- | ----------------------- | --------
+// 1   | "tube"                  | TRANSCRIPT              | false
+// 2   | "to be a"               | TRANSCRIPT              | false
+// 3   | "to be"                 | TRANSCRIPT              | false
+// 4   | "to be or not to be"    | TRANSCRIPT              | true
+// 5   | "that's"                | TRANSCRIPT              | false
+// 6   | "that is                | TRANSCRIPT              | false
+// 7   | unset                   | END_OF_SINGLE_UTTERANCE | unset
+// 8   | " that is the question" | TRANSCRIPT              | true
+// ```
 //
-// 5.  transcript: " that's"
-//
-// 6.  transcript: " that is"
-//
-// 7.  message_type: `END_OF_SINGLE_UTTERANCE`
-//
-// 8.  transcript: " that is the question"
-//     is_final: true
-//
-// Only two of the responses contain final results (#4 and #8 indicated by
-// `is_final: true`). Concatenating these generates the full transcript: "to be
-// or not to be that is the question".
-//
-// In each response we populate:
-//
-// *  for `TRANSCRIPT`: `transcript` and possibly `is_final`.
-//
-// *  for `END_OF_SINGLE_UTTERANCE`: only `message_type`.
+// Concatenating the finalized transcripts with `is_final` set to true,
+// the complete utterance becomes "to be or not to be that is the question".
 message StreamingRecognitionResult {
   // Type of the response message.
   enum MessageType {
@@ -428,16 +438,14 @@ message QueryParameters {
   // map, associative array, symbol table, dictionary, or JSON object
   // composed of a collection of (MapKey, MapValue) pairs:
   //
-  // -   MapKey type: string
-  // -   MapKey value: parameter name
-  // -   MapValue type:
-  //     -   If parameter's entity type is a composite entity: map
-  //     -   Else: depending on parameter value type, could be one of string,
-  //         number, boolean, null, list or map
-  // -   MapValue value:
-  //     -   If parameter's entity type is a composite entity:
-  //         map from composite entity property names to property values
-  //     -   Else: parameter value
+  // * MapKey type: string
+  // * MapKey value: parameter name
+  // * MapValue type: If parameter's entity type is a composite entity then use
+  // map, otherwise, depending on the parameter value type, it could be one of
+  // string, number, boolean, null, list or map.
+  // * MapValue value: If parameter's entity type is a composite entity then use
+  // map from composite entity property names to property values, otherwise,
+  // use parameter value.
   google.protobuf.Struct parameters = 5;
 
   // The unique identifier of the [page][google.cloud.dialogflow.cx.v3beta1.Page] to override the [current
@@ -545,6 +553,10 @@ message QueryResult {
     // If an [event][google.cloud.dialogflow.cx.v3beta1.EventInput] was provided as input, this field will contain
     // the name of the event.
     string trigger_event = 14;
+
+    // If a [DTMF][DTMFInput] was provided as input, this field will contain
+    // a copy of the [DTMFInput][].
+    DtmfInput dtmf = 23;
   }
 
   // The language that was triggered during intent detection.
@@ -559,16 +571,14 @@ message QueryResult {
   // map, associative array, symbol table, dictionary, or JSON object
   // composed of a collection of (MapKey, MapValue) pairs:
   //
-  // -   MapKey type: string
-  // -   MapKey value: parameter name
-  // -   MapValue type:
-  //     -   If parameter's entity type is a composite entity: map
-  //     -   Else: depending on parameter value type, could be one of string,
-  //     number, boolean, null, list or map
-  // -   MapValue value:
-  //     -   If parameter's entity type is a composite entity:
-  //         map from composite entity property names to property values
-  //     -   Else: parameter value
+  // * MapKey type: string
+  // * MapKey value: parameter name
+  // * MapValue type: If parameter's entity type is a composite entity then use
+  // map, otherwise, depending on the parameter value type, it could be one of
+  // string, number, boolean, null, list or map.
+  // * MapValue value: If parameter's entity type is a composite entity then use
+  // map from composite entity property names to property values, otherwise,
+  // use parameter value.
   google.protobuf.Struct parameters = 3;
 
   // The list of rich messages returned to the client. Responses vary from
@@ -607,8 +617,22 @@ message QueryResult {
   Match match = 15;
 
   // The free-form diagnostic info. For example, this field could contain
-  // webhook call latency. The string keys of the Struct's fields map can change
-  // without notice.
+  // webhook call latency. The fields of this data can change without notice,
+  // so you should not write code that depends on its structure.
+  //
+  // One of the fields is called "Alternative Matched Intents", which may
+  // aid with debugging. The following describes these intent results:
+  //
+  // - The list is empty if no intent was matched to end-user input.
+  // - Only intents that are referenced in the currently active flow are
+  //   included.
+  // - The matched intent is included.
+  // - Other intents that could have matched end-user input, but did not match
+  //   because they are referenced by intent routes that are out of
+  //   [scope](https://cloud.google.com/dialogflow/cx/docs/concept/handler#scope),
+  //   are included.
+  // - Other intents referenced by intent routes in scope that matched end-user
+  //   input, but had a lower confidence score.
   google.protobuf.Struct diagnostic_info = 10;
 
   // The sentiment analyss result, which depends on
@@ -701,8 +725,9 @@ message Match {
   // filled for [`INTENT`][google.cloud.dialogflow.cx.v3beta1.Match.MatchType] match type.
   Intent intent = 1;
 
-  // The event that matched the query. Only filled for
-  // [`EVENT`][google.cloud.dialogflow.cx.v3beta1.Match.MatchType] match type.
+  // The event that matched the query. Filled for
+  // [`EVENT`][google.cloud.dialogflow.cx.v3beta1.Match.MatchType], [`NO_MATCH`][google.cloud.dialogflow.cx.v3beta1.Match.MatchType] and
+  // [`NO_INPUT`][google.cloud.dialogflow.cx.v3beta1.Match.MatchType] match types.
   string event = 6;
 
   // The collection of parameters extracted from the query.
@@ -711,16 +736,14 @@ message Match {
   // map, associative array, symbol table, dictionary, or JSON object
   // composed of a collection of (MapKey, MapValue) pairs:
   //
-  // -   MapKey type: string
-  // -   MapKey value: parameter name
-  // -   MapValue type:
-  //     -   If parameter's entity type is a composite entity: map
-  //     -   Else: depending on parameter value type, could be one of string,
-  //     number, boolean, null, list or map
-  // -   MapValue value:
-  //     -   If parameter's entity type is a composite entity:
-  //         map from composite entity property names to property values
-  //     -   Else: parameter value
+  // * MapKey type: string
+  // * MapKey value: parameter name
+  // * MapValue type: If parameter's entity type is a composite entity then use
+  // map, otherwise, depending on the parameter value type, it could be one of
+  // string, number, boolean, null, list or map.
+  // * MapValue value: If parameter's entity type is a composite entity then use
+  // map from composite entity property names to property values, otherwise,
+  // use parameter value.
   google.protobuf.Struct parameters = 2;
 
   // Final text input which was matched during MatchIntent. This value can be

@@ -18,7 +18,6 @@ package google.monitoring.v3;
 
 import "google/api/resource.proto";
 import "google/protobuf/duration.proto";
-import "google/protobuf/timestamp.proto";
 import "google/type/calendar_period.proto";
 
 option csharp_namespace = "Google.Cloud.Monitoring.V3";
