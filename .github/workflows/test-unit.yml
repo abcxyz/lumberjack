@@ -38,8 +38,7 @@ jobs:
 
       - name: Run test script
         run: |-
-          cd ${{ github.workspace }}
-          ./scripts/test_java.sh
+          mvn clean test --no-transfer-progress -f clients/java-logger
 
   # TODO: enable coverage for java
   # cover: no required module provides package github.com/abcxyz/lumberjack/clients/go/pkg/audit:
