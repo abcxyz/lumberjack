@@ -16,7 +16,7 @@
 
 package com.abcxyz.lumberjack.auditlogclient.processor;
 
-import com.abcxyz.lumberjack.auditlogclient.processor.LogProcessor.LogMutator;
+import com.abcxyz.lumberjack.auditlogclient.processor.LogProcessor.LogValidator;
 import com.abcxyz.lumberjack.v1alpha1.AuditLogRequest;
 import java.util.List;
 import java.util.regex.Pattern;
@@ -26,7 +26,7 @@ import lombok.Getter;
 /** Implements filtering process for the given {@link AuditLogRequest} */
 @AllArgsConstructor
 @Getter
-public class FilteringProcessor implements LogMutator {
+public class FilteringProcessor implements LogValidator {
 
   /**
    * includePatterns is list of regex pattern, When an audit log request has a principal email that
