@@ -100,7 +100,7 @@ public class LoggingClientBuilder {
 
   /** Provides a {@link LoggingClientBuilder} with {@link FilteringProcessor}. */
   public LoggingClientBuilder withFilteringProcessor() {
-    mutators.add(getFilteringProcessor());
+    validators.add(getFilteringProcessor());
     return this;
   }
 
