@@ -94,13 +94,13 @@ public class LoggingClientTests {
   @Test
   void successfulClientCreate() {
     LoggingClient loggingClient = loggingClientBuilder.withDefaultProcessors().build();
-    assertThat(loggingClient.getValidators().size()).isEqualTo(1);
-    assertThat(loggingClient.getMutators().size()).isEqualTo(3);
+    assertThat(loggingClient.getValidators().size()).isEqualTo(2);
+    assertThat(loggingClient.getMutators().size()).isEqualTo(2);
     assertThat(loggingClient.getBackends().size()).isEqualTo(1);
 
     // We want filtering to occur before other mutators
-    assertThat(loggingClient.getMutators().get(0).equals(filteringProcessor));
-    assertThat(loggingClient.getMutators().get(1).equals(runtimeInfoProcessor));
+    assertThat(loggingClient.getValidators().get(1).equals(filteringProcessor));
+    assertThat(loggingClient.getMutators().get(0).equals(runtimeInfoProcessor));
 
     // If local is disabled and remote is enabled, only backend processor should be remote.
     assertThat(loggingClient.getBackends().get(0).equals(remoteProcessor));
@@ -113,13 +113,13 @@ public class LoggingClientTests {
     doReturn(false).when(backendContext).remoteEnabled();
 
     LoggingClient loggingClient = loggingClientBuilder.withDefaultProcessors().build();
-    assertThat(loggingClient.getValidators().size()).isEqualTo(1);
-    assertThat(loggingClient.getMutators().size()).isEqualTo(3);
+    assertThat(loggingClient.getValidators().size()).isEqualTo(2);
+    assertThat(loggingClient.getMutators().size()).isEqualTo(2);
     assertThat(loggingClient.getBackends().size()).isEqualTo(1);
 
     // We want filtering to occur before other mutators
-    assertThat(loggingClient.getMutators().get(0).equals(filteringProcessor));
-    assertThat(loggingClient.getMutators().get(1).equals(runtimeInfoProcessor));
+    assertThat(loggingClient.getValidators().get(1).equals(filteringProcessor));
+    assertThat(loggingClient.getMutators().get(0).equals(runtimeInfoProcessor));
 
     // If remote is disabled and local is enabled, only backend processor should be local.
     assertThat(loggingClient.getBackends().get(0).equals(localLogProcessor));
@@ -133,13 +133,13 @@ public class LoggingClientTests {
     doReturn(true).when(backendContext).cloudLoggingEnabled();
 
     LoggingClient loggingClient = loggingClientBuilder.withDefaultProcessors().build();
-    assertThat(loggingClient.getValidators().size()).isEqualTo(1);
-    assertThat(loggingClient.getMutators().size()).isEqualTo(3);
+    assertThat(loggingClient.getValidators().size()).isEqualTo(2);
+    assertThat(loggingClient.getMutators().size()).isEqualTo(2);
     assertThat(loggingClient.getBackends().size()).isEqualTo(1);
 
     // We want filtering to occur before other mutators
-    assertThat(loggingClient.getMutators().get(0).equals(filteringProcessor));
-    assertThat(loggingClient.getMutators().get(1).equals(runtimeInfoProcessor));
+    assertThat(loggingClient.getValidators().get(1).equals(filteringProcessor));
+    assertThat(loggingClient.getMutators().get(0).equals(runtimeInfoProcessor));
 
     // If remote is disabled and local is enabled, only backend processor should be local.
     assertThat(loggingClient.getBackends().get(0).equals(localLogProcessor));
@@ -152,15 +152,15 @@ public class LoggingClientTests {
     doReturn(true).when(backendContext).remoteEnabled();
 
     LoggingClient loggingClient = loggingClientBuilder.withDefaultProcessors().build();
-    assertThat(loggingClient.getValidators().size()).isEqualTo(1);
-    assertThat(loggingClient.getMutators().size()).isEqualTo(3);
+    assertThat(loggingClient.getValidators().size()).isEqualTo(2);
+    assertThat(loggingClient.getMutators().size()).isEqualTo(2);
 
     // Both backends should be added
     assertThat(loggingClient.getBackends().size()).isEqualTo(2);
 
     // We want filtering to occur before other mutators
-    assertThat(loggingClient.getMutators().get(0).equals(filteringProcessor));
-    assertThat(loggingClient.getMutators().get(1).equals(runtimeInfoProcessor));
+    assertThat(loggingClient.getValidators().get(1).equals(filteringProcessor));
+    assertThat(loggingClient.getMutators().get(0).equals(runtimeInfoProcessor));
   }
 
   @Test
@@ -173,14 +173,14 @@ public class LoggingClientTests {
         .getInstance(JustificationProcessor.class);
 
     LoggingClient loggingClient = loggingClientBuilder.withDefaultProcessors().build();
-    assertThat(loggingClient.getValidators().size()).isEqualTo(1);
-    assertThat(loggingClient.getMutators().size()).isEqualTo(4);
+    assertThat(loggingClient.getValidators().size()).isEqualTo(2);
+    assertThat(loggingClient.getMutators().size()).isEqualTo(3);
     assertThat(loggingClient.getBackends().size()).isEqualTo(1);
 
     // We want filtering to occur before other mutators
-    assertThat(loggingClient.getMutators().get(0).equals(filteringProcessor));
-    assertThat(loggingClient.getMutators().get(1).equals(runtimeInfoProcessor));
-    assertThat(loggingClient.getMutators().get(3).equals(justificationProcessor));
+    assertThat(loggingClient.getValidators().get(1).equals(filteringProcessor));
+    assertThat(loggingClient.getMutators().get(0).equals(runtimeInfoProcessor));
+    assertThat(loggingClient.getMutators().get(2).equals(justificationProcessor));
 
     // If local is disabled and remote is enabled, only backend processor should be remote.
     assertThat(loggingClient.getBackends().get(0).equals(remoteProcessor));
@@ -192,8 +192,8 @@ public class LoggingClientTests {
         loggingClientBuilder
             .withValidationProcessor()
             .withValidationProcessor()
-            .withFilteringProcessor()
-            .withFilteringProcessor()
+            .withLabelProcessor()
+            .withLabelProcessor()
             .build();
     assertThat(loggingClient.getValidators().size()).isEqualTo(1);
     assertThat(loggingClient.getMutators().size()).isEqualTo(1);
