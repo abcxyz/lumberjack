@@ -14,9 +14,9 @@ Code change is still required (see below).
 
 Config the client to
 
-- look up authentication info (request principal) from a JWT without
+-   look up authentication info (request principal) from a JWT without
     validation (assuming application code already handles it)
-- and enable audit logging for *all* gRPC method
+-   and enable audit logging for *all* gRPC method
 
 ```yaml
 version: v1alpha1
@@ -36,8 +36,8 @@ rules:
 
 Config the client to
 
-- look up authentication info from *multiple* JWT locations
-- and enable audit logging *only* for gRPC method `/com.example.Foo/Bar`
+-   look up authentication info from *multiple* JWT locations
+-   and enable audit logging *only* for gRPC method `/com.example.Foo/Bar`
 
 ```yaml
 version: v1alpha1
