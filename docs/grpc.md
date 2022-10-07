@@ -82,7 +82,14 @@ instead.
 
 ## Java interceptor
 
-TODO
+```java
+// This interceptor clubs unary interceptor and stream interceptor into one.
+Injector injector = Guice.createInjector(new AuditLoggingModule());
+AuditLoggingServerInterceptor interceptor = injector.getInstance(AuditLoggingServerInterceptor.class);
+
+// Add the interceptor to the gRPC server.
+server = ServerBuilder.forPort(port).intercept(interceptor).build();
+```
 
 ## Behaviors
 
