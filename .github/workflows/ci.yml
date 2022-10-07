@@ -10,24 +10,14 @@ on:
 
 env:
 
-#   docker_registry: 'us-docker.pkg.dev'
-#   docker_tag: '${{ github.sha }}'
-#   docker_repo: 'us-docker.pkg.dev/lumberjack-dev-infra/images'
-#   wif_provider: 'projects/638387980668/locations/global/workloadIdentityPools/github-pool/providers/github-provider'
-#   wif_service_acount: 'gh-access-sa@lumberjack-dev-infra.iam.gserviceaccount.com'
-#   server_project_id: 'github-ci-server'
-#   client_project_id: 'github-ci-app-0'
-#   tf_state_bucket: 'lumberjack-dev-terraform'
-#   bigquery_dataset_id: 'audit_logs.audit_abcxyz_data_access'
-
   docker_registry: 'us-docker.pkg.dev'
   docker_tag: '${{ github.sha }}'
-  docker_repo: 'us-docker.pkg.dev/bradegler-ml-7e13bd36284d/lumberjack'
-  wif_provider: 'projects/428444998301/locations/global/workloadIdentityPools/github-pool/providers/github-provider'
-  wif_service_account: 'github-action-sa-b1f2@bradegler-ml-7e13bd36284d.iam.gserviceaccount.com'
-  server_project_id: 'bradegler-ml-7e13bd36284d'
-  client_project_id: 'bradegler-ml-7e13bd36284d'
-  tf_state_bucket: 'bradegler-ml-7e13bd36284d-tfstate'
+  docker_repo: 'us-docker.pkg.dev/lumberjack-dev-infra/images'
+  wif_provider: 'projects/638387980668/locations/global/workloadIdentityPools/github-pool/providers/github-provider'
+  wif_service_acount: 'gh-access-sa@lumberjack-dev-infra.iam.gserviceaccount.com'
+  server_project_id: 'github-ci-server'
+  client_project_id: 'github-ci-app-0'
+  tf_state_bucket: 'lumberjack-dev-terraform'
   bigquery_dataset_id: 'audit_logs.audit_abcxyz_data_access'
 
 jobs:
