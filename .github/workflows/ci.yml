@@ -14,7 +14,7 @@ env:
   docker_tag: '${{ github.sha }}'
   docker_repo: 'us-docker.pkg.dev/lumberjack-dev-infra/images'
   wif_provider: 'projects/638387980668/locations/global/workloadIdentityPools/github-pool/providers/github-provider'
-  wif_service_acount: 'gh-access-sa@lumberjack-dev-infra.iam.gserviceaccount.com'
+  wif_service_account: 'gh-access-sa@lumberjack-dev-infra.iam.gserviceaccount.com'
   server_project_id: 'github-ci-server'
   client_project_id: 'github-ci-app-0'
   tf_state_bucket: 'lumberjack-dev-terraform'
