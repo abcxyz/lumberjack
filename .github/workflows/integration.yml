@@ -101,8 +101,6 @@ jobs:
           token_format: 'access_token'
       - name: 'Run tests'
         id: 'run-tests'
-        env:
-          grpc_endpoints: ${{ needs.}}
         run: |-
           export GRPC_ENDPOINTS='${{ env.grpc_client_endpoints }}';
           export HTTP_ENDPOINTS='${{ env.http_client_endpoints }}';
