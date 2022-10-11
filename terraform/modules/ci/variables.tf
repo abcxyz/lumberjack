@@ -22,7 +22,12 @@ variable "region" {
 
 variable "server_image" {
   type        = string
-  description = "Server image name"
+  description = "Fully qualified server image name"
+}
+
+variable "server_service_name" {
+  type        = string
+  description = "Cloud Run service name for the server"
 }
 
 variable "server_project_id" {
@@ -35,23 +40,7 @@ variable "client_project_id" {
   description = "Project ID for the Cloud project where the client services are deployed."
 }
 
-variable "grpc_client_images" {
-  type        = list(string)
-  default     = []
-  description = "gRPC Client image names of implementations to deploy"
-}
-
-variable "http_client_images" {
-  type        = list(string)
-  default     = []
-  description = "HTTP Client image names of implementations to deploy"
-}
-
-variable "docker_repo" {
-  type    = string
-  default = "us-docker.pkg.dev/lumberjack-dev-infra/images"
-}
-
-variable "docker_tag" {
-  type = string
+variable "client_images" {
+  type        = map(string)
+  description = "Client image names of implementations to deploy"
 }

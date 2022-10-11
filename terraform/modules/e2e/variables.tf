@@ -55,7 +55,7 @@ variable "audit_log_writers" {
 
 variable "server_image" {
   type        = string
-  description = "The server container image." 
+  description = "The server container image."
 }
 
 variable "renew_random_tag" {

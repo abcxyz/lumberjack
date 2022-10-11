@@ -16,8 +16,8 @@ jobs:
     env:
       tf_module_dir: './terraform/modules/ci'
     outputs:
-      grpc_endpoints: ${{ steps.tf_apply.outputs.grpc_endpoints }}
-      http_endpoints: ${{ steps.tf_apply.outputs.http_endpoints }}
+      http_client_endpoints: ${{ steps.tf_apply.outputs.http_client_endpoints }}
+      grpc_client_endpoints: ${{ steps.tf_apply.outputs.grpc_client_endpoints }}
     steps:
       - name: 'Configure environment variables'
         if: ${{ inputs.env-context != '{}' }}
@@ -47,25 +47,21 @@ jobs:
       - name: 'Apply the infrastructure updates'
         id: 'tf_apply'
         env:
-          client_images_grpc: '[\"ljc-go-grpc\",\"ljc-java-grpc\"]'
-          client_images_http: '[\"ljc-go-http\",\"ljc-java-http\"]'
-          server_image: 'lumberjack-server'
+          client_images: '{\"ljc-go-grpc\":\"${{env.docker_repo}}/ljc-go-grpc:${{env.docker_tag}}\",\"ljc-go-http\":\"${{env.docker_repo}}/ljc-go-http:${{env.docker_tag}}\",\"ljc-java-grpc\":\"${{env.docker_repo}}/ljc-java-grpc:${{env.docker_tag}}\",\"ljc-java-http\":\"${{env.docker_repo}}/ljc-java-http:${{env.docker_tag}}\"}'
+          server_image: '${{env.docker_repo}}/lumberjack-server:${{env.docker_tag}}'
         run: |-
           terraform -chdir=${{ env.tf_module_dir}} apply -auto-approve \
             -var="server_project_id=${{ env.server_project_id }}" \
             -var="server_image=${{ env.server_image }}" \
+            -var="server_service_name=lumberjack-server" \
             -var="client_project_id=${{ env.client_project_id }}" \
-            -var="docker_repo=${{ env.docker_repo }}" \
-            -var="docker_tag=${{ env.docker_tag }}" \
-            -var="grpc_client_images=${{ env.client_images_grpc }}" \
-            -var="http_client_images=${{ env.client_images_http }}" ;
+            -var="client_images=${{ env.client_images }}" \
           terraform -chdir=${{ env.tf_module_dir}} output -json | jq -c > output.json
 
-          grpc_endpoints=$(cat output.json | jq -c '.grpc_client_urls.value')
-          http_endpoints=$(cat output.json | jq -c '.http_client_urls.value')
+          grpc_client_endpoints=$(cat output.json | jq -c '.client_endpoints.value' | jq -c '{"ljc-go-grpc","ljc-java-grpc"} | to_entries | map(.value|tostring)')
+          http_client_endpoints=$(cat output.json | jq -c '.client_endpoints.value' | jq -c '{"ljc-go-http","ljc-java-http"} | to_entries | map(.value|tostring)')
 
-          echo "::set-output name=grpc_endpoints::$(echo ${grpc_endpoints})"
-          echo "::set-output name=http_endpoints::$(echo ${http_endpoints})"
+          echo "::set-output name=client_endpoints::$(echo ${client_endpoints})"
 
   run-integration-tests:
     runs-on: 'ubuntu-latest'
@@ -74,8 +70,8 @@ jobs:
       contents: 'read'
       id-token: 'write'
     env:
-      grpc_endpoints: ${{ needs.deploy-infra.outputs.grpc_endpoints }}
-      http_endpoints: ${{ needs.deploy-infra.outputs.http_endpoints }}
+      grpc_client_endpoints: ${{ needs.deploy-infra.outputs.grpc_client_endpoints }}
+      http_client_endpoints: ${{ needs.deploy-infra.outputs.http_client_endpoints }}
     steps:
       - name: 'Configure environment variables'
         if: ${{ inputs.env-context != '{}' }}
@@ -105,9 +101,11 @@ jobs:
           token_format: 'access_token'
       - name: 'Run tests'
         id: 'run-tests'
+        env:
+          grpc_endpoints: ${{ needs.}}
         run: |-
-          export GRPC_ENDPOINTS='${{ env.grpc_endpoints }}';
-          export HTTP_ENDPOINTS='${{ env.http_endpoints }}';
+          export GRPC_ENDPOINTS='${{ env.grpc_client_endpoints }}';
+          export HTTP_ENDPOINTS='${{ env.http_client_endpoints }}';
           export ID_TOKEN=$(gcloud auth print-identity-token --impersonate-service-account=${{ env.wif_service_account }} --include-email)
 
           go test ./integration/testrunner \
