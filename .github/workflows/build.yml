@@ -7,22 +7,8 @@ on:
         type: string
         description: 'Shared environment data from the calling workflow'
 jobs:
-  build-setup:
+  build-lumberjack-server:
     runs-on: 'ubuntu-latest'
-    permissions:
-      contents: 'read'
-      id-token: 'write'
-    outputs:
-      gcloud_access_token: '${{ steps.auth.outputs.access_token }}'
-    steps:
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@8b122486cedac8393e77aa9734c3528886e4a1a8 # ratchet:docker/setup-qemu-action@v2
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@dc7b9719a96d48369863986a06765841d7ea23f6 # ratchet:docker/setup-buildx-action@v2
-
-  build:
-    runs-on: 'ubuntu-latest'
-    needs: 'build-setup'
     permissions:
       contents: 'read'
       id-token: 'write'
@@ -55,32 +41,18 @@ jobs:
       - id: 'set_output'
         run: |-
           echo "::set-output name=image_server::${{ env.docker_repo }}/lumberjack-server:${{ env.docker_tag }}"
-  build-integration-test-servers:
+
+  build-go-grpc-client:
     runs-on: 'ubuntu-latest'
     permissions:
       contents: 'read'
       id-token: 'write'
-    needs: 'build-setup'
-    strategy:
-      fail-fast: true
-      matrix:
-        include:
-          - lang: 'go'
-            type: 'grpc'
-            file: './clients/go/test/grpc-app/Dockerfile'
-            run_from: './'
-          - lang: 'go'
-            type: 'http'
-            file: './clients/go/test/shell/Dockerfile'
-            run_from: './'
-          - lang: 'java'
-            type: 'grpc'
-            file: './clients/java-logger/scripts/server_app.dockerfile'
-            run_from: './'
-          - lang: 'java'
-            type: 'http'
-            file: './clients/java-logger/scripts/shell_app.dockerfile'
-            run_from: './'
+    env:
+      prefix: 'ljc'
+      lang: 'go'
+      type: 'grpc'
+      file: './clients/go/test/grpc-app/Dockerfile'
+      run_from: './'
     steps:
       - name: 'Configure environment variables'
         if: ${{ inputs.env-context != '{}' }}
@@ -105,9 +77,123 @@ jobs:
         uses: 'docker/build-push-action@c84f38281176d4c9cdb1626ffafcd6b3911b5d94' # ratchet:docker/build-push-action@v3
         with:
           push: true
-          tags: '${{ env.docker_repo }}/ljc-${{matrix.lang}}-${{ matrix.type }}:${{ env.docker_tag }}'
-          file: '${{ matrix.file }}'
-          context: '${{ matrix.run_from }}'
-      - id: 'set_output'
+          tags: '${{ env.docker_repo }}/${{env.prefix}}-${{env.lang}}-${{env.type}}:${{env.docker_tag}}'
+          file: '${{ env.file }}'
+          context: '${{ env.run_from }}'
+
+  build-go-http-client:
+    runs-on: 'ubuntu-latest'
+    permissions:
+      contents: 'read'
+      id-token: 'write'
+    env:
+      prefix: 'ljc'
+      lang: 'go'
+      type: 'http'
+      file: './clients/go/test/shell/Dockerfile'
+      run_from: './'
+    steps:
+      - name: 'Configure environment variables'
+        if: ${{ inputs.env-context != '{}' }}
         run: |-
-          echo "::set-output name=image-${{matrix.lang}}-${{matrix.type}}::${{ env.docker_repo }}/ljc-${{matrix.lang}}-${{ matrix.type }}:${{ env.docker_tag }}"
+          jq -r <<< '${{ inputs.env-context }}' | jq -r "to_entries | map(\"\(.key)=\(.value|tostring)\") | .[]" >> $GITHUB_ENV
+      - name: 'Checkout'
+        uses: 'actions/checkout@2541b1294d2704b0964813337f33b291d3f8596b' # ratchet:actions/checkout@v3
+      - id: 'auth'
+        name: 'Authenticate to Google Cloud'
+        uses: 'google-github-actions/auth@ceee102ec2387dd9e844e01b530ccd4ec87ce955' # ratchet:google-github-actions/auth@v0
+        with:
+          workload_identity_provider: '${{ env.wif_provider }}'
+          service_account: '${{ env.wif_service_account }}'
+          token_format: 'access_token'
+      - name: 'Authenticate to Artifact Registry'
+        uses: 'docker/login-action@49ed152c8eca782a232dede0303416e8f356c37b' # ratchet:docker/login-action@v2
+        with:
+          username: 'oauth2accesstoken'
+          password: '${{ steps.auth.outputs.access_token }}'
+          registry: '${{ env.docker_registry }}'
+      - name: 'Build the integration test server container and push to the registry'
+        uses: 'docker/build-push-action@c84f38281176d4c9cdb1626ffafcd6b3911b5d94' # ratchet:docker/build-push-action@v3
+        with:
+          push: true
+          tags: '${{ env.docker_repo }}/${{env.prefix}}-${{env.lang}}-${{env.type}}:${{env.docker_tag}}'
+          file: '${{ env.file }}'
+          context: '${{ env.run_from }}'
+
+  build-java-grpc-client:
+    runs-on: 'ubuntu-latest'
+    permissions:
+      contents: 'read'
+      id-token: 'write'
+    env:
+      prefix: 'ljc'
+      lang: 'java'
+      type: 'grpc'
+      file: './clients/java-logger/scripts/server_app.dockerfile'
+      run_from: './'
+    steps:
+      - name: 'Configure environment variables'
+        if: ${{ inputs.env-context != '{}' }}
+        run: |-
+          jq -r <<< '${{ inputs.env-context }}' | jq -r "to_entries | map(\"\(.key)=\(.value|tostring)\") | .[]" >> $GITHUB_ENV
+      - name: 'Checkout'
+        uses: 'actions/checkout@2541b1294d2704b0964813337f33b291d3f8596b' # ratchet:actions/checkout@v3
+      - id: 'auth'
+        name: 'Authenticate to Google Cloud'
+        uses: 'google-github-actions/auth@ceee102ec2387dd9e844e01b530ccd4ec87ce955' # ratchet:google-github-actions/auth@v0
+        with:
+          workload_identity_provider: '${{ env.wif_provider }}'
+          service_account: '${{ env.wif_service_account }}'
+          token_format: 'access_token'
+      - name: 'Authenticate to Artifact Registry'
+        uses: 'docker/login-action@49ed152c8eca782a232dede0303416e8f356c37b' # ratchet:docker/login-action@v2
+        with:
+          username: 'oauth2accesstoken'
+          password: '${{ steps.auth.outputs.access_token }}'
+          registry: '${{ env.docker_registry }}'
+      - name: 'Build the integration test server container and push to the registry'
+        uses: 'docker/build-push-action@c84f38281176d4c9cdb1626ffafcd6b3911b5d94' # ratchet:docker/build-push-action@v3
+        with:
+          push: true
+          tags: '${{ env.docker_repo }}/${{env.prefix}}-${{env.lang}}-${{env.type}}:${{env.docker_tag}}'
+          file: '${{ env.file }}'
+          context: '${{ env.run_from }}'
+
+  build-java-http-client:
+    runs-on: 'ubuntu-latest'
+    permissions:
+      contents: 'read'
+      id-token: 'write'
+    env:
+      prefix: 'ljc'
+      lang: 'java'
+      type: 'http'
+      file: './clients/java-logger/scripts/shell_app.dockerfile'
+      run_from: './'
+    steps:
+      - name: 'Configure environment variables'
+        if: ${{ inputs.env-context != '{}' }}
+        run: |-
+          jq -r <<< '${{ inputs.env-context }}' | jq -r "to_entries | map(\"\(.key)=\(.value|tostring)\") | .[]" >> $GITHUB_ENV
+      - name: 'Checkout'
+        uses: 'actions/checkout@2541b1294d2704b0964813337f33b291d3f8596b' # ratchet:actions/checkout@v3
+      - id: 'auth'
+        name: 'Authenticate to Google Cloud'
+        uses: 'google-github-actions/auth@ceee102ec2387dd9e844e01b530ccd4ec87ce955' # ratchet:google-github-actions/auth@v0
+        with:
+          workload_identity_provider: '${{ env.wif_provider }}'
+          service_account: '${{ env.wif_service_account }}'
+          token_format: 'access_token'
+      - name: 'Authenticate to Artifact Registry'
+        uses: 'docker/login-action@49ed152c8eca782a232dede0303416e8f356c37b' # ratchet:docker/login-action@v2
+        with:
+          username: 'oauth2accesstoken'
+          password: '${{ steps.auth.outputs.access_token }}'
+          registry: '${{ env.docker_registry }}'
+      - name: 'Build the integration test server container and push to the registry'
+        uses: 'docker/build-push-action@c84f38281176d4c9cdb1626ffafcd6b3911b5d94' # ratchet:docker/build-push-action@v3
+        with:
+          push: true
+          tags: '${{ env.docker_repo }}/${{env.prefix}}-${{env.lang}}-${{env.type}}:${{env.docker_tag}}'
+          file: '${{ env.file }}'
+          context: '${{ env.run_from }}'
