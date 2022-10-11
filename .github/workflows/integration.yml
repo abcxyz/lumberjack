@@ -43,7 +43,7 @@ jobs:
         with:
           terraform_wrapper: false
       - name: 'Init the terraform infrastructure'
-        run: terraform -chdir=${{ env.tf_module_dir }} init -backend-config="bucket=${{ env.tf_state_bucket }}"
+        run: terraform -chdir=${{ env.tf_module_dir }} init"
       - name: 'Apply the infrastructure updates'
         id: 'tf_apply'
         env:
@@ -142,19 +142,17 @@ jobs:
       - name: 'Setup Terraform'
         uses: hashicorp/setup-terraform@17d4c9b8043b238f6f35641cdd8433da1e6f3867 # ratchet:hashicorp/setup-terraform@v2
       - name: 'Init the terraform infrastructure'
-        run: terraform -chdir=${{ env.tf_module_dir }} init -backend-config="bucket=${{ env.tf_state_bucket }}"
+        run: terraform -chdir=${{ env.tf_module_dir }} init" 
       - name: 'Destroy the infrastructure updates'
         id: 'tf_destroy'
         env:
-          client_images_grpc: '[\"ljc-go-grpc\",\"ljc-java-grpc\"]'
-          client_images_http: '[\"ljc-go-http\",\"ljc-java-http\"]'
-          server_image: 'lumberjack-server'
+          client_images: '{\"ljc-go-grpc\":\"${{env.docker_repo}}/ljc-go-grpc:${{env.docker_tag}}\",\"ljc-go-http\":\"${{env.docker_repo}}/ljc-go-http:${{env.docker_tag}}\",\"ljc-java-grpc\":\"${{env.docker_repo}}/ljc-java-grpc:${{env.docker_tag}}\",\"ljc-java-http\":\"${{env.docker_repo}}/ljc-java-http:${{env.docker_tag}}\"}'
+          server_image: '${{env.docker_repo}}/lumberjack-server:${{env.docker_tag}}'
         run: |-
           terraform -chdir=${{ env.tf_module_dir}} destroy -auto-approve \
             -var="server_project_id=${{ env.server_project_id }}" \
             -var="server_image=${{ env.server_image }}" \
+            -var="server_service_name=lumberjack-server" \
             -var="client_project_id=${{ env.client_project_id }}" \
-            -var="docker_repo=${{ env.docker_repo }}" \
-            -var="docker_tag=${{ env.docker_tag }}" \
-            -var="grpc_client_images=${{ env.client_images_grpc }}" \
-            -var="http_client_images=${{ env.client_images_http }}" ;
+            -var="client_images=${{ env.client_images }}" \
+          terraform -chdir=${{ env.tf_module_dir}} output -json | jq -c > output.json
