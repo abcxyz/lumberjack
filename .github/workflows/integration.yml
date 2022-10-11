@@ -55,7 +55,7 @@ jobs:
             -var="server_image=${{ env.server_image }}" \
             -var="server_service_name=lumberjack-server" \
             -var="client_project_id=${{ env.client_project_id }}" \
-            -var="client_images=${{ env.client_images }}" \
+            -var="client_images=${{ env.client_images }}" 
           terraform -chdir=${{ env.tf_module_dir}} output -json | jq -c > output.json
 
           grpc_client_endpoints=$(cat output.json | jq -c '.client_endpoints.value' | jq -c '{"ljc-go-grpc","ljc-java-grpc"} | to_entries | map(.value|tostring)')
@@ -155,5 +155,5 @@ jobs:
             -var="server_image=${{ env.server_image }}" \
             -var="server_service_name=lumberjack-server" \
             -var="client_project_id=${{ env.client_project_id }}" \
-            -var="client_images=${{ env.client_images }}" \
+            -var="client_images=${{ env.client_images }}" 
           terraform -chdir=${{ env.tf_module_dir}} output -json | jq -c > output.json
