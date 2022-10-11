@@ -9,7 +9,6 @@ on:
   workflow_dispatch:
 
 env:
-
   docker_registry: 'us-docker.pkg.dev'
   docker_tag: '${{ github.sha }}'
   docker_repo: 'us-docker.pkg.dev/lumberjack-ci-dev/images'
@@ -21,7 +20,6 @@ env:
   bigquery_dataset_id: 'audit_logs.audit_abcxyz_data_access'
 
 jobs:
-
   # GitHub actions that call other workflows cannot access environment variable information
   # in the 'with' input definition section due to the fact that the GitHub context information
   # is not availble. This job converts environment data into a json string that can be passed 
