@@ -61,7 +61,8 @@ jobs:
           grpc_client_endpoints=$(cat output.json | jq -c '.client_endpoints.value' | jq -c '{"ljc-go-grpc","ljc-java-grpc"} | to_entries | map(.value|tostring)')
           http_client_endpoints=$(cat output.json | jq -c '.client_endpoints.value' | jq -c '{"ljc-go-http","ljc-java-http"} | to_entries | map(.value|tostring)')
 
-          echo "::set-output name=client_endpoints::$(echo ${client_endpoints})"
+          echo "::set-output name=grpc_client_endpoints::$(echo ${grpc_client_endpoints})"
+          echo "::set-output name=http_client_endpoints::$(echo ${http_client_endpoints})"
 
   run-integration-tests:
     runs-on: 'ubuntu-latest'
