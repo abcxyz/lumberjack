@@ -14,8 +14,8 @@ env:
   docker_repo: 'us-docker.pkg.dev/lumberjack-ci-dev/images'
   wif_provider: 'projects/127752565609/locations/global/workloadIdentityPools/github-pool/providers/github-provider'
   wif_service_account: 'github-wif-sa@lumberjack-ci-dev.iam.gserviceaccount.com'
-  server_project_id: 'github-ci-server'
-  client_project_id: 'github-ci-app-0'
+  server_project_id: 'lumberjack-e2e-server'
+  client_project_id: 'lumberjack-e2e-app-0'
   tf_state_bucket: 'lumberjack-ci-tfstate'
   bigquery_dataset_id: 'audit_logs.audit_abcxyz_data_access'
 

@@ -15,7 +15,6 @@
  */
 
 locals {
-  tag = var.renew_random_tag ? uuid() : var.tag
   app_projects_editors = flatten([
     for i in range(var.apps_count) : [
       for e in var.projects_editors : {
