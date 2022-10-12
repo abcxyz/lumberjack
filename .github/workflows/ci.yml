@@ -277,6 +277,7 @@ jobs:
           server_image: '${{env.docker_repo}}/lumberjack-server:${{env.docker_tag}}'
         run: |-
           terraform -chdir=${{ env.tf_module_dir}} apply -auto-approve \
+            -var="commit_sha=${{ env.docker_tag }}" \
             -var="server_project_id=${{ env.server_project_id }}" \
             -var="server_image=${{ env.server_image }}" \
             -var="server_service_name=lumberjack-server" \
@@ -324,6 +325,7 @@ jobs:
           server_image: '${{env.docker_repo}}/lumberjack-server:${{env.docker_tag}}'
         run: |-
           terraform -chdir=${{ env.tf_module_dir}} destroy -auto-approve \
+            -var="commit_sha=${{ env.docker_tag }}" \
             -var="server_project_id=${{ env.server_project_id }}" \
             -var="server_image=${{ env.server_image }}" \
             -var="server_service_name=lumberjack-server" \
