@@ -289,8 +289,8 @@ jobs:
             grpc_client_endpoints=$(jq -c '{"ljc-go-grpc","ljc-java-grpc"} | to_entries | map(.value|tostring)' < output.json);
             http_client_endpoints=$(jq -c '{"ljc-go-http","ljc-java-http"} | to_entries | map(.value|tostring)' < output.json);
             
-            echo \"grpc_client_endpoints=${grpc_client_endpoints}\" >> $GITHUB_ENV;
-            echo \"http_client_endpoints=${http_client_endpoints}\" >> $GITHUB_ENV;
+            echo "grpc_client_endpoints=${grpc_client_endpoints}" >> $GITHUB_ENV;
+            echo "http_client_endpoints=${http_client_endpoints}" >> $GITHUB_ENV;
 
       - name: 'Setup Go'
         uses: 'actions/setup-go@fcdc43634adb5f7ae75a9d7a9b9361790f7293e2' # ratchet:actions/setup-go@v3
