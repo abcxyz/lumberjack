@@ -1,22 +1,37 @@
 name: 'build'
 on:
-  workflow_call:
-    inputs:
-      env-context:
-        required: true
-        type: string
-        description: 'Shared environment data from the calling workflow'
+  workflow_run:
+    workflows: ['unit', 'lint']
+    types:
+      - completed
+
+env:
+  docker_registry: 'us-docker.pkg.dev'
+  docker_tag: '${{ github.sha }}'
+  docker_repo: 'us-docker.pkg.dev/lumberjack-dev-infra/images'
+  wif_provider: 'projects/638387980668/locations/global/workloadIdentityPools/github-pool/providers/github-provider'
+  wif_service_account: 'gh-access-sa@lumberjack-dev-infra.iam.gserviceaccount.com'
+
 jobs:
+  # Short circuit this workflow so that the next workflow in the chain doesn't run
+  on-failure:
+    runs-on: 'ubuntu-latest'
+    if: ${{ github.event.workflow_run.conclusion == 'failure' }}
+    steps:
+      - name: 'abort'
+        run: exit 1
+  on-success:
+    runs-on: 'ubuntu-latest'
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+
+
   build-lumberjack-server:
     runs-on: 'ubuntu-latest'
     permissions:
       contents: 'read'
       id-token: 'write'
+    needs: [on-success]
     steps:
-      - name: 'Configure environment variables'
-        if: ${{ inputs.env-context != '{}' }}
-        run: |-
-          jq -r <<< '${{ inputs.env-context }}' | jq -r "to_entries | map(\"\(.key)=\(.value|tostring)\") | .[]" >> $GITHUB_ENV
       - name: 'Checkout'
         uses: 'actions/checkout@2541b1294d2704b0964813337f33b291d3f8596b' # ratchet:actions/checkout@v3
       - id: 'auth'
@@ -44,6 +59,7 @@ jobs:
 
   build-go-grpc-client:
     runs-on: 'ubuntu-latest'
+    needs: [on-success]
     permissions:
       contents: 'read'
       id-token: 'write'
@@ -54,10 +70,6 @@ jobs:
       file: './clients/go/test/grpc-app/Dockerfile'
       run_from: './'
     steps:
-      - name: 'Configure environment variables'
-        if: ${{ inputs.env-context != '{}' }}
-        run: |-
-          jq -r <<< '${{ inputs.env-context }}' | jq -r "to_entries | map(\"\(.key)=\(.value|tostring)\") | .[]" >> $GITHUB_ENV
       - name: 'Checkout'
         uses: 'actions/checkout@2541b1294d2704b0964813337f33b291d3f8596b' # ratchet:actions/checkout@v3
       - id: 'auth'
@@ -83,6 +95,7 @@ jobs:
 
   build-go-http-client:
     runs-on: 'ubuntu-latest'
+    needs: [on-success]
     permissions:
       contents: 'read'
       id-token: 'write'
@@ -93,10 +106,6 @@ jobs:
       file: './clients/go/test/shell/Dockerfile'
       run_from: './'
     steps:
-      - name: 'Configure environment variables'
-        if: ${{ inputs.env-context != '{}' }}
-        run: |-
-          jq -r <<< '${{ inputs.env-context }}' | jq -r "to_entries | map(\"\(.key)=\(.value|tostring)\") | .[]" >> $GITHUB_ENV
       - name: 'Checkout'
         uses: 'actions/checkout@2541b1294d2704b0964813337f33b291d3f8596b' # ratchet:actions/checkout@v3
       - id: 'auth'
@@ -122,6 +131,7 @@ jobs:
 
   build-java-grpc-client:
     runs-on: 'ubuntu-latest'
+    needs: [on-success]
     permissions:
       contents: 'read'
       id-token: 'write'
@@ -132,10 +142,6 @@ jobs:
       file: './clients/java-logger/scripts/server_app.dockerfile'
       run_from: './'
     steps:
-      - name: 'Configure environment variables'
-        if: ${{ inputs.env-context != '{}' }}
-        run: |-
-          jq -r <<< '${{ inputs.env-context }}' | jq -r "to_entries | map(\"\(.key)=\(.value|tostring)\") | .[]" >> $GITHUB_ENV
       - name: 'Checkout'
         uses: 'actions/checkout@2541b1294d2704b0964813337f33b291d3f8596b' # ratchet:actions/checkout@v3
       - id: 'auth'
@@ -161,6 +167,7 @@ jobs:
 
   build-java-http-client:
     runs-on: 'ubuntu-latest'
+    needs: [on-success]
     permissions:
       contents: 'read'
       id-token: 'write'
@@ -171,10 +178,6 @@ jobs:
       file: './clients/java-logger/scripts/shell_app.dockerfile'
       run_from: './'
     steps:
-      - name: 'Configure environment variables'
-        if: ${{ inputs.env-context != '{}' }}
-        run: |-
-          jq -r <<< '${{ inputs.env-context }}' | jq -r "to_entries | map(\"\(.key)=\(.value|tostring)\") | .[]" >> $GITHUB_ENV
       - name: 'Checkout'
         uses: 'actions/checkout@2541b1294d2704b0964813337f33b291d3f8596b' # ratchet:actions/checkout@v3
       - id: 'auth'

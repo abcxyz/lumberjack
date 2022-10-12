@@ -1,15 +1,24 @@
 name: 'integration-test'
 on:
-  workflow_call:
-    inputs:
-      env-context:
-        required: true
-        type: string
-        description: 'Shared environment data from the calling workflow'
+  workflow_run:
+    workflows: ['build']
+    types:
+      - completed
+
+env:
+  docker_tag: '${{ github.sha }}'
+  docker_repo: 'us-docker.pkg.dev/lumberjack-dev-infra/images'
+  wif_provider: 'projects/638387980668/locations/global/workloadIdentityPools/github-pool/providers/github-provider'
+  wif_service_account: 'gh-access-sa@lumberjack-dev-infra.iam.gserviceaccount.com'
+  server_project_id: 'github-ci-server'
+  client_project_id: 'github-ci-app-0'
+  bigquery_dataset_id: 'audit_logs.audit_abcxyz_data_access'
+
 jobs:
 
   deploy-infra:
     runs-on: 'ubuntu-latest'
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
     permissions:
       contents: 'read'
       id-token: 'write'
@@ -19,25 +28,8 @@ jobs:
       http_client_endpoints: ${{ steps.tf_apply.outputs.http_client_endpoints }}
       grpc_client_endpoints: ${{ steps.tf_apply.outputs.grpc_client_endpoints }}
     steps:
-      - name: 'Configure environment variables'
-        if: ${{ inputs.env-context != '{}' }}
-        run: |-
-          jq -r <<< '${{ inputs.env-context }}' | jq -r "to_entries | map(\"\(.key)=\(.value|tostring)\") | .[]" >> $GITHUB_ENV
       - name: 'Checkout'
         uses: 'actions/checkout@2541b1294d2704b0964813337f33b291d3f8596b' # ratchet:actions/checkout@v3
-      - id: 'auth'
-        name: 'Authenticate to Google Cloud'
-        uses: 'google-github-actions/auth@ceee102ec2387dd9e844e01b530ccd4ec87ce955' # ratchet:google-github-actions/auth@v0
-        with:
-          workload_identity_provider: '${{ env.wif_provider }}'
-          service_account: '${{ env.wif_service_account }}'
-          token_format: 'access_token' # Needed for Terraform workaround
-      # TODO: Workload Identity doesn't work with GCS Provider.
-      # https://github.com/google-github-actions/auth/issues/89
-      - name: 'Workaround Terraform issue'
-        shell: 'bash'
-        run: |-
-          echo "GOOGLE_OAUTH_ACCESS_TOKEN=${{ steps.auth.outputs.access_token }}" >> $GITHUB_ENV
       - name: 'Setup Terraform'
         uses: hashicorp/setup-terraform@17d4c9b8043b238f6f35641cdd8433da1e6f3867 # ratchet:hashicorp/setup-terraform@v2
         with:
@@ -56,10 +48,10 @@ jobs:
             -var="server_service_name=lumberjack-server" \
             -var="client_project_id=${{ env.client_project_id }}" \
             -var="client_images=${{ env.client_images }}" 
-          terraform -chdir=${{ env.tf_module_dir}} output -json | jq -c > output.json
+          terraform -chdir=${{ env.tf_module_dir}} output -json client_endpoints | jq -c > output.json
 
-          grpc_client_endpoints=$(cat output.json | jq -c '.client_endpoints.value' | jq -c '{"ljc-go-grpc","ljc-java-grpc"} | to_entries | map(.value|tostring)')
-          http_client_endpoints=$(cat output.json | jq -c '.client_endpoints.value' | jq -c '{"ljc-go-http","ljc-java-http"} | to_entries | map(.value|tostring)')
+          grpc_client_endpoints=$(jq -c '{"ljc-go-grpc","ljc-java-grpc"} | to_entries | map(.value|tostring)' < output.json)
+          http_client_endpoints=$(jq -c '{"ljc-go-http","ljc-java-http"} | to_entries | map(.value|tostring)' < output.json)
 
           echo "::set-output name=grpc_client_endpoints::$(echo ${grpc_client_endpoints})"
           echo "::set-output name=http_client_endpoints::$(echo ${http_client_endpoints})"
@@ -74,10 +66,6 @@ jobs:
       grpc_client_endpoints: ${{ needs.deploy-infra.outputs.grpc_client_endpoints }}
       http_client_endpoints: ${{ needs.deploy-infra.outputs.http_client_endpoints }}
     steps:
-      - name: 'Configure environment variables'
-        if: ${{ inputs.env-context != '{}' }}
-        run: |-
-          jq -r <<< '${{ inputs.env-context }}' | jq -r "to_entries | map(\"\(.key)=\(.value|tostring)\") | .[]" >> $GITHUB_ENV
       - name: 'Checkout'
         uses: 'actions/checkout@2541b1294d2704b0964813337f33b291d3f8596b' # ratchet:actions/checkout@v3
       - name: 'Setup Go'
