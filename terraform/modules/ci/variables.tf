@@ -44,3 +44,8 @@ variable "client_images" {
   type        = map(string)
   description = "Client image names of implementations to deploy"
 }
+
+variable "commit_sha" {
+  type        = string
+  description = "Commit sha that triggered this CI deployment"
+}

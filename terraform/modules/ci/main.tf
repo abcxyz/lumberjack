@@ -19,13 +19,14 @@ locals {
     "AUDIT_CLIENT_BACKEND_REMOTE_ADDRESS" : "${trimprefix(module.server_service.audit_log_server_url, "https://")}:443",
     "AUDIT_CLIENT_CONDITION_REGEX_PRINCIPAL_INCLUDE" : ".*",
   }
+  short_sha = substr(var.commit_sha, 0, 7)
 }
 
 module "server_service" {
   source       = "../server-service"
   project_id   = var.server_project_id
   server_image = var.server_image
-  service_name = var.server_service_name
+  service_name = "${var.server_service_name}-${local.short_sha}"
   region       = var.region
 
   // Disable dedicated service account for audit logging server.
@@ -37,7 +38,7 @@ module "server_service" {
 resource "google_cloud_run_service" "client_services" {
   for_each = var.client_images
 
-  name     = each.key
+  name     = "${each.key}-${local.short_sha}"
   project  = var.client_project_id
   location = var.region
 
