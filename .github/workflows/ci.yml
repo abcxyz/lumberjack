@@ -250,6 +250,20 @@ jobs:
     steps:
       - name: 'Checkout'
         uses: 'actions/checkout@2541b1294d2704b0964813337f33b291d3f8596b' # ratchet:actions/checkout@v3
+      - id: 'auth'
+        name: 'Authenticate to Google Cloud'
+        uses: 'google-github-actions/auth@ceee102ec2387dd9e844e01b530ccd4ec87ce955' # ratchet:google-github-actions/auth@v0
+        with:
+          workload_identity_provider: 'projects/${{ env.PROJECT_NUMBER }}/locations/global/workloadIdentityPools/github-pool/providers/github-provider'
+          service_account: 'gh-access-sa@lumberjack-dev-infra.iam.gserviceaccount.com'
+          token_format: 'access_token' # Needed for Terraform workaround
+
+      # TODO: Workload Identity doesn't work with GCS Provider.
+      # https://github.com/google-github-actions/auth/issues/89
+      - name: 'Workaround Terraform issue'
+        shell: 'bash'
+        run: |-
+          echo "GOOGLE_OAUTH_ACCESS_TOKEN=${{ steps.auth.outputs.access_token }}" >> $GITHUB_ENV
       - name: 'Setup Terraform'
         uses: hashicorp/setup-terraform@17d4c9b8043b238f6f35641cdd8433da1e6f3867 # ratchet:hashicorp/setup-terraform@v2
         with:
