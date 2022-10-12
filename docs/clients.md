@@ -114,7 +114,7 @@ if err != nil {
 The default config path is `audit_logging.yml`. You can override it with env var
 `AUDIT_CLIENT_CONFIG_PATH`.
 
-The example here is using [Guice]{https://github.com/google/guice}.
+The example here is using [Guice](https://github.com/google/guice).
 
 ```java
 Injector injector = Guice.createInjector(new AuditLoggingModule());
