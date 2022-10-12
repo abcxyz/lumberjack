@@ -20,17 +20,13 @@ jobs:
     steps:
       - name: 'abort'
         run: exit 1
-  on-success:
-    runs-on: 'ubuntu-latest'
-    if: ${{ github.event.workflow_run.conclusion == 'success' }}
-
 
   build-lumberjack-server:
     runs-on: 'ubuntu-latest'
     permissions:
       contents: 'read'
       id-token: 'write'
-    needs: [on-success]
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
     steps:
       - name: 'Checkout'
         uses: 'actions/checkout@2541b1294d2704b0964813337f33b291d3f8596b' # ratchet:actions/checkout@v3
@@ -59,7 +55,7 @@ jobs:
 
   build-go-grpc-client:
     runs-on: 'ubuntu-latest'
-    needs: [on-success]
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
     permissions:
       contents: 'read'
       id-token: 'write'
@@ -95,7 +91,7 @@ jobs:
 
   build-go-http-client:
     runs-on: 'ubuntu-latest'
-    needs: [on-success]
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
     permissions:
       contents: 'read'
       id-token: 'write'
@@ -131,7 +127,7 @@ jobs:
 
   build-java-grpc-client:
     runs-on: 'ubuntu-latest'
-    needs: [on-success]
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
     permissions:
       contents: 'read'
       id-token: 'write'
@@ -167,7 +163,7 @@ jobs:
 
   build-java-http-client:
     runs-on: 'ubuntu-latest'
-    needs: [on-success]
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
     permissions:
       contents: 'read'
       id-token: 'write'
