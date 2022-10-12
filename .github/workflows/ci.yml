@@ -286,8 +286,8 @@ jobs:
             
             terraform -chdir=${{ env.tf_module_dir}} output -json client_endpoints | jq -c > output.json;
             
-            grpc_client_endpoints=$(jq -c '{\"ljc-go-grpc\",\"ljc-java-grpc\"} | to_entries | map(.value|tostring)' < output.json);
-            http_client_endpoints=$(jq -c '{\"ljc-go-http\",\"ljc-java-http\"} | to_entries | map(.value|tostring)' < output.json);
+            grpc_client_endpoints=$(jq -c '{"ljc-go-grpc","ljc-java-grpc"} | to_entries | map(.value|tostring)' < output.json);
+            http_client_endpoints=$(jq -c '{"ljc-go-http","ljc-java-http"} | to_entries | map(.value|tostring)' < output.json);
             
             echo \"grpc_client_endpoints=${grpc_client_endpoints}\" >> $GITHUB_ENV;
             echo \"http_client_endpoints=${http_client_endpoints}\" >> $GITHUB_ENV;
