@@ -4,6 +4,8 @@ on:
     workflows: [build]
     types:
       - completed
+    branches:
+      - '*'
 
 env:
   docker_tag: '${{ github.sha }}'
