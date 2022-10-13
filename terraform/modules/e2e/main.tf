@@ -15,7 +15,6 @@
  */
 
 locals {
-  tag = var.renew_random_tag ? uuid() : var.tag
   app_projects_editors = flatten([
     for i in range(var.apps_count) : [
       for e in var.projects_editors : {
@@ -237,30 +236,10 @@ resource "google_artifact_registry_repository" "image_registry" {
   ]
 }
 
-resource "null_resource" "build" {
-  triggers = {
-    "tag" = local.tag
-  }
-
-  provisioner "local-exec" {
-    environment = {
-      PROJECT_ID = google_project.server_project.project_id
-      TAG        = local.tag
-      REPO       = "${var.registry_location}-docker.pkg.dev/${google_project.server_project.project_id}/images"
-    }
-
-    command = "${path.module}/../../../scripts/build_server.sh"
-  }
-
-  depends_on = [
-    google_artifact_registry_repository.image_registry,
-  ]
-}
-
 module "server_service" {
   source       = "../server-service"
   project_id   = google_project.server_project.project_id
-  server_image = "${var.registry_location}-docker.pkg.dev/${google_project.server_project.project_id}/images/lumberjack-server:${local.tag}"
+  server_image = var.server_image
   service_name = var.service_name
 
   # Give the list of IAM entities in the input variables
@@ -269,7 +248,6 @@ module "server_service" {
 
   depends_on = [
     google_project_service.server_project_services,
-    null_resource.build,
   ]
 }
 

@@ -53,10 +53,9 @@ variable "audit_log_writers" {
   description = "List of IAM entities that can invoke the audit logging server. This should be of the form user:[email], serviceAccount:[email], or group:[email]."
 }
 
-variable "tag" {
+variable "server_image" {
   type        = string
-  default     = "init"
-  description = "The server container image tag. Changing the tag will trigger a new build."
+  description = "The server container image."
 }
 
 variable "renew_random_tag" {
