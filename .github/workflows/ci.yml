@@ -275,12 +275,12 @@ jobs:
             var_file=/tmp/ci.tfvars
 
             touch /tmp/ci.tfvars
-            echo commit_sha="${{ env.docker_tag }}" >> ${var_file};
-            echo server_project_id="${{ env.server_project_id }}" >> ${var_file};
-            echo server_image="${{ env.server_image }}" >> ${var_file};
-            echo server_service_name="lumberjack-server" >> ${var_file};
-            echo client_project_id="${{ env.client_project_id }}" >> ${var_file};
-            echo client_images="${{ env.client_images }}" >> ${var_file};
+            echo commit_sha=\"${{ env.docker_tag }}\" >> ${var_file};
+            echo server_project_id=\"${{ env.server_project_id }}\" >> ${var_file};
+            echo server_image=\"${{ env.server_image }}\" >> ${var_file};
+            echo server_service_name=\"lumberjack-server\" >> ${var_file};
+            echo client_project_id=\"${{ env.client_project_id }}\" >> ${var_file};
+            echo client_images=\"${{ env.client_images }}\" >> ${var_file};
 
             cat ${var_file};
             echo "tfvar_file=${var_file}" >> $GITHUB_ENV;
