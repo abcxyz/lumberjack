@@ -52,7 +52,7 @@ func QueryIfAuditLogExists(ctx context.Context, tb testing.TB, query *bigquery.Q
 	tb.Logf("Found %d matching rows", row[0])
 	result, ok := row[0].(int64)
 	if !ok {
-		return false, fmt.Errorf("error converting query results to integer value")
+		return false, fmt.Errorf("error converting query results to integer value (got %T)", row[0])
 	}
 	return result >= expectedNum, nil
 }

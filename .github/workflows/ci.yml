@@ -316,17 +316,17 @@ jobs:
             -project-id=${{ env.server_project_id }} \
             -dataset-query=${{ env.bigquery_dataset_id }};
 
-      - name: 'Cleanup the infrastructure'
-        id: 'tf_destroy'
-        if: always()
-        env:
-          client_images: '{\"ljc-go-grpc\":\"${{env.docker_repo}}/ljc-go-grpc:${{env.docker_tag}}\",\"ljc-go-http\":\"${{env.docker_repo}}/ljc-go-http:${{env.docker_tag}}\",\"ljc-java-grpc\":\"${{env.docker_repo}}/ljc-java-grpc:${{env.docker_tag}}\",\"ljc-java-http\":\"${{env.docker_repo}}/ljc-java-http:${{env.docker_tag}}\"}'
-          server_image: '${{env.docker_repo}}/lumberjack-server:${{env.docker_tag}}'
-        run: |-
-          terraform -chdir=${{ env.tf_module_dir}} destroy -auto-approve \
-            -var="commit_sha=${{ env.docker_tag }}" \
-            -var="server_project_id=${{ env.server_project_id }}" \
-            -var="server_image=${{ env.server_image }}" \
-            -var="server_service_name=lumberjack-server" \
-            -var="client_project_id=${{ env.client_project_id }}" \
-            -var="client_images=${{ env.client_images }}";
+      # - name: 'Cleanup the infrastructure'
+      #   id: 'tf_destroy'
+      #   if: always()
+      #   env:
+      #     client_images: '{\"ljc-go-grpc\":\"${{env.docker_repo}}/ljc-go-grpc:${{env.docker_tag}}\",\"ljc-go-http\":\"${{env.docker_repo}}/ljc-go-http:${{env.docker_tag}}\",\"ljc-java-grpc\":\"${{env.docker_repo}}/ljc-java-grpc:${{env.docker_tag}}\",\"ljc-java-http\":\"${{env.docker_repo}}/ljc-java-http:${{env.docker_tag}}\"}'
+      #     server_image: '${{env.docker_repo}}/lumberjack-server:${{env.docker_tag}}'
+      #   run: |-
+      #     terraform -chdir=${{ env.tf_module_dir}} destroy -auto-approve \
+      #       -var="commit_sha=${{ env.docker_tag }}" \
+      #       -var="server_project_id=${{ env.server_project_id }}" \
+      #       -var="server_image=${{ env.server_image }}" \
+      #       -var="server_service_name=lumberjack-server" \
+      #       -var="client_project_id=${{ env.client_project_id }}" \
+      #       -var="client_images=${{ env.client_images }}";
