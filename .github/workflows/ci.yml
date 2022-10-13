@@ -281,6 +281,7 @@ jobs:
             echo server_service_name=\"lumberjack-server\" >> ${var_file};
             echo client_project_id=\"${{ env.client_project_id }}\" >> ${var_file};
             echo client_images=\"${{ env.client_images }}\" >> ${var_file};
+            echo >> ${var_file};
 
             cat ${var_file};
             echo "tfvar_file=${var_file}" >> $GITHUB_ENV;
