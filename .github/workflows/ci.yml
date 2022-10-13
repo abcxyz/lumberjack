@@ -267,21 +267,29 @@ jobs:
         uses: hashicorp/setup-terraform@17d4c9b8043b238f6f35641cdd8433da1e6f3867 # ratchet:hashicorp/setup-terraform@v2
         with:
           terraform_wrapper: false
-      - name: 'Init the terraform infrastructure'
-        run: terraform -chdir=${{ env.tf_module_dir }} init
-      - name: 'Apply the infrastructure updates'
-        id: 'tf_apply'
+      - name: 'Write tfvars file'
         env:
           client_images: '{\"ljc-go-grpc\":\"${{env.docker_repo}}/ljc-go-grpc:${{env.docker_tag}}\",\"ljc-go-http\":\"${{env.docker_repo}}/ljc-go-http:${{env.docker_tag}}\",\"ljc-java-grpc\":\"${{env.docker_repo}}/ljc-java-grpc:${{env.docker_tag}}\",\"ljc-java-http\":\"${{env.docker_repo}}/ljc-java-http:${{env.docker_tag}}\"}'
           server_image: '${{env.docker_repo}}/lumberjack-server:${{env.docker_tag}}'
         run: |-
-          terraform -chdir=${{ env.tf_module_dir}} apply -auto-approve \
-            -var="commit_sha=${{ env.docker_tag }}" \
-            -var="server_project_id=${{ env.server_project_id }}" \
-            -var="server_image=${{ env.server_image }}" \
-            -var="server_service_name=lumberjack-server" \
-            -var="client_project_id=${{ env.client_project_id }}" \
-            -var="client_images=${{ env.client_images }}";
+            var_file=/tmp/ci.tfvars
+
+            touch /tmp/ci.tfvars
+            echo commit_sha="${{ env.docker_tag }}" >> ${var_file};
+            echo server_project_id="${{ env.server_project_id }}" >> ${var_file};
+            echo server_image="${{ env.server_image }}" >> ${var_file};
+            echo server_service_name="lumberjack-server" >> ${var_file};
+            echo client_project_id="${{ env.client_project_id }}" >> ${var_file};
+            echo client_images="${{ env.client_images }}" >> ${var_file};
+
+            cat ${var_file};
+            echo "tfvar_file=${grpc_client_endpoints}" >> $GITHUB_ENV;
+      - name: 'Init the terraform infrastructure'
+        run: terraform -chdir=${{ env.tf_module_dir }} init
+      - name: 'Apply the infrastructure updates'
+        id: 'tf_apply'
+        run: |-
+            terraform -chdir=${{ env.tf_module_dir}} apply -auto-approve -var-file=${{env.tfvar_file}};
             
             terraform -chdir=${{ env.tf_module_dir}} output -json client_endpoints | jq -c > output.json;
             
@@ -316,17 +324,7 @@ jobs:
             -project-id=${{ env.server_project_id }} \
             -dataset-query=${{ env.bigquery_dataset_id }};
 
-      # - name: 'Cleanup the infrastructure'
-      #   id: 'tf_destroy'
-      #   if: always()
-      #   env:
-      #     client_images: '{\"ljc-go-grpc\":\"${{env.docker_repo}}/ljc-go-grpc:${{env.docker_tag}}\",\"ljc-go-http\":\"${{env.docker_repo}}/ljc-go-http:${{env.docker_tag}}\",\"ljc-java-grpc\":\"${{env.docker_repo}}/ljc-java-grpc:${{env.docker_tag}}\",\"ljc-java-http\":\"${{env.docker_repo}}/ljc-java-http:${{env.docker_tag}}\"}'
-      #     server_image: '${{env.docker_repo}}/lumberjack-server:${{env.docker_tag}}'
-      #   run: |-
-      #     terraform -chdir=${{ env.tf_module_dir}} destroy -auto-approve \
-      #       -var="commit_sha=${{ env.docker_tag }}" \
-      #       -var="server_project_id=${{ env.server_project_id }}" \
-      #       -var="server_image=${{ env.server_image }}" \
-      #       -var="server_service_name=lumberjack-server" \
-      #       -var="client_project_id=${{ env.client_project_id }}" \
-      #       -var="client_images=${{ env.client_images }}";
+      - name: 'Cleanup the infrastructure'
+        id: 'tf_destroy'
+        if: always()
+        run: terraform -chdir=${{ env.tf_module_dir}} apply -auto-approve -var-file=${{env.tfvar_file}};
