@@ -269,7 +269,7 @@ jobs:
           terraform_wrapper: false
       - name: 'Write tfvars file'
         env:
-          client_images: '{\"ljc-go-grpc\":\"${{env.docker_repo}}/ljc-go-grpc:${{env.docker_tag}}\",\"ljc-go-http\":\"${{env.docker_repo}}/ljc-go-http:${{env.docker_tag}}\",\"ljc-java-grpc\":\"${{env.docker_repo}}/ljc-java-grpc:${{env.docker_tag}}\",\"ljc-java-http\":\"${{env.docker_repo}}/ljc-java-http:${{env.docker_tag}}\"}'
+          client_images: '\{\"ljc-go-grpc\":\"${{env.docker_repo}}/ljc-go-grpc:${{env.docker_tag}}\",\"ljc-go-http\":\"${{env.docker_repo}}/ljc-go-http:${{env.docker_tag}}\",\"ljc-java-grpc\":\"${{env.docker_repo}}/ljc-java-grpc:${{env.docker_tag}}\",\"ljc-java-http\":\"${{env.docker_repo}}/ljc-java-http:${{env.docker_tag}}\"\}'
           server_image: '${{env.docker_repo}}/lumberjack-server:${{env.docker_tag}}'
         run: |-
             var_file=/tmp/ci.tfvars
