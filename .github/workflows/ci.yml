@@ -283,7 +283,7 @@ jobs:
             echo client_images="${{ env.client_images }}" >> ${var_file};
 
             cat ${var_file};
-            echo "tfvar_file=${grpc_client_endpoints}" >> $GITHUB_ENV;
+            echo "tfvar_file=${var_file}" >> $GITHUB_ENV;
       - name: 'Init the terraform infrastructure'
         run: terraform -chdir=${{ env.tf_module_dir }} init
       - name: 'Apply the infrastructure updates'
