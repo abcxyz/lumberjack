@@ -238,7 +238,7 @@ jobs:
       - run: 'echo build complete'
 
   # Deploy integration test infrastructure and run integration tests
-  integration-test:
+  integration:
     runs-on: 'ubuntu-latest'
     needs: [build]
     permissions:
