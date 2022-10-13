@@ -1,4 +1,5 @@
 name: 'ci'
+
 on:
   push:
     branches:
@@ -7,6 +8,7 @@ on:
     branches:
       - 'main'
   workflow_dispatch:
+
 env:
   docker_registry: 'us-docker.pkg.dev'
   docker_tag: '${{ github.sha }}'
@@ -16,9 +18,11 @@ env:
   server_project_id: 'github-ci-server'
   client_project_id: 'github-ci-app-0'
   bigquery_dataset_id: 'audit_logs.audit_abcxyz_data_access'
+
 concurrency:
   group: '${{ github.workflow }}-${{ github.head_ref || github.ref }}'
   cancel-in-progress: true
+
 jobs:
   # Linting jobs - terraform, java, go
   terraform_lint:
@@ -26,15 +30,18 @@ jobs:
     with:
       directory: 'terraform'
       terraform_version: '1.2'
+
   go_lint:
     uses: 'abcxyz/pkg/.github/workflows/go-lint.yml@main'
     with:
       go_version: '1.19'
+
   java_lint:
     uses: 'abcxyz/pkg/.github/workflows/java-lint.yml@cc2b918b16df0f627b933ed8dddf0d846fa9108b' # ratchet:abcxyz/pkg/.github/workflows/java-lint.yml@main
     with:
       directory: 'clients/java-logger'
       java_version: '11'
+
   # Unit tests - java, go
   go_test:
     uses: 'abcxyz/pkg/.github/workflows/go-test.yml@cc2b918b16df0f627b933ed8dddf0d846fa9108b' # ratchet:abcxyz/pkg/.github/workflows/go-test.yml@main
@@ -42,6 +49,7 @@ jobs:
       go_version: '1.19'
       go_packages: |-
         $(go list ./... | grep -v -E 'lumberjack/third_party|lumberjack/integration')
+
   java_test:
     runs-on: 'ubuntu-latest'
     steps:
@@ -54,16 +62,24 @@ jobs:
       - name: Run tests with Maven
         run: |-
           mvn clean test --no-transfer-progress -f clients/java-logger
+
+  # lint_and_unit is a virtual job that is used as dependencies for later jobs.
   lint_and_unit:
     runs-on: 'ubuntu-latest'
-    needs: [terraform_lint, go_lint, java_lint, go_test, java_test]
+    needs:
+      - 'terraform_lint'
+      - 'go_lint'
+      - 'java_lint'
+      - 'go_test'
+      - 'java_test'
     steps:
       - run: 'echo prechecks complete'
 
   # Build the main lumberjack server and push to artifact registry
   build-lumberjack-server:
     runs-on: 'ubuntu-latest'
-    needs: [lint_and_unit]
+    needs:
+      - 'lint_and_unit'
     permissions:
       contents: 'read'
       id-token: 'write'
@@ -89,11 +105,12 @@ jobs:
           push: true
           tags: '${{ env.docker_repo }}/lumberjack-server:${{ env.docker_tag }}'
           file: 'scripts/server.dockerfile'
-  
+
   # Build the 4 integration test client variants, go-grpc, go-http, java-grpc and java-http
   build-go-grpc-client:
     runs-on: 'ubuntu-latest'
-    needs: [lint_and_unit]
+    needs:
+      - 'lint_and_unit'
     permissions:
       contents: 'read'
       id-token: 'write'
@@ -126,9 +143,11 @@ jobs:
           tags: '${{ env.docker_repo }}/${{env.prefix}}-${{env.lang}}-${{env.type}}:${{env.docker_tag}}'
           file: '${{ env.file }}'
           context: '${{ env.run_from }}'
+
   build-go-http-client:
     runs-on: 'ubuntu-latest'
-    needs: [lint_and_unit]
+    needs:
+      - 'lint_and_unit'
     permissions:
       contents: 'read'
       id-token: 'write'
@@ -161,9 +180,11 @@ jobs:
           tags: '${{ env.docker_repo }}/${{env.prefix}}-${{env.lang}}-${{env.type}}:${{env.docker_tag}}'
           file: '${{ env.file }}'
           context: '${{ env.run_from }}'
+
   build-java-grpc-client:
     runs-on: 'ubuntu-latest'
-    needs: [lint_and_unit]
+    needs:
+      - 'lint_and_unit'
     permissions:
       contents: 'read'
       id-token: 'write'
@@ -196,9 +217,11 @@ jobs:
           tags: '${{ env.docker_repo }}/${{env.prefix}}-${{env.lang}}-${{env.type}}:${{env.docker_tag}}'
           file: '${{ env.file }}'
           context: '${{ env.run_from }}'
+
   build-java-http-client:
     runs-on: 'ubuntu-latest'
-    needs: [lint_and_unit]
+    needs:
+      - 'lint_and_unit'
     permissions:
       contents: 'read'
       id-token: 'write'
@@ -231,16 +254,24 @@ jobs:
           tags: '${{ env.docker_repo }}/${{env.prefix}}-${{env.lang}}-${{env.type}}:${{env.docker_tag}}'
           file: '${{ env.file }}'
           context: '${{ env.run_from }}'
+
+  # build is a virtual job that is used as dependencies for later jobs.
   build:
     runs-on: 'ubuntu-latest'
-    needs: [build-lumberjack-server, build-go-grpc-client, build-go-http-client, build-java-grpc-client, build-java-http-client]
+    needs:
+      - 'build-lumberjack-server'
+      - 'build-go-grpc-client'
+      - 'build-go-http-client'
+      - 'build-java-grpc-client'
+      - 'build-java-http-client'
     steps:
       - run: 'echo build complete'
 
   # Deploy integration test infrastructure and run integration tests
   integration:
     runs-on: 'ubuntu-latest'
-    needs: [build]
+    needs:
+      - 'build'
     permissions:
       contents: 'read'
       id-token: 'write'
@@ -291,14 +322,14 @@ jobs:
         id: 'tf_apply'
         run: |-
             terraform -chdir=${{ env.tf_module_dir}} apply -auto-approve -var-file=${{env.tfvar_file}};
-            
+
             terraform -chdir=${{ env.tf_module_dir}} output -json client_endpoints | jq -c > output.json;
-            
+
             grpc_client_endpoints=$(jq -c '{"ljc-go-grpc","ljc-java-grpc"} | to_entries | map(.value|tostring)' < output.json);
             http_client_endpoints=$(jq -c '{"ljc-go-http","ljc-java-http"} | to_entries | map(.value|tostring)' < output.json);
-            
-            echo "grpc_client_endpoints=${grpc_client_endpoints}" >> $GITHUB_ENV;
-            echo "http_client_endpoints=${http_client_endpoints}" >> $GITHUB_ENV;
+
+            echo "GRPC_ENDPOINTS=${grpc_client_endpoints}" >> $GITHUB_ENV;
+            echo "HTTP_ENDPOINTS=${http_client_endpoints}" >> $GITHUB_ENV;
 
       - name: 'Setup Go'
         uses: 'actions/setup-go@fcdc43634adb5f7ae75a9d7a9b9361790f7293e2' # ratchet:actions/setup-go@v3
@@ -316,14 +347,12 @@ jobs:
       - name: 'Run tests'
         id: 'run-tests'
         run: |-
-          export GRPC_ENDPOINTS='${{ env.grpc_client_endpoints }}';
-          export HTTP_ENDPOINTS='${{ env.http_client_endpoints }}';
-          export ID_TOKEN=$(gcloud auth print-identity-token --impersonate-service-account=${{ env.wif_service_account }} --include-email);
+          export ID_TOKEN="$(gcloud auth print-identity-token --impersonate-service-account=${{ env.wif_service_account }} --include-email)"
 
           go test ./integration/testrunner \
-            -id-token=${ID_TOKEN} \
-            -project-id=${{ env.server_project_id }} \
-            -dataset-query=${{ env.bigquery_dataset_id }};
+            -id-token="${ID_TOKEN}" \
+            -project-id="${{ env.server_project_id }}" \
+            -dataset-query="${{ env.bigquery_dataset_id }}"
 
       - name: 'Cleanup the infrastructure'
         id: 'tf_destroy'
