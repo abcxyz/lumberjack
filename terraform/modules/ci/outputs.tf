@@ -14,10 +14,13 @@
  * limitations under the License.
  */
 
-output "instance_addresses" {
-  value = [for key, _ in var.build_commands : module.shell_app[key].instance_address]
+output "server_url" {
+  value = module.server_service.audit_log_server_url
 }
 
-output "grpc_addresses" {
-  value = [for key, _ in var.grpc_build_commands : module.grpc_app[key].instance_address]
+output "client_endpoints" {
+  value = {
+    for key, value in var.client_images :
+    key => lookup(google_cloud_run_service.client_services, key).status[0].url
+  }
 }

@@ -64,3 +64,4 @@ go.work
 
 ### Visual Studio Code IDEA ###
 .vscode
+coverage.out
