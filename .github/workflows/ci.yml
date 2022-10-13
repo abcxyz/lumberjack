@@ -280,7 +280,7 @@ jobs:
             echo server_image=\"${{ env.server_image }}\" >> ${var_file};
             echo server_service_name=\"lumberjack-server\" >> ${var_file};
             echo client_project_id=\"${{ env.client_project_id }}\" >> ${var_file};
-            echo client_images=\"${{ env.client_images }}\" >> ${var_file};
+            echo client_images=${{ env.client_images }} >> ${var_file};
             echo >> ${var_file};
 
             cat ${var_file};
