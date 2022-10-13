@@ -26,20 +26,9 @@ jobs:
     with:
       directory: 'terraform'
       terraform_version: '1.2'
-  go_lint_cmd:
-    uses: 'abcxyz/pkg/.github/workflows/go-lint.yml@cc2b918b16df0f627b933ed8dddf0d846fa9108b' # ratchet:abcxyz/pkg/.github/workflows/go-lint.yml@main
+  go_lint:
+    uses: 'abcxyz/pkg/.github/workflows/go-lint.yml@main'
     with:
-      directory: 'cmd'
-      go_version: '1.19'
-  go_lint_pkg:
-    uses: 'abcxyz/pkg/.github/workflows/go-lint.yml@cc2b918b16df0f627b933ed8dddf0d846fa9108b' # ratchet:abcxyz/pkg/.github/workflows/go-lint.yml@main
-    with:
-      directory: 'pkg'
-      go_version: '1.19'
-  go_lint_integration:
-    uses: 'abcxyz/pkg/.github/workflows/go-lint.yml@cc2b918b16df0f627b933ed8dddf0d846fa9108b' # ratchet:abcxyz/pkg/.github/workflows/go-lint.yml@main
-    with:
-      directory: 'integration'
       go_version: '1.19'
   java_lint:
     uses: 'abcxyz/pkg/.github/workflows/java-lint.yml@cc2b918b16df0f627b933ed8dddf0d846fa9108b' # ratchet:abcxyz/pkg/.github/workflows/java-lint.yml@main
@@ -65,11 +54,16 @@ jobs:
       - name: Run tests with Maven
         run: |-
           mvn clean test --no-transfer-progress -f clients/java-logger
+  lint_and_unit:
+    runs-on: 'ubuntu-latest'
+    needs: [terraform_lint, go_lint, java_lint, go_test, java_test]
+    steps:
+      - run: 'echo prechecks complete'
 
   # Build the main lumberjack server and push to artifact registry
   build-lumberjack-server:
     runs-on: 'ubuntu-latest'
-    needs: [terraform_lint, go_lint_cmd, go_lint_pkg, go_lint_integration, java_lint, go_test, java_test]
+    needs: [lint_and_unit]
     permissions:
       contents: 'read'
       id-token: 'write'
@@ -99,7 +93,7 @@ jobs:
   # Build the 4 integration test client variants, go-grpc, go-http, java-grpc and java-http
   build-go-grpc-client:
     runs-on: 'ubuntu-latest'
-    needs: [terraform_lint, go_lint_cmd, go_lint_pkg, go_lint_integration, java_lint, go_test, java_test]
+    needs: [lint_and_unit]
     permissions:
       contents: 'read'
       id-token: 'write'
@@ -134,7 +128,7 @@ jobs:
           context: '${{ env.run_from }}'
   build-go-http-client:
     runs-on: 'ubuntu-latest'
-    needs: [terraform_lint, go_lint_cmd, go_lint_pkg, go_lint_integration, java_lint, go_test, java_test]
+    needs: [lint_and_unit]
     permissions:
       contents: 'read'
       id-token: 'write'
@@ -169,7 +163,7 @@ jobs:
           context: '${{ env.run_from }}'
   build-java-grpc-client:
     runs-on: 'ubuntu-latest'
-    needs: [terraform_lint, go_lint_cmd, go_lint_pkg, go_lint_integration, java_lint, go_test, java_test]
+    needs: [lint_and_unit]
     permissions:
       contents: 'read'
       id-token: 'write'
@@ -204,7 +198,7 @@ jobs:
           context: '${{ env.run_from }}'
   build-java-http-client:
     runs-on: 'ubuntu-latest'
-    needs: [terraform_lint, go_lint_cmd, go_lint_pkg, go_lint_integration, java_lint, go_test, java_test]
+    needs: [lint_and_unit]
     permissions:
       contents: 'read'
       id-token: 'write'
@@ -237,11 +231,16 @@ jobs:
           tags: '${{ env.docker_repo }}/${{env.prefix}}-${{env.lang}}-${{env.type}}:${{env.docker_tag}}'
           file: '${{ env.file }}'
           context: '${{ env.run_from }}'
+  build:
+    runs-on: 'ubuntu-latest'
+    needs: [build-lumberjack-server, build-go-grpc-client, build-go-http-client, build-java-grpc-client, build-java-http-client]
+    steps:
+      - run: 'echo build complete'
 
   # Deploy integration test infrastructure and run integration tests
   integration-test:
     runs-on: 'ubuntu-latest'
-    needs: [build-lumberjack-server, build-go-grpc-client, build-go-http-client, build-java-grpc-client, build-java-http-client]
+    needs: [build]
     permissions:
       contents: 'read'
       id-token: 'write'

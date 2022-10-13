@@ -64,5 +64,4 @@ go.work
 
 ### Visual Studio Code IDEA ###
 .vscode
-.terraform.lock.hcl
 coverage.out
