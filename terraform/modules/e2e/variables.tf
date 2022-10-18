@@ -58,12 +58,6 @@ variable "server_image" {
   description = "The server container image."
 }
 
-variable "renew_random_tag" {
-  type        = bool
-  default     = false
-  description = "Whether to renew a random tag. If set a new random tag will be assigned and trigger a new build."
-}
-
 variable "registry_location" {
   type        = string
   default     = "us"
