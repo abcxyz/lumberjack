@@ -106,6 +106,8 @@ jobs:
       # goreleaser requires a tag to publish images to container registry.
       # We create a local tag to make it happy.
       - run: |-
+          git config user.name "${GITHUB_ACTOR}"
+          git config user.email "${GITHUB_ACTOR}@users.noreply.github.com"
           git tag -f -a v0.0.0-ci -m "CI run"
       - name: 'Build the main server container and push to the registry with goreleaser'
         uses: 'goreleaser/goreleaser-action@b508e2e3ef3b19d4e4146d4f8fb3ba9db644a757' # ratchet:goreleaser/goreleaser-action@v3
