@@ -19,7 +19,7 @@ env:
   - 'GOPROXY=https://proxy.golang.org,direct'
   # Allow override the container registry.
   # Default to the JVS CI container registry.
-  - REGISTRY={{ if index .Env "CONTAINER_REGISTRY"  }}{{ .Env.CONTAINER_REGISTRY }}{{ else }}us-docker.pkg.dev/lumberjack-dev-infra/images{{ end }}
+  - REGISTRY={{ if index .Env "DOCKER_REPO"  }}{{ .Env.DOCKER_REPO }}{{ else }}us-docker.pkg.dev/lumberjack-dev-infra/images{{ end }}
 
 before:
   hooks:
@@ -59,7 +59,7 @@ dockers:
     goos: 'linux'
     goarch: 'amd64'
     image_templates:
-      - '{{ .Env.REGISTRY }}/lumberjack-server:{{ if index .Env "TAG_OVERRIDE"  }}{{ .Env.TAG_OVERRIDE }}{{ else }}{{ .Version }}{{ end }}-amd64'
+      - '{{ .Env.REGISTRY }}/lumberjack-server:{{ if index .Env "DOCKER_TAG"  }}{{ .Env.DOCKER_TAG }}{{ else }}{{ .Version }}{{ end }}-amd64'
     build_flag_templates:
       - '--platform=linux/amd64'
       - '--pull'
@@ -78,7 +78,7 @@ dockers:
     goos: 'linux'
     goarch: 'arm64'
     image_templates:
-      - '{{ .Env.REGISTRY }}/lumberjack-server:{{ if index .Env "TAG_OVERRIDE"  }}{{ .Env.TAG_OVERRIDE }}{{ else }}{{ .Version }}{{ end }}-arm64'
+      - '{{ .Env.REGISTRY }}/lumberjack-server:{{ if index .Env "DOCKER_TAG"  }}{{ .Env.DOCKER_TAG }}{{ else }}{{ .Version }}{{ end }}-arm64'
     build_flag_templates:
       - '--platform=linux/arm64'
       - '--pull'
@@ -94,10 +94,10 @@ dockers:
 
 docker_manifests:
   -
-    name_template: '{{ .Env.REGISTRY }}/lumberjack-server:{{ if index .Env "TAG_OVERRIDE"  }}{{ .Env.TAG_OVERRIDE }}{{ else }}{{ .Version }}{{ end }}'
+    name_template: '{{ .Env.REGISTRY }}/lumberjack-server:{{ if index .Env "DOCKER_TAG"  }}{{ .Env.DOCKER_TAG }}{{ else }}{{ .Version }}{{ end }}'
     image_templates:
-      - '{{ .Env.REGISTRY }}/lumberjack-server:{{ if index .Env "TAG_OVERRIDE"  }}{{ .Env.TAG_OVERRIDE }}{{ else }}{{ .Version }}{{ end }}-amd64'
-      - '{{ .Env.REGISTRY }}/lumberjack-server:{{ if index .Env "TAG_OVERRIDE"  }}{{ .Env.TAG_OVERRIDE }}{{ else }}{{ .Version }}{{ end }}-arm64'
+      - '{{ .Env.REGISTRY }}/lumberjack-server:{{ if index .Env "DOCKER_TAG"  }}{{ .Env.DOCKER_TAG }}{{ else }}{{ .Version }}{{ end }}-amd64'
+      - '{{ .Env.REGISTRY }}/lumberjack-server:{{ if index .Env "DOCKER_TAG"  }}{{ .Env.DOCKER_TAG }}{{ else }}{{ .Version }}{{ end }}-arm64'
 
 
 # TODO(#144): Follow up on sign.
