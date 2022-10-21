@@ -81,4 +81,4 @@ jobs:
             -repo=us-docker.pkg.dev/lumberjack-dev-infra/images/ljc-java-grpc
             -repo=us-docker.pkg.dev/lumberjack-dev-infra/images/ljc-java-http
             -grace=336h
-            -tag-filter-any=(?i)[0-9a-f]{40}
+            -tag-filter-any=(?i)[0-9a-f]{40}(-amd64|-arm64)?
