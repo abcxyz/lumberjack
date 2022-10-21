@@ -6,7 +6,7 @@
 
   <artifactId>audit-client-library</artifactId>
   <groupId>com.abcxyz.lumberjack</groupId>
-  <version>0.0.1</version>
+  <version>${revision}</version>
 
   <dependencyManagement>
     <dependencies>
@@ -21,6 +21,7 @@
   </dependencyManagement>
 
   <properties>
+    <revision>0.0.1</revision>
     <maven.compiler.source>11</maven.compiler.source>
     <maven.compiler.target>11</maven.compiler.target>
     <java.version>11</java.version>
@@ -32,6 +33,17 @@
     <repository>
       <id>jitpack.io</id>
       <url>https://jitpack.io</url>
+    </repository>
+    <!-- For releasing package to Artifact Registry -->
+    <repository>
+      <id>artifact-registry</id>
+      <url>artifactregistry://us-maven.pkg.dev/abcxyz-artifacts/maven-repo</url>
+      <releases>
+        <enabled>true</enabled>
+      </releases>
+      <snapshots>
+        <enabled>true</enabled>
+      </snapshots>
     </repository>
   </repositories>
 
@@ -101,12 +113,6 @@
       <scope>test</scope>
     </dependency>
     <dependency>
-      <groupId>org.junit.vintage</groupId>
-      <artifactId>junit-vintage-engine</artifactId>
-      <version>5.9.0</version>
-      <scope>test</scope>
-    </dependency>
-    <dependency>
       <groupId>io.grpc</groupId>
       <artifactId>grpc-testing</artifactId>
       <version>1.49.0</version>
@@ -134,6 +140,18 @@
       <version>051e121fe9e79baf2ffc4a70bbcd903035768acc</version>
     </dependency>
   </dependencies>
+
+  <!-- For releasing package to Artifact Registry -->
+  <distributionManagement>
+    <snapshotRepository>
+      <id>artifact-registry</id>
+      <url>artifactregistry://us-maven.pkg.dev/abcxyz-artifacts/maven-repo</url>
+    </snapshotRepository>
+    <repository>
+      <id>artifact-registry</id>
+      <url>artifactregistry://us-maven.pkg.dev/abcxyz-artifacts/maven-repo</url>
+    </repository>
+  </distributionManagement>
 
   <build>
     <pluginManagement>
@@ -184,5 +202,13 @@
         </executions>
       </plugin>
     </plugins>
+    <!-- For releasing package to Artifact Registry -->
+    <extensions>
+      <extension>
+        <groupId>com.google.cloud.artifactregistry</groupId>
+        <artifactId>artifactregistry-maven-wagon</artifactId>
+        <version>2.1.0</version>
+      </extension>
+    </extensions>
   </build>
 </project>
