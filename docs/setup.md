@@ -23,7 +23,7 @@ find similar log sinks in `google_logging_project_sink` resources
 To build the ingestion service:
 
 ```sh
-# By default we use JVS CI container registry for the images.
+# By default we use Lumberjack CI container registry for the images.
 # To override, set the following env var.
 # DOCKER_REPO=us-docker.pkg.dev/my-project/images
 
