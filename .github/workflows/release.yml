@@ -10,7 +10,7 @@ env:
   WIF_SERVICE_ACCOUNT: 'gh-access-sa@lumberjack-dev-infra.iam.gserviceaccount.com'
 
 # Don't cancel in progress since we don't want to have half-baked release.
-concurrency: '${{ github.workflow }}-${{ github.head_ref || github.ref }}'
+concurrency: '${{ github.workflow }}-${{ github.head_ref || github.ref }}-release'
 
 jobs:
   ci-test:
@@ -75,7 +75,7 @@ jobs:
       # Even though Artifact Registry allows versions starts with "v",
       # Maven's convention is to have versions without "v".
       run: |-
-        mvn clean deploy -Drevision=${${{ github.ref_name }}#v} -f clients/java-logger/library
+        mvn clean deploy -Drevision=$(echo '${{ github.ref_name }}' | cut -c 2-) -f clients/java-logger/library
 
 
   github-release:
@@ -85,6 +85,12 @@ jobs:
       contents: 'write'
       packages: 'write'
     steps:
+      - uses: 'actions/checkout@93ea575cb5d8a053eaa0ac8fa3b40d7e05a33cc8' # ratchet:actions/checkout@v3
+        with:
+          fetch-depth: 0
+      - uses: 'actions/setup-go@c4a742cab115ed795e34d4513e2cf7d472deb55f' # ratchet:actions/setup-go@v3
+        with:
+          go-version: '1.19'
       - uses: 'goreleaser/goreleaser-action@b508e2e3ef3b19d4e4146d4f8fb3ba9db644a757' # ratchet:goreleaser/goreleaser-action@v3
         with:
           version: 'v1.12.3' # Manually pinned
