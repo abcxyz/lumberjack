@@ -21,7 +21,7 @@ env:
   BIGQUERY_DATASET_ID: 'audit_logs.audit_abcxyz_data_access'
 
 concurrency:
-  group: '${{ github.workflow }}-${{ github.head_ref || github.ref }}'
+  group: '${{ github.workflow }}-${{ github.head_ref || github.ref }}-ci'
   cancel-in-progress: true
 
 jobs:
