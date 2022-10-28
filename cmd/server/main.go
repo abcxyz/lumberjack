@@ -32,6 +32,7 @@ import (
 	"github.com/abcxyz/lumberjack/clients/go/pkg/audit"
 	"github.com/abcxyz/lumberjack/clients/go/pkg/cloudlogging"
 	"github.com/abcxyz/lumberjack/clients/go/pkg/trace"
+	"github.com/abcxyz/lumberjack/internal/version"
 	"github.com/abcxyz/lumberjack/pkg/server"
 	zlogger "github.com/abcxyz/pkg/logging"
 )
@@ -52,6 +53,9 @@ func main() {
 
 func realMain(ctx context.Context) error {
 	logger := zlogger.FromContext(ctx)
+	logger.Debugw("server starting",
+		"commit", version.Commit,
+		"version", version.Version)
 
 	cfg, err := server.NewConfig(ctx)
 	if err != nil {
