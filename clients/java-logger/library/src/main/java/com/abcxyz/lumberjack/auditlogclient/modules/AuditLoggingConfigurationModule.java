@@ -28,7 +28,7 @@ import java.io.InputStream;
 
 public class AuditLoggingConfigurationModule extends AbstractModule {
   private static final String DEFAULT_CONFIG_LOCATION = "audit_logging.yml";
-  private static final String CONFIG_ENV_KEY = "AUDIT_CLIENT_CONFIG_PATH";
+  private static final String CONFIG_ENV_KEY = "AUDIT_CLIENT_CONFIG_NAME";
 
   @Provides
   public AuditLoggingConfiguration auditLoggingConfiguration(

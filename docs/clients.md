@@ -111,8 +111,10 @@ if err != nil {
 
 ### Create a client from a config file
 
-The default config path is `audit_logging.yml`. You can override it with env var
-`AUDIT_CLIENT_CONFIG_PATH`.
+The default config path is `src/main/resources/audit_logging.yml`. You can
+override it with env var `AUDIT_CLIENT_CONFIG_NAME`. For example, if
+`AUDIT_CLIENT_CONFIG_NAME` is set to be `my_config.yml`, it is pointing to
+`src/main/resources/my_config.yml`.
 
 The example here is using [Guice](https://github.com/google/guice).
 

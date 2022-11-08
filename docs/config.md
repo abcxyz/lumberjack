@@ -2,10 +2,15 @@
 
 **Lumberjack is not an official Google product.**
 
-Lumberjack client reads config from a `yaml` file (default path:
-`/etc/lumberjack/config.yaml`). Basic config fields can be provided (or
-overwritten) by env vars. Alternatively, you can construct a client in code
-without a config file (see [examples](./clients.md)).
+Default config path
+
+-   Go client: `/etc/lumberjack/config.yaml`
+-   Java client: `src/main/resources/audit_logging.yml`
+
+Lumberjack clients read config from a yaml file located at the default path or a
+path you specify. Basic config fields can be provided (or overwritten) by env
+vars. Alternatively, you can construct a client in code without a config file
+(see [examples](./clients.md)).
 
 For the canonical config spec, reference comments in
 [config.go](clients/go/apis/v1alpha1/config.go).
@@ -97,18 +102,19 @@ justification:
 
 ## Supported env vars
 
-| ENV VAR name                                      | Description                                                                        |
-|---------------------------------------------------|------------------------------------------------------------------------------------|
-| AUDIT_CLIENT_BACKEND_CLOUDLOGGING_DEFAULT_PROJECT | Audit logging directly to cloud logging in the default project                     |
-| AUDIT_CLIENT_BACKEND_CLOUDLOGGING_PROJECT         | Audit logging directly to cloud logging in the given project                       |
-| AUDIT_CLIENT_BACKEND_REMOTE_ADDRESS               | Audit logging to an ingestion gRPC service in the given address                    |
-| AUDIT_CLIENT_BACKEND_REMOTE_INSECURE_ENABLED      | Audit logging to an ingestion gRPC service insecurely                              |
-| AUDIT_CLIENT_BACKEND_REMOTE_IMPERSONATE_ACCOUNT   | Audit logging to an ingestion gRPC service impersonating the given service account |
-| AUDIT_CLIENT_CONDITION_REGEX_PRINCIPAL_INCLUDE    | Include the matching request principals in audit logging                           |
-| AUDIT_CLIENT_CONDITION_REGEX_PRINCIPAL_EXCLUDE    | Exclude the matching request principals in audit logging                           |
-| AUDIT_CLIENT_LOG_MODE                             | Whether to fail-close audit logging                                                |
-| AUDIT_CLIENT_JUSTIFICATION_PUBLIC_KEYS_ENDPOINT   | (Experimental) The JVS JWKs address                                                |
-| AUDIT_CLIENT_JUSTIFICATION_ENABLED                | (Experimental) Whether to enable justification                                     |
+ENV VAR name                                      | Description
+------------------------------------------------- | -----------
+AUDIT_CLIENT_BACKEND_CLOUDLOGGING_DEFAULT_PROJECT | Audit logging directly to cloud logging in the default project
+AUDIT_CLIENT_BACKEND_CLOUDLOGGING_PROJECT         | Audit logging directly to cloud logging in the given project
+AUDIT_CLIENT_BACKEND_REMOTE_ADDRESS               | Audit logging to an ingestion gRPC service in the given address
+AUDIT_CLIENT_BACKEND_REMOTE_INSECURE_ENABLED      | Audit logging to an ingestion gRPC service insecurely
+AUDIT_CLIENT_BACKEND_REMOTE_IMPERSONATE_ACCOUNT   | Audit logging to an ingestion gRPC service impersonating the given service account
+AUDIT_CLIENT_CONDITION_REGEX_PRINCIPAL_INCLUDE    | Include the matching request principals in audit logging
+AUDIT_CLIENT_CONDITION_REGEX_PRINCIPAL_EXCLUDE    | Exclude the matching request principals in audit logging
+AUDIT_CLIENT_LOG_MODE                             | Whether to fail-close audit logging
+AUDIT_CLIENT_JUSTIFICATION_PUBLIC_KEYS_ENDPOINT   | (Experimental) The JVS JWKs address
+AUDIT_CLIENT_JUSTIFICATION_ENABLED                | (Experimental) Whether to enable justification
+AUDIT_CLIENT_CONFIG_NAME                          | (For Java client only) The config file (src/main/resources/<AUDIT_CLIENT_CONFIG_NAME>) to use
 
 ## Examples
 
