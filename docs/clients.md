@@ -111,11 +111,12 @@ if err != nil {
 
 ### Create a client from a config file
 
-By default, the Java client loads the config as a resource named as
-`audit_logging.yml`. E.g. `src/main/resources/audit_logging.yml`. You can
-override it with env var `AUDIT_CLIENT_CONFIG_NAME`. For example, if
-`AUDIT_CLIENT_CONFIG_NAME` is set to be `my_config.yml`, it is pointing to
-`src/main/resources/my_config.yml`.
+By default, the Java client
+[loads the config as a resource](https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/ClassLoader.html#getResource\(java.lang.String\))
+named as `audit_logging.yml`. E.g. `src/main/resources/audit_logging.yml` in
+your source code. You can override it with env var `AUDIT_CLIENT_CONFIG_NAME`.
+For example, if `AUDIT_CLIENT_CONFIG_NAME` is set to be `my_config.yml`, it is
+pointing to `src/main/resources/my_config.yml`.
 
 The example here is using [Guice](https://github.com/google/guice).
 

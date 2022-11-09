@@ -5,8 +5,9 @@
 Default config path
 
 -   Go client: `/etc/lumberjack/config.yaml`
--   Java client: a resource with name `audit_logging.yml` (e.g.
-    `src/main/resources/audit_logging.yml`)
+-   Java client: a
+    [resource](https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/ClassLoader.html#getResource\(java.lang.String\))
+    with name `audit_logging.yml` (e.g. `src/main/resources/audit_logging.yml`)
 
 Lumberjack clients read config from a yaml file located at the default path or a
 path you specify. Basic config fields can be provided (or overwritten) by env
