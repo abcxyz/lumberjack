@@ -20,17 +20,12 @@ The main goal of this "shell" app is to provide the wrapper app that imports the
 
 #### Steps:
 
-1.  Clean the workspace and build the package from the project directory (where `pom.xml` is located):
-
-    ```sh
-    mvn clean package
-    ```
-
-1.  Package into a container and push the container to Artifact Registry:
+1.  Package into a container and push the container to Artifact Registry from
+    the root of repository:
 
     ```sh
     docker buildx build \
-      --file "server_app.dockerfile" \
+      --file "clients/java-logger/scripts/shell_app.dockerfile" \
       --tag "${REPO_REGION}-docker.pkg.dev/${PROJECT_ID}/${REPO_NAME}/logging-shell" \
       --push \
       .
