@@ -30,11 +30,7 @@
   </properties>
 
   <repositories>
-    <repository>
-      <id>jitpack.io</id>
-      <url>https://jitpack.io</url>
-    </repository>
-    <!-- For releasing package to Artifact Registry -->
+    <!-- For connecting to Artifact Registry -->
     <repository>
       <id>artifact-registry</id>
       <url>artifactregistry://us-maven.pkg.dev/abcxyz-artifacts/maven-repo</url>
@@ -135,9 +131,9 @@
       <version>31.1-jre</version>
     </dependency>
     <dependency>
-      <groupId>com.github.abcxyz</groupId>
-      <artifactId>jvs</artifactId>
-      <version>051e121fe9e79baf2ffc4a70bbcd903035768acc</version>
+      <groupId>com.abcxyz.jvs</groupId>
+      <artifactId>jvs-client</artifactId>
+      <version>0.0.1</version>
     </dependency>
   </dependencies>
 
