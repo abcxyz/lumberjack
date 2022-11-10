@@ -60,7 +60,7 @@ jobs:
         with:
           java-version: '11'
           distribution: 'adopt'
-      # Technically the our Artifact Registry Maven repo is public and we don't need this.
+      # Technically our Artifact Registry Maven repo is public and we don't need this step.
       # But the Artifact Registry wagon will keep retrying the authentication and blocking
       # the unit test for a long time (likely a bug). As a result, we add this step to make
       # the wagon happy.
