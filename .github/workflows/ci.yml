@@ -60,6 +60,17 @@ jobs:
         with:
           java-version: '11'
           distribution: 'adopt'
+      # Technically the our Artifact Registry Maven repo is public and we don't need this.
+      # But the Artifact Registry wagon will keep retrying the authentication and blocking
+      # the unit test for a long time (likely a bug). As a result, we add this step to make
+      # the wagon happy.
+      - name: 'Authenticate to Google Cloud'
+        uses: 'google-github-actions/auth@c4799db9111fba4461e9f9da8732e5057b394f72' # ratchet:google-github-actions/auth@v0
+        with:
+          workload_identity_provider: '${{ env.WIF_PROVIDER }}'
+          service_account: '${{ env.WIF_SERVICE_ACCOUNT }}'
+          # The Artifact Registry maven wagon looks for Google Application Default Credentials.
+          # https://github.com/GoogleCloudPlatform/artifact-registry-maven-tools
       - name: Run tests with Maven
         run: |-
           mvn clean test --no-transfer-progress -f clients/java-logger
