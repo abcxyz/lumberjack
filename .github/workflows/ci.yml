@@ -72,6 +72,7 @@ jobs:
         with:
           workload_identity_provider: '${{ env.WIF_PROVIDER }}'
           service_account: '${{ env.WIF_SERVICE_ACCOUNT }}'
+          create_credentials_file: false
           # The Artifact Registry maven wagon looks for Google Application Default Credentials.
           # https://github.com/GoogleCloudPlatform/artifact-registry-maven-tools
       - name: Run tests with Maven
