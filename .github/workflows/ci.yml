@@ -381,4 +381,4 @@ jobs:
       - name: 'Cleanup the infrastructure'
         id: 'tf_destroy'
         if: always()
-        run: terraform -chdir=${{ env.tf_module_dir}} apply -auto-approve -var-file=${{env.tfvar_file}};
+        run: terraform -chdir=${{ env.tf_module_dir}} apply -destroy -auto-approve -var-file=${{env.tfvar_file}};
