@@ -16,7 +16,7 @@ See sample log sinks in Terraform for application-level audit logs in
 
 In case you want all your *cloud* audit logs to end up in the same log storage,
 find similar log sinks in `google_logging_project_sink` resources
-[here](../terraform/modules/cal-source-project/main.tf).
+[here](../terraform/modules/al-source-project/main.tf).
 
 ## (Optional) Ingestion Service
 

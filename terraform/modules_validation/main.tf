@@ -16,9 +16,9 @@
 
 # Run `terraform init` and `terraform validate`.
 
-module "cal_project_sources" {
+module "al_project_sources" {
   for_each   = toset(["fake-proj1", "fake-proj2", "fake-proj3"])
-  source     = "../modules/cal-source-project"
+  source     = "../modules/al-source-project"
   project_id = each.key
   destination_log_sinks = [
     {
@@ -34,9 +34,9 @@ module "cal_project_sources" {
   ]
 }
 
-module "cal_folder_sources" {
+module "al_folder_sources" {
   for_each  = toset(["fake-folder1", "fake-folder2"])
-  source    = "../modules/cal-source-folder"
+  source    = "../modules/al-source-folder"
   folder_id = each.key
   destination_log_sinks = [
     {

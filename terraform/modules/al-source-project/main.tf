@@ -47,7 +47,10 @@ resource "google_logging_project_sink" "bigquery_sink" {
   LOG_ID("cloudaudit.googleapis.com/access_transparency") OR
   LOG_ID("externalaudit.googleapis.com/access_transparency") OR
   LOG_ID("cloudaudit.googleapis.com/data_access") OR
-  LOG_ID("externalaudit.googleapis.com/data_access")
+  LOG_ID("externalaudit.googleapis.com/data_access") OR
+  LOG_ID("audit.abcxyz/unspecified") OR
+  LOG_ID("audit.abcxyz/activity") OR
+  LOG_ID("audit.abcxyz/data_access")
   EOT
 
   unique_writer_identity = true
@@ -82,7 +85,10 @@ resource "google_logging_project_sink" "pubsub_sink" {
   LOG_ID("cloudaudit.googleapis.com/access_transparency") OR
   LOG_ID("externalaudit.googleapis.com/access_transparency") OR
   LOG_ID("cloudaudit.googleapis.com/data_access") OR
-  LOG_ID("externalaudit.googleapis.com/data_access")
+  LOG_ID("externalaudit.googleapis.com/data_access") OR
+  LOG_ID("audit.abcxyz/unspecified") OR
+  LOG_ID("audit.abcxyz/activity") OR
+  LOG_ID("audit.abcxyz/data_access")
   EOT
 
   unique_writer_identity = true
