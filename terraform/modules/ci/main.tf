@@ -42,7 +42,7 @@ module "server_service" {
 resource "google_cloud_run_service" "ingestion_client_services" {
   for_each = var.client_images
 
-  name     = "${each.key}-${local.short_sha}"
+  name     = "${each.key}-${local.short_sha}-ingestion-client"
   project  = var.client_project_id
   location = var.region
 
@@ -73,7 +73,7 @@ resource "google_cloud_run_service" "ingestion_client_services" {
 resource "google_cloud_run_service" "cl_client_services" {
   for_each = var.client_images
 
-  name     = "${each.key}-${local.short_sha}"
+  name     = "${each.key}-${local.short_sha}-cl-client"
   project  = var.client_project_id
   location = var.region
 
