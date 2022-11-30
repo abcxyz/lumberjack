@@ -19,6 +19,10 @@ locals {
     "AUDIT_CLIENT_BACKEND_REMOTE_ADDRESS" : "${trimprefix(module.server_service.audit_log_server_url, "https://")}:443",
     "AUDIT_CLIENT_CONDITION_REGEX_PRINCIPAL_INCLUDE" : ".*",
   }
+  cl_client_env_vars = {
+    "AUDIT_CLIENT_BACKEND_CLOUDLOGGING_DEFAULT_PROJECT" : "true",
+    "AUDIT_CLIENT_CONDITION_REGEX_PRINCIPAL_INCLUDE" : ".*",
+  }
   short_sha = substr(var.commit_sha, 0, 7)
 }
 
@@ -55,6 +59,37 @@ resource "google_cloud_run_service" "client_services" {
 
         dynamic "env" {
           for_each = local.client_env_vars
+
+          content {
+            name  = env.key
+            value = env.value
+          }
+        }
+      }
+    }
+  }
+}
+
+resource "google_cloud_run_service" "cl_client_services" {
+  for_each = var.client_images
+
+  name     = "${each.key}-${local.short_sha}"
+  project  = var.client_project_id
+  location = var.region
+
+  template {
+    spec {
+      containers {
+        image = each.value
+
+        resources {
+          limits = {
+            memory = "1G"
+          }
+        }
+
+        dynamic "env" {
+          for_each = local.cl_client_env_vars
 
           content {
             name  = env.key

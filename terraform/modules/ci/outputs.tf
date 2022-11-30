@@ -21,6 +21,7 @@ output "server_url" {
 output "client_endpoints" {
   value = {
     for key, value in var.client_images :
-    key => lookup(google_cloud_run_service.client_services, key).status[0].url
+    key => concat(lookup(google_cloud_run_service.client_services, key).status[0].url,
+           lookup(google_cloud_run_service.cl_client_services, key).status[0].url)
   }
 }
