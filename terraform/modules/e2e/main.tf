@@ -252,7 +252,7 @@ module "server_service" {
 }
 
 module "folder_sink" {
-  source          = "../cal-source-folder"
+  source          = "../al-source-folder"
   folder_id       = google_folder.apps_folder.name
   query_overwrite = var.cal_query_overwrite
   destination_log_sinks = concat(

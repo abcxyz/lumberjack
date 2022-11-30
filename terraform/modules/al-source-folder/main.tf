@@ -29,7 +29,10 @@ resource "google_logging_folder_sink" "bigquery_sink" {
   LOG_ID("cloudaudit.googleapis.com/access_transparency") OR
   LOG_ID("externalaudit.googleapis.com/access_transparency") OR
   LOG_ID("cloudaudit.googleapis.com/data_access") OR
-  LOG_ID("externalaudit.googleapis.com/data_access")
+  LOG_ID("externalaudit.googleapis.com/data_access") OR
+  LOG_ID("audit.abcxyz/unspecified") OR
+  LOG_ID("audit.abcxyz/activity") OR
+  LOG_ID("audit.abcxyz/data_access")
   EOT
 
   bigquery_options {
@@ -59,8 +62,10 @@ resource "google_logging_folder_sink" "pubsub_sink" {
   LOG_ID("externalaudit.googleapis.com/system_event") OR
   LOG_ID("cloudaudit.googleapis.com/access_transparency") OR
   LOG_ID("externalaudit.googleapis.com/access_transparency") OR
-  LOG_ID("cloudaudit.googleapis.com/data_access") OR
-  LOG_ID("externalaudit.googleapis.com/data_access")
+  LOG_ID("externalaudit.googleapis.com/data_access") OR
+  LOG_ID("audit.abcxyz/unspecified") OR
+  LOG_ID("audit.abcxyz/activity") OR
+  LOG_ID("audit.abcxyz/data_access")
   EOT
 }
 
