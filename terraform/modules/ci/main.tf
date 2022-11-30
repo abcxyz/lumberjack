@@ -15,7 +15,7 @@
  */
 
 locals {
-  client_env_vars = {
+  ingestion_client_env_vars = {
     "AUDIT_CLIENT_BACKEND_REMOTE_ADDRESS" : "${trimprefix(module.server_service.audit_log_server_url, "https://")}:443",
     "AUDIT_CLIENT_CONDITION_REGEX_PRINCIPAL_INCLUDE" : ".*",
   }
@@ -39,7 +39,7 @@ module "server_service" {
   disable_dedicated_sa = true
 }
 
-resource "google_cloud_run_service" "client_services" {
+resource "google_cloud_run_service" "ingestion_client_services" {
   for_each = var.client_images
 
   name     = "${each.key}-${local.short_sha}"
@@ -58,7 +58,7 @@ resource "google_cloud_run_service" "client_services" {
         }
 
         dynamic "env" {
-          for_each = local.client_env_vars
+          for_each = local.ingestion_client_env_vars
 
           content {
             name  = env.key

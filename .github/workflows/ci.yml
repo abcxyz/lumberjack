@@ -347,11 +347,19 @@ jobs:
         run: |-
             terraform -chdir=${{ env.tf_module_dir}} apply -auto-approve -var-file=${{env.tfvar_file}};
 
-            terraform -chdir=${{ env.tf_module_dir}} output -json client_endpoints | jq -c > output.json;
+            terraform -chdir=${{ env.tf_module_dir}} output -json ingestion_client_endpoints | jq -c > ingestion_client_output.json;
+          
+            terraform -chdir=${{ env.tf_module_dir}} output -json cl_client_endpoints | jq -c > cl_client_output.json;
 
-            grpc_client_endpoints=$(jq -c '{"ljc-go-grpc","ljc-java-grpc"} | to_entries | map(.value|tostring)' < output.json);
-            http_client_endpoints=$(jq -c '{"ljc-go-http","ljc-java-http"} | to_entries | map(.value|tostring)' < output.json);
-
+            ingestion_grpc_client_endpoints=$(jq -c '{"ljc-go-grpc","ljc-java-grpc"} | to_entries | map(.value|tostring)' < ingestion_client_output.json);
+            ingestion_http_client_endpoints=$(jq -c '{"ljc-go-http","ljc-java-http"} | to_entries | map(.value|tostring)' < ingestion_client_output.json);
+          
+            cl_grpc_client_endpoints=$(jq -c '{"ljc-go-grpc","ljc-java-grpc"} | to_entries | map(.value|tostring)' < cl_client_output.json);
+            cl_http_client_endpoints=$(jq -c '{"ljc-go-http","ljc-java-http"} | to_entries | map(.value|tostring)' < cl_client_output.json);
+          
+            grpc_client_endpoints=echo -e "${ingestion_grpc_client_endpoints}\${cl_grpc_client_endpoints}" | jq -cs 'flatten(1)'
+            http_client_endpoints=echo -e "${ingestion_http_client_endpoints}\${cl_http_client_endpoints}" | jq -cs 'flatten(1)'
+          
             echo "GRPC_ENDPOINTS=${grpc_client_endpoints}" >> $GITHUB_ENV;
             echo "HTTP_ENDPOINTS=${http_client_endpoints}" >> $GITHUB_ENV;
 
