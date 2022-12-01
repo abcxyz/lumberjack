@@ -18,7 +18,9 @@ import (
 	"context"
 	"crypto/x509"
 	"encoding/pem"
+	"errors"
 	"fmt"
+	"io"
 	"strings"
 	"testing"
 	"time"
@@ -32,10 +34,12 @@ import (
 	"github.com/lestrrat-go/jwx/v2/jws"
 	"github.com/lestrrat-go/jwx/v2/jwt"
 	"golang.org/x/oauth2"
+	rpccode "google.golang.org/genproto/googleapis/rpc/code"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/credentials/oauth"
 	"google.golang.org/grpc/metadata"
+	"google.golang.org/grpc/status"
 )
 
 type GRPC struct {
@@ -118,10 +122,10 @@ func TestGRPCEndpoint(ctx context.Context, tb testing.TB, g *GRPC) {
 	}
 
 	g.runHelloCheck(ctx, tb)
-	// g.runFailCheck(ctx, tb)
-	// g.runFibonacciCheck(ctx, tb)
-	// g.runAdditionCheck(ctx, tb)
-	// g.runFailOnFourCheck(ctx, tb)
+	g.runFailCheck(ctx, tb)
+	g.runFibonacciCheck(ctx, tb)
+	g.runAdditionCheck(ctx, tb)
+	g.runFailOnFourCheck(ctx, tb)
 }
 
 // create a justification token to pass in the call to services.
@@ -165,59 +169,59 @@ func justificationToken() (string, error) {
 	return string(b), nil
 }
 
-//// End-to-end test for the fibonacci API, which is a test for server-side streaming.
-//func (g *GRPC) runFibonacciCheck(ctx context.Context, tb testing.TB) {
-//	tb.Helper()
-//
-//	id := uuid.New().String()
-//	places := 5
-//	stream, err := g.TalkerClient.Fibonacci(ctx, &talkerpb.FibonacciRequest{Places: uint32(places), Target: id})
-//	if err != nil {
-//		tb.Errorf("fibonacci call failed: %v", err)
-//	}
-//	for {
-//		place, err := stream.Recv()
-//		if errors.Is(err, io.EOF) {
-//			// stream is finished
-//			break
-//		}
-//		if err != nil {
-//			tb.Errorf("failed to read fibonacci stream: %v", err)
-//			break
-//		}
-//		tb.Logf("Received value %v", place.Value)
-//	}
-//	query := g.makeQueryForGRPCStream(id)
-//	utils.QueryIfAuditLogsExistWithRetries(ctx, tb, query, g.Config, "server_stream_fibonacci", int64(places))
-//}
-//
-//// End-to-end test for the addition API, which is a test for client-side streaming.
-//func (g *GRPC) runAdditionCheck(ctx context.Context, tb testing.TB) {
-//	tb.Helper()
-//
-//	id := uuid.New().String()
-//	stream, err := g.TalkerClient.Addition(ctx)
-//	if err != nil {
-//		tb.Errorf("addition call failed: %v", err)
-//	}
-//	totalNumbers := 5
-//	for i := 0; i < totalNumbers; i++ {
-//		if err := stream.Send(&talkerpb.AdditionRequest{
-//			Addend: uint32(i),
-//			Target: id,
-//		}); err != nil {
-//			tb.Errorf("sending value to addition failed: %v", err)
-//		}
-//	}
-//	reply, err := stream.CloseAndRecv()
-//	if err != nil {
-//		tb.Errorf("failed getting result from addition: %v", err)
-//	}
-//	tb.Logf("Value returned: %d", reply.Sum)
-//
-//	query := g.makeQueryForGRPCStream(id)
-//	utils.QueryIfAuditLogsExistWithRetries(ctx, tb, query, g.Config, "client_stream_addition", int64(totalNumbers))
-//}
+// End-to-end test for the fibonacci API, which is a test for server-side streaming.
+func (g *GRPC) runFibonacciCheck(ctx context.Context, tb testing.TB) {
+	tb.Helper()
+
+	id := uuid.New().String()
+	places := 5
+	stream, err := g.TalkerClient.Fibonacci(ctx, &talkerpb.FibonacciRequest{Places: uint32(places), Target: id})
+	if err != nil {
+		tb.Errorf("fibonacci call failed: %v", err)
+	}
+	for {
+		place, err := stream.Recv()
+		if errors.Is(err, io.EOF) {
+			// stream is finished
+			break
+		}
+		if err != nil {
+			tb.Errorf("failed to read fibonacci stream: %v", err)
+			break
+		}
+		tb.Logf("Received value %v", place.Value)
+	}
+	query := g.makeQueryForGRPCStream(id)
+	utils.QueryIfAuditLogsExistWithRetries(ctx, tb, query, g.Config, "server_stream_fibonacci", int64(places))
+}
+
+// End-to-end test for the addition API, which is a test for client-side streaming.
+func (g *GRPC) runAdditionCheck(ctx context.Context, tb testing.TB) {
+	tb.Helper()
+
+	id := uuid.New().String()
+	stream, err := g.TalkerClient.Addition(ctx)
+	if err != nil {
+		tb.Errorf("addition call failed: %v", err)
+	}
+	totalNumbers := 5
+	for i := 0; i < totalNumbers; i++ {
+		if err := stream.Send(&talkerpb.AdditionRequest{
+			Addend: uint32(i),
+			Target: id,
+		}); err != nil {
+			tb.Errorf("sending value to addition failed: %v", err)
+		}
+	}
+	reply, err := stream.CloseAndRecv()
+	if err != nil {
+		tb.Errorf("failed getting result from addition: %v", err)
+	}
+	tb.Logf("Value returned: %d", reply.Sum)
+
+	query := g.makeQueryForGRPCStream(id)
+	utils.QueryIfAuditLogsExistWithRetries(ctx, tb, query, g.Config, "client_stream_addition", int64(totalNumbers))
+}
 
 // End-to-end test for the hello API, which is a test for unary requests.
 func (g *GRPC) runHelloCheck(ctx context.Context, tb testing.TB) {
@@ -232,68 +236,68 @@ func (g *GRPC) runHelloCheck(ctx context.Context, tb testing.TB) {
 	utils.QueryIfAuditLogExistsWithRetries(ctx, tb, query, g.Config, "unary_hello")
 }
 
-//// End-to-end test for the fail API, which is a test for unary failures.
-//func (g *GRPC) runFailCheck(ctx context.Context, tb testing.TB) {
-//	tb.Helper()
-//
-//	id := uuid.New().String()
-//	reply, err := g.TalkerClient.Fail(ctx, &talkerpb.FailRequest{Message: "Some Message", Target: id})
-//
-//	if err != nil {
-//		returnStatus, ok := status.FromError(err)
-//		if !ok {
-//			tb.Errorf("Could not convert err to status %v", err)
-//		}
-//		if int32(returnStatus.Code()) != int32(rpccode.Code_RESOURCE_EXHAUSTED) {
-//			tb.Errorf("Got unexpected Err. Got code %d but expected %d", int32(returnStatus.Code()),
-//				int32(rpccode.Code_RESOURCE_EXHAUSTED))
-//		}
-//		tb.Logf("Got Error as expected: %v", err)
-//	} else {
-//		tb.Errorf("Did not get err as expected. Instead got reply: %v", reply)
-//	}
-//
-//	query := g.makeQueryForGRPCUnary(id)
-//	utils.QueryIfAuditLogExistsWithRetries(ctx, tb, query, g.Config, "unary_fail")
-//}
-//
-//// End-to-end test for the failOnFour API, which is a test for failures during client-side streaming.
-//func (g *GRPC) runFailOnFourCheck(ctx context.Context, tb testing.TB) {
-//	tb.Helper()
-//
-//	id := uuid.New().String()
-//	stream, err := g.TalkerClient.FailOnFour(ctx)
-//	if err != nil {
-//		tb.Errorf("addition call failed: %v", err)
-//	}
-//	totalNumbers := 5
-//	for i := 1; i <= totalNumbers; i++ {
-//		if err := stream.Send(&talkerpb.FailOnFourRequest{
-//			Value:  uint32(i),
-//			Target: id,
-//		}); err != nil {
-//			tb.Errorf("sending value to addition failed: %v", err)
-//		}
-//	}
-//	reply, err := stream.CloseAndRecv()
-//	if err != nil {
-//		returnStatus, ok := status.FromError(err)
-//		if !ok {
-//			tb.Errorf("Could not convert err to status %v", err)
-//		}
-//		if int32(returnStatus.Code()) != int32(rpccode.Code_INVALID_ARGUMENT) {
-//			tb.Errorf("Got unexpected Err. Got code %d but expected %d", int32(returnStatus.Code()),
-//				int32(rpccode.Code_INVALID_ARGUMENT))
-//		}
-//		tb.Logf("Got Error as expected: %v", err)
-//	} else {
-//		tb.Errorf("Did not get err as expected. Instead got reply: %v", reply)
-//	}
-//
-//	query := g.makeQueryForGRPCStream(id)
-//	// we expect to have 4 audit logs - the last sent number (5) will be after the err ocurred.
-//	utils.QueryIfAuditLogsExistWithRetries(ctx, tb, query, g.Config, "stream_fail_on_four", int64(4))
-//}
+// End-to-end test for the fail API, which is a test for unary failures.
+func (g *GRPC) runFailCheck(ctx context.Context, tb testing.TB) {
+	tb.Helper()
+
+	id := uuid.New().String()
+	reply, err := g.TalkerClient.Fail(ctx, &talkerpb.FailRequest{Message: "Some Message", Target: id})
+
+	if err != nil {
+		returnStatus, ok := status.FromError(err)
+		if !ok {
+			tb.Errorf("Could not convert err to status %v", err)
+		}
+		if int32(returnStatus.Code()) != int32(rpccode.Code_RESOURCE_EXHAUSTED) {
+			tb.Errorf("Got unexpected Err. Got code %d but expected %d", int32(returnStatus.Code()),
+				int32(rpccode.Code_RESOURCE_EXHAUSTED))
+		}
+		tb.Logf("Got Error as expected: %v", err)
+	} else {
+		tb.Errorf("Did not get err as expected. Instead got reply: %v", reply)
+	}
+
+	query := g.makeQueryForGRPCUnary(id)
+	utils.QueryIfAuditLogExistsWithRetries(ctx, tb, query, g.Config, "unary_fail")
+}
+
+// End-to-end test for the failOnFour API, which is a test for failures during client-side streaming.
+func (g *GRPC) runFailOnFourCheck(ctx context.Context, tb testing.TB) {
+	tb.Helper()
+
+	id := uuid.New().String()
+	stream, err := g.TalkerClient.FailOnFour(ctx)
+	if err != nil {
+		tb.Errorf("addition call failed: %v", err)
+	}
+	totalNumbers := 5
+	for i := 1; i <= totalNumbers; i++ {
+		if err := stream.Send(&talkerpb.FailOnFourRequest{
+			Value:  uint32(i),
+			Target: id,
+		}); err != nil {
+			tb.Errorf("sending value to addition failed: %v", err)
+		}
+	}
+	reply, err := stream.CloseAndRecv()
+	if err != nil {
+		returnStatus, ok := status.FromError(err)
+		if !ok {
+			tb.Errorf("Could not convert err to status %v", err)
+		}
+		if int32(returnStatus.Code()) != int32(rpccode.Code_INVALID_ARGUMENT) {
+			tb.Errorf("Got unexpected Err. Got code %d but expected %d", int32(returnStatus.Code()),
+				int32(rpccode.Code_INVALID_ARGUMENT))
+		}
+		tb.Logf("Got Error as expected: %v", err)
+	} else {
+		tb.Errorf("Did not get err as expected. Instead got reply: %v", reply)
+	}
+
+	query := g.makeQueryForGRPCStream(id)
+	// we expect to have 4 audit logs - the last sent number (5) will be after the err ocurred.
+	utils.QueryIfAuditLogsExistWithRetries(ctx, tb, query, g.Config, "stream_fail_on_four", int64(4))
+}
 
 // Server is in cloud run. Example: https://cloud.google.com/run/docs/triggering/grpc#request-auth
 // We are using token-based authentication to connect to the server, which will be passed through
@@ -336,11 +340,11 @@ func (g *GRPC) makeQueryForGRPCUnary(id string) *bigquery.Query {
 }
 
 // Similar to the above function, but can return multiple results, which is what we expect for streaming.
-//func (g *GRPC) makeQueryForGRPCStream(id string) *bigquery.Query {
-//	queryString := fmt.Sprintf("SELECT count(*) FROM `%s.%s` WHERE jsonPayload.resource_name=?", g.ProjectID, g.DatasetQuery)
-//	if g.RequireJustification {
-//		// TODO(#265): For back-compatibility, we need to ensure justification in either metadata key.
-//		queryString += ` AND jsonPayload.metadata.justification IS NOT NULL`
-//	}
-//	return utils.MakeQuery(*g.BigQueryClient, id, queryString)
-//}
+func (g *GRPC) makeQueryForGRPCStream(id string) *bigquery.Query {
+	queryString := fmt.Sprintf("SELECT count(*) FROM `%s.%s` WHERE jsonPayload.resource_name=?", g.ProjectID, g.DatasetQuery)
+	if g.RequireJustification {
+		// TODO(#265): For back-compatibility, we need to ensure justification in either metadata key.
+		queryString += ` AND jsonPayload.metadata.justification IS NOT NULL`
+	}
+	return utils.MakeQuery(*g.BigQueryClient, id, queryString)
+}
