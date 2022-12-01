@@ -354,8 +354,8 @@ jobs:
             ingestion_backend_grpc_client_endpoints=$(jq -c '{"ljc-go-grpc","ljc-java-grpc"} | to_entries | map(.value|tostring)' < ingestion_backend_client_output.json);
             ingestion_backend_http_client_endpoints=$(jq -c '{"ljc-go-http","ljc-java-http"} | to_entries | map(.value|tostring)' < ingestion_backend_client_output.json);
           
-            cloudlogging_backend_grpc_client_endpoints=$(jq -c '{"ljc-go-grpc"} | to_entries | map(.value|tostring)' < cloudlogging_backend_client_output.json);
-            cloudlogging_backend_http_client_endpoints=$(jq -c '{"ljc-go-http"} | to_entries | map(.value|tostring)' < cloudlogging_backend_client_output.json);
+            cloudlogging_backend_grpc_client_endpoints=$(jq -c '{"ljc-go-grpc", "ljc-java-grpc"} | to_entries | map(.value|tostring)' < cloudlogging_backend_client_output.json);
+            cloudlogging_backend_http_client_endpoints=$(jq -c '{"ljc-go-http", "ljc-java-http"} | to_entries | map(.value|tostring)' < cloudlogging_backend_client_output.json);
           
             grpc_client_endpoints=$(echo -e "${ingestion_backend_grpc_client_endpoints}${cloudlogging_backend_grpc_client_endpoints}" | jq -cs 'flatten(1)')
             http_client_endpoints=$(echo -e "${ingestion_backend_http_client_endpoints}${cloudlogging_backend_http_client_endpoints}" | jq -cs 'flatten(1)')

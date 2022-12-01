@@ -63,9 +63,9 @@ public class CloudLoggingProcessor implements LogBackend {
           LogEntry.newBuilder(
                   Payload.JsonPayload.of(
                       mapper.readValue(
-                          JsonFormat.printer().print(auditLogRequest),
+                          JsonFormat.printer().print(auditLogRequest.getPayload()),
                           new TypeReference<Map<String, ?>>() {})))
-              .setLogName(getLogNameFromLogType(auditLogRequest.getType()))
+              .setLogName(getLogNameFromLogType(auditLogRequest.getType())).setLabels(auditLogRequest.getLabelsMap())
               .setResource(MonitoredResource.newBuilder(MONITORED_RESOURCE_TYPE).build())
               .build();
       logging.write(Collections.singleton(entry));
