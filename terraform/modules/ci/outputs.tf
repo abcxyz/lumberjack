@@ -21,7 +21,7 @@ output "server_url" {
 output "ingestion_backend_client_endpoints" {
   value = {
     for key, value in var.client_images :
-    key => lookup(google_cloud_run_service.ingestion_backend_client_services key).status[0].url
+    key => lookup(google_cloud_run_service.ingestion_backend_client_services, key).status[0].url
   }
 }
 
