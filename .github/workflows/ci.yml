@@ -384,7 +384,8 @@ jobs:
           go test ./integration/testrunner \
             -id-token="${ID_TOKEN}" \
             -project-id="${{ env.SERVER_PROJECT_ID }}" \
-            -dataset-query="${{ env.BIGQUERY_DATASET_ID }}"
+            -dataset-query="${{ env.BIGQUERY_DATASET_ID }}" \
+            -timeout=15m
 
       - name: 'Cleanup the infrastructure'
         id: 'tf_destroy'
