@@ -354,14 +354,14 @@ jobs:
             ingestion_grpc_client_endpoints=$(jq -c '{"ljc-go-grpc","ljc-java-grpc"} | to_entries | map(.value|tostring)' < ingestion_client_output.json);
             ingestion_http_client_endpoints=$(jq -c '{"ljc-go-http","ljc-java-http"} | to_entries | map(.value|tostring)' < ingestion_client_output.json);
           
-            cl_grpc_client_endpoints=$(jq -c '{"ljc-go-grpc","ljc-java-grpc"} | to_entries | map(.value|tostring)' < cl_client_output.json);
-            cl_http_client_endpoints=$(jq -c '{"ljc-go-http","ljc-java-http"} | to_entries | map(.value|tostring)' < cl_client_output.json);
+            cl_grpc_client_endpoints=$(jq -c '{"ljc-java-grpc"} | to_entries | map(.value|tostring)' < cl_client_output.json);
+            cl_http_client_endpoints=$(jq -c '{"ljc-java-http"} | to_entries | map(.value|tostring)' < cl_client_output.json);
           
             grpc_client_endpoints=$(echo -e "${ingestion_grpc_client_endpoints}${cl_grpc_client_endpoints}" | jq -cs 'flatten(1)')
             http_client_endpoints=$(echo -e "${ingestion_http_client_endpoints}${cl_http_client_endpoints}" | jq -cs 'flatten(1)')
           
-            echo "GRPC_ENDPOINTS=${grpc_client_endpoints}" >> $GITHUB_ENV;
-            echo "HTTP_ENDPOINTS=${http_client_endpoints}" >> $GITHUB_ENV;
+            echo "GRPC_ENDPOINTS=${cl_grpc_client_endpoints}" >> $GITHUB_ENV;
+            echo "HTTP_ENDPOINTS=${cl_http_client_endpoints}" >> $GITHUB_ENV;
 
       - name: 'Setup Go'
         uses: 'actions/setup-go@fcdc43634adb5f7ae75a9d7a9b9361790f7293e2' # ratchet:actions/setup-go@v3
