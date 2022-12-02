@@ -18,9 +18,16 @@ output "server_url" {
   value = module.server_service.audit_log_server_url
 }
 
-output "client_endpoints" {
+output "ingestion_backend_client_endpoints" {
   value = {
     for key, value in var.client_images :
-    key => lookup(google_cloud_run_service.client_services, key).status[0].url
+    key => lookup(google_cloud_run_service.ingestion_backend_client_services, key).status[0].url
+  }
+}
+
+output "cloudlogging_backend_client_endpoints" {
+  value = {
+    for key, value in var.client_images :
+    key => lookup(google_cloud_run_service.cloudlogging_backend_client_services, key).status[0].url
   }
 }
