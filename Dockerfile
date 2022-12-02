@@ -23,7 +23,11 @@ COPY --from=distroless /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
 
 COPY server /server
 
-USER nobody
+# Normally we would set this to run as "nobody".
+# But goreleaser builds the binary locally and sometimes it will mess up the permission
+# and cause "exec user process caused: permission denied".
+#
+# USER nobody
 
 # Run the web service on container startup.
 ENV PORT 8080
