@@ -24,19 +24,15 @@ import static org.mockito.Mockito.verify;
 
 import com.abcxyz.lumberjack.auditlogclient.config.AuditLoggingConfiguration;
 import com.abcxyz.lumberjack.v1alpha1.AuditLogRequest;
+import com.abcxyz.lumberjack.v1alpha1.AuditLogRequest.LogType;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.google.cloud.audit.AuditLog;
 import com.google.cloud.logging.LogEntry;
 import com.google.cloud.logging.Logging;
-import com.google.cloud.logging.Operation;
 import com.google.cloud.logging.Payload;
-import com.google.cloud.logging.Payload.JsonPayload;
-import com.google.logging.v2.LogEntryOperation;
-import com.google.protobuf.Timestamp;
-import java.time.Instant;
-import java.util.Map;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.util.Set;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -51,11 +47,10 @@ import org.mockito.junit.jupiter.MockitoExtension;
 @ExtendWith(MockitoExtension.class)
 public class CloudLoggingProcessorTests {
 
-  public static final String TEST_RESOURCE = "TEST_RESOURCE";
-  public static final String OPERATION_ID = "OPERATION_ID";
-  public static final String OPERATION_PRODUCER = "OPERATION_PRODUCER";
-  public static final String LABEL_KEY = "FOO";
-  public static final String LABEL_VALUE = "BAR";
+  public static final String LOG_NAME_UNSPECIFIED =
+      URLEncoder.encode("audit.abcxyz/unspecified", StandardCharsets.UTF_8);
+  public static final String LOG_NAME_DATA_ACCESS =
+      URLEncoder.encode("audit.abcxyz/data_access", StandardCharsets.UTF_8);
 
   @Spy private ObjectMapper mapper;
   @Mock private Logging logging;
@@ -64,20 +59,23 @@ public class CloudLoggingProcessorTests {
   @InjectMocks private CloudLoggingProcessor cloudLoggingProcessor;
 
   @Test
-  void shouldWriteCorrectLogEntry() throws LogProcessingException {
-    AuditLog payload = AuditLog.newBuilder().setResourceName(TEST_RESOURCE).build();
-    LogEntryOperation logEntryOperation =
-        LogEntryOperation.newBuilder().setId(OPERATION_ID).setProducer(OPERATION_PRODUCER).build();
-    Instant now = Instant.now();
-    Timestamp timestamp =
-        Timestamp.newBuilder().setSeconds(now.getEpochSecond()).setNanos(now.getNano()).build();
+  void shouldInvokeCloudLoggerWithLumberjackLogName() throws LogProcessingException {
+    cloudLoggingProcessor.process(AuditLogRequest.getDefaultInstance());
+    verify(logging).write(logEntryCaptor.capture());
+    verify(logging).flush();
+    LogEntry logEntry =
+        logEntryCaptor.getValue().stream()
+            .findFirst()
+            .orElse(LogEntry.newBuilder(Payload.StringPayload.of("")).build());
+    assertThat(logEntry.getLogName()).isEqualTo(LOG_NAME_UNSPECIFIED);
+  }
+
+  @Test
+  void shouldSetCorrectLogNameGivenLogType() throws LogProcessingException {
     cloudLoggingProcessor.process(
         AuditLogRequest.getDefaultInstance()
             .newBuilderForType()
-            .setPayload(payload)
-            .putLabels(LABEL_KEY, LABEL_VALUE)
-            .setOperation(logEntryOperation)
-            .setTimestamp(timestamp)
+            .setType(LogType.DATA_ACCESS)
             .build());
     verify(logging).write(logEntryCaptor.capture());
     verify(logging).flush();
@@ -85,11 +83,7 @@ public class CloudLoggingProcessorTests {
         logEntryCaptor.getValue().stream()
             .findFirst()
             .orElse(LogEntry.newBuilder(Payload.StringPayload.of("")).build());
-    assertThat(((JsonPayload) logEntry.getPayload()).getDataAsMap())
-        .isEqualTo(Map.of("resource_name", TEST_RESOURCE));
-    assertThat(logEntry.getLabels()).isEqualTo(Map.of(LABEL_KEY, LABEL_VALUE));
-    assertThat(logEntry.getOperation()).isEqualTo(Operation.of(OPERATION_ID, OPERATION_PRODUCER));
-    assertThat(logEntry.getInstantTimestamp()).isEqualTo(now);
+    assertThat(logEntry.getLogName()).isEqualTo(LOG_NAME_DATA_ACCESS);
   }
 
   @Test
