@@ -36,9 +36,9 @@ import com.google.cloud.logging.Payload;
 import com.google.cloud.logging.Payload.JsonPayload;
 import com.google.logging.v2.LogEntryOperation;
 import com.google.protobuf.Timestamp;
-import java.time.Instant;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
+import java.time.Instant;
 import java.util.Map;
 import java.util.Set;
 import org.junit.jupiter.api.Test;
@@ -53,10 +53,11 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 @ExtendWith(MockitoExtension.class)
 public class CloudLoggingProcessorTests {
+
   public static final String LOG_NAME_UNSPECIFIED =
-    URLEncoder.encode("audit.abcxyz/unspecified", StandardCharsets.UTF_8);
+      URLEncoder.encode("audit.abcxyz/unspecified", StandardCharsets.UTF_8);
   public static final String LOG_NAME_DATA_ACCESS =
-    URLEncoder.encode("audit.abcxyz/data_access", StandardCharsets.UTF_8);
+      URLEncoder.encode("audit.abcxyz/data_access", StandardCharsets.UTF_8);
   public static final String TEST_RESOURCE = "TEST_RESOURCE";
   public static final String OPERATION_ID = "OPERATION_ID";
   public static final String OPERATION_PRODUCER = "OPERATION_PRODUCER";
@@ -96,7 +97,7 @@ public class CloudLoggingProcessorTests {
             .orElse(LogEntry.newBuilder(Payload.StringPayload.of("")).build());
     assertThat(logEntry.getLogName()).isEqualTo(LOG_NAME_DATA_ACCESS);
   }
-  
+
   @Test
   void shouldWriteCorrectLogEntry() throws LogProcessingException {
     AuditLog payload = AuditLog.newBuilder().setResourceName(TEST_RESOURCE).build();

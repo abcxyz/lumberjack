@@ -78,7 +78,6 @@ public class CloudLoggingProcessor implements LogBackend {
                       auditLogRequest.getOperation().getId(),
                       auditLogRequest.getOperation().getProducer()))
               .setTimestamp(
-                // JavaTimeConversions.toJavaInstant(auditLogRequest.getTimestamp())
                   Instant.ofEpochSecond(
                       auditLogRequest.getTimestamp().getSeconds(),
                       auditLogRequest.getTimestamp().getNanos()))
