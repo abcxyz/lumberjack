@@ -18,22 +18,18 @@ package com.abcxyz.lumberjack.auditlogclient.processor;
 
 import com.abcxyz.lumberjack.auditlogclient.processor.LogProcessor.LogBackend;
 import com.abcxyz.lumberjack.v1alpha1.AuditLogRequest;
-import com.abcxyz.lumberjack.v1alpha1.AuditLogRequest.LogType;
-import com.abcxyz.lumberjack.v1alpha1.AuditLogRequestProto;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.google.cloud.MonitoredResource;
 import com.google.cloud.logging.LogEntry;
 import com.google.cloud.logging.Logging;
 import com.google.cloud.logging.LoggingException;
+import com.google.cloud.logging.Operation;
 import com.google.cloud.logging.Payload;
 import com.google.inject.Inject;
 import com.google.protobuf.InvalidProtocolBufferException;
 import com.google.protobuf.util.JsonFormat;
-import java.io.UnsupportedEncodingException;
-import java.net.URLEncoder;
-import java.nio.charset.StandardCharsets;
+import java.time.Instant;
 import java.util.Collections;
 import java.util.Map;
 import lombok.AccessLevel;
@@ -44,7 +40,6 @@ import lombok.extern.java.Log;
 @Log
 @AllArgsConstructor(access = AccessLevel.PRIVATE, onConstructor = @__({@Inject}))
 public class CloudLoggingProcessor implements LogBackend {
-  private static final String MONITORED_RESOURCE_TYPE = "global";
   private final ObjectMapper mapper;
   private final Logging logging;
 
@@ -69,35 +64,22 @@ public class CloudLoggingProcessor implements LogBackend {
                               .preservingProtoFieldNames()
                               .print(auditLogRequest.getPayload()),
                           new TypeReference<Map<String, ?>>() {})))
-              .setLogName(getLogNameFromLogType(auditLogRequest.getType()))
               .setLabels(auditLogRequest.getLabelsMap())
-              .setResource(MonitoredResource.newBuilder(MONITORED_RESOURCE_TYPE).build())
+              .setOperation(
+                  Operation.of(
+                      auditLogRequest.getOperation().getId(),
+                      auditLogRequest.getOperation().getProducer()))
+              .setTimestamp(
+                  Instant.ofEpochSecond(
+                      auditLogRequest.getTimestamp().getSeconds(),
+                      auditLogRequest.getTimestamp().getNanos()))
               .build();
       logging.write(Collections.singleton(entry));
       return auditLogRequest;
-    } catch (InvalidProtocolBufferException
-        | JsonProcessingException
-        | UnsupportedEncodingException
-        | LoggingException ex) {
+    } catch (InvalidProtocolBufferException | JsonProcessingException | LoggingException ex) {
       throw new LogProcessingException(ex);
     } finally {
       logging.flush();
     }
-  }
-
-  /**
-   * Obtains the URL Encoded Cloud Logging LogName by reading the proto annotation of the {@link
-   * AuditLogRequest.LogType}. If the proto annotation is missing, we default to {@code
-   * LogType.UNSPECIFIED}.
-   *
-   * @param type logType
-   * @return log name for the given log type
-   */
-  private String getLogNameFromLogType(LogType type) throws UnsupportedEncodingException {
-    String logName =
-        type.getValueDescriptor().getOptions().getExtension(AuditLogRequestProto.logName);
-    return logName.isEmpty()
-        ? LogType.UNSPECIFIED.name()
-        : URLEncoder.encode(logName, StandardCharsets.UTF_8);
   }
 }
