@@ -30,6 +30,7 @@ import com.google.cloud.logging.LoggingException;
 import com.google.cloud.logging.Operation;
 import com.google.cloud.logging.Payload;
 import com.google.inject.Inject;
+import com.google.logging.v2.LogEntryOperation;
 import com.google.protobuf.InvalidProtocolBufferException;
 import com.google.protobuf.util.JsonFormat;
 import java.io.UnsupportedEncodingException;
@@ -61,6 +62,7 @@ public class CloudLoggingProcessor implements LogBackend {
   @Override
   public AuditLogRequest process(AuditLogRequest auditLogRequest) throws LogProcessingException {
     try {
+      LogEntryOperation operation = auditLogRequest.getOperation();
       LogEntry entry =
           LogEntry.newBuilder(
                   Payload.JsonPayload.of(
@@ -74,9 +76,10 @@ public class CloudLoggingProcessor implements LogBackend {
               .setLogName(getLogNameFromLogType(auditLogRequest.getType()))
               .setLabels(auditLogRequest.getLabelsMap())
               .setOperation(
-                  Operation.of(
-                      auditLogRequest.getOperation().getId(),
-                      auditLogRequest.getOperation().getProducer()))
+                  Operation.newBuilder(operation.getId(), operation.getProducer())
+                      .setFirst(operation.getFirst())
+                      .setLast(operation.getLast())
+                      .build())
               .setTimestamp(
                   Instant.ofEpochSecond(
                       auditLogRequest.getTimestamp().getSeconds(),
