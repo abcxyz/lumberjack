@@ -27,13 +27,16 @@ import com.google.cloud.MonitoredResource;
 import com.google.cloud.logging.LogEntry;
 import com.google.cloud.logging.Logging;
 import com.google.cloud.logging.LoggingException;
+import com.google.cloud.logging.Operation;
 import com.google.cloud.logging.Payload;
 import com.google.inject.Inject;
+import com.google.logging.v2.LogEntryOperation;
 import com.google.protobuf.InvalidProtocolBufferException;
 import com.google.protobuf.util.JsonFormat;
 import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
+import java.time.Instant;
 import java.util.Collections;
 import java.util.Map;
 import lombok.AccessLevel;
@@ -59,6 +62,7 @@ public class CloudLoggingProcessor implements LogBackend {
   @Override
   public AuditLogRequest process(AuditLogRequest auditLogRequest) throws LogProcessingException {
     try {
+      LogEntryOperation operation = auditLogRequest.getOperation();
       LogEntry entry =
           LogEntry.newBuilder(
                   Payload.JsonPayload.of(
@@ -71,6 +75,15 @@ public class CloudLoggingProcessor implements LogBackend {
                           new TypeReference<Map<String, ?>>() {})))
               .setLogName(getLogNameFromLogType(auditLogRequest.getType()))
               .setLabels(auditLogRequest.getLabelsMap())
+              .setOperation(
+                  Operation.newBuilder(operation.getId(), operation.getProducer())
+                      .setFirst(operation.getFirst())
+                      .setLast(operation.getLast())
+                      .build())
+              .setTimestamp(
+                  Instant.ofEpochSecond(
+                      auditLogRequest.getTimestamp().getSeconds(),
+                      auditLogRequest.getTimestamp().getNanos()))
               .setResource(MonitoredResource.newBuilder(MONITORED_RESOURCE_TYPE).build())
               .build();
       logging.write(Collections.singleton(entry));
