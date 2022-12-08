@@ -335,6 +335,7 @@ func (g *GRPC) makeQueryForGRPCUnary(id string) *bigquery.Query {
 		// TODO(#265): For back-compatibility, we need to ensure justification in either metadata key.
 		queryString += ` AND jsonPayload.metadata.justification IS NOT NULL`
 	}
+	queryString += ` AND jsonPayload.serviceName IS NOT NULL`
 	queryString += ") AS INT64)"
 	return utils.MakeQuery(*g.BigQueryClient, id, queryString)
 }
