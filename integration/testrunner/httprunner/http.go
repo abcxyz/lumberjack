@@ -74,6 +74,9 @@ func TestHTTPEndpoint(ctx context.Context, tb testing.TB, endpointURL string,
 
 func makeQueryForHTTP(client bigquery.Client, id string, projectID string, datasetQuery string) *bigquery.Query {
 	// Cast to int64 because the result checker expects a number.
-	queryString := fmt.Sprintf("SELECT CAST(EXISTS (SELECT * FROM `%s.%s` WHERE labels.trace_id=?) AS INT64)", projectID, datasetQuery)
+	queryString := fmt.Sprintf("SELECT CAST(EXISTS (SELECT * FROM `%s.%s` WHERE labels.trace_id=?", projectID, datasetQuery)
+	queryString += ` AND jsonPayload.service_name IS NOT NULL`
+	queryString += ` AND jsonPayload.authentication_info.principal_email IS NOT NULL`
+	queryString += ") AS INT64)"
 	return utils.MakeQuery(client, id, queryString)
 }
