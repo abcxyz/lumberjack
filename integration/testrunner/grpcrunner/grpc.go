@@ -335,7 +335,9 @@ func (g *GRPC) makeQueryForGRPCUnary(id string) *bigquery.Query {
 		// TODO(#265): For back-compatibility, we need to ensure justification in either metadata key.
 		queryString += ` AND jsonPayload.metadata.justification IS NOT NULL`
 	}
-	queryString += ` AND jsonPayload.serviceName IS NOT NULL`
+	queryString += ` AND jsonPayload.service_name IS NOT NULL`
+	queryString += ` AND jsonPayload.method_name IS NOT NULL`
+	queryString += ` AND jsonPayload.authentication_info.principal_email IS NOT NULL`
 	queryString += ") AS INT64)"
 	return utils.MakeQuery(*g.BigQueryClient, id, queryString)
 }
@@ -347,5 +349,8 @@ func (g *GRPC) makeQueryForGRPCStream(id string) *bigquery.Query {
 		// TODO(#265): For back-compatibility, we need to ensure justification in either metadata key.
 		queryString += ` AND jsonPayload.metadata.justification IS NOT NULL`
 	}
+	queryString += ` AND jsonPayload.service_name IS NOT NULL`
+	queryString += ` AND jsonPayload.method_name IS NOT NULL`
+	queryString += ` AND jsonPayload.authentication_info.principal_email IS NOT NULL`
 	return utils.MakeQuery(*g.BigQueryClient, id, queryString)
 }
