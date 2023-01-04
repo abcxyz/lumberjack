@@ -1,4 +1,4 @@
-// Copyright 2022 Lumberjack authors (see AUTHORS file)
+// Copyright 2023 Lumberjack authors (see AUTHORS file)
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,10 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package v1alpha1
+//go:generate protoc -I../../../../third_party/googleapis -I../../../../protos/v1alpha1 --go_out=. --go-grpc_out=. --go_opt=paths=source_relative --go-grpc_opt=paths=source_relative audit_log_request.proto audit_log_agent.proto
 
-// ShouldFailClose returns true only if FAIL_CLOSE is explicitly configured. On BEST_EFFORT or LOG_MODE_UNSPECIFIED
-// (the default) then return false.
-func ShouldFailClose(logMode AuditLogRequest_LogMode) bool {
-	return logMode == AuditLogRequest_FAIL_CLOSE
-}
+// Package v1alpha1 contains versioned Lumberjack contracts, e.g. audit log
+// entry type, config, etc.
+package v1alpha1
