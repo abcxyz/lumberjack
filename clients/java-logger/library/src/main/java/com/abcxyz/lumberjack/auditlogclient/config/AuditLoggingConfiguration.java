@@ -47,7 +47,7 @@ public class AuditLoggingConfiguration {
   private SecurityContext securityContext;
 
   @JsonProperty("justification")
-  private Justification justification;
+  private Justification justification = new Justification();
 
   @JsonProperty(value = "breakglass_allowed")
   private boolean breakglassAllowed = false;
