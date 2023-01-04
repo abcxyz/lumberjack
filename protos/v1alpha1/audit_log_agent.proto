@@ -16,7 +16,7 @@ syntax = "proto3";
 
 package abcxyz.lumberjack;
 
-import "protos/v1alpha1/audit_log_request.proto";
+import "audit_log_request.proto";
 
 // When we move to Github, remove the GoB URL from package names.
 option go_package = "github.com/abcxyz/lumberjack/clients/go/apis/v1alpha1";
