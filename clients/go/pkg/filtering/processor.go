@@ -115,7 +115,7 @@ func (p *PrincipalEmailMatcher) Process(_ context.Context, logReq *api.AuditLogR
 	}
 	if len(p.excludes) == 0 {
 		// Here, len(p.include) != nil and there was no match in the includes.
-		// We drop the request because it was not explicity included.
+		// We drop the request because it was not explicitly included.
 		return fmt.Errorf("request.Payload.AuthenticationInfo.PrincipalEmail not included in %q: %w", p.includes, audit.ErrFailedPrecondition)
 	}
 

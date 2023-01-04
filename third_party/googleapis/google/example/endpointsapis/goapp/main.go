@@ -21,7 +21,7 @@ import (
 // Name specifies the target resource name. Permission specifies
 // the required permission on the target resource. Received
 // specifies the timestamp when the request is received.
-func check(w http.ResponseWriter, r *http.Request, name string, permission string, received time.Time, client *servicecontrol.Service) (string, error) {
+func check(w http.ResponseWriter, r *http.Request, name, permission string, received time.Time, client *servicecontrol.Service) (string, error) {
 	// Construct CheckRequest from the incoming HTTP request.
 	// The code assumes the incoming request processed by App Engine ingress.
 	req := &servicecontrol.CheckRequest{

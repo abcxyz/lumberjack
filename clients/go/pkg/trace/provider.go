@@ -63,5 +63,9 @@ func Shutdown() error {
 	}
 	ctx, done := context.WithTimeout(context.Background(), 5*time.Second)
 	defer done()
-	return tp.Shutdown(ctx)
+
+	if err := tp.Shutdown(ctx); err != nil {
+		return fmt.Errorf("failed to shutdown trace provider: %w", err)
+	}
+	return nil
 }

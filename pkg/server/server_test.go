@@ -107,7 +107,7 @@ func TestAuditLogAgent_ProcessLog(t *testing.T) {
 		wantSentReq: testutil.NewRequest(testutil.WithServiceName("test-service"), testutil.WithMode(api.AuditLogRequest_BEST_EFFORT)),
 		wantResp: &api.AuditLogResponse{
 			// TODO: We want to swallow errors in the client on best effort, but that means the server will return
-			// with this output. Do we want any indication in the response that the audit log hasn't ocurred?
+			// with this output. Do we want any indication in the response that the audit log hasn't occurred?
 			Result: testutil.NewRequest(testutil.WithServiceName("test-service"), testutil.WithMode(api.AuditLogRequest_BEST_EFFORT)),
 		},
 	}}
