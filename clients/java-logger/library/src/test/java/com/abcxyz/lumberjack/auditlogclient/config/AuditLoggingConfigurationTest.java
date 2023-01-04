@@ -17,6 +17,7 @@
 package com.abcxyz.lumberjack.auditlogclient.config;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 
 import com.abcxyz.lumberjack.auditlogclient.modules.AuditLoggingConfigurationModule;
 import com.abcxyz.lumberjack.auditlogclient.modules.AuditLoggingModule;
@@ -42,7 +43,8 @@ public class AuditLoggingConfigurationTest {
     assertThat(config.getConditions()).isNull();
     assertThat(config.getRules().size()).isEqualTo(1);
     assertThat(config.getLogMode()).isEqualTo(LogMode.LOG_MODE_UNSPECIFIED);
-    assertThat(config.getJustification()).isNull();
+    assertThat(config.getJustification().getPublicKeysEndpoint()).isNull();
+    assertFalse(config.getJustificaiton().isEnabled());
 
     assertThat(module.backendContext(config)).isEqualTo(expectedBackendContext);
     assertThat(module.filters(config)).isEqualTo(new Filters());
@@ -93,7 +95,8 @@ public class AuditLoggingConfigurationTest {
     assertThat(config.getFilters().getExcludes()).isEqualTo("*.exclude.example.com");
     assertThat(config.getRules().size()).isEqualTo(1);
     assertThat(config.getLogMode()).isEqualTo(LogMode.LOG_MODE_UNSPECIFIED);
-    assertThat(config.getJustification()).isNull();
+    assertThat(config.getJustification().getPublicKeysEndpoint()).isNull();
+    assertFalse(config.getJustificaiton().isEnabled());
 
     assertThat(module.backendContext(config)).isEqualTo(expectedBackendContext);
   }
