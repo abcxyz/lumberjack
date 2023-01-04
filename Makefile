@@ -12,15 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# protoc compiles the protobufs.
-protoc:
-	@protoc -I./third_party/googleapis -I./protos/v1alpha1 \
-		--go_out=. --go-grpc_out=. \
-		--go_opt=module=github.com/abcxyz/lumberjack \
-		--go-grpc_opt=module=github.com/abcxyz/lumberjack \
-		audit_log_request.proto audit_log_agent.proto
-.PHONY: protoc
-
 # update_third_party updates all the dependencies in third_party.
 update_third_party: update_third_party_googleapis
 .PHONY: update_third_party
