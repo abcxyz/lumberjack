@@ -11,6 +11,7 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+
 package main
 
 import (
@@ -39,7 +40,7 @@ import (
 
 	"github.com/abcxyz/lumberjack/clients/go/pkg/audit"
 	"github.com/abcxyz/lumberjack/clients/go/pkg/auditopt"
-	"github.com/abcxyz/lumberjack/clients/go/test/grpc-app/talkerpb"
+	"github.com/abcxyz/lumberjack/internal/talkerpb"
 )
 
 var port = flag.Int("port", 8080, "The server port")

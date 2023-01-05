@@ -92,7 +92,7 @@
             <configuration>
               <includeStdTypes>true</includeStdTypes>
               <includeDirectories>
-                <include>${lumberjack.basedir}</include>
+                <include>${lumberjack.basedir}/internal/protos/talker</include>
                 <include>${lumberjack.basedir}/third_party/googleapis</include>
               </includeDirectories>
               <inputDirectories>
