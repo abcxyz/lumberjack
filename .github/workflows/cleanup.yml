@@ -24,49 +24,35 @@ jobs:
   cleanup_cloudrun_services:
     runs-on: 'ubuntu-latest'
     steps:
-      - name: 'Checkout'
-        uses: 'actions/checkout@2541b1294d2704b0964813337f33b291d3f8596b' # ratchet:actions/checkout@v3
+      - uses: 'actions/checkout@755da8c3cf115ac066823e79a1e1788f8940201b' # ratchet:actions/checkout@v3
 
-      - name: 'Authenticate to Google Cloud'
-        uses: 'google-github-actions/auth@ceee102ec2387dd9e844e01b530ccd4ec87ce955' # ratchet:google-github-actions/auth@v0
+      - uses: 'google-github-actions/auth@c4799db9111fba4461e9f9da8732e5057b394f72' # ratchet:google-github-actions/auth@v0
         with:
           workload_identity_provider: 'projects/${{ env.PROJECT_NUMBER }}/locations/global/workloadIdentityPools/github-pool/providers/github-provider'
           service_account: 'gh-access-sa@lumberjack-dev-infra.iam.gserviceaccount.com'
 
-      - name: 'Install and configure gcloud'
-        uses: 'google-github-actions/setup-gcloud@877d4953d2c70a0ba7ef3290ae968eb24af233bb' # ratchet:google-github-actions/setup-gcloud@v0
+      - uses: 'google-github-actions/setup-gcloud@ee9693ff89cdf73862b8a13988f6a71070e8fc58' # ratchet:google-github-actions/setup-gcloud@v0
 
       - name: 'Remove old Cloud Run services'
         shell: 'bash'
         run: |-
-          SINCE=$(date --date="5 days ago" +"%Y-%m-%d")
-          echo "Fetching services to delete older than ${SINCE}..."
+          gcloud config set core/project "${{ env.PROJECT_ID }}"
+          gcloud config set run/region "{{ env.REGION }}"
 
-          TO_DELETE=( $(gcloud run services list \
-            --quiet \
-            --project="${{ env.PROJECT_ID }}" \
-            --region="${{ env.REGION }}" \
-            --filter="metadata.creationTimestamp<${SINCE}" \
-            --format="value(SERVICE)") )
-
-          for SERVICE in "${TO_DELETE[@]}"; do
-            echo "Deleting ${SERVICE}..."
-            gcloud run services delete ${SERVICE} \
-              --quiet \
-              --project="${{ env.PROJECT_ID }}" \
-              --region="${{ env.REGION }}"
-          done
+          # List and delete all services that were deployed 5 days ago or later.
+          (IFS=$'\n'; for NAME in $(gcloud run services list --format="value(name)" --filter="metadata.creationTimestamp < '-p5d'"); do
+            echo "Deleting ${NAME}..."
+            gcloud run services delete ${NAME} --quiet --async
+          done)
 
   # cleanup_container_images deletes all untagged container images that are more
   # than 14 days old.
   cleanup_container_images:
     runs-on: 'ubuntu-latest'
     steps:
-      - name: 'Checkout'
-        uses: 'actions/checkout@2541b1294d2704b0964813337f33b291d3f8596b' # ratchet:actions/checkout@v3
+      - uses: 'actions/checkout@755da8c3cf115ac066823e79a1e1788f8940201b' # ratchet:actions/checkout@v3
 
-      - name: 'Authenticate to Google Cloud'
-        uses: 'google-github-actions/auth@ceee102ec2387dd9e844e01b530ccd4ec87ce955' # ratchet:google-github-actions/auth@v0
+      - uses: 'google-github-actions/auth@c4799db9111fba4461e9f9da8732e5057b394f72' # ratchet:google-github-actions/auth@v0
         with:
           workload_identity_provider: 'projects/${{ env.PROJECT_NUMBER }}/locations/global/workloadIdentityPools/github-pool/providers/github-provider'
           service_account: 'gh-access-sa@lumberjack-dev-infra.iam.gserviceaccount.com'
