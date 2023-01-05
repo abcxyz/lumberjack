@@ -27,8 +27,8 @@ import (
 
 	"cloud.google.com/go/bigquery"
 	jvspb "github.com/abcxyz/jvs/apis/v0"
-	"github.com/abcxyz/lumberjack/integration/testrunner/talkerpb"
 	"github.com/abcxyz/lumberjack/integration/testrunner/utils"
+	"github.com/abcxyz/lumberjack/internal/talkerpb"
 	"github.com/google/uuid"
 	"github.com/lestrrat-go/jwx/v2/jwa"
 	"github.com/lestrrat-go/jwx/v2/jws"

@@ -22,10 +22,10 @@ import (
 	"sync"
 	"time"
 
+	"cloud.google.com/go/logging/apiv2/loggingpb"
 	"github.com/google/uuid"
 	"go.uber.org/zap"
 	capi "google.golang.org/genproto/googleapis/cloud/audit"
-	"google.golang.org/genproto/googleapis/logging/v2"
 	rpccode "google.golang.org/genproto/googleapis/rpc/code"
 	rpcstatus "google.golang.org/genproto/googleapis/rpc/status"
 	"google.golang.org/grpc"
@@ -210,7 +210,7 @@ func (i *Interceptor) StreamInterceptor(srv interface{}, ss grpc.ServerStream, i
 			MethodName:  info.FullMethod,
 		},
 		// Set operation to associate logs from the same stream.
-		Operation: &logging.LogEntryOperation{
+		Operation: &loggingpb.LogEntryOperation{
 			Producer: info.FullMethod,
 			Id:       uuid.New().String(),
 		},

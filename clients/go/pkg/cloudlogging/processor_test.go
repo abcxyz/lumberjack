@@ -20,10 +20,10 @@ import (
 	"testing"
 
 	"cloud.google.com/go/logging"
+	logpb "cloud.google.com/go/logging/apiv2/loggingpb"
 	"github.com/google/go-cmp/cmp"
 	"google.golang.org/api/option"
 	"google.golang.org/genproto/googleapis/cloud/audit"
-	logpb "google.golang.org/genproto/googleapis/logging/v2"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
