@@ -42,6 +42,8 @@ func TestMain(m *testing.M) {
 }
 
 func validateCfg(t *testing.T) *utils.Config {
+	t.Helper()
+
 	if *projectIDPtr == "" {
 		t.Fatal("Cloud Project ID of the Database to query must be provided with the -project-id flag.")
 	}
