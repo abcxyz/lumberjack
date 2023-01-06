@@ -22,13 +22,15 @@ import io.jsonwebtoken.Jwts;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import javax.annotation.Nonnull;
-
 import org.springframework.stereotype.Component;
 import org.springframework.web.servlet.HandlerInterceptor;
 
-/** Intercepts the request and extracts the user email contained in the JWT used for auth. */
+/**
+ * Intercepts the request and extracts the user email contained in the JWT used for auth.
+ */
 @Component
 public class TokenInterceptor implements HandlerInterceptor {
+
   static final String AUTHORIZATION_HEADER_NAME = "Authorization";
   static final String JWT_EMAIL_FIELD_KEY = "email";
   static final String INTERCEPTOR_USER_EMAIL_KEY = "user_email";
