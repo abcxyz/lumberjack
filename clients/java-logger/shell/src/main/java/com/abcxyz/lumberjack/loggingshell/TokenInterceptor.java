@@ -25,9 +25,7 @@ import javax.annotation.Nonnull;
 import org.springframework.stereotype.Component;
 import org.springframework.web.servlet.HandlerInterceptor;
 
-/**
- * Intercepts the request and extracts the user email contained in the JWT used for auth.
- */
+/** Intercepts the request and extracts the user email contained in the JWT used for auth. */
 @Component
 public class TokenInterceptor implements HandlerInterceptor {
 
