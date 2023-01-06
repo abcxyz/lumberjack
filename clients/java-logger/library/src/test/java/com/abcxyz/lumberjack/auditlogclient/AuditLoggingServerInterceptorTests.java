@@ -59,7 +59,7 @@ public class AuditLoggingServerInterceptorTests {
 
   @Mock Clock clock;
 
-  @InjectMocks AuditLoggingServerInterceptor interceptor;
+  @InjectMocks AuditLoggingServerInterceptor<AuditLog> interceptor;
 
   @Captor private ArgumentCaptor<AuditLogRequest> auditLogRequestCaptor;
 

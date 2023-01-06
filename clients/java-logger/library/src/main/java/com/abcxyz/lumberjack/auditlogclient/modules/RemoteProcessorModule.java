@@ -27,6 +27,7 @@ import com.google.auth.oauth2.OAuth2Credentials;
 import com.google.inject.AbstractModule;
 import com.google.inject.Inject;
 import com.google.inject.Provides;
+import io.grpc.ManagedChannel;
 import io.grpc.ManagedChannelBuilder;
 import io.grpc.auth.MoreCallCredentials;
 import java.io.IOException;
@@ -39,8 +40,10 @@ public class RemoteProcessorModule extends AbstractModule {
   AuditLogAgentGrpc.AuditLogAgentBlockingStub blockingStub(RemoteConfiguration remoteConfiguration)
       throws IOException {
     if (remoteConfiguration.getInsecureEnabled()) {
-      return AuditLogAgentGrpc.newBlockingStub(
-          ManagedChannelBuilder.forTarget(remoteConfiguration.getAddress()).usePlaintext().build());
+      // TODO: https://github.com/abcxyz/lumberjack/issues/354
+      ManagedChannel channel =
+          ManagedChannelBuilder.forTarget(remoteConfiguration.getAddress()).usePlaintext().build();
+      return AuditLogAgentGrpc.newBlockingStub(channel);
     }
 
     if (remoteConfiguration.getAddress() == null || remoteConfiguration.getAddress().isBlank()) {
@@ -83,8 +86,10 @@ public class RemoteProcessorModule extends AbstractModule {
               .build();
     }
 
-    return AuditLogAgentGrpc.newBlockingStub(
-            ManagedChannelBuilder.forTarget(remoteConfiguration.getAddress()).build())
+    // TODO: https://github.com/abcxyz/lumberjack/issues/354
+    ManagedChannel channel =
+        ManagedChannelBuilder.forTarget(remoteConfiguration.getAddress()).build();
+    return AuditLogAgentGrpc.newBlockingStub(channel)
         .withCallCredentials(MoreCallCredentials.from(tokenCredential));
   }
 
