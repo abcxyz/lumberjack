@@ -29,10 +29,10 @@ github.com/GoogleCloudPlatform/opentelemetry-operations-go/internal/resourcemapp
 github.com/GoogleCloudPlatform/opentelemetry-operations-go/internal/resourcemapping v0.34.2/go.mod h1:bVzzMryjn/wyTtxukT/IkUqbnRAKzEdz/ZFoNpcy+Jo=
 github.com/GoogleCloudPlatform/opentelemetry-operations-go/propagator v0.34.2 h1:+Yq9wIbkgEe31FddGeMtCgrXwttHQA66gQrdnXeby5s=
 github.com/GoogleCloudPlatform/opentelemetry-operations-go/propagator v0.34.2/go.mod h1:0fpP57AX/8cH5k51D2rwhfovlXmNOuh8LFPWA3pIG8k=
-github.com/abcxyz/jvs v0.0.2 h1:tIHvExiFIdLuIwbs/jbSsyQLQ28g1FOH69MF8XMH3+E=
+github.com/abcxyz/jvs v0.0.2 h1:oWOw9Ox2PjQBVbN0TbQujHMgMBnyHIv3IgoaTgRahc0=
 github.com/abcxyz/jvs v0.0.2/go.mod h1:Oy6+cpz+aGRPfjdUDN7s2qarqQRYQv2YrdP/uDoKbAo=
-github.com/abcxyz/pkg v0.1.1 h1:WLYLqnX9KGJWrE4gev0CcwNFOrvyYoLzOTCykC47jeU=
-github.com/abcxyz/pkg v0.1.1/go.mod h1:vzO7x3uKaRbxbCCrQZvgxrglkVhMbf/1FlDgU/DJoxA=
+github.com/abcxyz/pkg v0.1.2-0.20230106203017-d05e75ed64fa h1:RfAkfbvZ+LOIwTgfyDV4vi3wiVCNDqvtI2FroCQ6QDI=
+github.com/abcxyz/pkg v0.1.2-0.20230106203017-d05e75ed64fa/go.mod h1:vzO7x3uKaRbxbCCrQZvgxrglkVhMbf/1FlDgU/DJoxA=
 github.com/benbjohnson/clock v1.3.0 h1:ip6w0uFQkncKQ979AypyG0ER7mqUSBdKLOgAle/AT8A=
 github.com/benbjohnson/clock v1.3.0/go.mod h1:J11/hYXuz8f4ySSvYwY0FKfm+ezbsZBKZxNJlLklBHA=
 github.com/census-instrumentation/opencensus-proto v0.2.1/go.mod h1:f6KPmirojxKA12rnyqOA5BBL4O983OfeGPqjHWSTneU=

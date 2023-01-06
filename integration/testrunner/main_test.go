@@ -20,13 +20,13 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
-	"log"
 	"os"
 	"testing"
 
 	"github.com/abcxyz/lumberjack/integration/testrunner/grpcrunner"
 	"github.com/abcxyz/lumberjack/integration/testrunner/httprunner"
 	"github.com/abcxyz/lumberjack/integration/testrunner/utils"
+	"github.com/abcxyz/pkg/testutil"
 	"google.golang.org/api/idtoken"
 )
 
@@ -34,29 +34,34 @@ var (
 	idTokenPtr      = flag.String("id-token", "", `Identity token, can be obtained with "gcloud auth print-identity-token", can be omitted if service account key is provided.`)
 	projectIDPtr    = flag.String("project-id", "", "Cloud project ID of which the Database will be queried.")
 	datasetQueryPtr = flag.String("dataset-query", "", "BigQuery dataset query string to get the audit logs.")
-	cfg             *utils.Config
 )
 
 func TestMain(m *testing.M) {
 	flag.Parse()
+	os.Exit(m.Run())
+}
+
+func validateCfg(t *testing.T) *utils.Config {
 	if *projectIDPtr == "" {
-		log.Fatal("Cloud Project ID of the Database to query must be provided with the -project-id flag.")
+		t.Fatal("Cloud Project ID of the Database to query must be provided with the -project-id flag.")
 	}
 	if *datasetQueryPtr == "" {
-		log.Fatal("BigQuery dataset query string must be provided with the -dataset-query flag.")
+		t.Fatal("BigQuery dataset query string must be provided with the -dataset-query flag.")
 	}
 
-	var err error
-	if cfg, err = utils.NewConfig(context.Background()); err != nil {
-		log.Fatal(err)
+	cfg, err := utils.NewConfig(context.Background())
+	if err != nil {
+		t.Fatal(err)
 	}
 
-	os.Exit(m.Run())
+	return cfg
 }
 
 func TestHTTPEndpoints(t *testing.T) {
 	t.Parallel()
+	testutil.SkipIfNotIntegration(t)
 
+	cfg := validateCfg(t)
 	testsData := cfg.HTTPEndpoints
 	var tests []string
 	if err := json.Unmarshal([]byte(testsData), &tests); err != nil {
@@ -86,6 +91,9 @@ func TestHTTPEndpoints(t *testing.T) {
 
 func TestGRPCEndpoints(t *testing.T) {
 	t.Parallel()
+	testutil.SkipIfNotIntegration(t)
+
+	cfg := validateCfg(t)
 	testsData := cfg.GRPCEndpoints
 	var tests []string
 	if err := json.Unmarshal([]byte(testsData), &tests); err != nil {
