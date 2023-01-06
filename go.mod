@@ -8,8 +8,8 @@ require (
 	cloud.google.com/go/logging v1.6.1
 	github.com/GoogleCloudPlatform/opentelemetry-operations-go/exporter/trace v1.10.2
 	github.com/GoogleCloudPlatform/opentelemetry-operations-go/propagator v0.34.2
-	github.com/abcxyz/jvs v0.0.2
-	github.com/abcxyz/pkg v0.1.1
+	github.com/abcxyz/jvs v0.0.3-0.20230104200938-854f2ee1a931
+	github.com/abcxyz/pkg v0.1.2-0.20230106203017-d05e75ed64fa
 	github.com/google/go-cmp v0.5.9
 	github.com/google/uuid v1.3.0
 	github.com/lestrrat-go/jwx/v2 v2.0.8
