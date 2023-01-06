@@ -37,7 +37,7 @@ import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilde
 
 @WebMvcTest(LoggingController.class)
 public class LoggingControllerTest {
-  private static final String REQUEST_PATH = "";
+  private static final String REQUEST_PATH = "/";
   private static final String TEST_TRACE_ID = "testTraceId";
   private static final String TEST_EMAIL = "testEmail";
   private static final MockHttpServletRequestBuilder GET_REQUEST_BUILDER = get(REQUEST_PATH);

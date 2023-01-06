@@ -41,7 +41,7 @@ public class LoggingController {
 
   private final LoggingClient loggingClient;
 
-  @GetMapping
+  @GetMapping("/")
   @ResponseStatus(value = HttpStatus.OK)
   void loggingShell(
       @RequestParam(value = TRACE_ID_PARAMETER_KEY) String traceId,
