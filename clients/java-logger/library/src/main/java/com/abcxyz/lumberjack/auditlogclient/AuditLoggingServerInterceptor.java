@@ -136,27 +136,43 @@ public class AuditLoggingServerInterceptor<ReqT extends Message> implements Serv
     // Deques allow for addition/removal at both ends. We use this to keep responses
     // until it is time to log them.
     Deque<ReqT> unloggedRequests = new ConcurrentLinkedDeque<>();
-    ServerCall.Listener<ReqT> delegate =
-        Contexts.interceptCall(
-            ctx,
-            new SimpleForwardingServerCall<ReqT, RespT>(call) {
-              @Override
-              public void sendMessage(RespT message) {
-                // newest message. returns null if empty.
-                ReqT unloggedRequest = unloggedRequests.pollLast();
+    ServerCall<ReqT, RespT> delegateCall =
+        new SimpleForwardingServerCall<ReqT, RespT>(call) {
+          @Override
+          public void sendMessage(RespT message) {
+            // newest message. returns null if empty.
+            ReqT unloggedRequest = unloggedRequests.pollLast();
 
-                auditLog(
-                    selector,
-                    auditLogRequestContext,
-                    unloggedRequest,
-                    message,
-                    logBuilderFinal,
-                    logEntryOperation);
-                super.sendMessage(message);
-              }
-            },
-            headers,
-            next);
+            auditLog(
+                selector,
+                auditLogRequestContext,
+                unloggedRequest,
+                message,
+                logBuilderFinal,
+                logEntryOperation);
+            super.sendMessage(message);
+          }
+
+          // Always handle the last log on the clost call.
+          @Override
+          public void close(io.grpc.Status status, Metadata trailers) {
+            if (status != io.grpc.Status.OK) {
+              ReqT unloggedRequest = unloggedRequests.pollFirst(); // try to get the last request
+              Code code = Code.forNumber(status.getCode().value());
+              logBuilder.setStatus(
+                  Status.newBuilder().setCode(code.getNumber()).setMessage(code.name()).build());
+              auditLog(
+                  selector,
+                  auditLogRequestContext,
+                  unloggedRequest,
+                  null,
+                  logBuilder,
+                  logEntryOperation);
+            }
+            super.close(status, trailers);
+          }
+        };
+    ServerCall.Listener<ReqT> delegate = Contexts.interceptCall(ctx, delegateCall, headers, next);
 
     // we keep a running queue of unlogged requests. This is intended to only hold a single one, but
     // it is possible for more than one request to end up in the queue. This allows us to associate
@@ -187,16 +203,17 @@ public class AuditLoggingServerInterceptor<ReqT extends Message> implements Serv
         try {
           super.onMessage(message);
         } catch (Exception e) {
-          log.info("On message exception occurred, audit logging it: {}", e.getMessage());
-          ReqT unloggedRequest = unloggedRequests.pollFirst(); // try to get the last request
-          logError(
-              selector,
-              auditLogRequestContext,
-              unloggedRequest,
-              e,
-              logBuilderFinal,
-              logEntryOperation);
-          throw e;
+          // log.info("On message exception occurred, audit logging it: {}", e.getMessage());
+          // ReqT unloggedRequest = unloggedRequests.pollFirst(); // try to get the last request
+          // logError(
+          //     selector,
+          //     auditLogRequestContext,
+          //     unloggedRequest,
+          //     e,
+          //     logBuilderFinal,
+          //     logEntryOperation);
+          // throw e;
+          closeWithException(e);
         }
       }
 
@@ -209,16 +226,17 @@ public class AuditLoggingServerInterceptor<ReqT extends Message> implements Serv
         try {
           super.onHalfClose();
         } catch (Exception e) {
-          log.info("Exception occurred, audit logging it: {}", e.getMessage());
-          ReqT unloggedRequest = unloggedRequests.pollFirst(); // try to get the last request
-          logError(
-              selector,
-              auditLogRequestContext,
-              unloggedRequest,
-              e,
-              logBuilderFinal,
-              logEntryOperation);
-          throw e;
+          // log.info("Exception occurred, audit logging it: {}", e.getMessage());
+          // ReqT unloggedRequest = unloggedRequests.pollFirst(); // try to get the last request
+          // logError(
+          //     selector,
+          //     auditLogRequestContext,
+          //     unloggedRequest,
+          //     e,
+          //     logBuilderFinal,
+          //     logEntryOperation);
+          // throw e;
+          closeWithException(e);
         }
       }
 
@@ -227,28 +245,18 @@ public class AuditLoggingServerInterceptor<ReqT extends Message> implements Serv
       public void onComplete() {
         try {
           super.onComplete();
-          // log.info("On complete, log all remaining unlogged requests");
-          // while (unloggedRequests.peekFirst() != null) {
-          //   ReqT unloggedRequest = unloggedRequests.pollFirst();
-          //   auditLog(
-          //       selector,
-          //       auditLogRequestContext,
-          //       unloggedRequest,
-          //       null,
-          //       logBuilderFinal,
-          //       logEntryOperation);
-          // }
         } catch (Exception e) {
-          log.info("On complete exception, audit logging it: {}", e.getMessage());
-          ReqT unloggedRequest = unloggedRequests.pollFirst(); // try to get the last request
-          logError(
-              selector,
-              auditLogRequestContext,
-              unloggedRequest,
-              e,
-              logBuilderFinal,
-              logEntryOperation);
-          throw e;
+          // log.info("On complete exception, audit logging it: {}", e.getMessage());
+          // ReqT unloggedRequest = unloggedRequests.pollFirst(); // try to get the last request
+          // logError(
+          //     selector,
+          //     auditLogRequestContext,
+          //     unloggedRequest,
+          //     e,
+          //     logBuilderFinal,
+          //     logEntryOperation);
+          // throw e;
+          closeWithException(e);
         }
       }
 
@@ -257,29 +265,36 @@ public class AuditLoggingServerInterceptor<ReqT extends Message> implements Serv
       public void onCancel() {
         try {
           super.onCancel();
-          // log.info("On cancel, log all remaining unlogged requests");
-          // while (unloggedRequests.peekFirst() != null) {
-          //   ReqT unloggedRequest = unloggedRequests.pollFirst();
-          //   auditLog(
-          //       selector,
-          //       auditLogRequestContext,
-          //       unloggedRequest,
-          //       null,
-          //       logBuilderFinal,
-          //       logEntryOperation);
-          // }
         } catch (Exception e) {
-          log.info("On cancel exception, audit logging it: {}", e.getMessage());
-          ReqT unloggedRequest = unloggedRequests.pollFirst(); // try to get the last request
-          logError(
-              selector,
-              auditLogRequestContext,
-              unloggedRequest,
-              e,
-              logBuilderFinal,
-              logEntryOperation);
-          throw e;
+          // log.info("On cancel exception, audit logging it: {}", e.getMessage());
+          // ReqT unloggedRequest = unloggedRequests.pollFirst(); // try to get the last request
+          // logError(
+          //     selector,
+          //     auditLogRequestContext,
+          //     unloggedRequest,
+          //     e,
+          //     logBuilderFinal,
+          //     logEntryOperation);
+          // throw e;
+          closeWithException(e);
         }
+      }
+
+      private void closeWithException(Exception e) {
+        StatusRuntimeException t;
+        Metadata metadata = new Metadata();
+
+        if (e instanceof StatusRuntimeException) {
+          t = (StatusRuntimeException) e;
+          if (t.getTrailers() != null) {
+            metadata = t.getTrailers();
+          }
+        } else {
+          // Treat other exceptions as UNKNOWN status.
+          t = new StatusRuntimeException(io.grpc.Status.UNKNOWN);
+        }
+
+        delegateCall.close(t.getStatus(), metadata);
       }
     };
   }
