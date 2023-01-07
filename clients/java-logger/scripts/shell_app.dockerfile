@@ -1,4 +1,4 @@
-FROM maven:3.8.7-eclipse-temurin-17 AS builder
+FROM maven:3.8.7-amazoncorretto-17 AS builder
 COPY . /src
 RUN mvn clean package --no-transfer-progress -f /src/clients/java-logger/pom.xml
 

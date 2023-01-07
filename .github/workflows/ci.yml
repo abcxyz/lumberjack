@@ -42,7 +42,7 @@ jobs:
     with:
       directory: 'clients/java-logger'
       java_version: '17'
-      java_distribution: 'temurin'
+      java_distribution: 'corretto'
 
   # Unit tests - java, go
   go_test:
@@ -61,7 +61,7 @@ jobs:
         uses: actions/setup-java@1df8dbefe2a8cbc99770194893dd902763bee34b # ratchet:actions/setup-java@v3
         with:
           java-version: '17'
-          distribution: 'temurin'
+          distribution: 'corretto'
       # Technically our Artifact Registry Maven repo is public and we don't need this step.
       # But the Artifact Registry wagon will keep retrying the authentication and blocking
       # the unit test for a long time (likely a bug). As a result, we add this step to make
