@@ -12,10 +12,18 @@
   <artifactId>audit-client-shell</artifactId>
   <groupId>com.abcxyz.lumberjack</groupId>
   <version>0.0.1</version>
+
   <properties>
+    <maven.compiler.source>11</maven.compiler.source>
+    <maven.compiler.target>11</maven.compiler.target>
     <java.version>11</java.version>
+    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+
     <lumberjack.basedir>../../..</lumberjack.basedir>
+    <protobuf.version>3.21.7</protobuf.version>
+    <protoc.version>3.21.12</protoc.version>
   </properties>
+
   <dependencies>
     <dependency>
       <groupId>org.springframework.boot</groupId>
@@ -90,6 +98,7 @@
               <goal>run</goal>
             </goals>
             <configuration>
+              <protocVersion>${protoc.version}</protocVersion>
               <includeStdTypes>true</includeStdTypes>
               <includeDirectories>
                 <include>${lumberjack.basedir}/internal/protos/talker</include>
