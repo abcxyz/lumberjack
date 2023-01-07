@@ -73,8 +73,9 @@ var (
 // TestGRPCEndpoint runs tests against a GRPC endpoint. The given GRPC must
 // define a projectID and datasetQuery. If a TalkerClient or BigQueryClient are
 // not provided, they are instantiated via the defaults.
+//
+//nolint:tparallel t.Parallel() is already called
 func TestGRPCEndpoint(ctx context.Context, t *testing.T, g *GRPC) {
-	t.Parallel()
 	t.Helper()
 
 	if g.ProjectID == "" {
