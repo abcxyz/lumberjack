@@ -213,8 +213,49 @@ public class AuditLoggingServerInterceptor<ReqT extends Message> implements Serv
       public void onComplete() {
         try {
           super.onComplete();
+          log.info("On complete, log all remaining unlogged requests");
+          while (unloggedRequests.peekFirst() != null) {
+            ReqT unloggedRequest = unloggedRequests.pollFirst();
+            auditLog(
+                selector,
+                auditLogRequestContext,
+                unloggedRequest,
+                null,
+                logBuilderFinal,
+                logEntryOperation);
+          }
         } catch (Exception e) {
-          log.info("On complete, audit logging it: {}", e.getMessage());
+          log.info("On complete exception, audit logging it: {}", e.getMessage());
+          ReqT unloggedRequest = unloggedRequests.pollFirst(); // try to get the last request
+          logError(
+              selector,
+              auditLogRequestContext,
+              unloggedRequest,
+              e,
+              logBuilderFinal,
+              logEntryOperation);
+          throw e;
+        }
+      }
+
+      /** Does this work? */
+      @Override
+      public void onCancel() {
+        try {
+          super.onCancel();
+          log.info("On cancel, log all remaining unlogged requests");
+          while (unloggedRequests.peekFirst() != null) {
+            ReqT unloggedRequest = unloggedRequests.pollFirst();
+            auditLog(
+                selector,
+                auditLogRequestContext,
+                unloggedRequest,
+                null,
+                logBuilderFinal,
+                logEntryOperation);
+          }
+        } catch (Exception e) {
+          log.info("On cancel exception, audit logging it: {}", e.getMessage());
           ReqT unloggedRequest = unloggedRequests.pollFirst(); // try to get the last request
           logError(
               selector,
