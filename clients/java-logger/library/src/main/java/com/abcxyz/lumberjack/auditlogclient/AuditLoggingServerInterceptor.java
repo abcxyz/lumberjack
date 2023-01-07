@@ -207,6 +207,25 @@ public class AuditLoggingServerInterceptor<ReqT extends Message> implements Serv
           throw e;
         }
       }
+
+      /** Does this work? */
+      @Override
+      public void onComplete() {
+        try {
+          super.onComplete();
+        } catch (Exception e) {
+          log.info("On complete, audit logging it: {}", e.getMessage());
+          ReqT unloggedRequest = unloggedRequests.pollFirst(); // try to get the last request
+          logError(
+              selector,
+              auditLogRequestContext,
+              unloggedRequest,
+              e,
+              logBuilderFinal,
+              logEntryOperation);
+          throw e;
+        }
+      }
     };
   }
 
