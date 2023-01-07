@@ -220,7 +220,7 @@
                 </outputTarget>
                 <outputTarget>
                   <type>grpc-java</type>
-                  <pluginArtifact>io.grpc:protoc-gen-grpc-java:1.50.1</pluginArtifact>
+                  <pluginArtifact>io.grpc:protoc-gen-grpc-java:1.51.1</pluginArtifact>
                 </outputTarget>
               </outputTargets>
             </configuration>
