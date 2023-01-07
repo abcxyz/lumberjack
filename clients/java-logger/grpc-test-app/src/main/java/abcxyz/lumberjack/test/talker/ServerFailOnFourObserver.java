@@ -39,8 +39,9 @@ public class ServerFailOnFourObserver implements StreamObserver<FailOnFourReques
     AuditLog.Builder auditLogBuilder = AuditLogs.getBuilderFromContext();
     auditLogBuilder.setResourceName(request.getTarget());
     if (request.getValue() == 4) {
-      log.info("Got 4, returnning error");
-      onError(new StatusRuntimeException(Status.INVALID_ARGUMENT));
+      log.info("Got 4, throwing error");
+      // onError(new StatusRuntimeException(Status.INVALID_ARGUMENT));
+      throw new StatusRuntimeException(Status.INVALID_ARGUMENT);
     } else {
       log.info("Got {} which isn't 4.", request.getValue());
     }
