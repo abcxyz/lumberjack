@@ -30,8 +30,11 @@ import io.grpc.inprocess.InProcessChannelBuilder;
 import io.grpc.inprocess.InProcessServerBuilder;
 import io.grpc.stub.StreamObserver;
 import io.grpc.testing.GrpcCleanupRule;
+import java.util.concurrent.TimeUnit;
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Rule;
+import org.junit.Test;
 
 public class RemoteProcessorTests {
   @Rule public final GrpcCleanupRule grpcCleanup = new GrpcCleanupRule();
@@ -53,6 +56,7 @@ public class RemoteProcessorTests {
       mock(AuditLogAgentGrpc.AuditLogAgentImplBase.class, delegatesTo(new FakeAuditLogAgentImpl()));
 
   private RemoteProcessor remoteProcessor;
+  private ManagedChannel channel;
 
   @Before
   public void setUp() throws Exception {
@@ -63,13 +67,18 @@ public class RemoteProcessorTests {
             .addService(serviceImpl)
             .build()
             .start());
-    ManagedChannel channel =
+    channel =
         grpcCleanup.register(InProcessChannelBuilder.forName(serverName).directExecutor().build());
     AuditLogAgentBlockingStub blockingStub = AuditLogAgentGrpc.newBlockingStub(channel);
     remoteProcessor = new RemoteProcessor(blockingStub);
   }
 
-  @org.junit.Test
+  @After
+  public void tearDown() throws Exception {
+    channel.shutdownNow().awaitTermination(5, TimeUnit.SECONDS);
+  }
+
+  @Test
   public void invokesBlockingStubWithAuditLogRequest() {
     AuditLogRequest request = AuditLogRequest.getDefaultInstance();
     remoteProcessor.process(request);

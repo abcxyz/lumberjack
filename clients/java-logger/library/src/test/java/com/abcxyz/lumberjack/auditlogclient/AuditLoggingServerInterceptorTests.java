@@ -25,19 +25,12 @@ import static org.mockito.Mockito.verify;
 
 import com.abcxyz.lumberjack.auditlogclient.config.AuditLoggingConfiguration;
 import com.abcxyz.lumberjack.auditlogclient.config.Selector;
-import com.abcxyz.lumberjack.auditlogclient.processor.LogProcessingException;
 import com.abcxyz.lumberjack.v1alpha1.AuditLogRequest;
 import com.google.cloud.audit.AuditLog;
-import com.google.logging.v2.LogEntryOperation;
 import com.google.protobuf.Struct;
-import com.google.protobuf.Timestamp;
 import com.google.protobuf.Value;
-import com.google.rpc.Code;
-import com.google.rpc.Status;
 import io.grpc.Metadata;
-import io.grpc.StatusRuntimeException;
 import java.time.Clock;
-import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -59,7 +52,7 @@ public class AuditLoggingServerInterceptorTests {
 
   @Mock Clock clock;
 
-  @InjectMocks AuditLoggingServerInterceptor interceptor;
+  @InjectMocks AuditLoggingServerInterceptor<AuditLog> interceptor;
 
   @Captor private ArgumentCaptor<AuditLogRequest> auditLogRequestCaptor;
 
@@ -149,82 +142,6 @@ public class AuditLoggingServerInterceptorTests {
     assertThat(chosenSelector.get()).isEqualTo(selector3);
     // We expect the cache to have this method, and therefore rules should not be read again.
     verify(auditLoggingConfiguration, times(2)).getRules();
-  }
-
-  @Test
-  public void logsError() throws LogProcessingException {
-    Selector selector = new Selector("*", null, null);
-    AuditLog.Builder builder = AuditLog.newBuilder();
-    doReturn(Clock.systemUTC().instant()).when(clock).instant();
-    interceptor.logError(
-        selector,
-        Struct.getDefaultInstance(),
-        null,
-        new RuntimeException("Test Message"),
-        builder,
-        LogEntryOperation.getDefaultInstance());
-    AuditLog.Builder expectedBuilder =
-        AuditLog.newBuilder()
-            .setStatus(
-                Status.newBuilder()
-                    .setMessage(Code.INTERNAL.name())
-                    .setCode(Code.INTERNAL.getNumber())
-                    .build());
-    verify(loggingClient).log(auditLogRequestCaptor.capture());
-    assertThat(auditLogRequestCaptor.getValue().getPayload().getStatus())
-        .isEqualTo(expectedBuilder.getStatus())
-        .usingRecursiveComparison();
-  }
-
-  @Test
-  public void logsError_GRPC_Code() throws LogProcessingException {
-    Selector selector = new Selector("*", null, null);
-    AuditLog.Builder builder = AuditLog.newBuilder();
-    doReturn(Clock.systemUTC().instant()).when(clock).instant();
-    interceptor.logError(
-        selector,
-        Struct.getDefaultInstance(),
-        null,
-        new StatusRuntimeException(io.grpc.Status.FAILED_PRECONDITION),
-        builder,
-        LogEntryOperation.getDefaultInstance());
-    AuditLog.Builder expectedBuilder =
-        AuditLog.newBuilder()
-            .setStatus(
-                Status.newBuilder()
-                    .setMessage(Code.FAILED_PRECONDITION.name())
-                    .setCode(Code.FAILED_PRECONDITION.getNumber())
-                    .build());
-    verify(loggingClient).log(auditLogRequestCaptor.capture());
-    assertThat(auditLogRequestCaptor.getValue().getPayload().getStatus())
-        .isEqualTo(expectedBuilder.getStatus())
-        .usingRecursiveComparison();
-  }
-
-  @Test
-  public void logsError_CapturesTimestamp() throws LogProcessingException {
-    Selector selector = new Selector("*", null, null);
-    AuditLog.Builder builder = AuditLog.newBuilder();
-    Instant now = Instant.parse("2022-04-18T22:11:22.333333Z");
-    doReturn(now).when(clock).instant();
-    interceptor.logError(
-        selector,
-        Struct.getDefaultInstance(),
-        null,
-        new StatusRuntimeException(io.grpc.Status.FAILED_PRECONDITION),
-        builder,
-        LogEntryOperation.getDefaultInstance());
-    verify(loggingClient).log(auditLogRequestCaptor.capture());
-    assertThat(auditLogRequestCaptor.getValue().hasTimestamp()).isTrue();
-    assertThat(
-        auditLogRequestCaptor
-            .getValue()
-            .getTimestamp()
-            .equals(
-                Timestamp.newBuilder()
-                    .setSeconds(now.getEpochSecond())
-                    .setNanos(now.getNano())
-                    .build()));
   }
 
   @Test
