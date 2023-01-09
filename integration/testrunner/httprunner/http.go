@@ -29,6 +29,8 @@ import (
 
 // CheckHTTPEndpoint runs the integration tests against a Lumberjack-integrated
 // HTTP endpoint.
+//
+//nolint:thelper // Not really a helper.
 func CheckHTTPEndpoint(ctx context.Context, tb testing.TB, endpointURL, idToken, projectID, datasetQuery string, cfg *utils.Config) {
 	// Don't mark t.Helper().
 	// Here locates the actual test logic so we want to be able to locate the

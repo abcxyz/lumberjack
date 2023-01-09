@@ -73,6 +73,8 @@ var (
 // TestGRPCEndpoint runs tests against a GRPC endpoint. The given GRPC must
 // define a projectID and datasetQuery. If a TalkerClient or BigQueryClient are
 // not provided, they are instantiated via the defaults.
+//
+//nolint:thelper // Not really a helper.
 func CheckGRPCEndpoint(ctx context.Context, t *testing.T, g *GRPC) {
 	// Don't mark t.Helper().
 	// Here locates the actual test logic so we want to be able to locate the
