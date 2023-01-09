@@ -1,5 +1,5 @@
 /*
- * Copyright 2021 Lumberjack authors (see AUTHORS file)
+ * Copyright 2022 Lumberjack authors (see AUTHORS file)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -136,27 +136,46 @@ public class AuditLoggingServerInterceptor<ReqT extends Message> implements Serv
     // Deques allow for addition/removal at both ends. We use this to keep responses
     // until it is time to log them.
     Deque<ReqT> unloggedRequests = new ConcurrentLinkedDeque<>();
-    ServerCall.Listener<ReqT> delegate =
-        Contexts.interceptCall(
-            ctx,
-            new SimpleForwardingServerCall<ReqT, RespT>(call) {
-              @Override
-              public void sendMessage(RespT message) {
-                // newest message. returns null if empty.
-                ReqT unloggedRequest = unloggedRequests.pollLast();
+    ServerCall<ReqT, RespT> delegateCall =
+        new SimpleForwardingServerCall<ReqT, RespT>(call) {
+          @Override
+          public void sendMessage(RespT message) {
+            // Mewest message. Returns null if empty.
+            ReqT unloggedRequest = unloggedRequests.pollLast();
+            auditLog(
+                selector,
+                auditLogRequestContext,
+                unloggedRequest,
+                message,
+                logBuilderFinal,
+                logEntryOperation);
+            super.sendMessage(message);
+          }
 
-                auditLog(
-                    selector,
-                    auditLogRequestContext,
-                    unloggedRequest,
-                    message,
-                    logBuilderFinal,
-                    logEntryOperation);
-                super.sendMessage(message);
-              }
-            },
-            headers,
-            next);
+          // Always handle non-OK status in the close call.
+          // Exceptions don't always propagate on the same path. It's most effective to capture the
+          // error code in the close call.
+          @Override
+          public void close(io.grpc.Status status, Metadata trailers) {
+            if (status != io.grpc.Status.OK) {
+              // Audit logs expect an rpc code, however this exception is grpc specific. We have to
+              // convert from one to the other.
+              Code code = Code.forNumber(status.getCode().value());
+              ReqT unloggedRequest = unloggedRequests.pollFirst(); // try to get the last request
+              logBuilder.setStatus(
+                  Status.newBuilder().setCode(code.getNumber()).setMessage(code.name()).build());
+              auditLog(
+                  selector,
+                  auditLogRequestContext,
+                  unloggedRequest,
+                  null,
+                  logBuilder,
+                  logEntryOperation);
+            }
+            super.close(status, trailers);
+          }
+        };
+    ServerCall.Listener<ReqT> delegate = Contexts.interceptCall(ctx, delegateCall, headers, next);
 
     // we keep a running queue of unlogged requests. This is intended to only hold a single one, but
     // it is possible for more than one request to end up in the queue. This allows us to associate
@@ -183,29 +202,59 @@ public class AuditLoggingServerInterceptor<ReqT extends Message> implements Serv
           }
         }
         unloggedRequests.add(message);
-        super.onMessage(message);
+
+        try {
+          super.onMessage(message);
+        } catch (Exception e) {
+          closeWithException(e);
+        }
       }
 
-      /**
-       * This method is where exceptions will bubble up to. It is used here to audit log those
-       * errors.
-       */
       @Override
       public void onHalfClose() {
         try {
           super.onHalfClose();
         } catch (Exception e) {
-          log.info("Exception occurred, audit logging it: {}", e.getMessage());
-          ReqT unloggedRequest = unloggedRequests.pollFirst(); // try to get the last request
-          logError(
-              selector,
-              auditLogRequestContext,
-              unloggedRequest,
-              e,
-              logBuilderFinal,
-              logEntryOperation);
-          throw e;
+          closeWithException(e);
         }
+      }
+
+      @Override
+      public void onComplete() {
+        try {
+          super.onComplete();
+        } catch (Exception e) {
+          closeWithException(e);
+        }
+      }
+
+      @Override
+      public void onCancel() {
+        try {
+          super.onCancel();
+        } catch (Exception e) {
+          closeWithException(e);
+        }
+      }
+
+      // Explicitly call.close() for any exceptions we run into on these events.
+      // This allows us to leverage call.close() to be the single place to write
+      // the last audit log with the error response code.
+      private void closeWithException(Exception e) {
+        StatusRuntimeException t;
+        Metadata metadata = new Metadata();
+
+        if (e instanceof StatusRuntimeException) {
+          t = (StatusRuntimeException) e;
+          if (t.getTrailers() != null) {
+            metadata = t.getTrailers();
+          }
+        } else {
+          // Treat other exceptions as UNKNOWN status.
+          t = new StatusRuntimeException(io.grpc.Status.UNKNOWN);
+        }
+
+        delegateCall.close(t.getStatus(), metadata);
       }
     };
   }
@@ -240,29 +289,6 @@ public class AuditLoggingServerInterceptor<ReqT extends Message> implements Serv
     } catch (LogProcessingException e) {
       throw new RuntimeException(e);
     }
-  }
-
-  /**
-   * Intended to add audit logs when there is an exception thrown in the server. We expect that
-   * there is no response, and instead a status code will be added to the audit log.
-   */
-  <ReqT, RespT> void logError(
-      Selector selector,
-      Struct auditLogRequestContext,
-      ReqT request,
-      Exception e,
-      AuditLog.Builder logBuilder,
-      LogEntryOperation logEntryOperation) {
-    Code code = Code.INTERNAL; // default to internal error
-    // TODO: identify other types of exceptions that we could add specific codes for
-    if (e instanceof StatusRuntimeException) {
-      // Audit logs expect an rpc code, however this exception is grpc specific. We have to convert
-      // from one to the other.
-      code = Code.forNumber(((StatusRuntimeException) e).getStatus().getCode().value());
-    }
-    logBuilder.setStatus(
-        Status.newBuilder().setCode(code.getNumber()).setMessage(code.name()).build());
-    auditLog(selector, auditLogRequestContext, request, null, logBuilder, logEntryOperation);
   }
 
   /**
