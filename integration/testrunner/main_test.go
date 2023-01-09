@@ -86,7 +86,7 @@ func TestHTTPEndpoints(t *testing.T) {
 			}
 
 			ctx := context.Background()
-			httprunner.TestHTTPEndpoint(ctx, t, tc, idToken, *projectIDPtr, *datasetQueryPtr, cfg)
+			httprunner.CheckHTTPEndpoint(ctx, t, tc, idToken, *projectIDPtr, *datasetQueryPtr, cfg)
 		})
 	}
 }
@@ -118,7 +118,7 @@ func TestGRPCEndpoints(t *testing.T) {
 			}
 
 			ctx := context.Background()
-			grpcrunner.TestGRPCEndpoint(ctx, t, &grpcrunner.GRPC{
+			grpcrunner.CheckGRPCEndpoint(ctx, t, &grpcrunner.GRPC{
 				ProjectID:    *projectIDPtr,
 				DatasetQuery: *datasetQueryPtr,
 

@@ -27,10 +27,12 @@ import (
 	"github.com/sethvargo/go-retry"
 )
 
-func TestHTTPEndpoint(ctx context.Context, tb testing.TB, endpointURL string,
-	idToken string, projectID string, datasetQuery string, cfg *utils.Config,
-) {
-	tb.Helper()
+// CheckHTTPEndpoint runs the integration tests against a Lumberjack-integrated
+// HTTP endpoint.
+func CheckHTTPEndpoint(ctx context.Context, tb testing.TB, endpointURL, idToken, projectID, datasetQuery string, cfg *utils.Config) {
+	// Don't mark t.Helper().
+	// Here locates the actual test logic so we want to be able to locate the
+	// actual line of error here instead of the main test.
 
 	id := uuid.New().String()
 	tb.Logf("using uuid %s", id)
