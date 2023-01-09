@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package grpcrunner
+package testrunner
 
 import (
 	"context"
@@ -27,7 +27,6 @@ import (
 
 	"cloud.google.com/go/bigquery"
 	jvspb "github.com/abcxyz/jvs/apis/v0"
-	"github.com/abcxyz/lumberjack/integration/testrunner/utils"
 	"github.com/abcxyz/lumberjack/internal/talkerpb"
 	"github.com/google/uuid"
 	"github.com/lestrrat-go/jwx/v2/jwa"
@@ -51,7 +50,7 @@ type GRPC struct {
 	EndpointURL  string
 	TalkerClient talkerpb.TalkerClient
 
-	Config               *utils.Config
+	Config               *Config
 	BigQueryClient       *bigquery.Client
 	RequireJustification bool
 }
@@ -70,12 +69,12 @@ var (
 	privateKey, _    = x509.ParseECPrivateKey(privateKeyPEM.Bytes)
 )
 
-// TestGRPCEndpoint runs tests against a GRPC endpoint. The given GRPC must
+// testGRPCEndpoint runs tests against a GRPC endpoint. The given GRPC must
 // define a projectID and datasetQuery. If a TalkerClient or BigQueryClient are
 // not provided, they are instantiated via the defaults.
 //
 //nolint:thelper // Not really a helper.
-func CheckGRPCEndpoint(ctx context.Context, t *testing.T, g *GRPC) {
+func testGRPCEndpoint(ctx context.Context, t *testing.T, g *GRPC) {
 	// Don't mark t.Helper().
 	// Here locates the actual test logic so we want to be able to locate the
 	// actual line of error here instead of the main test.
@@ -113,7 +112,7 @@ func CheckGRPCEndpoint(ctx context.Context, t *testing.T, g *GRPC) {
 	ctx = metadata.NewOutgoingContext(ctx, md)
 
 	if g.BigQueryClient == nil {
-		bqClient, err := utils.MakeClient(ctx, g.ProjectID)
+		bqClient, err := makeBigQueryClient(ctx, g.ProjectID)
 		if err != nil {
 			t.Errorf("BigQuery request failed: %v", err)
 		}
@@ -133,7 +132,7 @@ func CheckGRPCEndpoint(ctx context.Context, t *testing.T, g *GRPC) {
 			t.Errorf("could not greet: %v", err)
 		}
 		query := g.makeQueryForGRPCUnary(id)
-		utils.QueryIfAuditLogExistsWithRetries(ctx, t, query, g.Config, "unary_hello")
+		queryIfAuditLogExistsWithRetries(ctx, t, query, g.Config, "unary_hello")
 	})
 
 	t.Run("fail_req_unary_failure", func(t *testing.T) {
@@ -156,7 +155,7 @@ func CheckGRPCEndpoint(ctx context.Context, t *testing.T, g *GRPC) {
 		}
 
 		query := g.makeQueryForGRPCUnary(id)
-		utils.QueryIfAuditLogExistsWithRetries(ctx, t, query, g.Config, "unary_fail")
+		queryIfAuditLogExistsWithRetries(ctx, t, query, g.Config, "unary_fail")
 	})
 
 	t.Run("fibonacci_req_server_streaming_success", func(t *testing.T) {
@@ -180,7 +179,7 @@ func CheckGRPCEndpoint(ctx context.Context, t *testing.T, g *GRPC) {
 			t.Logf("Received value %v", place.Value)
 		}
 		query := g.makeQueryForGRPCStream(id)
-		utils.QueryIfAuditLogsExistWithRetries(ctx, t, query, g.Config, "server_stream_fibonacci", int64(places))
+		queryIfAuditLogsExistWithRetries(ctx, t, query, g.Config, "server_stream_fibonacci", int64(places))
 	})
 
 	t.Run("addition_req_client_streaming_success", func(t *testing.T) {
@@ -206,7 +205,7 @@ func CheckGRPCEndpoint(ctx context.Context, t *testing.T, g *GRPC) {
 		t.Logf("Value returned: %d", reply.Sum)
 
 		query := g.makeQueryForGRPCStream(id)
-		utils.QueryIfAuditLogsExistWithRetries(ctx, t, query, g.Config, "client_stream_addition", int64(totalNumbers))
+		queryIfAuditLogsExistWithRetries(ctx, t, query, g.Config, "client_stream_addition", int64(totalNumbers))
 	})
 
 	t.Run("fail_on_four_req_client_stream_failure", func(t *testing.T) {
@@ -242,7 +241,7 @@ func CheckGRPCEndpoint(ctx context.Context, t *testing.T, g *GRPC) {
 
 		query := g.makeQueryForGRPCStream(id)
 		// we expect to have 4 audit logs - the last sent number (5) will be after the err ocurred.
-		utils.QueryIfAuditLogsExistWithRetries(ctx, t, query, g.Config, "stream_fail_on_four", int64(4))
+		queryIfAuditLogsExistWithRetries(ctx, t, query, g.Config, "stream_fail_on_four", int64(4))
 	})
 }
 
@@ -327,7 +326,7 @@ func (g *GRPC) makeQueryForGRPCUnary(id string) *bigquery.Query {
 	queryString += ` AND jsonPayload.method_name IS NOT NULL`
 	queryString += ` AND jsonPayload.authentication_info.principal_email IS NOT NULL`
 	queryString += ") AS INT64)"
-	return utils.MakeQuery(*g.BigQueryClient, id, queryString)
+	return makeQuery(*g.BigQueryClient, id, queryString)
 }
 
 // Similar to the above function, but can return multiple results, which is what we expect for streaming.
@@ -340,5 +339,5 @@ func (g *GRPC) makeQueryForGRPCStream(id string) *bigquery.Query {
 	queryString += ` AND jsonPayload.service_name IS NOT NULL`
 	queryString += ` AND jsonPayload.method_name IS NOT NULL`
 	queryString += ` AND jsonPayload.authentication_info.principal_email IS NOT NULL`
-	return utils.MakeQuery(*g.BigQueryClient, id, queryString)
+	return makeQuery(*g.BigQueryClient, id, queryString)
 }
