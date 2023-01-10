@@ -112,15 +112,7 @@ func testGRPCEndpoint(ctx context.Context, t *testing.T, g *GRPC) {
 	ctx = metadata.NewOutgoingContext(ctx, md)
 
 	if g.BigQueryClient == nil {
-		bqClient, err := makeBigQueryClient(ctx, g.ProjectID)
-		if err != nil {
-			t.Errorf("BigQuery request failed: %v", err)
-		}
-		t.Cleanup(func() {
-			if err := bqClient.Close(); err != nil {
-				t.Errorf("Failed to close the BQ client: %v", err)
-			}
-		})
+		bqClient := makeBigQueryClient(ctx, t, g.ProjectID)
 		g.BigQueryClient = bqClient
 	}
 
@@ -240,7 +232,7 @@ func testGRPCEndpoint(ctx context.Context, t *testing.T, g *GRPC) {
 		}
 
 		query := g.makeQueryForGRPCStream(id)
-		// we expect to have 4 audit logs - the last sent number (5) will be after the err ocurred.
+		// we expect to have 4 audit logs - the last sent number (5) will be after the err occurred.
 		queryIfAuditLogsExistWithRetries(ctx, t, query, g.Config, "stream_fail_on_four", int64(4))
 	})
 }
@@ -289,7 +281,7 @@ func justificationToken() (string, error) {
 // Server is in cloud run. Example: https://cloud.google.com/run/docs/triggering/grpc#request-auth
 // We are using token-based authentication to connect to the server, which will be passed through
 // a JWT to the server. There, the server will be able to decipher the JWT to find the calling user.
-func createConnection(ctx context.Context, t *testing.T, addr string, idToken string) *grpc.ClientConn {
+func createConnection(ctx context.Context, t *testing.T, addr, idToken string) *grpc.ClientConn {
 	t.Helper()
 
 	rpcCreds := oauth.NewOauthAccess(&oauth2.Token{AccessToken: idToken})

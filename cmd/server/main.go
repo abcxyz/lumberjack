@@ -4,7 +4,7 @@
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
-//     https://www.apache.org/licenses/LICENSE-2.0
+//     http://www.apache.org/licenses/LICENSE-2.0
 //
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
@@ -79,7 +79,7 @@ func realMain(ctx context.Context) error {
 	}
 	logAgent, err := server.NewAuditLogAgent(client)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to create audit log agent: %w", err)
 	}
 
 	// TODO(b/202320320): Build interceptors for observability, logger, etc.
@@ -100,7 +100,10 @@ func realMain(ctx context.Context) error {
 	g, ctx := errgroup.WithContext(ctx)
 	g.Go(func() error {
 		logger.Infof("server listening at %v", lis.Addr())
-		return s.Serve(lis)
+		if err := s.Serve(lis); err != nil {
+			return fmt.Errorf("failed to start grpc server: %w", err)
+		}
+		return nil
 	})
 
 	// Either we have received a TERM signal or errgroup has encountered an err.

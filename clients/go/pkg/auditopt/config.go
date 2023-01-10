@@ -77,7 +77,7 @@ func fromConfigFile(ctx context.Context, path string, lookuper envconfig.Lookupe
 		// We ignore ErrNotExist when reading the file because we
 		// still use env vars and defaults to setup the client.
 		if err != nil && !errors.Is(err, fs.ErrNotExist) {
-			return err
+			return fmt.Errorf("failed to read config file: %w", err)
 		}
 		cfg, err := loadConfig(ctx, fc, lookuper)
 		if err != nil {
@@ -99,7 +99,9 @@ func InterceptorFromConfigFile(ctx context.Context, path string) audit.Intercept
 func interceptorFromConfigFile(ctx context.Context, path string, lookuper envconfig.Lookuper) audit.InterceptorOption {
 	return func(i *audit.Interceptor) error {
 		fc, err := os.ReadFile(path)
-		if err != nil {
+		// We ignore ErrNotExist when reading the file because we
+		// still use env vars and defaults to setup the client.
+		if err != nil && !errors.Is(err, fs.ErrNotExist) {
 			return fmt.Errorf("failed to read config file: %w", err)
 		}
 		cfg, err := loadConfig(ctx, fc, lookuper)
@@ -198,7 +200,7 @@ func principalFilterFromConfig(cfg *api.Config) (audit.Option, error) {
 	opts = append(opts, withIncludes, withExcludes)
 	m, err := filtering.NewPrincipalEmailMatcher(opts...)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to create email matcher: %w", err)
 	}
 	return audit.WithValidator(m), nil
 }
@@ -219,7 +221,7 @@ func backendsFromConfig(cfg *api.Config) ([]audit.Option, error) {
 		}
 		b, err := remote.NewProcessor(addr, authopts...)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("failed to create remote processor: %w", err)
 		}
 		backendOpts = append(backendOpts, audit.WithBackend(b))
 	}
@@ -245,7 +247,7 @@ func backendsFromConfig(cfg *api.Config) ([]audit.Option, error) {
 		}
 
 		if perr != nil {
-			return nil, perr
+			return nil, fmt.Errorf("failed to create processor: %w", perr)
 		}
 		backendOpts = append(backendOpts, audit.WithBackend(p))
 	}
@@ -267,7 +269,7 @@ func justificationFromConfig(ctx context.Context, cfg *api.Config) (audit.Option
 	}
 	jvsClient, err := client.NewJVSClient(ctx, &jvsconfig)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to create jvs client: %w", err)
 	}
 	p := justification.NewProcessor(jvsClient)
 	return audit.WithMutator(p), nil

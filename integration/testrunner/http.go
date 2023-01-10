@@ -65,17 +65,13 @@ func testHTTPEndpoint(ctx context.Context, tb testing.TB, endpointURL, idToken, 
 		tb.Fatal(err)
 	}
 
-	bqClient, err := makeBigQueryClient(ctx, projectID)
-	if err != nil {
-		tb.Fatal(err)
-	}
-	defer bqClient.Close()
+	bqClient := makeBigQueryClient(ctx, tb, projectID)
 
 	bqQuery := makeQueryForHTTP(*bqClient, id, projectID, datasetQuery)
 	queryIfAuditLogExistsWithRetries(ctx, tb, bqQuery, cfg, "httpEndpointTest")
 }
 
-func makeQueryForHTTP(client bigquery.Client, id string, projectID string, datasetQuery string) *bigquery.Query {
+func makeQueryForHTTP(client bigquery.Client, id, projectID, datasetQuery string) *bigquery.Query {
 	// Cast to int64 because the result checker expects a number.
 	queryString := fmt.Sprintf("SELECT CAST(EXISTS (SELECT * FROM `%s.%s` WHERE labels.trace_id=?", projectID, datasetQuery)
 	queryString += ` AND jsonPayload.service_name IS NOT NULL`
