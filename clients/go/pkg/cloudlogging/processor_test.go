@@ -234,7 +234,7 @@ func TestProcessor_Stop(t *testing.T) {
 					Payload: &audit.AuditLog{ServiceName: "test-service"},
 				},
 			},
-			wantErrSubstr: "error flushing logs with type DATA_ACCESS",
+			wantErrSubstr: "failed to flush DATA_ACCESS logs",
 		},
 		{
 			name: "should_return_two_injected_errors_with_besteffort",
@@ -252,7 +252,7 @@ func TestProcessor_Stop(t *testing.T) {
 					Payload: &audit.AuditLog{ServiceName: "test-service"},
 				},
 			},
-			wantErrSubstr: "error flushing logs with type ADMIN_ACTIVITY",
+			wantErrSubstr: "failed to flush ADMIN_ACTIVITY logs",
 		},
 		{
 			name: "should_ignore_injected_error_with_failclose",
