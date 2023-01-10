@@ -4,7 +4,7 @@
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
-// https://www.apache.org/licenses/LICENSE-2.0
+//     http://www.apache.org/licenses/LICENSE-2.0
 //
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
@@ -71,7 +71,7 @@ func realMain() (outErr error) {
 
 	// Override JVS public key endpoint since we start a local one here in test.
 	if err := os.Setenv("AUDIT_CLIENT_JUSTIFICATION_PUBLIC_KEYS_ENDPOINT", pubKeyEndpoint); err != nil {
-		return err
+		return fmt.Errorf("failed to set env: %w", err)
 	}
 
 	flag.Parse()
@@ -123,16 +123,16 @@ func startLocalPublicKeyServer() (string, func(), error) {
 	key, err := x509.ParsePKIXPublicKey(block.Bytes)
 	if err != nil {
 		log.Printf("Err when parsing key %v", err)
-		return "", nil, err
+		return "", nil, fmt.Errorf("failed to parse public key: %w", err)
 	}
 	ecdsaKey, err := jwk.FromRaw(key)
 	if err != nil {
 		log.Printf("Err when converting key to jwk %v", err)
-		return "", nil, err
+		return "", nil, fmt.Errorf("failed to parse jwk: %w", err)
 	}
 	if err := ecdsaKey.Set(jwk.KeyIDKey, "integ-key"); err != nil {
 		log.Printf("Err when setting key id %v", err)
-		return "", nil, err
+		return "", nil, fmt.Errorf("failed to set key id: %w", err)
 	}
 
 	jwks := make(map[string][]jwk.Key)
@@ -140,7 +140,7 @@ func startLocalPublicKeyServer() (string, func(), error) {
 	j, err := json.MarshalIndent(jwks, "", " ")
 	if err != nil {
 		log.Printf("Err when creating jwks json %v", err)
-		return "", nil, err
+		return "", nil, fmt.Errorf("failed to marshal jwks: %w", err)
 	}
 	path := "/.well-known/jwks"
 	mux := http.NewServeMux()
@@ -203,7 +203,7 @@ func (s *server) Fibonacci(req *talkerpb.FibonacciRequest, svr talkerpb.Talker_F
 			Position: i,
 			Value:    z,
 		}); err != nil {
-			return err
+			return fmt.Errorf("failed to send fibonacci response: %w", err)
 		}
 	}
 
@@ -220,12 +220,12 @@ func (s *server) Addition(svr talkerpb.Talker_AdditionServer) error {
 			if err := svr.SendAndClose(&talkerpb.AdditionResponse{
 				Sum: uint64(sum),
 			}); err != nil {
-				return err
+				return fmt.Errorf("failed to send and close addition response: %w", err)
 			}
 			break
 		}
 		if err != nil {
-			return err
+			return fmt.Errorf("recv error that was not EOF in Addition: %w", err)
 		}
 
 		if logReq, ok := audit.LogReqFromCtx(svr.Context()); ok {
@@ -254,7 +254,7 @@ func (s *server) FailOnFour(svr talkerpb.Talker_FailOnFourServer) error {
 			break
 		}
 		if err != nil {
-			return err
+			return fmt.Errorf("recv error that was not EOF in FailOnFour: %w", err)
 		}
 
 		if logReq, ok := audit.LogReqFromCtx(svr.Context()); ok {

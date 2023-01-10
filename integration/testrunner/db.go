@@ -57,14 +57,29 @@ func queryIfAuditLogExists(ctx context.Context, tb testing.TB, query *bigquery.Q
 	return result >= expectedNum, nil
 }
 
-func makeQuery(bqClient bigquery.Client, id string, queryString string) *bigquery.Query {
+func makeQuery(bqClient bigquery.Client, id, queryString string) *bigquery.Query {
 	bqQuery := bqClient.Query(queryString)
 	bqQuery.Parameters = []bigquery.QueryParameter{{Value: id}}
 	return bqQuery
 }
 
-func makeBigQueryClient(ctx context.Context, projectID string) (*bigquery.Client, error) {
-	return bigquery.NewClient(ctx, projectID)
+// makeBigQueryClient creates a new client and automatically closes the
+// connection when the tests finish.
+func makeBigQueryClient(ctx context.Context, tb testing.TB, projectID string) *bigquery.Client {
+	tb.Helper()
+
+	client, err := bigquery.NewClient(ctx, projectID)
+	if err != nil {
+		tb.Fatal(err)
+	}
+
+	tb.Cleanup(func() {
+		if err := client.Close(); err != nil {
+			tb.Errorf("failed to close the biquery client: %v", err)
+		}
+	})
+
+	return client
 }
 
 // This calls the database to check that an audit log exists. It uses the retries that are specified in the Config

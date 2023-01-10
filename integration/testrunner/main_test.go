@@ -68,6 +68,7 @@ func TestHTTPEndpoints(t *testing.T) {
 	}
 
 	for i, tc := range tests {
+		i := i
 		tc := tc
 
 		t.Run(tc, func(t *testing.T) {
