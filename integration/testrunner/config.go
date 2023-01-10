@@ -12,10 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package utils
+package testrunner
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/sethvargo/go-envconfig"
@@ -31,10 +32,10 @@ type Config struct {
 	MaxDBQueryTries         uint64        `env:"AUDIT_CLIENT_TEST_MAX_DB_QUERY_TRIES,default=5"`
 }
 
-func NewConfig(ctx context.Context) (*Config, error) {
+func newTestConfig(ctx context.Context) (*Config, error) {
 	var c Config
 	if err := envconfig.ProcessWith(ctx, &c, envconfig.OsLookuper()); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to process environment: %w", err)
 	}
 	return &c, nil
 }

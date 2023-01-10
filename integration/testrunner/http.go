@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package httprunner
+package testrunner
 
 import (
 	"context"
@@ -22,15 +22,18 @@ import (
 	"testing"
 
 	"cloud.google.com/go/bigquery"
-	"github.com/abcxyz/lumberjack/integration/testrunner/utils"
 	"github.com/google/uuid"
 	"github.com/sethvargo/go-retry"
 )
 
-func TestHTTPEndpoint(ctx context.Context, tb testing.TB, endpointURL string,
-	idToken string, projectID string, datasetQuery string, cfg *utils.Config,
-) {
-	tb.Helper()
+// testHTTPEndpoint runs the integration tests against a Lumberjack-integrated
+// HTTP endpoint.
+//
+//nolint:thelper // Not really a helper.
+func testHTTPEndpoint(ctx context.Context, tb testing.TB, endpointURL, idToken, projectID, datasetQuery string, cfg *Config) {
+	// Don't mark t.Helper().
+	// Here locates the actual test logic so we want to be able to locate the
+	// actual line of error here instead of the main test.
 
 	id := uuid.New().String()
 	tb.Logf("using uuid %s", id)
@@ -62,21 +65,17 @@ func TestHTTPEndpoint(ctx context.Context, tb testing.TB, endpointURL string,
 		tb.Fatal(err)
 	}
 
-	bqClient, err := utils.MakeClient(ctx, projectID)
-	if err != nil {
-		tb.Fatal(err)
-	}
-	defer bqClient.Close()
+	bqClient := makeBigQueryClient(ctx, tb, projectID)
 
 	bqQuery := makeQueryForHTTP(*bqClient, id, projectID, datasetQuery)
-	utils.QueryIfAuditLogExistsWithRetries(ctx, tb, bqQuery, cfg, "httpEndpointTest")
+	queryIfAuditLogExistsWithRetries(ctx, tb, bqQuery, cfg, "httpEndpointTest")
 }
 
-func makeQueryForHTTP(client bigquery.Client, id string, projectID string, datasetQuery string) *bigquery.Query {
+func makeQueryForHTTP(client bigquery.Client, id, projectID, datasetQuery string) *bigquery.Query {
 	// Cast to int64 because the result checker expects a number.
 	queryString := fmt.Sprintf("SELECT CAST(EXISTS (SELECT * FROM `%s.%s` WHERE labels.trace_id=?", projectID, datasetQuery)
 	queryString += ` AND jsonPayload.service_name IS NOT NULL`
 	queryString += ` AND jsonPayload.authentication_info.principal_email IS NOT NULL`
 	queryString += ") AS INT64)"
-	return utils.MakeQuery(client, id, queryString)
+	return makeQuery(client, id, queryString)
 }

@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package utils
+package testrunner
 
 import (
 	"context"
@@ -24,7 +24,7 @@ import (
 )
 
 // queryIfAuditLogExists queries the DB and checks if audit log contained in the query exists or not.
-func QueryIfAuditLogExists(ctx context.Context, tb testing.TB, query *bigquery.Query, expectedNum int64) (bool, error) {
+func queryIfAuditLogExists(ctx context.Context, tb testing.TB, query *bigquery.Query, expectedNum int64) (bool, error) {
 	tb.Helper()
 
 	job, err := query.Run(ctx)
@@ -57,32 +57,47 @@ func QueryIfAuditLogExists(ctx context.Context, tb testing.TB, query *bigquery.Q
 	return result >= expectedNum, nil
 }
 
-func MakeQuery(bqClient bigquery.Client, id string, queryString string) *bigquery.Query {
+func makeQuery(bqClient bigquery.Client, id, queryString string) *bigquery.Query {
 	bqQuery := bqClient.Query(queryString)
 	bqQuery.Parameters = []bigquery.QueryParameter{{Value: id}}
 	return bqQuery
 }
 
-func MakeClient(ctx context.Context, projectID string) (*bigquery.Client, error) {
-	return bigquery.NewClient(ctx, projectID)
+// makeBigQueryClient creates a new client and automatically closes the
+// connection when the tests finish.
+func makeBigQueryClient(ctx context.Context, tb testing.TB, projectID string) *bigquery.Client {
+	tb.Helper()
+
+	client, err := bigquery.NewClient(ctx, projectID)
+	if err != nil {
+		tb.Fatal(err)
+	}
+
+	tb.Cleanup(func() {
+		if err := client.Close(); err != nil {
+			tb.Errorf("failed to close the biquery client: %v", err)
+		}
+	})
+
+	return client
 }
 
 // This calls the database to check that an audit log exists. It uses the retries that are specified in the Config
 // file. This method assumes that only a single audit log will match, which constitutes success.
-func QueryIfAuditLogExistsWithRetries(ctx context.Context, tb testing.TB, bqQuery *bigquery.Query, cfg *Config, testName string) {
+func queryIfAuditLogExistsWithRetries(ctx context.Context, tb testing.TB, bqQuery *bigquery.Query, cfg *Config, testName string) {
 	tb.Helper()
 
-	QueryIfAuditLogsExistWithRetries(ctx, tb, bqQuery, cfg, testName, 1)
+	queryIfAuditLogsExistWithRetries(ctx, tb, bqQuery, cfg, testName, 1)
 }
 
 // This calls the database to check that an audit log exists. It uses the retries that are specified in the Config
 // file. This method allows for specifying how many logs we expect to match, in order to handle streaming use cases.
-func QueryIfAuditLogsExistWithRetries(ctx context.Context, tb testing.TB, bqQuery *bigquery.Query, cfg *Config, testName string, expectedNum int64) {
+func queryIfAuditLogsExistWithRetries(ctx context.Context, tb testing.TB, bqQuery *bigquery.Query, cfg *Config, testName string, expectedNum int64) {
 	tb.Helper()
 
 	b := retry.NewExponential(cfg.LogRoutingWait)
 	if err := retry.Do(ctx, retry.WithMaxRetries(cfg.MaxDBQueryTries, b), func(ctx context.Context) error {
-		found, err := QueryIfAuditLogExists(ctx, tb, bqQuery, expectedNum)
+		found, err := queryIfAuditLogExists(ctx, tb, bqQuery, expectedNum)
 		if found {
 			// Early exit retry if queried log already found.
 			return nil

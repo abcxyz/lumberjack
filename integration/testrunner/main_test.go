@@ -23,9 +23,6 @@ import (
 	"os"
 	"testing"
 
-	"github.com/abcxyz/lumberjack/integration/testrunner/grpcrunner"
-	"github.com/abcxyz/lumberjack/integration/testrunner/httprunner"
-	"github.com/abcxyz/lumberjack/integration/testrunner/utils"
 	"github.com/abcxyz/pkg/testutil"
 	"google.golang.org/api/idtoken"
 )
@@ -41,7 +38,7 @@ func TestMain(m *testing.M) {
 	os.Exit(m.Run())
 }
 
-func validateCfg(t *testing.T) *utils.Config {
+func validateCfg(t *testing.T) *Config {
 	t.Helper()
 
 	if *projectIDPtr == "" {
@@ -51,7 +48,7 @@ func validateCfg(t *testing.T) *utils.Config {
 		t.Fatal("BigQuery dataset query string must be provided with the -dataset-query flag.")
 	}
 
-	cfg, err := utils.NewConfig(context.Background())
+	cfg, err := newTestConfig(context.Background())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -71,6 +68,7 @@ func TestHTTPEndpoints(t *testing.T) {
 	}
 
 	for i, tc := range tests {
+		i := i
 		tc := tc
 
 		t.Run(tc, func(t *testing.T) {
@@ -86,7 +84,7 @@ func TestHTTPEndpoints(t *testing.T) {
 			}
 
 			ctx := context.Background()
-			httprunner.TestHTTPEndpoint(ctx, t, tc, idToken, *projectIDPtr, *datasetQueryPtr, cfg)
+			testHTTPEndpoint(ctx, t, tc, idToken, *projectIDPtr, *datasetQueryPtr, cfg)
 		})
 	}
 }
@@ -118,7 +116,7 @@ func TestGRPCEndpoints(t *testing.T) {
 			}
 
 			ctx := context.Background()
-			grpcrunner.TestGRPCEndpoint(ctx, t, &grpcrunner.GRPC{
+			testGRPCEndpoint(ctx, t, &GRPC{
 				ProjectID:    *projectIDPtr,
 				DatasetQuery: *datasetQueryPtr,
 

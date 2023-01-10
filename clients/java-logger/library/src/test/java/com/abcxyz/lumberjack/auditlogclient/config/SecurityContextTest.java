@@ -116,9 +116,9 @@ public class SecurityContextTest {
     SecurityContext securityContext = new SecurityContext(specifications);
 
     Metadata headers = new Metadata();
-    Metadata.Key jwtKey = Metadata.Key.of(key, Metadata.ASCII_STRING_MARSHALLER);
+    Metadata.Key<String> jwtKey = Metadata.Key.of(key, Metadata.ASCII_STRING_MARSHALLER);
     headers.put(jwtKey, prefix + ENCODED_Jwt);
-    Metadata.Key otherKey = Metadata.Key.of("other-key", Metadata.ASCII_STRING_MARSHALLER);
+    Metadata.Key<String> otherKey = Metadata.Key.of("other-key", Metadata.ASCII_STRING_MARSHALLER);
     headers.put(otherKey, "irrelevant");
 
     Optional<String> returnVal = securityContext.getPrincipal(headers);
@@ -135,9 +135,9 @@ public class SecurityContextTest {
     SecurityContext securityContext = new SecurityContext(specifications);
 
     Metadata headers = new Metadata();
-    Metadata.Key jwtKey = Metadata.Key.of(key, Metadata.ASCII_STRING_MARSHALLER);
+    Metadata.Key<String> jwtKey = Metadata.Key.of(key, Metadata.ASCII_STRING_MARSHALLER);
     headers.put(jwtKey, ENCODED_Jwt);
-    Metadata.Key otherKey = Metadata.Key.of("other-key", Metadata.ASCII_STRING_MARSHALLER);
+    Metadata.Key<String> otherKey = Metadata.Key.of("other-key", Metadata.ASCII_STRING_MARSHALLER);
     headers.put(otherKey, "irrelevant");
 
     Optional<String> returnVal = securityContext.getPrincipal(headers);
@@ -155,10 +155,10 @@ public class SecurityContextTest {
     SecurityContext securityContext = new SecurityContext(specifications);
 
     Metadata headers = new Metadata();
-    Metadata.Key jwtKey = Metadata.Key.of(key.toUpperCase(), Metadata.ASCII_STRING_MARSHALLER);
+    Metadata.Key<String> jwtKey =
+        Metadata.Key.of(key.toUpperCase(), Metadata.ASCII_STRING_MARSHALLER);
     headers.put(jwtKey, prefix.toUpperCase() + ENCODED_Jwt);
-    Metadata.Key otherKey = Metadata.Key.of("other-key", Metadata.ASCII_STRING_MARSHALLER);
-
+    Metadata.Key<String> otherKey = Metadata.Key.of("other-key", Metadata.ASCII_STRING_MARSHALLER);
     headers.put(otherKey, "irrelevant");
 
     Optional<String> returnVal = securityContext.getPrincipal(headers);
@@ -176,7 +176,7 @@ public class SecurityContextTest {
     SecurityContext securityContext = new SecurityContext(specifications);
 
     Metadata headers = new Metadata();
-    Metadata.Key otherKey = Metadata.Key.of("other-key", Metadata.ASCII_STRING_MARSHALLER);
+    Metadata.Key<String> otherKey = Metadata.Key.of("other-key", Metadata.ASCII_STRING_MARSHALLER);
     headers.put(otherKey, "irrelevant");
 
     Optional<String> returnVal = securityContext.getPrincipal(headers);
