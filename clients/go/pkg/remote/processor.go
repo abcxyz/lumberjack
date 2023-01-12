@@ -119,5 +119,8 @@ func (p *Processor) Process(ctx context.Context, logReq *api.AuditLogRequest) er
 
 // Stop stops the processor.
 func (p *Processor) Stop() error {
-	return p.conn.Close()
+	if err := p.conn.Close(); err != nil {
+		return fmt.Errorf("failed to close grpc connection: %w", err)
+	}
+	return nil
 }

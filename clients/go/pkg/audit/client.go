@@ -20,11 +20,11 @@ import (
 	"errors"
 	"fmt"
 
-	"go.uber.org/multierr"
 	"go.uber.org/zap"
 
 	api "github.com/abcxyz/lumberjack/clients/go/apis/v1alpha1"
 	zlogger "github.com/abcxyz/pkg/logging"
+	"github.com/hashicorp/go-multierror"
 )
 
 // Client is the Lumberjack audit logging Client.
@@ -121,17 +121,18 @@ func NewClient(options ...Option) (*Client, error) {
 
 // Stop stops the client.
 func (c *Client) Stop() error {
-	var merr error
+	var merr *multierror.Error
 	for _, ps := range [][]LogProcessor{c.validators, c.backends} {
 		for _, p := range ps {
 			if stoppable, ok := p.(StoppableProcessor); ok {
 				if err := stoppable.Stop(); err != nil {
-					merr = multierr.Append(merr, err)
+					merr = multierror.Append(merr, err)
 				}
 			}
 		}
 	}
-	return merr
+
+	return merr.ErrorOrNil()
 }
 
 // Log runs the client processors sequentially on the given AuditLogRequest.

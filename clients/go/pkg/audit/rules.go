@@ -22,13 +22,12 @@ import (
 
 const wildcard = "*"
 
-// mostRelevantRule finds the most relevant Rule for a given method by
-// comparing the Rules's Selector length. E.g. given the methodName
-// "com.example.Hello", the selector relevance is:
-// "com.example.Hello" > "com.example.*" > "*"
+// mostRelevantRule finds the most relevant Rule for a given method by comparing
+// the Rules's Selector length. E.g. given the methodName "com.example.Hello",
+// the selector relevance is: "com.example.Hello" > "com.example.*" > "*"
 //
-// If none of the Rules are relevant to the given method (i.e. the
-// the selectors don't match), we return nil.
+// If none of the Rules are relevant to the given method (i.e. the selectors
+// don't match), we return nil.
 func mostRelevantRule(methodName string, rules []*api.AuditRule) *api.AuditRule {
 	var longest int
 	var mostRelevant *api.AuditRule
@@ -45,9 +44,8 @@ func mostRelevantRule(methodName string, rules []*api.AuditRule) *api.AuditRule 
 	return mostRelevant
 }
 
-// isRuleApplicable determines if a Rule applies to
-// the given method by comparing the Rule's Selector
-// to the methodName.
+// isRuleApplicable determines if a Rule applies to the given method by
+// comparing the Rule's Selector to the methodName.
 func isRuleApplicable(rule *api.AuditRule, methodName string) bool {
 	sel := rule.Selector
 	if sel == wildcard {

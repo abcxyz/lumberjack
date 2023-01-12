@@ -20,10 +20,10 @@ import (
 
 	"cloud.google.com/go/compute/metadata"
 	"cloud.google.com/go/logging"
-	"go.uber.org/multierr"
 	"google.golang.org/protobuf/reflect/protoreflect"
 
 	api "github.com/abcxyz/lumberjack/clients/go/apis/v1alpha1"
+	"github.com/hashicorp/go-multierror"
 )
 
 // Processor is the remote Cloud Logging processor.
@@ -150,11 +150,12 @@ func (p *Processor) Process(ctx context.Context, logReq *api.AuditLogRequest) er
 // Stop stops the processor by flushing the logs from all loggers.
 // Stop is only meaningful when the client emitted logs as best-effort.
 func (p *Processor) Stop() error {
-	var merr error
+	var merr *multierror.Error
 	for logtype, logger := range p.loggerByLogType {
 		if err := logger.Flush(); err != nil {
-			merr = multierr.Append(merr, fmt.Errorf("error flushing logs with type %v: %w", logtype, err))
+			merr = multierror.Append(merr, fmt.Errorf("failed to flush %s logs: %w", logtype, err))
 		}
 	}
-	return merr
+
+	return merr.ErrorOrNil()
 }
