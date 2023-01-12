@@ -29,23 +29,23 @@ func queryIfAuditLogExists(ctx context.Context, tb testing.TB, query *bigquery.Q
 
 	job, err := query.Run(ctx)
 	if err != nil {
-		return false, err
+		return false, fmt.Errorf("failed to run query: %w", err)
 	}
 
 	if status, err := job.Wait(ctx); err != nil {
-		return false, err
+		return false, fmt.Errorf("failed to wait for query: %w", err)
 	} else if err = status.Err(); err != nil {
-		return false, err
+		return false, fmt.Errorf("query failed: %w", err)
 	}
 
 	it, err := job.Read(ctx)
 	if err != nil {
-		return false, err
+		return false, fmt.Errorf("failed to read job: %w", err)
 	}
 
 	var row []bigquery.Value
 	if err = it.Next(&row); err != nil {
-		return false, err
+		return false, fmt.Errorf("failed to get next row: %w", err)
 	}
 
 	// Check if the matching row count is equal to expected, if yes, then the audit log exists.

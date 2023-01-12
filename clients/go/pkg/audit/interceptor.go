@@ -320,7 +320,7 @@ func (ss *serverStreamWrapper) RecvMsg(m interface{}) error {
 
 	// RecvMsg is a blocking call until the next message is received into 'm'.
 	if err := ss.ServerStream.RecvMsg(m); err != nil {
-		return err
+		return fmt.Errorf("failed to receive message from server stream: %w", err)
 	}
 
 	lr := ss.swapLastReq(m)
@@ -353,14 +353,14 @@ func (ss *serverStreamWrapper) SendMsg(m interface{}) error {
 	if lr != nil {
 		if shouldLogReq(ss.rule) {
 			if err := setReq(logReq, lr); err != nil {
-				return err
+				return fmt.Errorf("failed to set request: %w", err)
 			}
 		}
 	}
 
 	if shouldLogResp(ss.rule) {
 		if err := setResp(logReq, m); err != nil {
-			return err
+			return fmt.Errorf("failed to set response: %w", err)
 		}
 	}
 
@@ -368,7 +368,10 @@ func (ss *serverStreamWrapper) SendMsg(m interface{}) error {
 		return status.Errorf(codes.Internal, "audit interceptor failed to emit log: %v", err)
 	}
 
-	return ss.ServerStream.SendMsg(m)
+	if err := ss.ServerStream.SendMsg(m); err != nil {
+		return fmt.Errorf("failed to send message to server stream: %w", err)
+	}
+	return nil
 }
 
 func setReq(logReq *api.AuditLogRequest, m interface{}) error {
