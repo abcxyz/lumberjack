@@ -117,7 +117,8 @@ public class TalkerClient {
   }
 
   public void fibonacci(int places, UUID target) {
-    FibonacciRequest request = FibonacciRequest.newBuilder().setPlaces(places).setTarget(target.toString()).build();
+    FibonacciRequest request =
+        FibonacciRequest.newBuilder().setPlaces(places).setTarget(target.toString()).build();
 
     try {
       log.info("Fibonacci sequence for places " + places);
@@ -143,7 +144,8 @@ public class TalkerClient {
 
     for (int i = 1; i <= max; i++) {
       log.info("Adding: " + i);
-      AdditionRequest request = AdditionRequest.newBuilder().setAddend(i).setTarget(target.toString()).build();
+      AdditionRequest request =
+          AdditionRequest.newBuilder().setAddend(i).setTarget(target.toString()).build();
       requestObserver.onNext(request);
     }
 
