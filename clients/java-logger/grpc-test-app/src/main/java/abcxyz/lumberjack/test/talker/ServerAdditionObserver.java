@@ -34,6 +34,7 @@ public class ServerAdditionObserver implements StreamObserver<AdditionRequest> {
   @Override
   public void onNext(AdditionRequest request) {
     AuditLog.Builder auditLogBuilder = AuditLogs.getBuilderFromContext();
+    auditLogBuilder.setResourceName(request.getTarget());
     sum += request.getAddend();
   }
 

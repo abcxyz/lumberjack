@@ -189,6 +189,7 @@ public class TalkerService {
         FibonacciResponse response =
             FibonacciResponse.newBuilder().setPosition(i + 1).setValue(value).build();
         AuditLog.Builder auditLogBuilder = AuditLogs.getBuilderFromContext();
+        auditLogBuilder.setResourceName(request.getTarget());
         responseObserver.onNext(response);
       }
       responseObserver.onCompleted();
