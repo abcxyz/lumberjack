@@ -21,7 +21,6 @@ import (
 	"os/signal"
 	"syscall"
 
-	"cloud.google.com/go/compute/metadata"
 	"cloud.google.com/go/logging"
 	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
 	"golang.org/x/sync/errgroup"
@@ -34,6 +33,7 @@ import (
 	"github.com/abcxyz/lumberjack/clients/go/pkg/trace"
 	"github.com/abcxyz/lumberjack/internal/version"
 	"github.com/abcxyz/lumberjack/pkg/server"
+	"github.com/abcxyz/pkg/gcputil"
 	zlogger "github.com/abcxyz/pkg/logging"
 )
 
@@ -57,10 +57,14 @@ func realMain(ctx context.Context) error {
 		"commit", version.Commit,
 		"version", version.Version)
 
+	projectID := gcputil.ProjectID(ctx)
+
 	cfg, err := server.NewConfig(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to process config: %w", err)
 	}
+
+	logger.Debugw("loaded configuration", "config", cfg)
 
 	if err := trace.Init(cfg.TraceRatio); err != nil {
 		return fmt.Errorf("failed to init tracing: %w", err)
@@ -69,7 +73,7 @@ func realMain(ctx context.Context) error {
 	// Set up other log processors as we add more.
 	// TODO(b/202328178): Allow setting other log processor(s) via config.
 	// E.g. We can have a stdout log processor that write audit logs to stdout.
-	cl, err := newCloudLoggingProcessor(ctx)
+	cl, err := newCloudLoggingProcessor(ctx, projectID)
 	if err != nil {
 		return err
 	}
@@ -85,7 +89,7 @@ func realMain(ctx context.Context) error {
 	// TODO(b/202320320): Build interceptors for observability, logger, etc.
 	s := grpc.NewServer(grpc.ChainUnaryInterceptor(
 		otelgrpc.UnaryServerInterceptor(),
-		zlogger.GRPCInterceptor(logger),
+		zlogger.GRPCUnaryInterceptor(logger, projectID),
 	))
 	api.RegisterAuditLogAgentServer(s, logAgent)
 	reflection.Register(s)
@@ -122,11 +126,7 @@ func realMain(ctx context.Context) error {
 	return nil
 }
 
-func newCloudLoggingProcessor(ctx context.Context) (*cloudlogging.Processor, error) {
-	projectID, err := metadata.ProjectID()
-	if err != nil {
-		return nil, fmt.Errorf("failed to get project ID from metadata server: %w", err)
-	}
+func newCloudLoggingProcessor(ctx context.Context, projectID string) (*cloudlogging.Processor, error) {
 	client, err := logging.NewClient(ctx, projectID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create cloud logging client: %w", err)

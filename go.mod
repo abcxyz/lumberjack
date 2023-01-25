@@ -9,7 +9,7 @@ require (
 	github.com/GoogleCloudPlatform/opentelemetry-operations-go/exporter/trace v1.10.2
 	github.com/GoogleCloudPlatform/opentelemetry-operations-go/propagator v0.34.2
 	github.com/abcxyz/jvs v0.0.3-0.20230110224138-e8a7813ea8f6
-	github.com/abcxyz/pkg v0.1.2-0.20230106203017-d05e75ed64fa
+	github.com/abcxyz/pkg v0.1.2-0.20230125001932-da582a95bb8b
 	github.com/google/go-cmp v0.5.9
 	github.com/google/uuid v1.3.0
 	github.com/hashicorp/go-multierror v1.1.1
@@ -23,8 +23,8 @@ require (
 	golang.org/x/oauth2 v0.4.0
 	golang.org/x/sync v0.1.0
 	google.golang.org/api v0.106.0
-	google.golang.org/genproto v0.0.0-20230110181048-76db0878b65f
-	google.golang.org/grpc v1.52.0
+	google.golang.org/genproto v0.0.0-20230124163310-31e0e69b6fc2
+	google.golang.org/grpc v1.52.1
 	google.golang.org/protobuf v1.28.1
 	gopkg.in/yaml.v2 v2.4.0
 )
