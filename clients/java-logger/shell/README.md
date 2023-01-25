@@ -39,6 +39,7 @@ The main goal of this "shell" app is to provide the wrapper app that imports the
     --memory=2048Mi \
     --region=us-west1 \
     --project=${PROJECT_ID} \
+    --set-env-vars=AUDIT_CLIENT_BACKEND_CLOUDLOGGING_DEFAULT_PROJECT=true \
     --quiet
     ```
 
