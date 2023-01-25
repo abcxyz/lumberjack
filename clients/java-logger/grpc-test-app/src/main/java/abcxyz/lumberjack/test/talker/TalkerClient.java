@@ -116,8 +116,9 @@ public class TalkerClient {
     }
   }
 
-  public void fibonacci(int places) {
-    FibonacciRequest request = FibonacciRequest.newBuilder().setPlaces(places).build();
+  public void fibonacci(int places, UUID target) {
+    FibonacciRequest request =
+        FibonacciRequest.newBuilder().setPlaces(places).setTarget(target.toString()).build();
 
     try {
       log.info("Fibonacci sequence for places " + places);
@@ -137,13 +138,14 @@ public class TalkerClient {
     }
   }
 
-  public void addition(int max) {
+  public void addition(int max, UUID target) {
     StreamObserver<AdditionRequest> requestObserver =
         clientStub.addition(new ClientAdditionObserver());
 
     for (int i = 1; i <= max; i++) {
       log.info("Adding: " + i);
-      AdditionRequest request = AdditionRequest.newBuilder().setAddend(i).build();
+      AdditionRequest request =
+          AdditionRequest.newBuilder().setAddend(i).setTarget(target.toString()).build();
       requestObserver.onNext(request);
     }
 
@@ -204,8 +206,8 @@ public class TalkerClient {
         UUID target = UUID.randomUUID();
         client.greet(host, target);
         client.whisper("This is a secret! Don't audit log this string", target);
-        client.fibonacci(5);
-        client.addition(3);
+        client.fibonacci(5, target);
+        client.addition(3, target);
         client.fail("This message should result in failure", target);
         client.failOnFour(5, target);
         // Sleep and wait for response to addition. Blocking stub doesn't support client streaming.
