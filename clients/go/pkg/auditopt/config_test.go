@@ -137,7 +137,70 @@ backend:
 			if err != nil {
 				return
 			}
-			if err := c.Log(context.Background(), tc.req); err != nil {
+			if err := c.Log(ctx, tc.req); err != nil {
+				t.Fatal(err)
+			}
+			cmpopts := []cmp.Option{
+				protocmp.Transform(),
+				// We ignore `AuditLog.Metadata` because it contains the
+				// runtime information which varies depending on the
+				// environment executing the unit test.
+				protocmp.IgnoreFields(&capi.AuditLog{}, "metadata"),
+			}
+			if diff := cmp.Diff(tc.wantReq, r.gotReq, cmpopts...); diff != "" {
+				t.Errorf("audit logging backend got request (-want,+got):\n%s", diff)
+			}
+		})
+	}
+}
+
+func TestFromConfig(t *testing.T) {
+	t.Parallel()
+
+	r := &fakeServer{}
+	addr, _ := testutil.TestFakeGRPCServer(t, func(s *grpc.Server) {
+		api.RegisterAuditLogAgentServer(s, r)
+	})
+
+	cases := []struct {
+		name          string
+		cfg           *api.Config
+		req           *api.AuditLogRequest
+		wantReq       *api.AuditLogRequest
+		wantErrSubstr string
+	}{{
+		name: "valid_config_success",
+		cfg: &api.Config{
+			Backend: &api.Backend{
+				Remote: &api.Remote{
+					InsecureEnabled: true,
+					Address:         addr,
+				},
+			},
+		},
+		req:     testutil.NewRequest(testutil.WithPrincipal("abc@project.iam.gserviceaccount.com")),
+		wantReq: testutil.NewRequest(testutil.WithPrincipal("abc@project.iam.gserviceaccount.com")),
+	}, {
+		name:          "invalid_config_error",
+		cfg:           &api.Config{}, // Empty config is invalid
+		wantErrSubstr: "invalid configuration:",
+	}}
+
+	for _, tc := range cases {
+		tc := tc
+
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			ctx := context.Background()
+			c, err := audit.NewClient(FromConfig(ctx, tc.cfg))
+			if diff := pkgtestutil.DiffErrString(err, tc.wantErrSubstr); diff != "" {
+				t.Errorf("audit.NewClient(FromConfig(%v)) got unexpected error substring: %v", tc.cfg, diff)
+			}
+			if err != nil {
+				return
+			}
+			if err := c.Log(ctx, tc.req); err != nil {
 				t.Fatal(err)
 			}
 			cmpopts := []cmp.Option{
