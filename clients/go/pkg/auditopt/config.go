@@ -66,6 +66,19 @@ func FromConfigFile(ctx context.Context, path string) audit.Option {
 	return fromConfigFile(ctx, path, envconfig.OsLookuper())
 }
 
+// FromConfig creates an audit client option from the given configuration.
+func FromConfig(ctx context.Context, cfg *api.Config) audit.Option {
+	return func(c *audit.Client) error {
+		if cfg == nil {
+			return fmt.Errorf("nil config")
+		}
+		if err := cfg.Validate(); err != nil {
+			return fmt.Errorf("invalid configuration: %w", err)
+		}
+		return clientFromConfig(ctx, c, cfg)
+	}
+}
+
 // fromConfigFile is like FromConfigFile, but exposes a custom lookuper for
 // testing.
 func fromConfigFile(ctx context.Context, path string, lookuper envconfig.Lookuper) audit.Option {
