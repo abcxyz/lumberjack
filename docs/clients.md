@@ -32,6 +32,42 @@ if err != nil {
 
 ### "Assemble" a client in code
 
+**Approach 1**: Create a config in code.
+
+```go
+ctx := context.Background()
+cfg := &api.Config{
+  Backend: &api.Backend{
+    CloudLogging: &api.CloudLogging{
+      DefaultProject: true,
+    },
+  },
+  Condition: &api.Condition{
+    Regex: &api.RegexCondition{
+      PrincipalInclude: `@example1\.com$|@example2\.com$`,
+    },
+  },
+  Labels: map[string]string{
+    "common_label_1": "foobar",
+  }
+}
+
+opts, err := auditopt.FromConfig(ctx, cfg)
+if err != nil {
+  // Handle err
+}
+
+client, err := audit.NewClient(opts...)
+if err != nil {
+  // Handle err
+}
+
+// Audit log with the client later on.
+// client.Log(ctx, req)
+```
+
+**Approach 2**: Assemble processors.
+
 ```go
 ctx := context.Background()
 m, err := filtering.NewPrincipalEmailMatcher(filtering.WithIncludes(`@example1\.com$|@example2\.com$`))
@@ -53,7 +89,7 @@ if err != nil {
 }
 jp := justification.NewProcessor(jvsClient)
 
-client, err = audit.NewClient(audit.WithValidator(m), audit.WithBackend(clp), audit.WithMutator(lp), audit.WithMutator(jp))
+client, err := audit.NewClient(audit.WithValidator(m), audit.WithBackend(clp), audit.WithMutator(lp), audit.WithMutator(jp))
 if err != nil {
   // Handle err
 }
