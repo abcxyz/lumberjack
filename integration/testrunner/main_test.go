@@ -85,6 +85,10 @@ func TestHTTPEndpoints(t *testing.T) {
 
 			ctx := context.Background()
 			testHTTPEndpoint(ctx, t, tc, idToken, *projectIDPtr, *datasetQueryPtr, cfg)
+			// err1 := fmt.Errorf("deliberately makeing the test fail %s", "hahaha")
+			// if err1 != nil {
+			// 	t.Fatalf("error: %v", err1.Error())
+			// }
 		})
 	}
 }
