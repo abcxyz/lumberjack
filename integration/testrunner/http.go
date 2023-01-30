@@ -19,12 +19,19 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"reflect"
 	"testing"
+	"time"
 
 	"cloud.google.com/go/bigquery"
 	"github.com/google/uuid"
 	"github.com/sethvargo/go-retry"
 )
+
+type HTTPFields struct {
+	PrincipalEmail string
+	ServiceName    string
+}
 
 // testHTTPEndpoint runs the integration tests against a Lumberjack-integrated
 // HTTP endpoint.
@@ -34,9 +41,15 @@ func testHTTPEndpoint(ctx context.Context, tb testing.TB, endpointURL, idToken, 
 	// Don't mark t.Helper().
 	// Here locates the actual test logic so we want to be able to locate the
 	// actual line of error here instead of the main test.
+	fieldsNameMap := [][]string{
+		{"jsonPayload.authentication_info.principal_email", "PrincipalEmail"},
+		{"jsonPayload.service_name", "ServiceName"},
+	}
 
 	id := uuid.New().String()
 	tb.Logf("using uuid %s", id)
+	wantPrincipalEmail := "gh-access-sa@lumberjack-dev-infra.iam.gserviceaccount.com"
+	wantServiceName := [2]string{"go-shell-app", "java-shell-app"}
 
 	b := retry.NewExponential(cfg.AuditLogRequestWait)
 	if err := retry.Do(ctx, retry.WithMaxRetries(cfg.MaxAuditLogRequestTries, b), func(ctx context.Context) error {
@@ -64,20 +77,49 @@ func testHTTPEndpoint(ctx context.Context, tb testing.TB, endpointURL, idToken, 
 	}); err != nil {
 		tb.Fatal(err)
 	}
-
+	time.Sleep(15 * time.Second)
 	bqClient := makeBigQueryClient(ctx, tb, projectID)
 
-	bqQuery := makeQueryForHTTP(*bqClient, id, projectID, datasetQuery)
+	bqQuery := makeQueryForHTTP(*bqClient, id, projectID, datasetQuery, fieldsNameMap)
 	tb.Log(bqQuery.Q)
-	tb.Log("==========================query statement is above================")
-	queryIfAuditLogExistsWithRetries(ctx, tb, bqQuery, cfg, "httpEndpointTest")
+	value := queryIfAuditLogExistsWithRetries(ctx, tb, bqQuery, cfg, "httpEndpointTest")
+	result := parseQueryResultForHTTP(tb, value)
+	tb.Log(result)
+	tb.Log(result.PrincipalEmail)
+	tb.Log(result.ServiceName)
+	diffString := ""
+	if result.ServiceName != wantServiceName[0] && result.ServiceName != wantServiceName[1] {
+		diffString += fmt.Sprintf("- %s or %s\n + %s\n", wantServiceName[0], wantServiceName[1], result.ServiceName)
+	}
+	if result.PrincipalEmail != wantPrincipalEmail {
+		diffString += fmt.Sprintf("- %s\n + %s\n", wantPrincipalEmail, result.PrincipalEmail)
+	}
+	if diffString != "" {
+		diffString = "queryResult misMatch (-want +got):\n)" + diffString
+		tb.Errorf("%s", diffString)
+	}
 }
 
-func makeQueryForHTTP(client bigquery.Client, id, projectID, datasetQuery string) *bigquery.Query {
-	// Cast to int64 because the result checker expects a number.
-	queryString := fmt.Sprintf("SELECT CAST(EXISTS (SELECT jsonPayload.service_name as serviceName, jsonPayload.authentication_info.principal_email as principalEmail FROM `%s.%s` WHERE labels.trace_id='%s'", projectID, datasetQuery, id)
-	// queryString += ` AND jsonPayload.service_name IS NOT NULL`
-	// queryString += ` AND jsonPayload.authentication_info.principal_email IS NOT NULL`
-	queryString += ") AS INT64)"
+func makeQueryForHTTP(client bigquery.Client, id, projectID, datasetQuery string, fieldsNameMap [][]string) *bigquery.Query {
+	queryString := "SELECT "
+	for _, v := range fieldsNameMap {
+		queryString += fmt.Sprintf("%s as %s, ", v[0], v[1])
+	}
+	queryString += fmt.Sprintf("FROM `%s.%s` WHERE labels.trace_id='%s'", projectID, datasetQuery, id)
 	return makeQuery(client, id, queryString)
+}
+
+func parseQueryResultForHTTP(tb testing.TB, value []bigquery.Value) HTTPFields {
+	tb.Helper()
+	result := HTTPFields{}
+	elem := reflect.ValueOf(&result).Elem()
+	for i, v := range value {
+		result, ok := v.(string)
+		if !ok {
+			err := fmt.Errorf("error converting query results to string (got %T)", v)
+			tb.Log(err)
+		}
+		elem.Field(i).SetString(result)
+	}
+	return result
 }
