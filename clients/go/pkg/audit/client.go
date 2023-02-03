@@ -49,13 +49,13 @@ type StoppableProcessor interface {
 }
 
 // An Option is a configuration Option for NewClient.
-type Option func(o *Client) error
+type Option func(ctx context.Context, o *Client) error
 
 // WithValidator adds the given log processor to validate audit log requests.
 // The validators are executed in the order provided with this
 // option and before any further audit log processing.
 func WithValidator(p LogProcessor) Option {
-	return func(o *Client) error {
+	return func(ctx context.Context, o *Client) error {
 		o.validators = append(o.validators, p)
 		return nil
 	}
@@ -65,7 +65,7 @@ func WithValidator(p LogProcessor) Option {
 // The mutators are executed in the order provided with this
 // option. Mutators are executed after validators, but before backends.
 func WithMutator(p LogProcessor) Option {
-	return func(o *Client) error {
+	return func(ctx context.Context, o *Client) error {
 		o.mutators = append(o.mutators, p)
 		return nil
 	}
@@ -73,7 +73,7 @@ func WithMutator(p LogProcessor) Option {
 
 // WithRuntimeInfo adds the runtime info to all the audit log requests.
 func WithRuntimeInfo() Option {
-	return func(o *Client) error {
+	return func(ctx context.Context, o *Client) error {
 		r, err := newRuntimeInfo()
 		if err != nil {
 			return fmt.Errorf("error extracting runtime environment info: %w", err)
@@ -90,7 +90,7 @@ func WithRuntimeInfo() Option {
 //   - The Cloud Logging GCP service
 //   - The custom Lumberjack gRPC service
 func WithBackend(p LogProcessor) Option {
-	return func(o *Client) error {
+	return func(ctx context.Context, o *Client) error {
 		o.backends = append(o.backends, p)
 		return nil
 	}
@@ -99,20 +99,20 @@ func WithBackend(p LogProcessor) Option {
 // Sets FailClose value. This specifies whether errors should be surfaced
 // or swalled. Can be overridden on a per-request basis.
 func WithLogMode(mode api.AuditLogRequest_LogMode) Option {
-	return func(o *Client) error {
+	return func(ctx context.Context, o *Client) error {
 		o.logMode = mode
 		return nil
 	}
 }
 
 // NewClient initializes a logger with the given options.
-func NewClient(options ...Option) (*Client, error) {
+func NewClient(ctx context.Context, opts ...Option) (*Client, error) {
 	client := &Client{
 		// Default processors.
 		validators: []LogProcessor{requestValidation{}},
 	}
-	for _, f := range options {
-		if err := f(client); err != nil {
+	for _, f := range opts {
+		if err := f(ctx, client); err != nil {
 			return nil, fmt.Errorf("failed to apply client options: %w", err)
 		}
 	}
