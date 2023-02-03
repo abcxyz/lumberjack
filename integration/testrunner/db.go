@@ -48,8 +48,9 @@ func queryIfAuditLogExists(ctx context.Context, tb testing.TB, query *bigquery.Q
 	return row, nil
 }
 
-func makeQuery(bqClient bigquery.Client, queryString string) *bigquery.Query {
+func makeQuery(bqClient bigquery.Client, id, queryString string) *bigquery.Query {
 	bqQuery := bqClient.Query(queryString)
+	bqQuery.Parameters = []bigquery.QueryParameter{{Value: id}}
 	return bqQuery
 }
 

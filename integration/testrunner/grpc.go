@@ -347,12 +347,19 @@ func createConnection(ctx context.Context, t *testing.T, addr, idToken string) *
 // We specifically look up the log using the UUID specified in the request as we know the server will add that
 // as the resource name, and provides us a unique key to find logs with.
 func (g *GRPC) makeQueryForGRPCUnary(id string) *bigquery.Query {
-	queryString := "SELECT "
-	queryString += fmt.Sprintf("%s as %s, ", "jsonPayload.method_name", "MethodName")
-	queryString += fmt.Sprintf("%s as %s, ", "jsonPayload.authentication_info.principal_email", "PrincipalEmail")
-	queryString += fmt.Sprintf("%s as %s, ", "jsonPayload.service_name", "ServiceName")
-	queryString += fmt.Sprintf("FROM `%s.%s` WHERE jsonPayload.resource_name='%s'", g.ProjectID, g.DatasetQuery, id)
-	return makeQuery(*g.BigQueryClient, queryString)
+	// queryString := "SELECT "
+	// queryString += fmt.Sprintf("%s as %s, ", "jsonPayload.method_name", "MethodName")
+	// queryString += fmt.Sprintf("%s as %s, ", "jsonPayload.authentication_info.principal_email", "PrincipalEmail")
+	// queryString += fmt.Sprintf("%s as %s, ", "jsonPayload.service_name", "ServiceName")
+	// queryString += fmt.Sprintf("FROM `%s.%s` WHERE jsonPayload.resource_name='%s'", g.ProjectID, g.DatasetQuery, id)
+	queryString := fmt.Sprintf(`SELECT
+		jsonPayload.method_name AS MethodName,
+		jsonPayload.authentication_info.principal_email AS PrincipalEmail,
+		jsonPayload.service_name AS ServiceName
+	FROM %s.%s
+	WHERE jsonPayload.resource_name = ?
+	`, g.ProjectID, g.DatasetQuery)
+	return makeQuery(*g.BigQueryClient, id, queryString)
 }
 
 // Parse bigquey.Value type into a GRPCFields, so we can use that to do diff.
@@ -386,11 +393,14 @@ func parseQueryResultForGRPCUnary(tb testing.TB, value []bigquery.Value) GRPCFie
 
 // Similar to the above function, but can return multiple results, which is what we expect for streaming.
 func (g *GRPC) makeQueryForGRPCStream(id string) *bigquery.Query {
-	queryString := fmt.Sprintf("SELECT count(distinct receiveTimestamp) FROM `%s.%s` WHERE jsonPayload.resource_name='%s'", g.ProjectID, g.DatasetQuery, id)
-	queryString += fmt.Sprintf(" AND %s IS NOT NULL", "jsonPayload.method_name")
-	queryString += fmt.Sprintf(" AND %s IS NOT NULL", "jsonPayload.authentication_info.principal_email")
-	queryString += fmt.Sprintf(" AND %s IS NOT NULL", "jsonPayload.service_name")
-	return makeQuery(*g.BigQueryClient, queryString)
+	queryString := fmt.Sprintf(`SELECT 
+		count(distinct receiveTimestamp) FROM %s.%s
+		WHERE jsonPayload.resource_name=?
+		AND jsonPayload.method_name IS NOT NULL 
+		AND jsonPayload.authentication_info.principal_email IS NOT NULL 
+		AND jsonPayload.service_name IS NOT NULL
+	`, g.ProjectID, g.DatasetQuery)
+	return makeQuery(*g.BigQueryClient, id, queryString)
 }
 
 // Similar to parseQueryResultForGRPCUnary.

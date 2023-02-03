@@ -97,11 +97,20 @@ func testHTTPEndpoint(ctx context.Context, tb testing.TB, endpointURL, idToken, 
 }
 
 func makeQueryForHTTP(client bigquery.Client, id, projectID, datasetQuery string) *bigquery.Query {
-	queryString := "SELECT "
-	queryString += fmt.Sprintf("%s as %s, ", "jsonPayload.authentication_info.principal_email", "PrincipalEmail")
-	queryString += fmt.Sprintf("%s as %s,", "jsonPayload.service_name", "ServiceName")
-	queryString += fmt.Sprintf("FROM `%s.%s` WHERE labels.trace_id='%s'", projectID, datasetQuery, id)
-	return makeQuery(client, queryString)
+	queryString := fmt.Sprintf(`
+	SELECT 
+		jsonPayload.method_name AS MethodName,
+		jsonPayload.authentication_info.principal_email AS PrincipalEmail,
+		jsonPayload.service_name AS ServiceName
+	FROM %s.%s
+	WHERE jsonPayload.resource_name = ?
+	`, projectID, datasetQuery)
+	// return makeQuery(*g.BigQueryClient, queryString, id)
+	// queryString := "SELECT "
+	// queryString += fmt.Sprintf("%s as %s, ", "jsonPayload.authentication_info.principal_email", "PrincipalEmail")
+	// queryString += fmt.Sprintf("%s as %s,", "jsonPayload.service_name", "ServiceName")
+	// queryString += fmt.Sprintf("FROM `%s.%s` WHERE labels.trace_id=?", projectID, datasetQuery)
+	return makeQuery(client, id, queryString)
 }
 
 // Parse bigquey.Value type into HttpFields, so we can use that to do diff.
