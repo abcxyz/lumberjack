@@ -41,10 +41,6 @@ func testHTTPEndpoint(ctx context.Context, tb testing.TB, endpointURL, idToken, 
 	// Don't mark t.Helper().
 	// Here locates the actual test logic so we want to be able to locate the
 	// actual line of error here instead of the main test.
-	fieldsNameMap := [][]string{
-		{"jsonPayload.authentication_info.principal_email", "PrincipalEmail"},
-		{"jsonPayload.service_name", "ServiceName"},
-	}
 
 	id := uuid.New().String()
 	tb.Logf("using uuid %s", id)
@@ -80,7 +76,7 @@ func testHTTPEndpoint(ctx context.Context, tb testing.TB, endpointURL, idToken, 
 	time.Sleep(10 * time.Second)
 	bqClient := makeBigQueryClient(ctx, tb, projectID)
 
-	bqQuery := makeQueryForHTTP(*bqClient, id, projectID, datasetQuery, fieldsNameMap)
+	bqQuery := makeQueryForHTTP(*bqClient, id, projectID, datasetQuery)
 	tb.Log(bqQuery.Q)
 	value := queryIfAuditLogExistsWithRetries(ctx, tb, bqQuery, cfg, "httpEndpointTest")
 	result := parseQueryResultForHTTP(tb, value)
@@ -100,11 +96,10 @@ func testHTTPEndpoint(ctx context.Context, tb testing.TB, endpointURL, idToken, 
 	}
 }
 
-func makeQueryForHTTP(client bigquery.Client, id, projectID, datasetQuery string, fieldsNameMap [][]string) *bigquery.Query {
+func makeQueryForHTTP(client bigquery.Client, id, projectID, datasetQuery string) *bigquery.Query {
 	queryString := "SELECT "
-	for _, v := range fieldsNameMap {
-		queryString += fmt.Sprintf("%s as %s, ", v[0], v[1])
-	}
+	queryString += fmt.Sprintf("%s as %s, ", "jsonPayload.authentication_info.principal_email", "PrincipalEmail")
+	queryString += fmt.Sprintf("%s as %s,", "jsonPayload.service_name", "ServiceName")
 	queryString += fmt.Sprintf("FROM `%s.%s` WHERE labels.trace_id='%s'", projectID, datasetQuery, id)
 	return makeQuery(client, queryString)
 }

@@ -87,12 +87,6 @@ func testGRPCEndpoint(ctx context.Context, t *testing.T, g *GRPC) {
 	// Don't mark t.Helper().
 	// Here locates the actual test logic so we want to be able to locate the
 	// actual line of error here instead of the main test.
-	fieldsNameMap := [][]string{
-		{"jsonPayload.method_name", "MethodName"},
-		{"jsonPayload.authentication_info.principal_email", "PrincipalEmail"},
-		{"jsonPayload.service_name", "ServiceName"},
-	}
-
 	if g.ProjectID == "" {
 		t.Fatal("ProjectID must be set")
 	}
@@ -138,8 +132,8 @@ func testGRPCEndpoint(ctx context.Context, t *testing.T, g *GRPC) {
 		if err != nil {
 			t.Errorf("could not greet: %v", err)
 		}
-		query := g.makeQueryForGRPCUnary(id, fieldsNameMap)
-		time.Sleep(10 * time.Second)
+		time.Sleep(15 * time.Second)
+		query := g.makeQueryForGRPCUnary(id)
 		t.Log(query.Q)
 		value := queryIfAuditLogExistsWithRetries(ctx, t, query, g.Config, "unary_hello")
 		result := parseQueryResultForGRPCUnary(t, value)
@@ -166,9 +160,8 @@ func testGRPCEndpoint(ctx context.Context, t *testing.T, g *GRPC) {
 		} else {
 			t.Errorf("Did not get err as expected. Instead got reply: %v", reply)
 		}
-
-		query := g.makeQueryForGRPCUnary(id, fieldsNameMap)
-		time.Sleep(10 * time.Second)
+		time.Sleep(15 * time.Second)
+		query := g.makeQueryForGRPCUnary(id)
 		t.Log(query.Q)
 		value := queryIfAuditLogExistsWithRetries(ctx, t, query, g.Config, "unary_fail")
 		result := parseQueryResultForGRPCUnary(t, value)
@@ -197,8 +190,8 @@ func testGRPCEndpoint(ctx context.Context, t *testing.T, g *GRPC) {
 			}
 			t.Logf("Received value %v", place.Value)
 		}
-		query := g.makeQueryForGRPCStream(id, fieldsNameMap)
-		time.Sleep(10 * time.Second)
+		time.Sleep(20 * time.Second)
+		query := g.makeQueryForGRPCStream(id)
 		t.Log(query.Q)
 		value := queryIfAuditLogsExistWithRetries(ctx, t, query, g.Config, "server_stream_fibonacci")
 		result := parseQueryResultForGRPCStream(t, value)
@@ -230,8 +223,8 @@ func testGRPCEndpoint(ctx context.Context, t *testing.T, g *GRPC) {
 		}
 		t.Logf("Value returned: %d", reply.Sum)
 
-		query := g.makeQueryForGRPCStream(id, fieldsNameMap)
-		time.Sleep(10 * time.Second)
+		time.Sleep(20 * time.Second)
+		query := g.makeQueryForGRPCStream(id)
 		t.Log(query.Q)
 		value := queryIfAuditLogsExistWithRetries(ctx, t, query, g.Config, "client_stream_addition")
 		result := parseQueryResultForGRPCStream(t, value)
@@ -271,8 +264,8 @@ func testGRPCEndpoint(ctx context.Context, t *testing.T, g *GRPC) {
 			t.Errorf("Did not get err as expected. Instead got reply: %v", reply)
 		}
 		want := int64(4)
-		query := g.makeQueryForGRPCStream(id, fieldsNameMap)
-		time.Sleep(10 * time.Second)
+		time.Sleep(20 * time.Second)
+		query := g.makeQueryForGRPCStream(id)
 		t.Log(query.Q)
 		// we expect to have 4 audit logs - the last sent number (5) will be after the err occurred.
 		value := queryIfAuditLogsExistWithRetries(ctx, t, query, g.Config, "stream_fail_on_four")
@@ -353,11 +346,11 @@ func createConnection(ctx context.Context, t *testing.T, addr, idToken string) *
 // This query is used to find the relevant audit log in BigQuery, which we assume will be added by the server.
 // We specifically look up the log using the UUID specified in the request as we know the server will add that
 // as the resource name, and provides us a unique key to find logs with.
-func (g *GRPC) makeQueryForGRPCUnary(id string, fieldsNameMap [][]string) *bigquery.Query {
+func (g *GRPC) makeQueryForGRPCUnary(id string) *bigquery.Query {
 	queryString := "SELECT "
-	for _, v := range fieldsNameMap {
-		queryString += fmt.Sprintf("%s as %s,", v[0], v[1])
-	}
+	queryString += fmt.Sprintf("%s as %s, ", "jsonPayload.method_name", "MethodName")
+	queryString += fmt.Sprintf("%s as %s, ", "jsonPayload.authentication_info.principal_email", "PrincipalEmail")
+	queryString += fmt.Sprintf("%s as %s, ", "jsonPayload.service_name", "ServiceName")
 	queryString += fmt.Sprintf("FROM `%s.%s` WHERE jsonPayload.resource_name='%s'", g.ProjectID, g.DatasetQuery, id)
 	return makeQuery(*g.BigQueryClient, queryString)
 }
@@ -392,11 +385,11 @@ func parseQueryResultForGRPCUnary(tb testing.TB, value []bigquery.Value) GRPCFie
 }
 
 // Similar to the above function, but can return multiple results, which is what we expect for streaming.
-func (g *GRPC) makeQueryForGRPCStream(id string, fieldsNameMap [][]string) *bigquery.Query {
+func (g *GRPC) makeQueryForGRPCStream(id string) *bigquery.Query {
 	queryString := fmt.Sprintf("SELECT count(distinct receiveTimestamp) FROM `%s.%s` WHERE jsonPayload.resource_name='%s'", g.ProjectID, g.DatasetQuery, id)
-	for _, v := range fieldsNameMap {
-		queryString += fmt.Sprintf(" AND %s IS NOT NULL", v[0])
-	}
+	queryString += fmt.Sprintf(" AND %s IS NOT NULL", "jsonPayload.method_name")
+	queryString += fmt.Sprintf(" AND %s IS NOT NULL", "jsonPayload.authentication_info.principal_email")
+	queryString += fmt.Sprintf(" AND %s IS NOT NULL", "jsonPayload.service_name")
 	return makeQuery(*g.BigQueryClient, queryString)
 }
 
