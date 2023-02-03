@@ -347,11 +347,6 @@ func createConnection(ctx context.Context, t *testing.T, addr, idToken string) *
 // We specifically look up the log using the UUID specified in the request as we know the server will add that
 // as the resource name, and provides us a unique key to find logs with.
 func (g *GRPC) makeQueryForGRPCUnary(id string) *bigquery.Query {
-	// queryString := "SELECT "
-	// queryString += fmt.Sprintf("%s as %s, ", "jsonPayload.method_name", "MethodName")
-	// queryString += fmt.Sprintf("%s as %s, ", "jsonPayload.authentication_info.principal_email", "PrincipalEmail")
-	// queryString += fmt.Sprintf("%s as %s, ", "jsonPayload.service_name", "ServiceName")
-	// queryString += fmt.Sprintf("FROM `%s.%s` WHERE jsonPayload.resource_name='%s'", g.ProjectID, g.DatasetQuery, id)
 	queryString := fmt.Sprintf(`SELECT
 		jsonPayload.method_name AS MethodName,
 		jsonPayload.authentication_info.principal_email AS PrincipalEmail,
