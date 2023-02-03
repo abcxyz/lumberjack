@@ -109,7 +109,7 @@ func makeQueryForHTTP(client bigquery.Client, id, projectID, datasetQuery string
 	return makeQuery(client, queryString)
 }
 
-// Parse bigquey.Value type into HttpFields, so we can use that to do diff
+// Parse bigquey.Value type into HttpFields, so we can use that to do diff.
 func parseQueryResultForHTTP(tb testing.TB, value []bigquery.Value) HTTPFields {
 	// The value paramerter is returned from a query to bigquery
 	// and the format of that would be like
@@ -119,7 +119,7 @@ func parseQueryResultForHTTP(tb testing.TB, value []bigquery.Value) HTTPFields {
 	// result := HTTPFields{
 	//  PrincipalEmail: "SomePrincipalEmail"
 	//  ServiceName: "SomeServiceName"
-	// }
+	// }.
 	tb.Helper()
 	result := HTTPFields{}
 	elem := reflect.ValueOf(&result).Elem()

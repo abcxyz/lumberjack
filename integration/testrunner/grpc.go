@@ -362,7 +362,7 @@ func (g *GRPC) makeQueryForGRPCUnary(id string, fieldsNameMap [][]string) *bigqu
 	return makeQuery(*g.BigQueryClient, queryString)
 }
 
-// Parse bigquey.Value type into a GRPCFields, so we can use that to do diff
+// Parse bigquey.Value type into a GRPCFields, so we can use that to do diff.
 func parseQueryResultForGRPCUnary(tb testing.TB, value []bigquery.Value) GRPCFields {
 	// The value paramerter is returned from a query to bigquery
 	// and the format of that would be like
@@ -373,12 +373,12 @@ func parseQueryResultForGRPCUnary(tb testing.TB, value []bigquery.Value) GRPCFie
 	//	MethodName: "SomeMethodName"
 	//  PrincipalEmail: "SomePrincipalEmail"
 	//  ServiceName: "SomeServiceName"
-	// }
+	// }.
 	tb.Helper()
 	result := GRPCFields{}
 	elem := reflect.ValueOf(&result).Elem()
 	// set each element in the bigquery.Value array
-	// into the corresponding of GRPCFields
+	// into the corresponding of GRPCFields.
 	for i, v := range value {
 		result, ok := v.(string)
 		// handle error if the value can't be parsed into string
@@ -400,10 +400,10 @@ func (g *GRPC) makeQueryForGRPCStream(id string, fieldsNameMap [][]string) *bigq
 	return makeQuery(*g.BigQueryClient, queryString)
 }
 
-// Similar to parseQueryResultForGRPCUnary
+// Similar to parseQueryResultForGRPCUnary.
 func parseQueryResultForGRPCStream(tb testing.TB, value []bigquery.Value) int64 {
 	// In this case, the value only contains one element which is the
-	// count of entry's in the bigquery table
+	// count of entry's in the bigquery table.
 	tb.Helper()
 	result, ok := value[0].(int64)
 	if !ok {
