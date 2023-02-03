@@ -77,7 +77,7 @@ func realMain(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	client, err := audit.NewClient(audit.WithBackend(cl))
+	client, err := audit.NewClient(ctx, audit.WithBackend(cl))
 	if err != nil {
 		return fmt.Errorf("failed to create audit client: %w", err)
 	}
