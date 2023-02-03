@@ -77,7 +77,7 @@ func testHTTPEndpoint(ctx context.Context, tb testing.TB, endpointURL, idToken, 
 	}); err != nil {
 		tb.Fatal(err)
 	}
-	time.Sleep(15 * time.Second)
+	time.Sleep(10 * time.Second)
 	bqClient := makeBigQueryClient(ctx, tb, projectID)
 
 	bqQuery := makeQueryForHTTP(*bqClient, id, projectID, datasetQuery, fieldsNameMap)
@@ -106,10 +106,20 @@ func makeQueryForHTTP(client bigquery.Client, id, projectID, datasetQuery string
 		queryString += fmt.Sprintf("%s as %s, ", v[0], v[1])
 	}
 	queryString += fmt.Sprintf("FROM `%s.%s` WHERE labels.trace_id='%s'", projectID, datasetQuery, id)
-	return makeQuery(client, id, queryString)
+	return makeQuery(client, queryString)
 }
 
+// Parse bigquey.Value type into HttpFields, so we can use that to do diff
 func parseQueryResultForHTTP(tb testing.TB, value []bigquery.Value) HTTPFields {
+	// The value paramerter is returned from a query to bigquery
+	// and the format of that would be like
+	// [SomePrincipalEmail SomeServiceName]
+	// We want to parse that into a varible with type HTTPFields
+	// with the format of
+	// result := HTTPFields{
+	//  PrincipalEmail: "SomePrincipalEmail"
+	//  ServiceName: "SomeServiceName"
+	// }
 	tb.Helper()
 	result := HTTPFields{}
 	elem := reflect.ValueOf(&result).Elem()
