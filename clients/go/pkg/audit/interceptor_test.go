@@ -24,6 +24,7 @@ import (
 	"github.com/abcxyz/lumberjack/clients/go/pkg/remote"
 	"github.com/abcxyz/lumberjack/clients/go/pkg/security"
 	"github.com/abcxyz/lumberjack/clients/go/pkg/testutil"
+	"github.com/abcxyz/pkg/logging"
 	pkgtestutil "github.com/abcxyz/pkg/testutil"
 	"github.com/google/go-cmp/cmp"
 	"github.com/lestrrat-go/jwx/v2/jwt"
@@ -97,6 +98,8 @@ func (j *fakeJVS) ValidateJWT(_ string) (jwt.Token, error) {
 func TestUnaryInterceptor(t *testing.T) {
 	t.Parallel()
 
+	ctx := logging.WithLogger(context.Background(), logging.TestLogger(t))
+
 	jwt := "Bearer " + testutil.JWTFromClaims(t, map[string]interface{}{
 		"email": "user@example.com",
 	})
@@ -109,7 +112,7 @@ func TestUnaryInterceptor(t *testing.T) {
 		},
 	})
 
-	tests := []struct {
+	cases := []struct {
 		name          string
 		ctx           context.Context //nolint:containedctx // Only for testing
 		auditRules    []*api.AuditRule
@@ -551,7 +554,8 @@ func TestUnaryInterceptor(t *testing.T) {
 			wantErrSubstr: "validate jwt error",
 		},
 	}
-	for _, tc := range tests {
+
+	for _, tc := range cases {
 		tc := tc
 
 		t.Run(tc.name, func(t *testing.T) {
@@ -576,7 +580,7 @@ func TestUnaryInterceptor(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			c, err := NewClient(WithBackend(p), WithMutator(jp))
+			c, err := NewClient(ctx, WithBackend(p), WithMutator(jp))
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -615,6 +619,8 @@ func TestUnaryInterceptor(t *testing.T) {
 func TestStreamInterceptor(t *testing.T) {
 	t.Parallel()
 
+	ctx := logging.WithLogger(context.Background(), logging.TestLogger(t))
+
 	jwt := "Bearer " + testutil.JWTFromClaims(t, map[string]interface{}{
 		"email": "user@example.com",
 	})
@@ -631,411 +637,484 @@ func TestStreamInterceptor(t *testing.T) {
 		auditRules    []*api.AuditRule
 		wantLogReqs   []*api.AuditLogRequest
 		wantErrSubstr string
-	}{{
-		name: "client_stream_multiple_reqs_single_resp",
-		ss: &fakeServerStream{
-			incomingCtx: metadata.NewIncomingContext(context.Background(), metadata.New(map[string]string{
-				"authorization": jwt,
-			})),
+	}{
+		{
+			name: "client_stream_multiple_reqs_single_resp",
+			ss: &fakeServerStream{
+				incomingCtx: metadata.NewIncomingContext(ctx, metadata.New(map[string]string{
+					"authorization": jwt,
+				})),
+			},
+			info: &grpc.StreamServerInfo{
+				FullMethod: "/ExampleService/ExampleMethod",
+			},
+			auditRules: []*api.AuditRule{
+				{
+					Selector:  "/ExampleService/ExampleMethod",
+					Directive: api.AuditRuleDirectiveRequestAndResponse,
+					LogType:   "DATA_ACCESS",
+				},
+			},
+			handler: func(srv interface{}, ss grpc.ServerStream) error {
+				logReq, _ := LogReqFromCtx(ss.Context())
+				logReq.Payload.ResourceName = "ExampleResourceName"
+				for _, m := range []*msg{{Val: "req1"}, {Val: "req2"}, {Val: "req3"}} {
+					if err := ss.RecvMsg(m); err != nil {
+						return err
+					}
+				}
+				return ss.SendMsg(&msg{Val: "resp1"})
+			},
+			wantLogReqs: []*api.AuditLogRequest{
+				{
+					Type: api.AuditLogRequest_DATA_ACCESS,
+					Payload: &capi.AuditLog{
+						ServiceName:  "ExampleService",
+						MethodName:   "/ExampleService/ExampleMethod",
+						ResourceName: "ExampleResourceName",
+						AuthenticationInfo: &capi.AuthenticationInfo{
+							PrincipalEmail: "user@example.com",
+						},
+						Request: &structpb.Struct{
+							Fields: map[string]*structpb.Value{
+								"Val": structpb.NewStringValue("req1"),
+							},
+						},
+					},
+				},
+				{
+					Type: api.AuditLogRequest_DATA_ACCESS,
+					Payload: &capi.AuditLog{
+						ServiceName:  "ExampleService",
+						MethodName:   "/ExampleService/ExampleMethod",
+						ResourceName: "ExampleResourceName",
+						AuthenticationInfo: &capi.AuthenticationInfo{
+							PrincipalEmail: "user@example.com",
+						},
+						Request: &structpb.Struct{
+							Fields: map[string]*structpb.Value{
+								"Val": structpb.NewStringValue("req2"),
+							},
+						},
+					},
+				},
+				{
+					Type: api.AuditLogRequest_DATA_ACCESS,
+					Payload: &capi.AuditLog{
+						ServiceName:  "ExampleService",
+						MethodName:   "/ExampleService/ExampleMethod",
+						ResourceName: "ExampleResourceName",
+						AuthenticationInfo: &capi.AuthenticationInfo{
+							PrincipalEmail: "user@example.com",
+						},
+						Request: &structpb.Struct{
+							Fields: map[string]*structpb.Value{
+								"Val": structpb.NewStringValue("req3"),
+							},
+						},
+						Response: &structpb.Struct{
+							Fields: map[string]*structpb.Value{
+								"Val": structpb.NewStringValue("resp1"),
+							},
+						},
+					},
+				},
+			},
 		},
-		info: &grpc.StreamServerInfo{
-			FullMethod: "/ExampleService/ExampleMethod",
-		},
-		auditRules: []*api.AuditRule{{
-			Selector:  "/ExampleService/ExampleMethod",
-			Directive: api.AuditRuleDirectiveRequestAndResponse,
-			LogType:   "DATA_ACCESS",
-		}},
-		handler: func(srv interface{}, ss grpc.ServerStream) error {
-			logReq, _ := LogReqFromCtx(ss.Context())
-			logReq.Payload.ResourceName = "ExampleResourceName"
-			for _, m := range []*msg{{Val: "req1"}, {Val: "req2"}, {Val: "req3"}} {
-				if err := ss.RecvMsg(m); err != nil {
+		{
+			name: "server_stream_single_req_multiple_resps",
+			ss: &fakeServerStream{
+				incomingCtx: metadata.NewIncomingContext(ctx, metadata.New(map[string]string{
+					"authorization": jwt,
+				})),
+			},
+			info: &grpc.StreamServerInfo{
+				FullMethod: "/ExampleService/ExampleMethod",
+			},
+			auditRules: []*api.AuditRule{
+				{
+					Selector:  "/ExampleService/ExampleMethod",
+					Directive: api.AuditRuleDirectiveRequestAndResponse,
+					LogType:   "DATA_ACCESS",
+				},
+			},
+			handler: func(srv interface{}, ss grpc.ServerStream) error {
+				logReq, _ := LogReqFromCtx(ss.Context())
+				logReq.Payload.ResourceName = "ExampleResourceName"
+				if err := ss.RecvMsg(&msg{Val: "req1"}); err != nil {
 					return err
 				}
-			}
-			return ss.SendMsg(&msg{Val: "resp1"})
-		},
-		wantLogReqs: []*api.AuditLogRequest{{
-			Type: api.AuditLogRequest_DATA_ACCESS,
-			Payload: &capi.AuditLog{
-				ServiceName:  "ExampleService",
-				MethodName:   "/ExampleService/ExampleMethod",
-				ResourceName: "ExampleResourceName",
-				AuthenticationInfo: &capi.AuthenticationInfo{
-					PrincipalEmail: "user@example.com",
-				},
-				Request: &structpb.Struct{Fields: map[string]*structpb.Value{
-					"Val": structpb.NewStringValue("req1"),
-				}},
+				for _, m := range []*msg{{Val: "resp1"}, {Val: "resp2"}, {Val: "resp3"}} {
+					if err := ss.SendMsg(m); err != nil {
+						return err
+					}
+				}
+				return nil
 			},
-		}, {
-			Type: api.AuditLogRequest_DATA_ACCESS,
-			Payload: &capi.AuditLog{
-				ServiceName:  "ExampleService",
-				MethodName:   "/ExampleService/ExampleMethod",
-				ResourceName: "ExampleResourceName",
-				AuthenticationInfo: &capi.AuthenticationInfo{
-					PrincipalEmail: "user@example.com",
+			wantLogReqs: []*api.AuditLogRequest{
+				{
+					Type: api.AuditLogRequest_DATA_ACCESS,
+					Payload: &capi.AuditLog{
+						ServiceName:  "ExampleService",
+						MethodName:   "/ExampleService/ExampleMethod",
+						ResourceName: "ExampleResourceName",
+						AuthenticationInfo: &capi.AuthenticationInfo{
+							PrincipalEmail: "user@example.com",
+						},
+						Request: &structpb.Struct{
+							Fields: map[string]*structpb.Value{
+								"Val": structpb.NewStringValue("req1"),
+							},
+						},
+						Response: &structpb.Struct{
+							Fields: map[string]*structpb.Value{
+								"Val": structpb.NewStringValue("resp1"),
+							},
+						},
+					},
 				},
-				Request: &structpb.Struct{Fields: map[string]*structpb.Value{
-					"Val": structpb.NewStringValue("req2"),
-				}},
-			},
-		}, {
-			Type: api.AuditLogRequest_DATA_ACCESS,
-			Payload: &capi.AuditLog{
-				ServiceName:  "ExampleService",
-				MethodName:   "/ExampleService/ExampleMethod",
-				ResourceName: "ExampleResourceName",
-				AuthenticationInfo: &capi.AuthenticationInfo{
-					PrincipalEmail: "user@example.com",
+				{
+					Type: api.AuditLogRequest_DATA_ACCESS,
+					Payload: &capi.AuditLog{
+						ServiceName:  "ExampleService",
+						MethodName:   "/ExampleService/ExampleMethod",
+						ResourceName: "ExampleResourceName",
+						AuthenticationInfo: &capi.AuthenticationInfo{
+							PrincipalEmail: "user@example.com",
+						},
+						Response: &structpb.Struct{
+							Fields: map[string]*structpb.Value{
+								"Val": structpb.NewStringValue("resp2"),
+							},
+						},
+					},
 				},
-				Request: &structpb.Struct{Fields: map[string]*structpb.Value{
-					"Val": structpb.NewStringValue("req3"),
-				}},
-				Response: &structpb.Struct{Fields: map[string]*structpb.Value{
-					"Val": structpb.NewStringValue("resp1"),
-				}},
+				{
+					Type: api.AuditLogRequest_DATA_ACCESS,
+					Payload: &capi.AuditLog{
+						ServiceName:  "ExampleService",
+						MethodName:   "/ExampleService/ExampleMethod",
+						ResourceName: "ExampleResourceName",
+						AuthenticationInfo: &capi.AuthenticationInfo{
+							PrincipalEmail: "user@example.com",
+						},
+						Response: &structpb.Struct{
+							Fields: map[string]*structpb.Value{
+								"Val": structpb.NewStringValue("resp3"),
+							},
+						},
+					},
+				},
 			},
-		}},
-	}, {
-		name: "server_stream_single_req_multiple_resps",
-		ss: &fakeServerStream{
-			incomingCtx: metadata.NewIncomingContext(context.Background(), metadata.New(map[string]string{
-				"authorization": jwt,
-			})),
 		},
-		info: &grpc.StreamServerInfo{
-			FullMethod: "/ExampleService/ExampleMethod",
-		},
-		auditRules: []*api.AuditRule{{
-			Selector:  "/ExampleService/ExampleMethod",
-			Directive: api.AuditRuleDirectiveRequestAndResponse,
-			LogType:   "DATA_ACCESS",
-		}},
-		handler: func(srv interface{}, ss grpc.ServerStream) error {
-			logReq, _ := LogReqFromCtx(ss.Context())
-			logReq.Payload.ResourceName = "ExampleResourceName"
-			if err := ss.RecvMsg(&msg{Val: "req1"}); err != nil {
-				return err
-			}
-			for _, m := range []*msg{{Val: "resp1"}, {Val: "resp2"}, {Val: "resp3"}} {
-				if err := ss.SendMsg(m); err != nil {
+		{
+			name: "bidirection_stream_multiple_reqs_resps",
+			ss: &fakeServerStream{
+				incomingCtx: metadata.NewIncomingContext(ctx, metadata.New(map[string]string{
+					"authorization": jwt,
+				})),
+			},
+			info: &grpc.StreamServerInfo{
+				FullMethod: "/ExampleService/ExampleMethod",
+			},
+			auditRules: []*api.AuditRule{
+				{
+					Selector:  "/ExampleService/ExampleMethod",
+					Directive: api.AuditRuleDirectiveRequestAndResponse,
+					LogType:   "DATA_ACCESS",
+				},
+			},
+			handler: func(srv interface{}, ss grpc.ServerStream) error {
+				logReq, _ := LogReqFromCtx(ss.Context())
+				logReq.Payload.ResourceName = "ExampleResourceName"
+				if err := ss.RecvMsg(&msg{Val: "req1"}); err != nil {
 					return err
 				}
-			}
-			return nil
-		},
-		wantLogReqs: []*api.AuditLogRequest{{
-			Type: api.AuditLogRequest_DATA_ACCESS,
-			Payload: &capi.AuditLog{
-				ServiceName:  "ExampleService",
-				MethodName:   "/ExampleService/ExampleMethod",
-				ResourceName: "ExampleResourceName",
-				AuthenticationInfo: &capi.AuthenticationInfo{
-					PrincipalEmail: "user@example.com",
-				},
-				Request: &structpb.Struct{Fields: map[string]*structpb.Value{
-					"Val": structpb.NewStringValue("req1"),
-				}},
-				Response: &structpb.Struct{Fields: map[string]*structpb.Value{
-					"Val": structpb.NewStringValue("resp1"),
-				}},
+				if err := ss.SendMsg(&msg{Val: "resp1"}); err != nil {
+					return err
+				}
+				if err := ss.RecvMsg(&msg{Val: "req2"}); err != nil {
+					return err
+				}
+				if err := ss.SendMsg(&msg{Val: "resp2"}); err != nil {
+					return err
+				}
+				return nil
 			},
-		}, {
-			Type: api.AuditLogRequest_DATA_ACCESS,
-			Payload: &capi.AuditLog{
-				ServiceName:  "ExampleService",
-				MethodName:   "/ExampleService/ExampleMethod",
-				ResourceName: "ExampleResourceName",
-				AuthenticationInfo: &capi.AuthenticationInfo{
-					PrincipalEmail: "user@example.com",
+			wantLogReqs: []*api.AuditLogRequest{
+				{
+					Type: api.AuditLogRequest_DATA_ACCESS,
+					Payload: &capi.AuditLog{
+						ServiceName:  "ExampleService",
+						MethodName:   "/ExampleService/ExampleMethod",
+						ResourceName: "ExampleResourceName",
+						AuthenticationInfo: &capi.AuthenticationInfo{
+							PrincipalEmail: "user@example.com",
+						},
+						Request: &structpb.Struct{
+							Fields: map[string]*structpb.Value{
+								"Val": structpb.NewStringValue("req1"),
+							},
+						},
+						Response: &structpb.Struct{
+							Fields: map[string]*structpb.Value{
+								"Val": structpb.NewStringValue("resp1"),
+							},
+						},
+					},
 				},
-				Response: &structpb.Struct{Fields: map[string]*structpb.Value{
-					"Val": structpb.NewStringValue("resp2"),
-				}},
-			},
-		}, {
-			Type: api.AuditLogRequest_DATA_ACCESS,
-			Payload: &capi.AuditLog{
-				ServiceName:  "ExampleService",
-				MethodName:   "/ExampleService/ExampleMethod",
-				ResourceName: "ExampleResourceName",
-				AuthenticationInfo: &capi.AuthenticationInfo{
-					PrincipalEmail: "user@example.com",
-				},
-				Response: &structpb.Struct{Fields: map[string]*structpb.Value{
-					"Val": structpb.NewStringValue("resp3"),
-				}},
-			},
-		}},
-	}, {
-		name: "bidirection_stream_multiple_reqs_resps",
-		ss: &fakeServerStream{
-			incomingCtx: metadata.NewIncomingContext(context.Background(), metadata.New(map[string]string{
-				"authorization": jwt,
-			})),
-		},
-		info: &grpc.StreamServerInfo{
-			FullMethod: "/ExampleService/ExampleMethod",
-		},
-		auditRules: []*api.AuditRule{{
-			Selector:  "/ExampleService/ExampleMethod",
-			Directive: api.AuditRuleDirectiveRequestAndResponse,
-			LogType:   "DATA_ACCESS",
-		}},
-		handler: func(srv interface{}, ss grpc.ServerStream) error {
-			logReq, _ := LogReqFromCtx(ss.Context())
-			logReq.Payload.ResourceName = "ExampleResourceName"
-			if err := ss.RecvMsg(&msg{Val: "req1"}); err != nil {
-				return err
-			}
-			if err := ss.SendMsg(&msg{Val: "resp1"}); err != nil {
-				return err
-			}
-			if err := ss.RecvMsg(&msg{Val: "req2"}); err != nil {
-				return err
-			}
-			if err := ss.SendMsg(&msg{Val: "resp2"}); err != nil {
-				return err
-			}
-			return nil
-		},
-		wantLogReqs: []*api.AuditLogRequest{{
-			Type: api.AuditLogRequest_DATA_ACCESS,
-			Payload: &capi.AuditLog{
-				ServiceName:  "ExampleService",
-				MethodName:   "/ExampleService/ExampleMethod",
-				ResourceName: "ExampleResourceName",
-				AuthenticationInfo: &capi.AuthenticationInfo{
-					PrincipalEmail: "user@example.com",
-				},
-				Request: &structpb.Struct{Fields: map[string]*structpb.Value{
-					"Val": structpb.NewStringValue("req1"),
-				}},
-				Response: &structpb.Struct{Fields: map[string]*structpb.Value{
-					"Val": structpb.NewStringValue("resp1"),
-				}},
-			},
-		}, {
-			Type: api.AuditLogRequest_DATA_ACCESS,
-			Payload: &capi.AuditLog{
-				ServiceName:  "ExampleService",
-				MethodName:   "/ExampleService/ExampleMethod",
-				ResourceName: "ExampleResourceName",
-				AuthenticationInfo: &capi.AuthenticationInfo{
-					PrincipalEmail: "user@example.com",
-				},
-				Request: &structpb.Struct{Fields: map[string]*structpb.Value{
-					"Val": structpb.NewStringValue("req2"),
-				}},
-				Response: &structpb.Struct{Fields: map[string]*structpb.Value{
-					"Val": structpb.NewStringValue("resp2"),
-				}},
-			},
-		}},
-	}, {
-		name: "stream_without_logging_req_resp",
-		ss: &fakeServerStream{
-			incomingCtx: metadata.NewIncomingContext(context.Background(), metadata.New(map[string]string{
-				"authorization": jwt,
-			})),
-		},
-		info: &grpc.StreamServerInfo{
-			FullMethod: "/ExampleService/ExampleMethod",
-		},
-		auditRules: []*api.AuditRule{{
-			Selector:  "/ExampleService/ExampleMethod",
-			Directive: api.AuditRuleDirectiveDefault,
-			LogType:   "DATA_ACCESS",
-		}},
-		handler: func(srv interface{}, ss grpc.ServerStream) error {
-			logReq, _ := LogReqFromCtx(ss.Context())
-			logReq.Payload.ResourceName = "ExampleResourceName"
-			if err := ss.RecvMsg(&msg{Val: "req1"}); err != nil {
-				return err
-			}
-			if err := ss.SendMsg(&msg{Val: "resp1"}); err != nil {
-				return err
-			}
-			if err := ss.RecvMsg(&msg{Val: "req2"}); err != nil {
-				return err
-			}
-			if err := ss.SendMsg(&msg{Val: "resp2"}); err != nil {
-				return err
-			}
-			return nil
-		},
-		wantLogReqs: []*api.AuditLogRequest{{
-			Type: api.AuditLogRequest_DATA_ACCESS,
-			Payload: &capi.AuditLog{
-				ServiceName:  "ExampleService",
-				MethodName:   "/ExampleService/ExampleMethod",
-				ResourceName: "ExampleResourceName",
-				AuthenticationInfo: &capi.AuthenticationInfo{
-					PrincipalEmail: "user@example.com",
+				{
+					Type: api.AuditLogRequest_DATA_ACCESS,
+					Payload: &capi.AuditLog{
+						ServiceName:  "ExampleService",
+						MethodName:   "/ExampleService/ExampleMethod",
+						ResourceName: "ExampleResourceName",
+						AuthenticationInfo: &capi.AuthenticationInfo{
+							PrincipalEmail: "user@example.com",
+						},
+						Request: &structpb.Struct{
+							Fields: map[string]*structpb.Value{
+								"Val": structpb.NewStringValue("req2"),
+							},
+						},
+						Response: &structpb.Struct{
+							Fields: map[string]*structpb.Value{
+								"Val": structpb.NewStringValue("resp2"),
+							},
+						},
+					},
 				},
 			},
-		}, {
-			Type: api.AuditLogRequest_DATA_ACCESS,
-			Payload: &capi.AuditLog{
-				ServiceName:  "ExampleService",
-				MethodName:   "/ExampleService/ExampleMethod",
-				ResourceName: "ExampleResourceName",
-				AuthenticationInfo: &capi.AuthenticationInfo{
-					PrincipalEmail: "user@example.com",
+		},
+		{
+			name: "stream_without_logging_req_resp",
+			ss: &fakeServerStream{
+				incomingCtx: metadata.NewIncomingContext(ctx, metadata.New(map[string]string{
+					"authorization": jwt,
+				})),
+			},
+			info: &grpc.StreamServerInfo{
+				FullMethod: "/ExampleService/ExampleMethod",
+			},
+			auditRules: []*api.AuditRule{
+				{
+					Selector:  "/ExampleService/ExampleMethod",
+					Directive: api.AuditRuleDirectiveDefault,
+					LogType:   "DATA_ACCESS",
 				},
 			},
-		}},
-	}, {
-		name: "stream_with_logging_req_only",
-		ss: &fakeServerStream{
-			incomingCtx: metadata.NewIncomingContext(context.Background(), metadata.New(map[string]string{
-				"authorization": jwt,
-			})),
-		},
-		info: &grpc.StreamServerInfo{
-			FullMethod: "/ExampleService/ExampleMethod",
-		},
-		auditRules: []*api.AuditRule{{
-			Selector:  "/ExampleService/ExampleMethod",
-			Directive: api.AuditRuleDirectiveRequestOnly,
-			LogType:   "DATA_ACCESS",
-		}},
-		handler: func(srv interface{}, ss grpc.ServerStream) error {
-			logReq, _ := LogReqFromCtx(ss.Context())
-			logReq.Payload.ResourceName = "ExampleResourceName"
-			if err := ss.RecvMsg(&msg{Val: "req1"}); err != nil {
-				return err
-			}
-			if err := ss.SendMsg(&msg{Val: "resp1"}); err != nil {
-				return err
-			}
-			if err := ss.RecvMsg(&msg{Val: "req2"}); err != nil {
-				return err
-			}
-			if err := ss.SendMsg(&msg{Val: "resp2"}); err != nil {
-				return err
-			}
-			return nil
-		},
-		wantLogReqs: []*api.AuditLogRequest{{
-			Type: api.AuditLogRequest_DATA_ACCESS,
-			Payload: &capi.AuditLog{
-				ServiceName:  "ExampleService",
-				MethodName:   "/ExampleService/ExampleMethod",
-				ResourceName: "ExampleResourceName",
-				AuthenticationInfo: &capi.AuthenticationInfo{
-					PrincipalEmail: "user@example.com",
-				},
-				Request: &structpb.Struct{Fields: map[string]*structpb.Value{
-					"Val": structpb.NewStringValue("req1"),
-				}},
+			handler: func(srv interface{}, ss grpc.ServerStream) error {
+				logReq, _ := LogReqFromCtx(ss.Context())
+				logReq.Payload.ResourceName = "ExampleResourceName"
+				if err := ss.RecvMsg(&msg{Val: "req1"}); err != nil {
+					return err
+				}
+				if err := ss.SendMsg(&msg{Val: "resp1"}); err != nil {
+					return err
+				}
+				if err := ss.RecvMsg(&msg{Val: "req2"}); err != nil {
+					return err
+				}
+				if err := ss.SendMsg(&msg{Val: "resp2"}); err != nil {
+					return err
+				}
+				return nil
 			},
-		}, {
-			Type: api.AuditLogRequest_DATA_ACCESS,
-			Payload: &capi.AuditLog{
-				ServiceName:  "ExampleService",
-				MethodName:   "/ExampleService/ExampleMethod",
-				ResourceName: "ExampleResourceName",
-				AuthenticationInfo: &capi.AuthenticationInfo{
-					PrincipalEmail: "user@example.com",
+			wantLogReqs: []*api.AuditLogRequest{
+				{
+					Type: api.AuditLogRequest_DATA_ACCESS,
+					Payload: &capi.AuditLog{
+						ServiceName:  "ExampleService",
+						MethodName:   "/ExampleService/ExampleMethod",
+						ResourceName: "ExampleResourceName",
+						AuthenticationInfo: &capi.AuthenticationInfo{
+							PrincipalEmail: "user@example.com",
+						},
+					},
 				},
-				Request: &structpb.Struct{Fields: map[string]*structpb.Value{
-					"Val": structpb.NewStringValue("req2"),
-				}},
-			},
-		}},
-	}, {
-		name: "audit_rule_is_inapplicable",
-		ss: &fakeServerStream{
-			incomingCtx: metadata.NewIncomingContext(context.Background(), metadata.New(map[string]string{
-				"authorization": jwt,
-			})),
-		},
-		info: &grpc.StreamServerInfo{
-			FullMethod: "/ExampleService/ExampleMethod",
-		},
-		auditRules: []*api.AuditRule{{
-			Selector:  "/ExampleService/OtherMethod",
-			Directive: api.AuditRuleDirectiveDefault,
-			LogType:   "DATA_ACCESS",
-		}},
-		handler: func(srv interface{}, ss grpc.ServerStream) error {
-			logReq, _ := LogReqFromCtx(ss.Context())
-			logReq.Payload.ResourceName = "ExampleResourceName"
-			if err := ss.RecvMsg(&msg{Val: "req1"}); err != nil {
-				return err
-			}
-			if err := ss.SendMsg(&msg{Val: "resp1"}); err != nil {
-				return err
-			}
-			return nil
-		},
-	}, {
-		name: "fail_to_retrieve_principal",
-		ss: &fakeServerStream{
-			incomingCtx: metadata.NewIncomingContext(context.Background(), metadata.New(map[string]string{
-				"authorization": "banana",
-			})),
-		},
-		info: &grpc.StreamServerInfo{
-			FullMethod: "/ExampleService/ExampleMethod",
-		},
-		auditRules: []*api.AuditRule{{
-			Selector:  "/ExampleService/OtherMethod",
-			Directive: api.AuditRuleDirectiveDefault,
-			LogType:   "DATA_ACCESS",
-		}},
-		handler: func(srv interface{}, ss grpc.ServerStream) error {
-			logReq, _ := LogReqFromCtx(ss.Context())
-			logReq.Payload.ResourceName = "ExampleResourceName"
-			if err := ss.RecvMsg(&msg{Val: "req1"}); err != nil {
-				return err
-			}
-			if err := ss.SendMsg(&msg{Val: "resp1"}); err != nil {
-				return err
-			}
-			return nil
-		},
-	}, {
-		name: "handler_error",
-		ss: &fakeServerStream{
-			incomingCtx: metadata.NewIncomingContext(context.Background(), metadata.New(map[string]string{
-				"authorization": jwt,
-			})),
-		},
-		info: &grpc.StreamServerInfo{
-			FullMethod: "/ExampleService/ExampleMethod",
-		},
-		auditRules: []*api.AuditRule{{
-			Selector:  "/ExampleService/ExampleMethod",
-			Directive: api.AuditRuleDirectiveRequestAndResponse,
-			LogType:   "DATA_ACCESS",
-		}},
-		handler: func(srv interface{}, ss grpc.ServerStream) error {
-			return grpcstatus.Error(codes.Internal, "something is wrong")
-		},
-		wantErrSubstr: "something is wrong",
-		wantLogReqs: []*api.AuditLogRequest{{
-			Type: api.AuditLogRequest_DATA_ACCESS,
-			Payload: &capi.AuditLog{
-				ServiceName: "ExampleService",
-				MethodName:  "/ExampleService/ExampleMethod",
-				AuthenticationInfo: &capi.AuthenticationInfo{
-					PrincipalEmail: "user@example.com",
-				},
-				Status: &rpcstatus.Status{
-					Code:    int32(codes.Internal),
-					Message: "something is wrong",
+				{
+					Type: api.AuditLogRequest_DATA_ACCESS,
+					Payload: &capi.AuditLog{
+						ServiceName:  "ExampleService",
+						MethodName:   "/ExampleService/ExampleMethod",
+						ResourceName: "ExampleResourceName",
+						AuthenticationInfo: &capi.AuthenticationInfo{
+							PrincipalEmail: "user@example.com",
+						},
+					},
 				},
 			},
-		}},
-	}}
+		},
+		{
+			name: "stream_with_logging_req_only",
+			ss: &fakeServerStream{
+				incomingCtx: metadata.NewIncomingContext(ctx, metadata.New(map[string]string{
+					"authorization": jwt,
+				})),
+			},
+			info: &grpc.StreamServerInfo{
+				FullMethod: "/ExampleService/ExampleMethod",
+			},
+			auditRules: []*api.AuditRule{
+				{
+					Selector:  "/ExampleService/ExampleMethod",
+					Directive: api.AuditRuleDirectiveRequestOnly,
+					LogType:   "DATA_ACCESS",
+				},
+			},
+			handler: func(srv interface{}, ss grpc.ServerStream) error {
+				logReq, _ := LogReqFromCtx(ss.Context())
+				logReq.Payload.ResourceName = "ExampleResourceName"
+				if err := ss.RecvMsg(&msg{Val: "req1"}); err != nil {
+					return err
+				}
+				if err := ss.SendMsg(&msg{Val: "resp1"}); err != nil {
+					return err
+				}
+				if err := ss.RecvMsg(&msg{Val: "req2"}); err != nil {
+					return err
+				}
+				if err := ss.SendMsg(&msg{Val: "resp2"}); err != nil {
+					return err
+				}
+				return nil
+			},
+			wantLogReqs: []*api.AuditLogRequest{
+				{
+					Type: api.AuditLogRequest_DATA_ACCESS,
+					Payload: &capi.AuditLog{
+						ServiceName:  "ExampleService",
+						MethodName:   "/ExampleService/ExampleMethod",
+						ResourceName: "ExampleResourceName",
+						AuthenticationInfo: &capi.AuthenticationInfo{
+							PrincipalEmail: "user@example.com",
+						},
+						Request: &structpb.Struct{
+							Fields: map[string]*structpb.Value{
+								"Val": structpb.NewStringValue("req1"),
+							},
+						},
+					},
+				},
+				{
+					Type: api.AuditLogRequest_DATA_ACCESS,
+					Payload: &capi.AuditLog{
+						ServiceName:  "ExampleService",
+						MethodName:   "/ExampleService/ExampleMethod",
+						ResourceName: "ExampleResourceName",
+						AuthenticationInfo: &capi.AuthenticationInfo{
+							PrincipalEmail: "user@example.com",
+						},
+						Request: &structpb.Struct{
+							Fields: map[string]*structpb.Value{
+								"Val": structpb.NewStringValue("req2"),
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "audit_rule_is_inapplicable",
+			ss: &fakeServerStream{
+				incomingCtx: metadata.NewIncomingContext(ctx, metadata.New(map[string]string{
+					"authorization": jwt,
+				})),
+			},
+			info: &grpc.StreamServerInfo{
+				FullMethod: "/ExampleService/ExampleMethod",
+			},
+			auditRules: []*api.AuditRule{
+				{
+					Selector:  "/ExampleService/OtherMethod",
+					Directive: api.AuditRuleDirectiveDefault,
+					LogType:   "DATA_ACCESS",
+				},
+			},
+			handler: func(srv interface{}, ss grpc.ServerStream) error {
+				logReq, _ := LogReqFromCtx(ss.Context())
+				logReq.Payload.ResourceName = "ExampleResourceName"
+				if err := ss.RecvMsg(&msg{Val: "req1"}); err != nil {
+					return err
+				}
+				if err := ss.SendMsg(&msg{Val: "resp1"}); err != nil {
+					return err
+				}
+				return nil
+			},
+		},
+		{
+			name: "fail_to_retrieve_principal",
+			ss: &fakeServerStream{
+				incomingCtx: metadata.NewIncomingContext(ctx, metadata.New(map[string]string{
+					"authorization": "banana",
+				})),
+			},
+			info: &grpc.StreamServerInfo{
+				FullMethod: "/ExampleService/ExampleMethod",
+			},
+			auditRules: []*api.AuditRule{
+				{
+					Selector:  "/ExampleService/OtherMethod",
+					Directive: api.AuditRuleDirectiveDefault,
+					LogType:   "DATA_ACCESS",
+				},
+			},
+			handler: func(srv interface{}, ss grpc.ServerStream) error {
+				logReq, _ := LogReqFromCtx(ss.Context())
+				logReq.Payload.ResourceName = "ExampleResourceName"
+				if err := ss.RecvMsg(&msg{Val: "req1"}); err != nil {
+					return err
+				}
+				if err := ss.SendMsg(&msg{Val: "resp1"}); err != nil {
+					return err
+				}
+				return nil
+			},
+		},
+		{
+			name: "handler_error",
+			ss: &fakeServerStream{
+				incomingCtx: metadata.NewIncomingContext(ctx, metadata.New(map[string]string{
+					"authorization": jwt,
+				})),
+			},
+			info: &grpc.StreamServerInfo{
+				FullMethod: "/ExampleService/ExampleMethod",
+			},
+			auditRules: []*api.AuditRule{
+				{
+					Selector:  "/ExampleService/ExampleMethod",
+					Directive: api.AuditRuleDirectiveRequestAndResponse,
+					LogType:   "DATA_ACCESS",
+				},
+			},
+			handler: func(srv interface{}, ss grpc.ServerStream) error {
+				return grpcstatus.Error(codes.Internal, "something is wrong")
+			},
+			wantErrSubstr: "something is wrong",
+			wantLogReqs: []*api.AuditLogRequest{
+				{
+					Type: api.AuditLogRequest_DATA_ACCESS,
+					Payload: &capi.AuditLog{
+						ServiceName: "ExampleService",
+						MethodName:  "/ExampleService/ExampleMethod",
+						AuthenticationInfo: &capi.AuthenticationInfo{
+							PrincipalEmail: "user@example.com",
+						},
+						Status: &rpcstatus.Status{
+							Code:    int32(codes.Internal),
+							Message: "something is wrong",
+						},
+					},
+				},
+			},
+		},
+	}
 
 	for _, tc := range cases {
 		tc := tc
+
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
@@ -1051,7 +1130,7 @@ func TestStreamInterceptor(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			c, err := NewClient(WithBackend(p))
+			c, err := NewClient(ctx, WithBackend(p))
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -1149,6 +1228,7 @@ func TestServiceName(t *testing.T) {
 
 func TestHandleReturnUnary(t *testing.T) {
 	t.Parallel()
+
 	req := "test_request"
 	ctx := context.Background()
 
@@ -1192,8 +1272,10 @@ func TestHandleReturnUnary(t *testing.T) {
 			wantErr:  false,
 		},
 	}
+
 	for _, tc := range tests {
 		tc := tc
+
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
@@ -1316,8 +1398,10 @@ func TestHandleReturnWithResponse(t *testing.T) {
 			wantResp: true,
 		},
 	}
+
 	for _, tc := range tests {
 		tc := tc
+
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 

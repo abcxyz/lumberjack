@@ -45,12 +45,12 @@ import (
 type auditLogReqKey struct{}
 
 // InterceptorOption defines the option func to configure an interceptor.
-type InterceptorOption func(i *Interceptor) error
+type InterceptorOption func(ctx context.Context, i *Interceptor) error
 
 // WithAuditClient configures the interceptor to use the given audit client
 // to send audit logs.
 func WithAuditClient(c *Client) InterceptorOption {
-	return func(i *Interceptor) error {
+	return func(ctx context.Context, i *Interceptor) error {
 		i.Client = c
 		return nil
 	}
@@ -59,7 +59,7 @@ func WithAuditClient(c *Client) InterceptorOption {
 // WithSecurityContext configures the interceptor to use the given security
 // context to retrieve authentication info.
 func WithSecurityContext(sc security.GRPCContext) InterceptorOption {
-	return func(i *Interceptor) error {
+	return func(ctx context.Context, i *Interceptor) error {
 		i.sc = sc
 		return nil
 	}
@@ -68,7 +68,7 @@ func WithSecurityContext(sc security.GRPCContext) InterceptorOption {
 // WithAuditRules configures the interceptor to use the given rules to match
 // methods and instruct audit logging.
 func WithAuditRules(rs ...*api.AuditRule) InterceptorOption {
-	return func(i *Interceptor) error {
+	return func(ctx context.Context, i *Interceptor) error {
 		i.rules = rs
 		return nil
 	}
@@ -76,7 +76,7 @@ func WithAuditRules(rs ...*api.AuditRule) InterceptorOption {
 
 // WithInterceptorLogMode configures the interceptor to honor the given log mode.
 func WithInterceptorLogMode(m api.AuditLogRequest_LogMode) InterceptorOption {
-	return func(i *Interceptor) error {
+	return func(ctx context.Context, i *Interceptor) error {
 		i.logMode = m
 		return nil
 	}
@@ -92,14 +92,14 @@ type Interceptor struct {
 }
 
 // NewInterceptor creates a new interceptor with the given options.
-func NewInterceptor(options ...InterceptorOption) (*Interceptor, error) {
-	it := &Interceptor{}
-	for _, o := range options {
-		if err := o(it); err != nil {
+func NewInterceptor(ctx context.Context, opts ...InterceptorOption) (*Interceptor, error) {
+	var it Interceptor
+	for _, o := range opts {
+		if err := o(ctx, &it); err != nil {
 			return nil, fmt.Errorf("failed to apply interceptor option: %w", err)
 		}
 	}
-	return it, nil
+	return &it, nil
 }
 
 // UnaryInterceptor is a gRPC unary interceptor that automatically emits application audit logs.

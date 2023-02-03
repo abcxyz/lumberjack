@@ -30,6 +30,7 @@ import (
 	api "github.com/abcxyz/lumberjack/clients/go/apis/v1alpha1"
 	"github.com/abcxyz/lumberjack/clients/go/pkg/audit"
 	"github.com/abcxyz/lumberjack/clients/go/pkg/testutil"
+	"github.com/abcxyz/pkg/logging"
 	pkgtestutil "github.com/abcxyz/pkg/testutil"
 )
 
@@ -45,6 +46,8 @@ func (s *fakeServer) ProcessLog(_ context.Context, logReq *api.AuditLogRequest) 
 
 func TestFromConfigFile(t *testing.T) {
 	t.Parallel()
+
+	ctx := logging.WithLogger(context.Background(), logging.TestLogger(t))
 
 	configFileContentByName := map[string]string{
 		"valid.yaml": `
@@ -121,16 +124,17 @@ backend:
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
-			ctx := context.Background()
 			r := &fakeServer{}
 
 			addr, _ := testutil.TestFakeGRPCServer(t, func(s *grpc.Server) {
 				api.RegisterAuditLogAgentServer(s, r)
 			})
 
-			c, err := audit.NewClient(fromConfigFile(ctx, tc.path, envconfig.MultiLookuper(
+			l := envconfig.MultiLookuper(
 				envconfig.MapLookuper(map[string]string{"AUDIT_CLIENT_BACKEND_REMOTE_ADDRESS": addr}),
-				envconfig.MapLookuper(tc.envs))))
+				envconfig.MapLookuper(tc.envs),
+			)
+			c, err := audit.NewClient(ctx, fromConfigFile(tc.path, l))
 			if diff := pkgtestutil.DiffErrString(err, tc.wantErrSubstr); diff != "" {
 				t.Errorf("audit.NewClient(FromConfigFile(%v)) got unexpected error substring: %v", tc.path, diff)
 			}
@@ -156,6 +160,8 @@ backend:
 
 func TestFromConfig(t *testing.T) {
 	t.Parallel()
+
+	ctx := logging.WithLogger(context.Background(), logging.TestLogger(t))
 
 	r := &fakeServer{}
 	addr, _ := testutil.TestFakeGRPCServer(t, func(s *grpc.Server) {
@@ -192,8 +198,7 @@ func TestFromConfig(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
-			ctx := context.Background()
-			c, err := audit.NewClient(FromConfig(ctx, tc.cfg))
+			c, err := audit.NewClient(ctx, FromConfig(tc.cfg))
 			if diff := pkgtestutil.DiffErrString(err, tc.wantErrSubstr); diff != "" {
 				t.Errorf("audit.NewClient(FromConfig(%v)) got unexpected error substring: %v", tc.cfg, diff)
 			}
@@ -372,7 +377,8 @@ justification:
 
 func TestInterceptorFromConfigFile(t *testing.T) {
 	t.Parallel()
-	ctx := context.Background()
+
+	ctx := logging.WithLogger(context.Background(), logging.TestLogger(t))
 
 	cases := []struct {
 		name          string
@@ -497,7 +503,7 @@ rules:
 				}
 			})
 
-			_, err := audit.NewInterceptor(interceptorFromConfigFile(ctx, path, envconfig.MapLookuper(tc.envs)))
+			_, err := audit.NewInterceptor(ctx, interceptorFromConfigFile(path, envconfig.MapLookuper(tc.envs)))
 			if diff := pkgtestutil.DiffErrString(err, tc.wantErrSubstr); diff != "" {
 				t.Errorf("WithInterceptorFromConfigFile(path) got unexpected error substring: %v", diff)
 			}
