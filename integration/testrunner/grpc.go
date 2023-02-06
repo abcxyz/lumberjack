@@ -127,15 +127,15 @@ func testGRPCEndpoint(ctx context.Context, t *testing.T, g *GRPC) {
 	t.Run("hello_req_unary_success", func(t *testing.T) {
 		t.Parallel()
 		id := uuid.New().String()
+		t.Logf("using uuid %s", id)
 		want := GRPCFields{"/abcxyz.test.Talker/Hello", "gh-access-sa@lumberjack-dev-infra.iam.gserviceaccount.com", "abcxyz.test.Talker"}
 		_, err := g.TalkerClient.Hello(ctx, &talkerpb.HelloRequest{Message: "Some Message", Target: id})
 		if err != nil {
 			t.Errorf("could not greet: %v", err)
 		}
-		time.Sleep(15 * time.Second)
 		query := g.makeQueryForGRPCUnary(id)
 		t.Log(query.Q)
-		value := queryIfAuditLogExistsWithRetries(ctx, t, query, g.Config, "unary_hello")
+		value := queryIfAuditLogsExists(ctx, t, query, g.Config, "unary_hello")
 		result := parseQueryResultForGRPCUnary(t, value)
 		if diff := cmp.Diff(want, result, cmpopts.IgnoreFields(GRPCFields{}, "MethodName")); diff != "" {
 			t.Errorf(diff)
@@ -145,6 +145,7 @@ func testGRPCEndpoint(ctx context.Context, t *testing.T, g *GRPC) {
 	t.Run("fail_req_unary_failure", func(t *testing.T) {
 		t.Parallel()
 		id := uuid.New().String()
+		t.Logf("using uuid %s", id)
 		reply, err := g.TalkerClient.Fail(ctx, &talkerpb.FailRequest{Message: "Some Message", Target: id})
 		want := GRPCFields{"/abcxyz.test.Talker/Fail", "gh-access-sa@lumberjack-dev-infra.iam.gserviceaccount.com", "abcxyz.test.Talker"}
 		if err != nil {
@@ -160,10 +161,9 @@ func testGRPCEndpoint(ctx context.Context, t *testing.T, g *GRPC) {
 		} else {
 			t.Errorf("Did not get err as expected. Instead got reply: %v", reply)
 		}
-		time.Sleep(15 * time.Second)
 		query := g.makeQueryForGRPCUnary(id)
 		t.Log(query.Q)
-		value := queryIfAuditLogExistsWithRetries(ctx, t, query, g.Config, "unary_fail")
+		value := queryIfAuditLogsExists(ctx, t, query, g.Config, "unary_fail")
 		result := parseQueryResultForGRPCUnary(t, value)
 		if diff := cmp.Diff(want, result, cmpopts.IgnoreFields(GRPCFields{}, "MethodName")); diff != "" {
 			t.Errorf(diff)
@@ -173,6 +173,7 @@ func testGRPCEndpoint(ctx context.Context, t *testing.T, g *GRPC) {
 	t.Run("fibonacci_req_server_streaming_success", func(t *testing.T) {
 		t.Parallel()
 		id := uuid.New().String()
+		t.Logf("using uuid %s", id)
 		places := int64(5)
 		stream, err := g.TalkerClient.Fibonacci(ctx, &talkerpb.FibonacciRequest{Places: uint32(places), Target: id})
 		if err != nil {
@@ -190,10 +191,9 @@ func testGRPCEndpoint(ctx context.Context, t *testing.T, g *GRPC) {
 			}
 			t.Logf("Received value %v", place.Value)
 		}
-		time.Sleep(20 * time.Second)
 		query := g.makeQueryForGRPCStream(id)
 		t.Log(query.Q)
-		value := queryIfAuditLogsExistWithRetries(ctx, t, query, g.Config, "server_stream_fibonacci")
+		value := queryIfAuditLogsExists(ctx, t, query, g.Config, "server_stream_fibonacci")
 		result := parseQueryResultForGRPCStream(t, value)
 		if diff := cmp.Diff(places, result); diff != "" {
 			t.Errorf(diff)
@@ -203,6 +203,7 @@ func testGRPCEndpoint(ctx context.Context, t *testing.T, g *GRPC) {
 	t.Run("addition_req_client_streaming_success", func(t *testing.T) {
 		t.Parallel()
 		id := uuid.New().String()
+		t.Logf("using uuid %s", id)
 		stream, err := g.TalkerClient.Addition(ctx)
 		if err != nil {
 			t.Errorf("addition call failed: %v", err)
@@ -223,10 +224,9 @@ func testGRPCEndpoint(ctx context.Context, t *testing.T, g *GRPC) {
 		}
 		t.Logf("Value returned: %d", reply.Sum)
 
-		time.Sleep(20 * time.Second)
 		query := g.makeQueryForGRPCStream(id)
 		t.Log(query.Q)
-		value := queryIfAuditLogsExistWithRetries(ctx, t, query, g.Config, "client_stream_addition")
+		value := queryIfAuditLogsExists(ctx, t, query, g.Config, "client_stream_addition")
 		result := parseQueryResultForGRPCStream(t, value)
 		if diff := cmp.Diff(want, result); diff != "" {
 			t.Errorf(diff)
@@ -236,6 +236,7 @@ func testGRPCEndpoint(ctx context.Context, t *testing.T, g *GRPC) {
 	t.Run("fail_on_four_req_client_stream_failure", func(t *testing.T) {
 		t.Parallel()
 		id := uuid.New().String()
+		t.Logf("using uuid %s", id)
 		stream, err := g.TalkerClient.FailOnFour(ctx)
 		if err != nil {
 			t.Errorf("addition call failed: %v", err)
@@ -264,11 +265,10 @@ func testGRPCEndpoint(ctx context.Context, t *testing.T, g *GRPC) {
 			t.Errorf("Did not get err as expected. Instead got reply: %v", reply)
 		}
 		want := int64(4)
-		time.Sleep(20 * time.Second)
 		query := g.makeQueryForGRPCStream(id)
 		t.Log(query.Q)
 		// we expect to have 4 audit logs - the last sent number (5) will be after the err occurred.
-		value := queryIfAuditLogsExistWithRetries(ctx, t, query, g.Config, "stream_fail_on_four")
+		value := queryIfAuditLogsExists(ctx, t, query, g.Config, "stream_fail_on_four")
 		result := parseQueryResultForGRPCStream(t, value)
 		if diff := cmp.Diff(want, result); diff != "" {
 			t.Errorf(diff)
@@ -389,7 +389,7 @@ func parseQueryResultForGRPCUnary(tb testing.TB, value []bigquery.Value) GRPCFie
 // Similar to the above function, but can return multiple results, which is what we expect for streaming.
 func (g *GRPC) makeQueryForGRPCStream(id string) *bigquery.Query {
 	queryString := fmt.Sprintf(`SELECT 
-		count(distinct receiveTimestamp) FROM %s.%s
+		count(*) FROM %s.%s
 		WHERE jsonPayload.resource_name=?
 		AND jsonPayload.method_name IS NOT NULL 
 		AND jsonPayload.authentication_info.principal_email IS NOT NULL 

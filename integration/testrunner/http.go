@@ -77,7 +77,7 @@ func testHTTPEndpoint(ctx context.Context, tb testing.TB, endpointURL, idToken, 
 	time.Sleep(10 * time.Second)
 	bqQuery := makeQueryForHTTP(*bqClient, id, projectID, datasetQuery)
 	tb.Log(bqQuery.Q)
-	value := queryIfAuditLogExistsWithRetries(ctx, tb, bqQuery, cfg, "httpEndpointTest")
+	value := queryIfAuditLogsExists(ctx, tb, bqQuery, cfg, "httpEndpointTest")
 	result := parseQueryResultForHTTP(tb, value)
 	tb.Log(result)
 	tb.Log(result.PrincipalEmail)
