@@ -19,13 +19,13 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"reflect"
 	"testing"
 	"time"
 
 	"cloud.google.com/go/bigquery"
 	"github.com/google/uuid"
 	"github.com/sethvargo/go-retry"
+	"google.golang.org/genproto/googleapis/cloud/audit"
 )
 
 type HTTPFields struct {
@@ -44,8 +44,6 @@ func testHTTPEndpoint(ctx context.Context, tb testing.TB, endpointURL, idToken, 
 
 	id := uuid.New().String()
 	tb.Logf("using uuid %s", id)
-	wantPrincipalEmail := "gh-access-sa@lumberjack-dev-infra.iam.gserviceaccount.com"
-	wantServiceName := [2]string{"go-shell-app", "java-shell-app"}
 
 	b := retry.NewExponential(cfg.AuditLogRequestWait)
 	if err := retry.Do(ctx, retry.WithMaxRetries(cfg.MaxAuditLogRequestTries, b), func(ctx context.Context) error {
@@ -77,56 +75,53 @@ func testHTTPEndpoint(ctx context.Context, tb testing.TB, endpointURL, idToken, 
 	time.Sleep(10 * time.Second)
 	bqQuery := makeQueryForHTTP(*bqClient, id, projectID, datasetQuery)
 	tb.Log(bqQuery.Q)
-	value := queryIfAuditLogsExists(ctx, tb, bqQuery, cfg, "httpEndpointTest")
-	result := parseQueryResultForHTTP(tb, value)
-	tb.Log(result)
-	tb.Log(result.PrincipalEmail)
-	tb.Log(result.ServiceName)
-	diffString := ""
-	if result.ServiceName != wantServiceName[0] && result.ServiceName != wantServiceName[1] {
-		diffString += fmt.Sprintf("- %s or %s\n + %s\n", wantServiceName[0], wantServiceName[1], result.ServiceName)
+	results := queryIfAuditLogsExists(ctx, tb, bqQuery, cfg, "httpEndpointTest")
+	wantNum := 1
+	if len(results) != wantNum {
+		tb.Errorf("log number doesn't match (-want +got):\n - %d\n + %d\n", wantNum, len(results))
 	}
-	if result.PrincipalEmail != wantPrincipalEmail {
-		diffString += fmt.Sprintf("- %s\n + %s\n", wantPrincipalEmail, result.PrincipalEmail)
-	}
-	if diffString != "" {
-		diffString = "queryResult misMatch (-want +got):\n)" + diffString
-		tb.Errorf("%s", diffString)
+	jsonPayloadInfo := parseJsonpayload(tb, results[0])
+	diff := diffResults(jsonPayloadInfo, getMode("HTTP"))
+	if diff != "" {
+		tb.Errorf(diff)
 	}
 }
 
 func makeQueryForHTTP(client bigquery.Client, id, projectID, datasetQuery string) *bigquery.Query {
-	queryString := fmt.Sprintf(`
-	SELECT 
-		jsonPayload.authentication_info.principal_email AS PrincipalEmail,
-		jsonPayload.service_name AS ServiceName
-	FROM %s.%s
-	WHERE labels.trace_id=?
+	queryString := fmt.Sprintf(` WITH temptable AS (
+		SELECT *
+		FROM %s.%s
+		WHERE labels.trace_id=?
+ 	)
+ 	SELECT TO_JSON(t) as result FROM temptable as t
 	`, projectID, datasetQuery)
 	return makeQuery(client, id, queryString)
 }
 
-// Parse bigquey.Value type into HttpFields, so we can use that to do diff.
-func parseQueryResultForHTTP(tb testing.TB, value []bigquery.Value) HTTPFields {
-	// The value paramerter is returned from a query to bigquery
-	// and the format of that would be like
-	// [SomePrincipalEmail SomeServiceName]
-	// We want to parse that into a varible with type HTTPFields
-	// with the format of
-	// result := HTTPFields{
-	//  PrincipalEmail: "SomePrincipalEmail"
-	//  ServiceName: "SomeServiceName"
-	// }.
-	tb.Helper()
-	result := HTTPFields{}
-	elem := reflect.ValueOf(&result).Elem()
-	for i, v := range value {
-		result, ok := v.(string)
-		if !ok {
-			err := fmt.Errorf("error converting query results to string (got %T)", v)
-			tb.Log(err)
+func diffResults(jsonPayloadInfo *audit.AuditLog, isHTTPService bool) string {
+	wantPrincipalEmail := "gh-access-sa@lumberjack-dev-infra.iam.gserviceaccount.com"
+	wantHTTPServiceName := [2]string{"go-shell-app", "java-shell-app"}
+	wantGRPCServiceName := "abcxyz.test.Talker"
+	diffString := ""
+	// if results[0].GetJsonPayload()
+	if isHTTPService {
+		if jsonPayloadInfo.ServiceName != wantHTTPServiceName[0] && jsonPayloadInfo.ServiceName != wantHTTPServiceName[1] {
+			diffString += fmt.Sprintf("- %s or %s\n + %s\n", wantHTTPServiceName[0], wantHTTPServiceName[1], jsonPayloadInfo.ServiceName)
 		}
-		elem.Field(i).SetString(result)
+	} else {
+		if jsonPayloadInfo.ServiceName != wantGRPCServiceName {
+			diffString += fmt.Sprintf("- %sn + %s\n", wantGRPCServiceName, jsonPayloadInfo.ServiceName)
+		}
 	}
-	return result
+	if jsonPayloadInfo.AuthenticationInfo.PrincipalEmail != wantPrincipalEmail {
+		diffString += fmt.Sprintf("- %s\n + %s\n", wantPrincipalEmail, jsonPayloadInfo.AuthenticationInfo.PrincipalEmail)
+	}
+	if diffString != "" {
+		diffString = "queryResult misMatch (-want +got):\n)" + diffString
+	}
+	return diffString
+}
+
+func getMode(s string) bool {
+	return s == "HTTP"
 }

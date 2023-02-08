@@ -21,7 +21,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"reflect"
 	"strings"
 	"testing"
 	"time"
@@ -29,8 +28,6 @@ import (
 	"cloud.google.com/go/bigquery"
 	jvspb "github.com/abcxyz/jvs/apis/v0"
 	"github.com/abcxyz/lumberjack/internal/talkerpb"
-	"github.com/google/go-cmp/cmp"
-	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/google/uuid"
 	"github.com/lestrrat-go/jwx/v2/jwa"
 	"github.com/lestrrat-go/jwx/v2/jws"
@@ -128,16 +125,20 @@ func testGRPCEndpoint(ctx context.Context, t *testing.T, g *GRPC) {
 		t.Parallel()
 		id := uuid.New().String()
 		t.Logf("using uuid %s", id)
-		want := GRPCFields{"/abcxyz.test.Talker/Hello", "gh-access-sa@lumberjack-dev-infra.iam.gserviceaccount.com", "abcxyz.test.Talker"}
 		_, err := g.TalkerClient.Hello(ctx, &talkerpb.HelloRequest{Message: "Some Message", Target: id})
 		if err != nil {
 			t.Errorf("could not greet: %v", err)
 		}
-		query := g.makeQueryForGRPCUnary(id)
+		query := g.makeQueryForGRPC(id)
 		t.Log(query.Q)
-		value := queryIfAuditLogsExists(ctx, t, query, g.Config, "unary_hello")
-		result := parseQueryResultForGRPCUnary(t, value)
-		if diff := cmp.Diff(want, result, cmpopts.IgnoreFields(GRPCFields{}, "MethodName")); diff != "" {
+		results := queryIfAuditLogsExists(ctx, t, query, g.Config, "unary_hello")
+		wantNum := 1
+		if len(results) != wantNum {
+			t.Errorf("log number doesn't match (-want +got):\n - %d\n + %d\n", wantNum, len(results))
+		}
+		jsonPayloadInfo := parseJsonpayload(t, results[0])
+		diff := diffResults(jsonPayloadInfo, getMode("GRPC"))
+		if diff != "" {
 			t.Errorf(diff)
 		}
 	})
@@ -147,7 +148,6 @@ func testGRPCEndpoint(ctx context.Context, t *testing.T, g *GRPC) {
 		id := uuid.New().String()
 		t.Logf("using uuid %s", id)
 		reply, err := g.TalkerClient.Fail(ctx, &talkerpb.FailRequest{Message: "Some Message", Target: id})
-		want := GRPCFields{"/abcxyz.test.Talker/Fail", "gh-access-sa@lumberjack-dev-infra.iam.gserviceaccount.com", "abcxyz.test.Talker"}
 		if err != nil {
 			returnStatus, ok := status.FromError(err)
 			if !ok {
@@ -161,11 +161,16 @@ func testGRPCEndpoint(ctx context.Context, t *testing.T, g *GRPC) {
 		} else {
 			t.Errorf("Did not get err as expected. Instead got reply: %v", reply)
 		}
-		query := g.makeQueryForGRPCUnary(id)
+		query := g.makeQueryForGRPC(id)
 		t.Log(query.Q)
-		value := queryIfAuditLogsExists(ctx, t, query, g.Config, "unary_fail")
-		result := parseQueryResultForGRPCUnary(t, value)
-		if diff := cmp.Diff(want, result, cmpopts.IgnoreFields(GRPCFields{}, "MethodName")); diff != "" {
+		results := queryIfAuditLogsExists(ctx, t, query, g.Config, "unary_fail")
+		wantNum := 1
+		if len(results) < wantNum {
+			t.Errorf("log number doesn't match (-want +got):\n - %d\n + %d\n", wantNum, len(results))
+		}
+		jsonPayloadInfo := parseJsonpayload(t, results[0])
+		diff := diffResults(jsonPayloadInfo, getMode("GRPC"))
+		if diff != "" {
 			t.Errorf(diff)
 		}
 	})
@@ -174,7 +179,7 @@ func testGRPCEndpoint(ctx context.Context, t *testing.T, g *GRPC) {
 		t.Parallel()
 		id := uuid.New().String()
 		t.Logf("using uuid %s", id)
-		places := int64(5)
+		places := 5
 		stream, err := g.TalkerClient.Fibonacci(ctx, &talkerpb.FibonacciRequest{Places: uint32(places), Target: id})
 		if err != nil {
 			t.Errorf("fibonacci call failed: %v", err)
@@ -191,12 +196,19 @@ func testGRPCEndpoint(ctx context.Context, t *testing.T, g *GRPC) {
 			}
 			t.Logf("Received value %v", place.Value)
 		}
-		query := g.makeQueryForGRPCStream(id)
+		query := g.makeQueryForGRPC(id)
 		t.Log(query.Q)
-		value := queryIfAuditLogsExists(ctx, t, query, g.Config, "server_stream_fibonacci")
-		result := parseQueryResultForGRPCStream(t, value)
-		if diff := cmp.Diff(places, result); diff != "" {
-			t.Errorf(diff)
+		results := queryIfAuditLogsExists(ctx, t, query, g.Config, "server_stream_fibonacci")
+		wantNum := places
+		if len(results) != wantNum {
+			t.Errorf("log number doesn't match (-want +got):\n - %d\n + %d\n", wantNum, len(results))
+		}
+		for i := 0; i < places; i++ {
+			jsonPayloadInfo := parseJsonpayload(t, results[i])
+			diff := diffResults(jsonPayloadInfo, getMode("GRPC"))
+			if diff != "" {
+				t.Errorf("log %d mismatch: %s", i, diff)
+			}
 		}
 	})
 
@@ -209,7 +221,6 @@ func testGRPCEndpoint(ctx context.Context, t *testing.T, g *GRPC) {
 			t.Errorf("addition call failed: %v", err)
 		}
 		totalNumbers := 5
-		want := int64(5)
 		for i := 0; i < totalNumbers; i++ {
 			if err := stream.Send(&talkerpb.AdditionRequest{
 				Addend: uint32(i),
@@ -224,12 +235,18 @@ func testGRPCEndpoint(ctx context.Context, t *testing.T, g *GRPC) {
 		}
 		t.Logf("Value returned: %d", reply.Sum)
 
-		query := g.makeQueryForGRPCStream(id)
+		query := g.makeQueryForGRPC(id)
 		t.Log(query.Q)
-		value := queryIfAuditLogsExists(ctx, t, query, g.Config, "client_stream_addition")
-		result := parseQueryResultForGRPCStream(t, value)
-		if diff := cmp.Diff(want, result); diff != "" {
-			t.Errorf(diff)
+		results := queryIfAuditLogsExists(ctx, t, query, g.Config, "client_stream_addition")
+		if len(results) != totalNumbers {
+			t.Errorf("log number doesn't match (-want +got):\n - %d\n + %d\n", totalNumbers, len(results))
+		}
+		for i := 0; i < totalNumbers; i++ {
+			jsonPayloadInfo := parseJsonpayload(t, results[i])
+			diff := diffResults(jsonPayloadInfo, getMode("GRPC"))
+			if diff != "" {
+				t.Errorf("log %d mismatch: %s", i, diff)
+			}
 		}
 	})
 
@@ -264,14 +281,20 @@ func testGRPCEndpoint(ctx context.Context, t *testing.T, g *GRPC) {
 		} else {
 			t.Errorf("Did not get err as expected. Instead got reply: %v", reply)
 		}
-		want := int64(4)
-		query := g.makeQueryForGRPCStream(id)
+		wantNum := 4
+		query := g.makeQueryForGRPC(id)
 		t.Log(query.Q)
 		// we expect to have 4 audit logs - the last sent number (5) will be after the err occurred.
-		value := queryIfAuditLogsExists(ctx, t, query, g.Config, "stream_fail_on_four")
-		result := parseQueryResultForGRPCStream(t, value)
-		if diff := cmp.Diff(want, result); diff != "" {
-			t.Errorf(diff)
+		results := queryIfAuditLogsExists(ctx, t, query, g.Config, "stream_fail_on_four")
+		if len(results) != wantNum {
+			t.Errorf("log number doesn't match (-want +got):\n - %d\n + %d\n", totalNumbers, len(results))
+		}
+		for i := 0; i < wantNum; i++ {
+			jsonPayloadInfo := parseJsonpayload(t, results[i])
+			diff := diffResults(jsonPayloadInfo, getMode("GRPC"))
+			if diff != "" {
+				t.Errorf("log %d mismatch: %s", i, diff)
+			}
 		}
 	})
 }
@@ -346,67 +369,13 @@ func createConnection(ctx context.Context, t *testing.T, addr, idToken string) *
 // This query is used to find the relevant audit log in BigQuery, which we assume will be added by the server.
 // We specifically look up the log using the UUID specified in the request as we know the server will add that
 // as the resource name, and provides us a unique key to find logs with.
-func (g *GRPC) makeQueryForGRPCUnary(id string) *bigquery.Query {
-	queryString := fmt.Sprintf(`SELECT
-		jsonPayload.method_name AS MethodName,
-		jsonPayload.authentication_info.principal_email AS PrincipalEmail,
-		jsonPayload.service_name AS ServiceName
-	FROM %s.%s
-	WHERE jsonPayload.resource_name = ?
-	`, g.ProjectID, g.DatasetQuery)
-	return makeQuery(*g.BigQueryClient, id, queryString)
-}
-
-// Parse bigquey.Value type into a GRPCFields, so we can use that to do diff.
-func parseQueryResultForGRPCUnary(tb testing.TB, value []bigquery.Value) GRPCFields {
-	// The value paramerter is returned from a query to bigquery
-	// and the format of that would be like
-	// [SomeMethodName SomePrincipalEmail SomeServiceName]
-	// We want to parse that into a varible with type GRPCFields
-	// with the format of
-	// result := GRPCFields{
-	//	MethodName: "SomeMethodName"
-	//  PrincipalEmail: "SomePrincipalEmail"
-	//  ServiceName: "SomeServiceName"
-	// }.
-	tb.Helper()
-	result := GRPCFields{}
-	elem := reflect.ValueOf(&result).Elem()
-	// set each element in the bigquery.Value array
-	// into the corresponding of GRPCFields.
-	for i, v := range value {
-		result, ok := v.(string)
-		// handle error if the value can't be parsed into string
-		if !ok {
-			err := fmt.Errorf("error converting query results to string (got %T)", v)
-			tb.Log(err)
-		}
-		elem.Field(i).SetString(result)
-	}
-	return result
-}
-
-// Similar to the above function, but can return multiple results, which is what we expect for streaming.
-func (g *GRPC) makeQueryForGRPCStream(id string) *bigquery.Query {
-	queryString := fmt.Sprintf(`SELECT 
-		count(*) FROM %s.%s
+func (g *GRPC) makeQueryForGRPC(id string) *bigquery.Query {
+	queryString := fmt.Sprintf(` WITH temptable AS (
+		SELECT *
+		FROM %s.%s
 		WHERE jsonPayload.resource_name=?
-		AND jsonPayload.method_name IS NOT NULL 
-		AND jsonPayload.authentication_info.principal_email IS NOT NULL 
-		AND jsonPayload.service_name IS NOT NULL
-	`, g.ProjectID, g.DatasetQuery)
+ 	)
+ 	SELECT TO_JSON(t) as result FROM temptable as t
+ 	`, g.ProjectID, g.DatasetQuery)
 	return makeQuery(*g.BigQueryClient, id, queryString)
-}
-
-// Similar to parseQueryResultForGRPCUnary.
-func parseQueryResultForGRPCStream(tb testing.TB, value []bigquery.Value) int64 {
-	// In this case, the value only contains one element which is the
-	// count of entry's in the bigquery table.
-	tb.Helper()
-	result, ok := value[0].(int64)
-	if !ok {
-		err := fmt.Errorf("error converting query results to string (got %T)", value[0])
-		tb.Log(err)
-	}
-	return result
 }
