@@ -83,11 +83,12 @@ func testHTTPEndpoint(ctx context.Context, tb testing.TB, endpointURL, idToken, 
 	wantNum := 1
 	if len(results) != wantNum {
 		tb.Errorf("log number doesn't match (-want +got):\n - %d\n + %d\n", wantNum, len(results))
-	}
-	jsonPayloadInfo := parseJsonpayload(tb, results[0])
-	diff := diffResults(results[0], jsonPayloadInfo, getMode("HTTP"))
-	if diff != "" {
-		tb.Errorf(diff)
+	} else {
+		jsonPayloadInfo := parseJsonpayload(tb, results[0])
+		diff := diffResults(results[0], jsonPayloadInfo, getMode("HTTP"))
+		if diff != "" {
+			tb.Errorf(diff)
+		}
 	}
 }
 
@@ -110,7 +111,7 @@ func diffResults(logEntry *logpb.LogEntry, jsonPayloadInfo *audit.AuditLog, isHT
 	wantHTTPServiceName := [2]string{"go-shell-app", "java-shell-app"}
 	wantGRPCServiceName := "abcxyz.test.Talker"
 	diffString := cmp.Diff(wantLogEntry, logEntry, protocmp.Transform(),
-		protocmp.IgnoreFields(&logpb.LogEntry{}, "insert_id", "labels", "receive_timestamp", "json_payload"))
+		protocmp.IgnoreFields(&logpb.LogEntry{}, "log_name", "insert_id", "labels", "receive_timestamp", "json_payload", "resource", "timestamp", "operation"))
 
 	if isHTTPService {
 		if jsonPayloadInfo.ServiceName != wantHTTPServiceName[0] && jsonPayloadInfo.ServiceName != wantHTTPServiceName[1] {

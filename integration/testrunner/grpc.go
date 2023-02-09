@@ -136,11 +136,12 @@ func testGRPCEndpoint(ctx context.Context, t *testing.T, g *GRPC) {
 		wantNum := 1
 		if len(results) != wantNum {
 			t.Errorf("log number doesn't match (-want +got):\n - %d\n + %d\n", wantNum, len(results))
-		}
-		jsonPayloadInfo := parseJsonpayload(t, results[0])
-		diff := diffResults(results[0], jsonPayloadInfo, getMode("GRPC"))
-		if diff != "" {
-			t.Errorf(diff)
+		} else {
+			jsonPayloadInfo := parseJsonpayload(t, results[0])
+			diff := diffResults(results[0], jsonPayloadInfo, getMode("GRPC"))
+			if diff != "" {
+				t.Errorf(diff)
+			}
 		}
 	})
 
@@ -166,13 +167,14 @@ func testGRPCEndpoint(ctx context.Context, t *testing.T, g *GRPC) {
 		t.Log(query.Q)
 		results := queryIfAuditLogsExistsWithRetries(ctx, t, query, g.Config, "unary_fail")
 		wantNum := 1
-		if len(results) < wantNum {
+		if len(results) != wantNum {
 			t.Errorf("log number doesn't match (-want +got):\n - %d\n + %d\n", wantNum, len(results))
-		}
-		jsonPayloadInfo := parseJsonpayload(t, results[0])
-		diff := diffResults(results[0], jsonPayloadInfo, getMode("GRPC"))
-		if diff != "" {
-			t.Errorf(diff)
+		} else {
+			jsonPayloadInfo := parseJsonpayload(t, results[0])
+			diff := diffResults(results[0], jsonPayloadInfo, getMode("GRPC"))
+			if diff != "" {
+				t.Errorf(diff)
+			}
 		}
 	})
 
@@ -203,12 +205,13 @@ func testGRPCEndpoint(ctx context.Context, t *testing.T, g *GRPC) {
 		wantNum := places
 		if len(results) != wantNum {
 			t.Errorf("log number doesn't match (-want +got):\n - %d\n + %d\n", wantNum, len(results))
-		}
-		for i := 0; i < places; i++ {
-			jsonPayloadInfo := parseJsonpayload(t, results[i])
-			diff := diffResults(results[i], jsonPayloadInfo, getMode("GRPC"))
-			if diff != "" {
-				t.Errorf("log %d mismatch: %s", i, diff)
+		} else {
+			for i := 0; i < wantNum; i++ {
+				jsonPayloadInfo := parseJsonpayload(t, results[i])
+				diff := diffResults(results[i], jsonPayloadInfo, getMode("GRPC"))
+				if diff != "" {
+					t.Errorf("log %d mismatch: %s", i, diff)
+				}
 			}
 		}
 	})
@@ -241,12 +244,13 @@ func testGRPCEndpoint(ctx context.Context, t *testing.T, g *GRPC) {
 		results := queryIfAuditLogsExistsWithRetries(ctx, t, query, g.Config, "client_stream_addition")
 		if len(results) != totalNumbers {
 			t.Errorf("log number doesn't match (-want +got):\n - %d\n + %d\n", totalNumbers, len(results))
-		}
-		for i := 0; i < totalNumbers; i++ {
-			jsonPayloadInfo := parseJsonpayload(t, results[i])
-			diff := diffResults(results[i], jsonPayloadInfo, getMode("GRPC"))
-			if diff != "" {
-				t.Errorf("log %d mismatch: %s", i, diff)
+		} else {
+			for i := 0; i < totalNumbers; i++ {
+				jsonPayloadInfo := parseJsonpayload(t, results[i])
+				diff := diffResults(results[i], jsonPayloadInfo, getMode("GRPC"))
+				if diff != "" {
+					t.Errorf("log %d mismatch: %s", i, diff)
+				}
 			}
 		}
 	})
@@ -289,12 +293,13 @@ func testGRPCEndpoint(ctx context.Context, t *testing.T, g *GRPC) {
 		results := queryIfAuditLogsExistsWithRetries(ctx, t, query, g.Config, "stream_fail_on_four")
 		if len(results) != wantNum {
 			t.Errorf("log number doesn't match (-want +got):\n - %d\n + %d\n", totalNumbers, len(results))
-		}
-		for i := 0; i < wantNum; i++ {
-			jsonPayloadInfo := parseJsonpayload(t, results[i])
-			diff := diffResults(results[i], jsonPayloadInfo, getMode("GRPC"))
-			if diff != "" {
-				t.Errorf("log %d mismatch: %s", i, diff)
+		} else {
+			for i := 0; i < wantNum; i++ {
+				jsonPayloadInfo := parseJsonpayload(t, results[i])
+				diff := diffResults(results[i], jsonPayloadInfo, getMode("GRPC"))
+				if diff != "" {
+					t.Errorf("log %d mismatch: %s", i, diff)
+				}
 			}
 		}
 	})

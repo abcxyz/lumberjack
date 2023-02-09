@@ -162,15 +162,17 @@ public class AuditLoggingServerInterceptor<ReqT extends Message> implements Serv
               // convert from one to the other.
               Code code = Code.forNumber(status.getCode().value());
               ReqT unloggedRequest = unloggedRequests.pollFirst(); // try to get the last request
-              logBuilder.setStatus(
-                  Status.newBuilder().setCode(code.getNumber()).setMessage(code.name()).build());
-              auditLog(
-                  selector,
-                  auditLogRequestContext,
-                  unloggedRequest,
-                  null,
-                  logBuilder,
-                  logEntryOperation);
+              if (unloggedRequest != null) {
+                logBuilder.setStatus(
+                    Status.newBuilder().setCode(code.getNumber()).setMessage(code.name()).build());
+                auditLog(
+                    selector,
+                    auditLogRequestContext,
+                    unloggedRequest,
+                    null,
+                    logBuilder,
+                    logEntryOperation);
+              }
             }
             super.close(status, trailers);
           }
