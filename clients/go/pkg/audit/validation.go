@@ -22,24 +22,40 @@ import (
 	api "github.com/abcxyz/lumberjack/clients/go/apis/v1alpha1"
 )
 
-type requestValidation struct{}
+// RequestValidator validates log request fields.
+type RequestValidator struct{}
 
-// Process with receiver auditLogRequestValidation verifies
-// that the AuditLogRequest is properly formed.
-func (p requestValidation) Process(_ context.Context, logReq *api.AuditLogRequest) error {
-	if logReq == nil {
-		return fmt.Errorf("request shouldn't be nil: %w", ErrInvalidRequest)
+// NewRequestValidator returns a new validtor that processes log request fields.
+func NewRequestValidator(ctx context.Context) *RequestValidator {
+	return &RequestValidator{}
+}
+
+// Process with receiver auditLogRequestValidation verifies that the
+// AuditLogRequest is properly formed.
+func (p *RequestValidator) Process(ctx context.Context, logReq *api.AuditLogRequest) error {
+	if err := p.process(ctx, logReq); err != nil {
+		// TODO(sethvargo): In Go 1.20, wrap both errors
+		return fmt.Errorf("%w: %s", ErrInvalidRequest, err)
 	}
+	return nil
+}
+
+// process is like Process, but allows for easier error wrapping.
+func (p *RequestValidator) process(ctx context.Context, logReq *api.AuditLogRequest) error {
+	if logReq == nil {
+		return fmt.Errorf("AuditLogRequest cannot be nil")
+	}
+
 	if logReq.Payload == nil {
-		return fmt.Errorf("request.Payload shouldn't be nil: %w", ErrInvalidRequest)
+		return fmt.Errorf("AuditLogRequest.Payload cannot be nil")
 	}
 
 	if logReq.Payload.ServiceName == "" {
-		return fmt.Errorf("ServiceName shouldn't be empty: %w", ErrInvalidRequest)
+		return fmt.Errorf("ServiceName cannot be empty")
 	}
 
 	if logReq.Payload.AuthenticationInfo == nil {
-		return fmt.Errorf("AuthenticationInfo shouldn't be nil: %w", ErrInvalidRequest)
+		return fmt.Errorf("AuthenticationInfo cannot be nil")
 	}
 
 	email := logReq.Payload.AuthenticationInfo.PrincipalEmail
@@ -50,17 +66,16 @@ func (p requestValidation) Process(_ context.Context, logReq *api.AuditLogReques
 	return nil
 }
 
-// This method is intended to validate that the email associated with
-// the authentication request has the correct format and in a valid
-// domain.
-func (p requestValidation) validateEmail(email string) error {
+// This method is intended to validate that the email associated with the
+// authentication request has the correct format and in a valid domain.
+func (p *RequestValidator) validateEmail(email string) error {
 	if email == "" {
-		return fmt.Errorf("PrincipalEmail shouldn't be nil: %w", ErrInvalidRequest)
+		return fmt.Errorf("PrincipalEmail cannot be empty")
 	}
 
 	parts := strings.Split(email, "@")
 	if len(parts) != 2 || parts[1] == "" {
-		return fmt.Errorf("email domain malformed: %w", ErrInvalidRequest)
+		return fmt.Errorf("PrincipalEmail %q is malformed", email)
 	}
 	return nil
 }

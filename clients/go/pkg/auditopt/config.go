@@ -182,7 +182,7 @@ func clientFromConfig(ctx context.Context, c *audit.Client, cfg *api.Config) err
 	}
 	opts = append(opts, withBackends...)
 
-	withLabels := labelsFromConfig(cfg)
+	withLabels := labelsFromConfig(ctx, cfg)
 	opts = append(opts, withLabels)
 
 	if cfg.Justification != nil && cfg.Justification.Enabled {
@@ -268,9 +268,9 @@ func backendsFromConfig(cfg *api.Config) ([]audit.Option, error) {
 	return backendOpts, nil
 }
 
-func labelsFromConfig(cfg *api.Config) audit.Option {
-	lp := audit.LabelProcessor{DefaultLabels: cfg.Labels}
-	return audit.WithMutator(&lp)
+func labelsFromConfig(ctx context.Context, cfg *api.Config) audit.Option {
+	lp := audit.NewLabelProcessor(ctx, cfg.Labels)
+	return audit.WithMutator(lp)
 }
 
 func justificationFromConfig(ctx context.Context, cfg *api.Config) (audit.Option, error) {

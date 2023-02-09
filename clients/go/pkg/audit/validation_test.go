@@ -123,12 +123,14 @@ func TestRequestValidation_Process(t *testing.T) {
 			wantErr: ErrInvalidRequest,
 		},
 	}
+
 	for _, tc := range tests {
 		tc := tc
+
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
-			p := &requestValidation{}
+			p := NewRequestValidator(ctx)
 			err := p.Process(ctx, tc.logReq)
 			if !errors.Is(err, tc.wantErr) {
 				t.Errorf("Process(%+v) error got %T want %T", tc.logReq, err, tc.wantErr)

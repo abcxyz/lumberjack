@@ -20,26 +20,39 @@ import (
 	api "github.com/abcxyz/lumberjack/clients/go/apis/v1alpha1"
 )
 
-// LabelProcessor is a mutator that adds labels to each AuditLogRequest. These labels
-// are specified through the configuration, and are intended to be defaults. They do
-// not overwrite any labels that are already in the request, and can be overwritten by
-// the server code.
+// LabelProcessor is a mutator that adds labels to each AuditLogRequest. These
+// labels are specified through the configuration, and are intended to be
+// defaults. They do not overwrite any labels that are already in the request,
+// and can be overwritten by the server code.
 type LabelProcessor struct {
-	DefaultLabels map[string]string
+	defaultLabels map[string]string
+}
+
+// NewLabelProcessor creates a new LabelProcess with the given default labels.
+func NewLabelProcessor(ctx context.Context, defaultLabels map[string]string) *LabelProcessor {
+	cp := make(map[string]string, len(defaultLabels))
+	for k, v := range defaultLabels {
+		cp[k] = v
+	}
+
+	return &LabelProcessor{
+		defaultLabels: cp,
+	}
 }
 
 // Process adds the configured labels to each passed in request, without overwriting
 // existing labels.
 func (p *LabelProcessor) Process(ctx context.Context, logReq *api.AuditLogRequest) error {
-	if len(p.DefaultLabels) == 0 {
+	if len(p.defaultLabels) == 0 {
 		// short circuit if there are no labels to add
 		return nil
 	}
+
 	if logReq.Labels == nil {
 		logReq.Labels = map[string]string{}
 	}
 
-	for key, val := range p.DefaultLabels {
+	for key, val := range p.defaultLabels {
 		if _, exists := logReq.Labels[key]; !exists {
 			logReq.Labels[key] = val
 		}
