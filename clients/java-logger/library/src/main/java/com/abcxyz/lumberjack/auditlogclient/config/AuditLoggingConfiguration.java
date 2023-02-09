@@ -49,9 +49,6 @@ public class AuditLoggingConfiguration {
   @JsonProperty("justification")
   private Justification justification = new Justification();
 
-  @JsonProperty(value = "breakglass_allowed")
-  private boolean breakglassAllowed = false;
-
   private Map<String, String> labels;
 
   public Filters getFilters() {
