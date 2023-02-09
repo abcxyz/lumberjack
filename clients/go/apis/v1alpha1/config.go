@@ -367,6 +367,10 @@ type Justification struct {
 	// all manual calls are expected to pass in a justification in the "justification-token" header.
 	// If omitted, justifications will not be added to logs, even if provided.
 	Enabled bool `yaml:"enabled,omitempty" env:"JUSTIFICATION_ENABLED,overwrite"`
+
+	// AllowBreakglass indicates whether JVS should allow unsigned justification.
+	// If justification is not enabled, AllowBreakglass will be ignored, even if provided.
+	AllowBreakglass bool `yaml:"allow_breakglass,omitempty" env:"JUSTIFICATION_ALLOW_BREAKGLASS,overwrite"`
 }
 
 // Validate validates the Justification.

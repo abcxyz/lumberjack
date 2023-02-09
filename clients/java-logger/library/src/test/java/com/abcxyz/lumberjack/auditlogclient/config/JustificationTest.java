@@ -47,6 +47,15 @@ public class JustificationTest {
   }
 
   @Test
+  public void allowBreakglass() {
+    justification.setAllowBreakglass(true);
+    assertTrue(justification.allowBreakglass());
+
+    justification.setAllowBreakglass(false);
+    assertFalse(justification.allowBreakglass());
+  }
+
+  @Test
   public void validate() {
     String publicKeysEndpoint = "*.example.com";
     justification.setPublicKeysEndpoint(publicKeysEndpoint);

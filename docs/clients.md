@@ -112,6 +112,7 @@ labels:
 justification:
   enabled: true
   public_keys_endpoint: "example.com"
+  allow_breakglass: false
 ```
 
 ### Extend

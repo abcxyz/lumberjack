@@ -100,6 +100,7 @@ audit logs, add the following block in the config:
 justification:
   enabled: true
   public_keys_endpoint: example.com
+  allow_breakglass: false
 ```
 
 ## Supported env vars
@@ -117,6 +118,7 @@ AUDIT_CLIENT_LOG_MODE                             | Whether to fail-close audit 
 AUDIT_CLIENT_CONFIG_NAME                          | (For Java client only) The config file (e.g. `src/main/resources/${AUDIT_CLIENT_CONFIG_NAME}`) to use
 AUDIT_CLIENT_JUSTIFICATION_PUBLIC_KEYS_ENDPOINT   | (Experimental) The JVS JWKs address
 AUDIT_CLIENT_JUSTIFICATION_ENABLED                | (Experimental) Whether to enable justification
+AUDIT_CLIENT_JUSTIFICATION_ALLOW_BREAKGLASS       | (Experimental) Whether to allow breakglass, ignored if justification is not enabled.
 
 ## Examples
 

@@ -336,6 +336,7 @@ security_context:
 justification:
   public_keys_endpoint: example.com:123
   enabled: true
+  allow_breakglass: false
 `,
 			wantCfg: &api.Config{
 				Version:         "v1alpha1",
@@ -344,6 +345,7 @@ justification:
 				Justification: &api.Justification{
 					PublicKeysEndpoint: "example.com:123",
 					Enabled:            true,
+					AllowBreakglass:    false,
 				},
 			},
 		},
