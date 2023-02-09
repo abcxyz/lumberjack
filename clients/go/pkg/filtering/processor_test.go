@@ -24,7 +24,7 @@ import (
 	"google.golang.org/protobuf/testing/protocmp"
 
 	api "github.com/abcxyz/lumberjack/clients/go/apis/v1alpha1"
-	"github.com/abcxyz/lumberjack/clients/go/pkg/audit"
+	"github.com/abcxyz/lumberjack/clients/go/pkg/auditerrors"
 	"github.com/abcxyz/lumberjack/clients/go/pkg/testutil"
 	pkgtestutil "github.com/abcxyz/pkg/testutil"
 )
@@ -98,14 +98,14 @@ func TestPrincipalEmailMatcher_Process(t *testing.T) {
 			opts:       []Option{WithIncludes("foo@google.com")},
 			logReq:     testutil.NewRequest(testutil.WithPrincipal("bar@google.com")),
 			wantLogReq: testutil.NewRequest(testutil.WithPrincipal("bar@google.com")),
-			wantErr:    audit.ErrFailedPrecondition,
+			wantErr:    auditerrors.ErrPreconditionFailed,
 		},
 		{
 			name:       "should_fail_precondition_when_exclude_matches_and_include_is_nil",
 			opts:       []Option{WithExcludes("foo@google.com")},
 			logReq:     testutil.NewRequest(testutil.WithPrincipal("foo@google.com")),
 			wantLogReq: testutil.NewRequest(testutil.WithPrincipal("foo@google.com")),
-			wantErr:    audit.ErrFailedPrecondition,
+			wantErr:    auditerrors.ErrPreconditionFailed,
 		},
 		{
 			name:       "should_succeed_when_exclude_mismatches_and_include_is_nil",
@@ -121,7 +121,7 @@ func TestPrincipalEmailMatcher_Process(t *testing.T) {
 			},
 			logReq:     testutil.NewRequest(testutil.WithPrincipal("bar@google.com")),
 			wantLogReq: testutil.NewRequest(testutil.WithPrincipal("bar@google.com")),
-			wantErr:    audit.ErrFailedPrecondition,
+			wantErr:    auditerrors.ErrPreconditionFailed,
 		},
 		{
 			name: "should_succeed_when_include_matches_and_exclude_mismatches",
@@ -166,7 +166,7 @@ func TestPrincipalEmailMatcher_Process(t *testing.T) {
 			},
 			logReq:     testutil.NewRequest(testutil.WithPrincipal("foo@google.com")),
 			wantLogReq: testutil.NewRequest(testutil.WithPrincipal("foo@google.com")),
-			wantErr:    audit.ErrFailedPrecondition,
+			wantErr:    auditerrors.ErrPreconditionFailed,
 		},
 		{
 			name: "should_fail_if_authentication_info_is_missing",
@@ -179,7 +179,7 @@ func TestPrincipalEmailMatcher_Process(t *testing.T) {
 			wantLogReq: &api.AuditLogRequest{
 				Payload: &cal.AuditLog{},
 			},
-			wantErr: audit.ErrInvalidRequest,
+			wantErr: auditerrors.ErrInvalidRequest,
 		},
 	}
 	for _, tc := range tests {

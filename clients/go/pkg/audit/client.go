@@ -23,6 +23,7 @@ import (
 	"go.uber.org/zap"
 
 	api "github.com/abcxyz/lumberjack/clients/go/apis/v1alpha1"
+	"github.com/abcxyz/lumberjack/clients/go/pkg/auditerrors"
 	zlogger "github.com/abcxyz/pkg/logging"
 	"github.com/hashicorp/go-multierror"
 )
@@ -145,30 +146,34 @@ func (c *Client) Log(ctx context.Context, logReq *api.AuditLogRequest) error {
 		logMode = c.logMode
 		logReq.Mode = logMode
 	}
+
 	for _, p := range c.validators {
 		if err := p.Process(ctx, logReq); err != nil {
-			if errors.Is(err, ErrFailedPrecondition) {
+			if errors.Is(err, auditerrors.ErrPreconditionFailed) {
 				logger.Warnf("stopped log request processing as validator %T precondition failed: %v", p, err)
 			}
 			return c.handleReturn(ctx, fmt.Errorf("failed to execute validator %T: %w", p, err), logReq.Mode)
 		}
 	}
+
 	for _, p := range c.mutators {
 		if err := p.Process(ctx, logReq); err != nil {
-			if errors.Is(err, ErrFailedPrecondition) {
+			if errors.Is(err, auditerrors.ErrPreconditionFailed) {
 				logger.Warnf("stopped log request processing as mutator %T precondition failed: %v", p, err)
 			}
 			return c.handleReturn(ctx, fmt.Errorf("failed to execute mutator %T: %w", p, err), logReq.Mode)
 		}
 	}
+
 	for _, p := range c.backends {
 		if err := p.Process(ctx, logReq); err != nil {
-			if errors.Is(err, ErrFailedPrecondition) {
+			if errors.Is(err, auditerrors.ErrPreconditionFailed) {
 				logger.Warnf("stopped log request processing as backend %T precondition failed: %v", p, err)
 			}
 			return c.handleReturn(ctx, fmt.Errorf("failed to execute backend %T: %w", p, err), logReq.Mode)
 		}
 	}
+
 	return nil
 }
 

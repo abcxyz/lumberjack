@@ -28,10 +28,14 @@ import (
 
 	jvspb "github.com/abcxyz/jvs/apis/v0"
 	api "github.com/abcxyz/lumberjack/clients/go/apis/v1alpha1"
+	"github.com/abcxyz/pkg/logging"
+	pkgtestutil "github.com/abcxyz/pkg/testutil"
 )
 
 func TestProcess(t *testing.T) {
 	t.Parallel()
+
+	ctx := logging.WithLogger(context.Background(), logging.TestLogger(t))
 
 	cases := []struct {
 		name       string
@@ -39,93 +43,104 @@ func TestProcess(t *testing.T) {
 		validator  *fakeValidator
 		logReq     *api.AuditLogRequest
 		wantLogReq *api.AuditLogRequest
-		wantErr    bool
-	}{{
-		name: "success",
-		validator: &fakeValidator{
-			justifications: []*jvspb.Justification{{Category: "explanation", Value: "need-access"}},
-		},
-		logReq: &api.AuditLogRequest{
-			Context: &structpb.Struct{
-				Fields: map[string]*structpb.Value{
-					TokenHeaderKey: structpb.NewStringValue("token"),
+		wantErr    string
+	}{
+		{
+			name: "success",
+			validator: &fakeValidator{
+				justifications: []*jvspb.Justification{
+					{Category: "explanation", Value: "need-access"},
 				},
 			},
-			Payload: &audit.AuditLog{},
-		},
-		wantLogReq: &api.AuditLogRequest{
-			Context: &structpb.Struct{
-				Fields: map[string]*structpb.Value{
-					TokenHeaderKey: structpb.NewStringValue("token"),
-				},
-			},
-			Payload: &audit.AuditLog{
-				Metadata: &structpb.Struct{
+			logReq: &api.AuditLogRequest{
+				Context: &structpb.Struct{
 					Fields: map[string]*structpb.Value{
-						LogMetadataKey: structpb.NewStructValue(&structpb.Struct{
-							Fields: map[string]*structpb.Value{
-								"iss":   structpb.NewStringValue("test_iss"),
-								"sub":   structpb.NewStringValue("test_sub"),
-								"email": structpb.NewStringValue("user@example.com"),
-								"justs": structpb.NewListValue(&structpb.ListValue{
-									Values: []*structpb.Value{structpb.NewStructValue(
-										&structpb.Struct{Fields: map[string]*structpb.Value{
-											"category": structpb.NewStringValue("explanation"),
-											"value":    structpb.NewStringValue("need-access"),
-										}},
-									)},
-								}),
-							},
-						}),
+						TokenHeaderKey: structpb.NewStringValue("token"),
 					},
 				},
-				RequestMetadata: &audit.RequestMetadata{
-					RequestAttributes: &attribute_context.AttributeContext_Request{
-						Reason: `[{"category":"explanation","value":"need-access"}]`,
+				Payload: &audit.AuditLog{},
+			},
+			wantLogReq: &api.AuditLogRequest{
+				Context: &structpb.Struct{
+					Fields: map[string]*structpb.Value{
+						TokenHeaderKey: structpb.NewStringValue("token"),
+					},
+				},
+				Payload: &audit.AuditLog{
+					Metadata: &structpb.Struct{
+						Fields: map[string]*structpb.Value{
+							LogMetadataKey: structpb.NewStructValue(&structpb.Struct{
+								Fields: map[string]*structpb.Value{
+									"iss":   structpb.NewStringValue("test_iss"),
+									"sub":   structpb.NewStringValue("test_sub"),
+									"email": structpb.NewStringValue("user@example.com"),
+									"justs": structpb.NewListValue(&structpb.ListValue{
+										Values: []*structpb.Value{structpb.NewStructValue(
+											&structpb.Struct{Fields: map[string]*structpb.Value{
+												"category": structpb.NewStringValue("explanation"),
+												"value":    structpb.NewStringValue("need-access"),
+											}},
+										)},
+									}),
+								},
+							}),
+						},
+					},
+					RequestMetadata: &audit.RequestMetadata{
+						RequestAttributes: &attribute_context.AttributeContext_Request{
+							Reason: `[{"category":"explanation","value":"need-access"}]`,
+						},
 					},
 				},
 			},
 		},
-	}, {
-		name: "empty_token_no_action",
-		validator: &fakeValidator{
-			justifications: []*jvspb.Justification{{Category: "explanation", Value: "need-access"}},
-		},
-		logReq:     &api.AuditLogRequest{Payload: &audit.AuditLog{}},
-		wantLogReq: &api.AuditLogRequest{Payload: &audit.AuditLog{}},
-	}, {
-		name:      "validation_err",
-		validator: &fakeValidator{returnErr: true},
-		logReq: &api.AuditLogRequest{
-			Context: &structpb.Struct{
-				Fields: map[string]*structpb.Value{
-					TokenHeaderKey: structpb.NewStringValue("token"),
+		{
+			name: "empty_token_error",
+			validator: &fakeValidator{
+				justifications: []*jvspb.Justification{
+					{Category: "explanation", Value: "need-access"},
 				},
 			},
-			Payload: &audit.AuditLog{},
+			logReq:     &api.AuditLogRequest{Payload: &audit.AuditLog{}},
+			wantLogReq: &api.AuditLogRequest{Payload: &audit.AuditLog{}},
+			wantErr:    "missing justification token",
 		},
-		wantLogReq: &api.AuditLogRequest{
-			Context: &structpb.Struct{
-				Fields: map[string]*structpb.Value{
-					TokenHeaderKey: structpb.NewStringValue("token"),
+		{
+			name:      "validation_err",
+			validator: &fakeValidator{returnErr: true},
+			logReq: &api.AuditLogRequest{
+				Context: &structpb.Struct{
+					Fields: map[string]*structpb.Value{
+						TokenHeaderKey: structpb.NewStringValue("token"),
+					},
 				},
+				Payload: &audit.AuditLog{},
 			},
-			Payload: &audit.AuditLog{},
+			wantLogReq: &api.AuditLogRequest{
+				Context: &structpb.Struct{
+					Fields: map[string]*structpb.Value{
+						TokenHeaderKey: structpb.NewStringValue("token"),
+					},
+				},
+				Payload: &audit.AuditLog{},
+			},
+			wantErr: "invalid justification token",
 		},
-		wantErr: true,
-	}}
+	}
 
 	for _, tc := range cases {
 		tc := tc
+
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
-			ctx := context.Background()
 			p := &Processor{validator: tc.validator}
-			gotErr := p.Process(ctx, tc.logReq)
-			if (gotErr == nil) == tc.wantErr {
-				t.Errorf("Process got err=%v, want err %v", gotErr, tc.wantErr)
+			err := p.Process(ctx, tc.logReq)
+
+			if diff := pkgtestutil.DiffErrString(err, tc.wantErr); diff != "" {
+				t.Error(diff)
 			}
+
 			if diff := cmp.Diff(tc.wantLogReq, tc.logReq, protocmp.Transform()); diff != "" {
 				t.Errorf("Process got log request (-want,+got):\n%s", diff)
 			}
