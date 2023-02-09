@@ -368,7 +368,7 @@ type Justification struct {
 	// If omitted, justifications will not be added to logs, even if provided.
 	Enabled bool `yaml:"enabled,omitempty" env:"JUSTIFICATION_ENABLED,overwrite"`
 
-	// AllowBreakglass indicates whether JVS should allow unsigned justification.
+	// AllowBreakglass indicates whether JVS should allow unsigned justification. If omitted, it is set to false.
 	// If justification is not enabled, AllowBreakglass will be ignored, even if provided.
 	AllowBreakglass bool `yaml:"allow_breakglass,omitempty" env:"JUSTIFICATION_ALLOW_BREAKGLASS,overwrite"`
 }

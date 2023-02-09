@@ -34,7 +34,7 @@ public class Justification {
   @JsonProperty("enabled")
   private boolean enabled;
 
-  // This field will be ignored if justification is not enabled.
+  // Default value is false, this field will be ignored if justification is not enabled.
   @JsonProperty("allow_breakglass")
   private boolean allowBreakglass;
 
