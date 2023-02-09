@@ -23,9 +23,13 @@ import (
 	"time"
 
 	"cloud.google.com/go/bigquery"
+	"github.com/google/go-cmp/cmp"
 	"github.com/google/uuid"
 	"github.com/sethvargo/go-retry"
 	"google.golang.org/genproto/googleapis/cloud/audit"
+	"google.golang.org/protobuf/testing/protocmp"
+
+	logpb "cloud.google.com/go/logging/apiv2/loggingpb"
 )
 
 type HTTPFields struct {
@@ -75,13 +79,13 @@ func testHTTPEndpoint(ctx context.Context, tb testing.TB, endpointURL, idToken, 
 	time.Sleep(10 * time.Second)
 	bqQuery := makeQueryForHTTP(*bqClient, id, projectID, datasetQuery)
 	tb.Log(bqQuery.Q)
-	results := queryIfAuditLogsExists(ctx, tb, bqQuery, cfg, "httpEndpointTest")
+	results := queryIfAuditLogsExistsWithRetries(ctx, tb, bqQuery, cfg, "httpEndpointTest")
 	wantNum := 1
 	if len(results) != wantNum {
 		tb.Errorf("log number doesn't match (-want +got):\n - %d\n + %d\n", wantNum, len(results))
 	}
 	jsonPayloadInfo := parseJsonpayload(tb, results[0])
-	diff := diffResults(jsonPayloadInfo, getMode("HTTP"))
+	diff := diffResults(results[0], jsonPayloadInfo, getMode("HTTP"))
 	if diff != "" {
 		tb.Errorf(diff)
 	}
@@ -98,12 +102,16 @@ func makeQueryForHTTP(client bigquery.Client, id, projectID, datasetQuery string
 	return makeQuery(client, id, queryString)
 }
 
-func diffResults(jsonPayloadInfo *audit.AuditLog, isHTTPService bool) string {
+func diffResults(logEntry *logpb.LogEntry, jsonPayloadInfo *audit.AuditLog, isHTTPService bool) string {
+	wantLogEntry := &logpb.LogEntry{
+		LogName: "projects/github-ci-app-0/logs/audit.abcxyz%2Fdata_access",
+	}
 	wantPrincipalEmail := "gh-access-sa@lumberjack-dev-infra.iam.gserviceaccount.com"
 	wantHTTPServiceName := [2]string{"go-shell-app", "java-shell-app"}
 	wantGRPCServiceName := "abcxyz.test.Talker"
-	diffString := ""
-	// if results[0].GetJsonPayload()
+	diffString := cmp.Diff(wantLogEntry, logEntry, protocmp.Transform(),
+		protocmp.IgnoreFields(&logpb.LogEntry{}, "insert_id", "labels", "receive_timestamp", "json_payload"))
+
 	if isHTTPService {
 		if jsonPayloadInfo.ServiceName != wantHTTPServiceName[0] && jsonPayloadInfo.ServiceName != wantHTTPServiceName[1] {
 			diffString += fmt.Sprintf("- %s or %s\n + %s\n", wantHTTPServiceName[0], wantHTTPServiceName[1], jsonPayloadInfo.ServiceName)

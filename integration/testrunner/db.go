@@ -23,15 +23,16 @@ import (
 	"time"
 
 	"cloud.google.com/go/bigquery"
-	logpb "cloud.google.com/go/logging/apiv2/loggingpb"
 	"github.com/sethvargo/go-retry"
 	"google.golang.org/api/iterator"
 	"google.golang.org/genproto/googleapis/cloud/audit"
 	"google.golang.org/protobuf/encoding/protojson"
+
+	logpb "cloud.google.com/go/logging/apiv2/loggingpb"
 )
 
-// queryIfAuditLogExists queries the DB and checks if audit log contained in the query exists or not.
-func queryAuditLog(ctx context.Context, tb testing.TB, query *bigquery.Query) ([]*logpb.LogEntry, error) {
+// queryAuditLogs queries the DB and checks if audit log contained in the query exists or not and return the results.
+func queryAuditLogs(ctx context.Context, tb testing.TB, query *bigquery.Query) ([]*logpb.LogEntry, error) {
 	tb.Helper()
 	time.Sleep(20 * time.Second)
 	job, err := query.Run(ctx)
@@ -51,7 +52,7 @@ func queryAuditLog(ctx context.Context, tb testing.TB, query *bigquery.Query) ([
 		tb.Logf("failed to read job: %s", err.Error())
 		return nil, fmt.Errorf("failed to read job: %w", err)
 	}
-	var results []*logpb.LogEntry
+	var logEntries []*logpb.LogEntry
 	for {
 		var row []bigquery.Value
 		err := it.Next(&row)
@@ -62,19 +63,21 @@ func queryAuditLog(ctx context.Context, tb testing.TB, query *bigquery.Query) ([
 			tb.Logf("failed to get next row")
 			return nil, fmt.Errorf("failed to get next row: %w", err)
 		}
-		tb.Logf("%s", row)
 		pbJSON := &logpb.LogEntry{}
 		value, ok := row[0].(string)
 		if !ok {
 			tb.Logf("error converting query results to string")
 			return nil, fmt.Errorf("error converting query results to string (got %T)", value[0])
 		}
+		// When there are fields with null values in json string
+		// protojson.Unmarshal will return an error: invalid value for string type: null
+		// but the json string can still be unmarshal into pbJSON.
 		if err := protojson.Unmarshal([]byte(value), pbJSON); err != nil {
 			tb.Logf("ignoring error: %s as this behavior is expected", err.Error())
 		}
-		results = append(results, pbJSON)
+		logEntries = append(logEntries, pbJSON)
 	}
-	return results, nil
+	return logEntries, nil
 }
 
 func makeQuery(bqClient bigquery.Client, id, queryString string) *bigquery.Query {
@@ -104,15 +107,15 @@ func makeBigQueryClient(ctx context.Context, tb testing.TB, projectID string) *b
 
 // This calls the database to check that an audit log exists. It uses the retries that are specified in the Config
 // file. This method allows for specifying how many logs we expect to match, in order to handle streaming use cases.
-func queryIfAuditLogsExists(ctx context.Context, tb testing.TB, bqQuery *bigquery.Query, cfg *Config, testName string) []*logpb.LogEntry {
+func queryIfAuditLogsExistsWithRetries(ctx context.Context, tb testing.TB, bqQuery *bigquery.Query, cfg *Config, testName string) []*logpb.LogEntry {
 	tb.Helper()
-	var results []*logpb.LogEntry
+	var logEntries []*logpb.LogEntry
 	b := retry.NewExponential(cfg.LogRoutingWait)
 	if err := retry.Do(ctx, retry.WithMaxRetries(cfg.MaxDBQueryTries, b), func(ctx context.Context) error {
-		row, err := queryAuditLog(ctx, tb, bqQuery)
-		if row != nil {
+		rows, err := queryAuditLogs(ctx, tb, bqQuery)
+		if rows != nil {
 			// Early exit retry if queried log already found.
-			results = row
+			logEntries = rows
 			return nil
 		}
 
@@ -125,21 +128,21 @@ func queryIfAuditLogsExists(ctx context.Context, tb testing.TB, bqQuery *bigquer
 	}); err != nil {
 		tb.Errorf("retry failed: %v.", err)
 	}
-	return results
+	return logEntries
 }
 
-func parseJsonpayload(tb testing.TB, log *logpb.LogEntry) *audit.AuditLog {
+func parseJsonpayload(tb testing.TB, logEntry *logpb.LogEntry) *audit.AuditLog {
 	tb.Helper()
-	jsonpayload := log.GetJsonPayload()
-	jsonString, err := jsonpayload.MarshalJSON()
+	jsonPayloadContent := logEntry.GetJsonPayload()
+	jsonPayloadString, err := jsonPayloadContent.MarshalJSON()
 	if err != nil {
 		err := fmt.Errorf("error parsing *pbstruct.Struct to json: %w)", err)
 		tb.Log(err)
 	}
-	result := &audit.AuditLog{}
-	if err := json.Unmarshal(jsonString, result); err != nil {
+	auditLog := &audit.AuditLog{}
+	if err := json.Unmarshal(jsonPayloadString, auditLog); err != nil {
 		err := fmt.Errorf("error parsing json to AuditLog: %w)", err)
 		tb.Logf(err.Error())
 	}
-	return result
+	return auditLog
 }

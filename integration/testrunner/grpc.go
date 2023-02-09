@@ -26,19 +26,20 @@ import (
 	"time"
 
 	"cloud.google.com/go/bigquery"
-	jvspb "github.com/abcxyz/jvs/apis/v0"
 	"github.com/abcxyz/lumberjack/internal/talkerpb"
 	"github.com/google/uuid"
 	"github.com/lestrrat-go/jwx/v2/jwa"
 	"github.com/lestrrat-go/jwx/v2/jws"
 	"github.com/lestrrat-go/jwx/v2/jwt"
 	"golang.org/x/oauth2"
-	rpccode "google.golang.org/genproto/googleapis/rpc/code"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/credentials/oauth"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
+
+	jvspb "github.com/abcxyz/jvs/apis/v0"
+	rpccode "google.golang.org/genproto/googleapis/rpc/code"
 )
 
 type GRPC struct {
@@ -131,13 +132,13 @@ func testGRPCEndpoint(ctx context.Context, t *testing.T, g *GRPC) {
 		}
 		query := g.makeQueryForGRPC(id)
 		t.Log(query.Q)
-		results := queryIfAuditLogsExists(ctx, t, query, g.Config, "unary_hello")
+		results := queryIfAuditLogsExistsWithRetries(ctx, t, query, g.Config, "unary_hello")
 		wantNum := 1
 		if len(results) != wantNum {
 			t.Errorf("log number doesn't match (-want +got):\n - %d\n + %d\n", wantNum, len(results))
 		}
 		jsonPayloadInfo := parseJsonpayload(t, results[0])
-		diff := diffResults(jsonPayloadInfo, getMode("GRPC"))
+		diff := diffResults(results[0], jsonPayloadInfo, getMode("GRPC"))
 		if diff != "" {
 			t.Errorf(diff)
 		}
@@ -163,13 +164,13 @@ func testGRPCEndpoint(ctx context.Context, t *testing.T, g *GRPC) {
 		}
 		query := g.makeQueryForGRPC(id)
 		t.Log(query.Q)
-		results := queryIfAuditLogsExists(ctx, t, query, g.Config, "unary_fail")
+		results := queryIfAuditLogsExistsWithRetries(ctx, t, query, g.Config, "unary_fail")
 		wantNum := 1
 		if len(results) < wantNum {
 			t.Errorf("log number doesn't match (-want +got):\n - %d\n + %d\n", wantNum, len(results))
 		}
 		jsonPayloadInfo := parseJsonpayload(t, results[0])
-		diff := diffResults(jsonPayloadInfo, getMode("GRPC"))
+		diff := diffResults(results[0], jsonPayloadInfo, getMode("GRPC"))
 		if diff != "" {
 			t.Errorf(diff)
 		}
@@ -198,14 +199,14 @@ func testGRPCEndpoint(ctx context.Context, t *testing.T, g *GRPC) {
 		}
 		query := g.makeQueryForGRPC(id)
 		t.Log(query.Q)
-		results := queryIfAuditLogsExists(ctx, t, query, g.Config, "server_stream_fibonacci")
+		results := queryIfAuditLogsExistsWithRetries(ctx, t, query, g.Config, "server_stream_fibonacci")
 		wantNum := places
 		if len(results) != wantNum {
 			t.Errorf("log number doesn't match (-want +got):\n - %d\n + %d\n", wantNum, len(results))
 		}
 		for i := 0; i < places; i++ {
 			jsonPayloadInfo := parseJsonpayload(t, results[i])
-			diff := diffResults(jsonPayloadInfo, getMode("GRPC"))
+			diff := diffResults(results[i], jsonPayloadInfo, getMode("GRPC"))
 			if diff != "" {
 				t.Errorf("log %d mismatch: %s", i, diff)
 			}
@@ -237,13 +238,13 @@ func testGRPCEndpoint(ctx context.Context, t *testing.T, g *GRPC) {
 
 		query := g.makeQueryForGRPC(id)
 		t.Log(query.Q)
-		results := queryIfAuditLogsExists(ctx, t, query, g.Config, "client_stream_addition")
+		results := queryIfAuditLogsExistsWithRetries(ctx, t, query, g.Config, "client_stream_addition")
 		if len(results) != totalNumbers {
 			t.Errorf("log number doesn't match (-want +got):\n - %d\n + %d\n", totalNumbers, len(results))
 		}
 		for i := 0; i < totalNumbers; i++ {
 			jsonPayloadInfo := parseJsonpayload(t, results[i])
-			diff := diffResults(jsonPayloadInfo, getMode("GRPC"))
+			diff := diffResults(results[i], jsonPayloadInfo, getMode("GRPC"))
 			if diff != "" {
 				t.Errorf("log %d mismatch: %s", i, diff)
 			}
@@ -285,13 +286,13 @@ func testGRPCEndpoint(ctx context.Context, t *testing.T, g *GRPC) {
 		query := g.makeQueryForGRPC(id)
 		t.Log(query.Q)
 		// we expect to have 4 audit logs - the last sent number (5) will be after the err occurred.
-		results := queryIfAuditLogsExists(ctx, t, query, g.Config, "stream_fail_on_four")
+		results := queryIfAuditLogsExistsWithRetries(ctx, t, query, g.Config, "stream_fail_on_four")
 		if len(results) != wantNum {
 			t.Errorf("log number doesn't match (-want +got):\n - %d\n + %d\n", totalNumbers, len(results))
 		}
 		for i := 0; i < wantNum; i++ {
 			jsonPayloadInfo := parseJsonpayload(t, results[i])
-			diff := diffResults(jsonPayloadInfo, getMode("GRPC"))
+			diff := diffResults(results[i], jsonPayloadInfo, getMode("GRPC"))
 			if diff != "" {
 				t.Errorf("log %d mismatch: %s", i, diff)
 			}
