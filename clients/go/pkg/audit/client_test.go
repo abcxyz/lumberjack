@@ -24,6 +24,7 @@ import (
 	"google.golang.org/protobuf/testing/protocmp"
 
 	api "github.com/abcxyz/lumberjack/clients/go/apis/v1alpha1"
+	"github.com/abcxyz/lumberjack/clients/go/pkg/auditerrors"
 	"github.com/abcxyz/lumberjack/clients/go/pkg/testutil"
 	"github.com/abcxyz/pkg/logging"
 	pkgtestutil "github.com/abcxyz/pkg/testutil"
@@ -101,7 +102,7 @@ func TestLog(t *testing.T) {
 			logReq: testutil.NewRequest(),
 			opts: []Option{
 				WithValidator(testOrderProcessor{name: "validator0"}),
-				WithValidator(testOrderProcessor{name: "validator1", returnErr: fmt.Errorf("skip: %w", ErrFailedPrecondition)}),
+				WithValidator(testOrderProcessor{name: "validator1", returnErr: fmt.Errorf("skip: %w", auditerrors.ErrPreconditionFailed)}),
 				WithBackend(testOrderProcessor{name: "backend0"}),
 				WithBackend(testOrderProcessor{name: "backend1"}),
 			},
@@ -138,7 +139,7 @@ func TestLog(t *testing.T) {
 			name:   "failed_precondition_in_mutator_should_return_nil_on_best_effort",
 			logReq: testutil.NewRequest(),
 			opts: []Option{
-				WithMutator(testOrderProcessor{name: "fake", returnErr: fmt.Errorf("fake error: %w", ErrFailedPrecondition)}),
+				WithMutator(testOrderProcessor{name: "fake", returnErr: fmt.Errorf("fake error: %w", auditerrors.ErrPreconditionFailed)}),
 				WithLogMode(api.AuditLogRequest_BEST_EFFORT),
 			},
 			wantLogReq: testutil.NewRequest(
@@ -161,7 +162,7 @@ func TestLog(t *testing.T) {
 			name:   "failed_precondition_in_backend_should_return_error_on_fail_close",
 			logReq: testutil.NewRequest(),
 			opts: []Option{
-				WithBackend(testOrderProcessor{name: "fake", returnErr: fmt.Errorf("fake error: %w", ErrFailedPrecondition)}),
+				WithBackend(testOrderProcessor{name: "fake", returnErr: fmt.Errorf("fake error: %w", auditerrors.ErrPreconditionFailed)}),
 				WithLogMode(api.AuditLogRequest_FAIL_CLOSE),
 			},
 			wantLogReq: testutil.NewRequest(

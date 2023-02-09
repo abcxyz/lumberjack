@@ -20,6 +20,7 @@ import (
 	"strings"
 
 	api "github.com/abcxyz/lumberjack/clients/go/apis/v1alpha1"
+	"github.com/abcxyz/lumberjack/clients/go/pkg/auditerrors"
 )
 
 // RequestValidator validates log request fields.
@@ -35,7 +36,7 @@ func NewRequestValidator(ctx context.Context) *RequestValidator {
 func (p *RequestValidator) Process(ctx context.Context, logReq *api.AuditLogRequest) error {
 	if err := p.process(ctx, logReq); err != nil {
 		// TODO(sethvargo): In Go 1.20, wrap both errors
-		return fmt.Errorf("%w: %s", ErrInvalidRequest, err)
+		return fmt.Errorf("%w: %s", auditerrors.ErrInvalidRequest, err)
 	}
 	return nil
 }

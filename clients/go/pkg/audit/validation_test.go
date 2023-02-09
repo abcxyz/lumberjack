@@ -24,6 +24,7 @@ import (
 	"google.golang.org/protobuf/testing/protocmp"
 
 	api "github.com/abcxyz/lumberjack/clients/go/apis/v1alpha1"
+	"github.com/abcxyz/lumberjack/clients/go/pkg/auditerrors"
 	"github.com/abcxyz/lumberjack/clients/go/pkg/testutil"
 )
 
@@ -46,11 +47,11 @@ func TestRequestValidation_Process(t *testing.T) {
 			name:       "should_error_when_logReq_payload_is_nil",
 			logReq:     &api.AuditLogRequest{},
 			wantLogReq: &api.AuditLogRequest{},
-			wantErr:    ErrInvalidRequest,
+			wantErr:    auditerrors.ErrInvalidRequest,
 		},
 		{
 			name:    "should_error_when_logReq_is_nil",
-			wantErr: ErrInvalidRequest,
+			wantErr: auditerrors.ErrInvalidRequest,
 		},
 		{
 			name: "should_error_when_authInfo_is_nil",
@@ -64,7 +65,7 @@ func TestRequestValidation_Process(t *testing.T) {
 					ServiceName: "test-service",
 				},
 			},
-			wantErr: ErrInvalidRequest,
+			wantErr: auditerrors.ErrInvalidRequest,
 		},
 		{
 			name: "should_error_when_auth_email_is_nil",
@@ -80,7 +81,7 @@ func TestRequestValidation_Process(t *testing.T) {
 					AuthenticationInfo: &audit.AuthenticationInfo{},
 				},
 			},
-			wantErr: ErrInvalidRequest,
+			wantErr: auditerrors.ErrInvalidRequest,
 		},
 		{
 			name: "should_error_when_auth_email_has_no_domain",
@@ -100,7 +101,7 @@ func TestRequestValidation_Process(t *testing.T) {
 					},
 				},
 			},
-			wantErr: ErrInvalidRequest,
+			wantErr: auditerrors.ErrInvalidRequest,
 		},
 		{
 			name: "should_error_when_serviceName_is_empty",
@@ -120,7 +121,7 @@ func TestRequestValidation_Process(t *testing.T) {
 					},
 				},
 			},
-			wantErr: ErrInvalidRequest,
+			wantErr: auditerrors.ErrInvalidRequest,
 		},
 	}
 
