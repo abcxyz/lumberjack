@@ -57,7 +57,8 @@ labels:
 log_mode: BEST_EFFORT
 justification:
   public_keys_endpoint: example.com
-  enabled: true`,
+  enabled: true
+  allow_breakglass: true`,
 		wantConfig: &Config{
 			Version: "v1alpha1",
 			Backend: &Backend{
@@ -93,6 +94,7 @@ justification:
 			Justification: &Justification{
 				PublicKeysEndpoint: "example.com",
 				Enabled:            true,
+				AllowBreakglass:    true,
 			},
 		},
 		wantLogMode: AuditLogRequest_BEST_EFFORT,

@@ -51,7 +51,7 @@ public class AuditLoggingModule extends AbstractModule {
     if (justification != null && justification.isEnabled()) {
       return new JVSClientBuilder()
           .withJvsEndpoint(justification.getPublicKeysEndpoint())
-          .withAllowBreakglass(auditLoggingConfiguration.isBreakglassAllowed())
+          .withAllowBreakglass(justification.allowBreakglass())
           .build();
     }
     return null;

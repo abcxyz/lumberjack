@@ -24,3 +24,4 @@ labels:
 justification:
   public_keys_endpoint: example.com:123
   enabled: true
+  allow_breakglass: true
