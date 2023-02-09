@@ -59,7 +59,7 @@ func TestProcessLabels(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
-			l := &LabelProcessor{DefaultLabels: tc.configLabels}
+			l := NewLabelProcessor(ctx, tc.configLabels)
 			err := l.Process(ctx, tc.logReq)
 			if !errors.Is(err, tc.wantErr) {
 				t.Errorf("Process(%+v) error got %v want %v", tc.logReq, err, tc.wantErr)

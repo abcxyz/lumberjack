@@ -109,7 +109,9 @@ func WithLogMode(mode api.AuditLogRequest_LogMode) Option {
 func NewClient(ctx context.Context, opts ...Option) (*Client, error) {
 	client := &Client{
 		// Default processors.
-		validators: []LogProcessor{requestValidation{}},
+		validators: []LogProcessor{
+			NewRequestValidator(ctx),
+		},
 	}
 	for _, f := range opts {
 		if err := f(ctx, client); err != nil {
