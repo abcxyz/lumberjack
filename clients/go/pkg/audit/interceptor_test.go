@@ -126,9 +126,9 @@ func TestUnaryInterceptor(t *testing.T) {
 	}{
 		{
 			name: "interceptor_autofills_successful_rpc",
-			ctx: metadata.NewIncomingContext(context.Background(), metadata.New(map[string]string{
-				"authorization":              jwt,
-				justification.TokenHeaderKey: "justification",
+			ctx: metadata.NewIncomingContext(ctx, metadata.New(map[string]string{
+				"authorization":       jwt,
+				"justification-token": "justification",
 			})),
 			auditRules: []*api.AuditRule{{
 				Selector:  "/ExampleService/ExampleMethod",
@@ -162,19 +162,15 @@ func TestUnaryInterceptor(t *testing.T) {
 						},
 					},
 				},
-				Mode: api.AuditLogRequest_BEST_EFFORT,
-				Context: &structpb.Struct{
-					Fields: map[string]*structpb.Value{
-						justification.TokenHeaderKey: structpb.NewStringValue("justification"),
-					},
-				},
+				Mode:               api.AuditLogRequest_BEST_EFFORT,
+				JustificationToken: "justification",
 			},
 		},
 		{
 			name: "interceptor_autofills_failed_rpc",
-			ctx: metadata.NewIncomingContext(context.Background(), metadata.New(map[string]string{
-				"authorization":              jwt,
-				justification.TokenHeaderKey: "justification",
+			ctx: metadata.NewIncomingContext(ctx, metadata.New(map[string]string{
+				"authorization":       jwt,
+				"justification-token": "justification",
 			})),
 			auditRules: []*api.AuditRule{{
 				Selector:  "*",
@@ -212,19 +208,15 @@ func TestUnaryInterceptor(t *testing.T) {
 						},
 					},
 				},
-				Mode: api.AuditLogRequest_BEST_EFFORT,
-				Context: &structpb.Struct{
-					Fields: map[string]*structpb.Value{
-						justification.TokenHeaderKey: structpb.NewStringValue("justification"),
-					},
-				},
+				Mode:               api.AuditLogRequest_BEST_EFFORT,
+				JustificationToken: "justification",
 			},
 		},
 		{
 			name: "interceptor_autofills_failed_rpc_unknown_err",
-			ctx: metadata.NewIncomingContext(context.Background(), metadata.New(map[string]string{
-				"authorization":              jwt,
-				justification.TokenHeaderKey: "justification",
+			ctx: metadata.NewIncomingContext(ctx, metadata.New(map[string]string{
+				"authorization":       jwt,
+				"justification-token": "justification",
 			})),
 			auditRules: []*api.AuditRule{{
 				Selector:  "*",
@@ -262,19 +254,15 @@ func TestUnaryInterceptor(t *testing.T) {
 						},
 					},
 				},
-				Mode: api.AuditLogRequest_BEST_EFFORT,
-				Context: &structpb.Struct{
-					Fields: map[string]*structpb.Value{
-						justification.TokenHeaderKey: structpb.NewStringValue("justification"),
-					},
-				},
+				Mode:               api.AuditLogRequest_BEST_EFFORT,
+				JustificationToken: "justification",
 			},
 		},
 		{
 			name: "default_audit_rule_directive_omits_req_and_resp",
-			ctx: metadata.NewIncomingContext(context.Background(), metadata.New(map[string]string{
-				"authorization":              jwt,
-				justification.TokenHeaderKey: "justification",
+			ctx: metadata.NewIncomingContext(ctx, metadata.New(map[string]string{
+				"authorization":       jwt,
+				"justification-token": "justification",
 			})),
 			auditRules: []*api.AuditRule{{
 				Selector:  "/ExampleService/ExampleMethod",
@@ -304,19 +292,15 @@ func TestUnaryInterceptor(t *testing.T) {
 						},
 					},
 				},
-				Mode: api.AuditLogRequest_BEST_EFFORT,
-				Context: &structpb.Struct{
-					Fields: map[string]*structpb.Value{
-						justification.TokenHeaderKey: structpb.NewStringValue("justification"),
-					},
-				},
+				Mode:               api.AuditLogRequest_BEST_EFFORT,
+				JustificationToken: "justification",
 			},
 		},
 		{
 			name: "audit_rule_directive_omits_resp",
-			ctx: metadata.NewIncomingContext(context.Background(), metadata.New(map[string]string{
-				"authorization":              jwt,
-				justification.TokenHeaderKey: "justification",
+			ctx: metadata.NewIncomingContext(ctx, metadata.New(map[string]string{
+				"authorization":       jwt,
+				"justification-token": "justification",
 			})),
 			auditRules: []*api.AuditRule{{
 				Selector:  "/ExampleService/ExampleMethod",
@@ -347,17 +331,13 @@ func TestUnaryInterceptor(t *testing.T) {
 						},
 					},
 				},
-				Mode: api.AuditLogRequest_FAIL_CLOSE,
-				Context: &structpb.Struct{
-					Fields: map[string]*structpb.Value{
-						justification.TokenHeaderKey: structpb.NewStringValue("justification"),
-					},
-				},
+				Mode:               api.AuditLogRequest_FAIL_CLOSE,
+				JustificationToken: "justification",
 			},
 		},
 		{
 			name: "audit_rule_is_inapplicable",
-			ctx: metadata.NewIncomingContext(context.Background(), metadata.New(map[string]string{
+			ctx: metadata.NewIncomingContext(ctx, metadata.New(map[string]string{
 				"justification": "justification",
 			})),
 			auditRules: []*api.AuditRule{{
@@ -374,7 +354,7 @@ func TestUnaryInterceptor(t *testing.T) {
 		},
 		{
 			name: "malformed_method_info_fail_close",
-			ctx: metadata.NewIncomingContext(context.Background(), metadata.New(map[string]string{
+			ctx: metadata.NewIncomingContext(ctx, metadata.New(map[string]string{
 				"justification": "justification",
 			})),
 			auditRules: []*api.AuditRule{{
@@ -392,8 +372,8 @@ func TestUnaryInterceptor(t *testing.T) {
 		},
 		{
 			name: "malformed_method_info_best_effort",
-			ctx: metadata.NewIncomingContext(context.Background(), metadata.New(map[string]string{
-				justification.TokenHeaderKey: "justification",
+			ctx: metadata.NewIncomingContext(ctx, metadata.New(map[string]string{
+				"justification-token": "justification",
 			})),
 			auditRules: []*api.AuditRule{{
 				Selector: "*",
@@ -409,9 +389,9 @@ func TestUnaryInterceptor(t *testing.T) {
 		},
 		{
 			name: "unable_to_extract_principal_best_effort",
-			ctx: metadata.NewIncomingContext(context.Background(), metadata.New(map[string]string{
-				"authorization":              "bananas",
-				justification.TokenHeaderKey: "justification",
+			ctx: metadata.NewIncomingContext(ctx, metadata.New(map[string]string{
+				"authorization":       "bananas",
+				"justification-token": "justification",
 			})),
 			auditRules: []*api.AuditRule{{
 				Selector: "*",
@@ -427,9 +407,9 @@ func TestUnaryInterceptor(t *testing.T) {
 		},
 		{
 			name: "unable_to_extract_principal_fail_close",
-			ctx: metadata.NewIncomingContext(context.Background(), metadata.New(map[string]string{
-				"authorization":              "bananas",
-				justification.TokenHeaderKey: "justification",
+			ctx: metadata.NewIncomingContext(ctx, metadata.New(map[string]string{
+				"authorization":       "bananas",
+				"justification-token": "justification",
 			})),
 			auditRules: []*api.AuditRule{{
 				Selector: "*",
@@ -446,9 +426,9 @@ func TestUnaryInterceptor(t *testing.T) {
 		},
 		{
 			name: "unable_to_extract_principal_fail_close",
-			ctx: metadata.NewIncomingContext(context.Background(), metadata.New(map[string]string{
-				"authorization":              "bananas",
-				justification.TokenHeaderKey: "justification",
+			ctx: metadata.NewIncomingContext(ctx, metadata.New(map[string]string{
+				"authorization":       "bananas",
+				"justification-token": "justification",
 			})),
 			auditRules: []*api.AuditRule{{
 				Selector: "*",
@@ -465,9 +445,9 @@ func TestUnaryInterceptor(t *testing.T) {
 		},
 		{
 			name: "unable_to_convert_req_to_proto_struct_fail_close",
-			ctx: metadata.NewIncomingContext(context.Background(), metadata.New(map[string]string{
-				"authorization":              jwt,
-				justification.TokenHeaderKey: "justification",
+			ctx: metadata.NewIncomingContext(ctx, metadata.New(map[string]string{
+				"authorization":       jwt,
+				"justification-token": "justification",
 			})),
 			auditRules: []*api.AuditRule{{
 				Selector:  "*",
@@ -488,9 +468,9 @@ func TestUnaryInterceptor(t *testing.T) {
 		},
 		{
 			name: "unable_to_convert_req_to_proto_struct_best_effort",
-			ctx: metadata.NewIncomingContext(context.Background(), metadata.New(map[string]string{
-				"authorization":              jwt,
-				justification.TokenHeaderKey: "justification",
+			ctx: metadata.NewIncomingContext(ctx, metadata.New(map[string]string{
+				"authorization":       jwt,
+				"justification-token": "justification",
 			})),
 			auditRules: []*api.AuditRule{{
 				Selector:  "*",
@@ -510,9 +490,9 @@ func TestUnaryInterceptor(t *testing.T) {
 		},
 		{
 			name: "err_validate_justification_fail_open",
-			ctx: metadata.NewIncomingContext(context.Background(), metadata.New(map[string]string{
-				"authorization":              jwt,
-				justification.TokenHeaderKey: "justification",
+			ctx: metadata.NewIncomingContext(ctx, metadata.New(map[string]string{
+				"authorization":       jwt,
+				"justification-token": "justification",
 			})),
 			auditRules: []*api.AuditRule{{
 				Selector:  "/ExampleService/ExampleMethod",
@@ -532,9 +512,9 @@ func TestUnaryInterceptor(t *testing.T) {
 		},
 		{
 			name: "err_validate_justification_fail_close",
-			ctx: metadata.NewIncomingContext(context.Background(), metadata.New(map[string]string{
-				"authorization":              jwt,
-				justification.TokenHeaderKey: "justification",
+			ctx: metadata.NewIncomingContext(ctx, metadata.New(map[string]string{
+				"authorization":       jwt,
+				"justification-token": "justification",
 			})),
 			auditRules: []*api.AuditRule{{
 				Selector:  "/ExampleService/ExampleMethod",
@@ -1230,7 +1210,7 @@ func TestHandleReturnUnary(t *testing.T) {
 	t.Parallel()
 
 	req := "test_request"
-	ctx := context.Background()
+	ctx := logging.WithLogger(context.Background(), logging.TestLogger(t))
 
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		logReq, _ := LogReqFromCtx(ctx)
@@ -1304,7 +1284,9 @@ func TestHandleReturnUnary(t *testing.T) {
 
 func TestHandleReturnStream(t *testing.T) {
 	t.Parallel()
-	ctx := context.Background()
+
+	ctx := logging.WithLogger(context.Background(), logging.TestLogger(t))
+
 	ss := &fakeServerStream{}
 
 	handler := func(srv interface{}, ss grpc.ServerStream) error {
@@ -1362,8 +1344,10 @@ func TestHandleReturnStream(t *testing.T) {
 
 func TestHandleReturnWithResponse(t *testing.T) {
 	t.Parallel()
+
+	ctx := logging.WithLogger(context.Background(), logging.TestLogger(t))
+
 	response := "test_response"
-	ctx := context.Background()
 	errStr := "test error"
 	testErr := errors.New(errStr)
 

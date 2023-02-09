@@ -19,6 +19,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"regexp"
+	"strings"
 	"sync"
 	"time"
 
@@ -252,24 +253,20 @@ func (i *Interceptor) StreamInterceptor(srv interface{}, ss grpc.ServerStream, i
 	return handlerErr
 }
 
+// fillJVSToken looks for the JVS token on the request header and injects it
+// into the log request, if it was present.
 func fillJVSToken(ctx context.Context, logReq *api.AuditLogRequest) {
-	// Look for justification info and set justification token.
-	jvsToken := ""
 	md, ok := grpcmetadata.FromIncomingContext(ctx)
-	if ok {
-		vals := md.Get(justification.TokenHeaderKey)
-		if len(vals) > 0 {
-			jvsToken = vals[0]
-		}
+	if !ok {
+		return
 	}
-	if jvsToken != "" {
-		if logReq.Context == nil {
-			logReq.Context = &structpb.Struct{
-				Fields: map[string]*structpb.Value{},
-			}
-		}
-		logReq.Context.Fields[justification.TokenHeaderKey] = structpb.NewStringValue(jvsToken)
+
+	vals := md.Get(justification.TokenHeaderKey)
+	if len(vals) == 0 {
+		return
 	}
+
+	logReq.JustificationToken = strings.TrimSpace(vals[0])
 }
 
 type serverStreamWrapper struct {
