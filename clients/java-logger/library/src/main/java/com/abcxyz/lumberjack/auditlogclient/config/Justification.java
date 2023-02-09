@@ -25,7 +25,8 @@ public class Justification {
   private static final String JUSTIFICATION_PUBLIC_KEYS_ENDPOINT_ENV_KEY =
       "AUDIT_CLIENT_JUSTIFICATION_PUBLIC_KEYS_ENDPOINT";
   private static final String JUSTIFICATION_ENABLED_ENV_KEY = "AUDIT_CLIENT_JUSTIFICATION_ENABLED";
-  private static final String JUSTIFICATION_ALLOW_BREAKGLASS_ENV_KEY = "AUDIT_CLIENT_JUSTIFICATION_ALLOW_BREAKGLASS";
+  private static final String JUSTIFICATION_ALLOW_BREAKGLASS_ENV_KEY =
+      "AUDIT_CLIENT_JUSTIFICATION_ALLOW_BREAKGLASS";
 
   @JsonProperty("public_keys_endpoint")
   private String publicKeysEndpoint;
