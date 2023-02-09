@@ -21,15 +21,15 @@ import (
 	"encoding/json"
 	"fmt"
 
-	zlogger "github.com/abcxyz/pkg/logging"
 	"github.com/lestrrat-go/jwx/v2/jwt"
-	"google.golang.org/genproto/googleapis/cloud/audit"
+	auditpb "google.golang.org/genproto/googleapis/cloud/audit"
 	"google.golang.org/genproto/googleapis/rpc/context/attribute_context"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/types/known/structpb"
 
 	jvspb "github.com/abcxyz/jvs/apis/v0"
 	api "github.com/abcxyz/lumberjack/clients/go/apis/v1alpha1"
+	"github.com/abcxyz/lumberjack/clients/go/pkg/auditerrors"
 )
 
 const (
@@ -58,32 +58,32 @@ func NewProcessor(v Validator) *Processor {
 // Process populates the given audit log request with the justification info from the given token.
 // If the token is empty, this function does nothing.
 func (p *Processor) Process(ctx context.Context, logReq *api.AuditLogRequest) error {
-	logger := zlogger.FromContext(ctx)
-
 	// TODO(#257): We will enforce the token in the future.
 	jvsToken, ok := logReq.Context.GetFields()[TokenHeaderKey]
 	if !ok || jvsToken.GetStringValue() == "" {
-		logger.Info("no justification token found in AuditLogRequest")
-		return nil
+		return auditerrors.ErrJustificationMissing
 	}
 
 	token, err := p.validator.ValidateJWT(jvsToken.GetStringValue())
 	if err != nil {
-		return fmt.Errorf("failed to validate justification token: %w", err)
+		// TODO(sethvargo): In Go 1.20, wrap both errors and drop log message.
+		return fmt.Errorf("%w: %s", auditerrors.ErrJustificationInvalid, err)
 	}
 
 	b, err := json.Marshal(token)
 	if err != nil {
-		return fmt.Errorf("failed to encode justification token: %w", err)
+		// TODO(sethvargo): In Go 1.20, wrap both errors and drop log message.
+		return fmt.Errorf("%w: failed to encode justification token: %s", auditerrors.ErrInternalError, err)
 	}
 
 	var tokStruct structpb.Struct
 	if err := protojson.Unmarshal(b, &tokStruct); err != nil {
-		return fmt.Errorf("failed to decode justification token: %w", err)
+		// TODO(sethvargo): In Go 1.20, wrap both errors and drop log message.
+		return fmt.Errorf("%w: failed to decode justification token: %s", auditerrors.ErrInternalError, err)
 	}
 
 	if logReq.Payload == nil {
-		return fmt.Errorf("log request missing payload")
+		return auditerrors.ErrLogRequestMissingPayload
 	}
 
 	if logReq.Payload.Metadata == nil {
@@ -96,8 +96,8 @@ func (p *Processor) Process(ctx context.Context, logReq *api.AuditLogRequest) er
 
 	justifications, err := jvspb.GetJustifications(token)
 	if err != nil {
-		logger.Warnw("failed to extract justifications from token", "error", err)
-		return nil
+		// TODO(sethvargo): In Go 1.20, wrap both errors and drop log message.
+		return fmt.Errorf("%w: %s", auditerrors.ErrJustificationInvalid, err)
 	}
 
 	if len(justifications) == 0 {
@@ -106,10 +106,11 @@ func (p *Processor) Process(ctx context.Context, logReq *api.AuditLogRequest) er
 
 	justificationBytes, err := json.Marshal(justifications)
 	if err != nil {
-		return fmt.Errorf("failed to marshal justifications: %w", err)
+		// TODO(sethvargo): In Go 1.20, wrap both errors and drop log message.
+		return fmt.Errorf("%w: failed to marshal justifications: %s", auditerrors.ErrInternalError, err)
 	}
 	if logReq.Payload.RequestMetadata == nil {
-		logReq.Payload.RequestMetadata = &audit.RequestMetadata{}
+		logReq.Payload.RequestMetadata = &auditpb.RequestMetadata{}
 	}
 	if logReq.Payload.RequestMetadata.RequestAttributes == nil {
 		logReq.Payload.RequestMetadata.RequestAttributes = &attribute_context.AttributeContext_Request{}
