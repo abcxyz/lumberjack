@@ -192,6 +192,6 @@ func (c *Client) handleReturn(ctx context.Context, err error, requestedLogMode a
 	}
 	// If there is an error, and we shouldn't fail close, log and return nil.
 	logger := zlogger.FromContext(ctx)
-	logger.Error("Failed to audit log; continuing without audit logging.", zap.Error(err))
+	logger.Error("failed to audit log; continuing without audit logging", zap.Error(err))
 	return nil
 }

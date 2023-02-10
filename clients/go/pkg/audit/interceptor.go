@@ -409,7 +409,7 @@ func (i *Interceptor) handleReturnUnary(ctx context.Context, req interface{}, ha
 	if err != nil {
 		// There was an error, but we are failing open.
 		logger := zlogger.FromContext(ctx)
-		logger.Error("failed to to audit log; continuing without audit logging",
+		logger.Error("failed to audit log; continuing without audit logging",
 			zap.Error(err))
 	}
 	return handler(ctx, req)
@@ -422,7 +422,7 @@ func (i *Interceptor) handleReturnStream(ctx context.Context, ss grpc.ServerStre
 	if err != nil {
 		// There was an error, but we are failing open.
 		logger := zlogger.FromContext(ctx)
-		logger.Error("failed to to audit log; continuing without audit logging",
+		logger.Error("failed to audit log; continuing without audit logging",
 			zap.Error(err))
 	}
 	return handler(ctx, ss)
@@ -438,7 +438,7 @@ func (i *Interceptor) handleReturnWithResponse(ctx context.Context, handlerResp 
 	if err != nil {
 		// There was an error, but we are failing open.
 		logger := zlogger.FromContext(ctx)
-		logger.Error("failed to to audit log; continuing without audit logging",
+		logger.Error("failed to audit log; continuing without audit logging",
 			zap.Error(err))
 	}
 	return handlerResp, nil

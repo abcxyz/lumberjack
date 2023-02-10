@@ -136,7 +136,7 @@ func TestLog(t *testing.T) {
 				testutil.WithMode(api.AuditLogRequest_BEST_EFFORT)),
 		},
 		{
-			name:   "failed_precondition_in_mutator_should_return_nil_on",
+			name:   "failed_precondition_in_mutator_should_return_nil",
 			logReq: testutil.NewRequest(),
 			opts: []Option{
 				WithMutator(testOrderProcessor{name: "fake", returnErr: fmt.Errorf("fake error: %w", auditerrors.ErrPreconditionFailed)}),
