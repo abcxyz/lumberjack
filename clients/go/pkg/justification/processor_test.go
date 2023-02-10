@@ -53,19 +53,11 @@ func TestProcess(t *testing.T) {
 				},
 			},
 			logReq: &api.AuditLogRequest{
-				Context: &structpb.Struct{
-					Fields: map[string]*structpb.Value{
-						TokenHeaderKey: structpb.NewStringValue("token"),
-					},
-				},
-				Payload: &audit.AuditLog{},
+				JustificationToken: "token",
+				Payload:            &audit.AuditLog{},
 			},
 			wantLogReq: &api.AuditLogRequest{
-				Context: &structpb.Struct{
-					Fields: map[string]*structpb.Value{
-						TokenHeaderKey: structpb.NewStringValue("token"),
-					},
-				},
+				JustificationToken: "token",
 				Payload: &audit.AuditLog{
 					Metadata: &structpb.Struct{
 						Fields: map[string]*structpb.Value{
@@ -109,20 +101,12 @@ func TestProcess(t *testing.T) {
 			name:      "validation_err",
 			validator: &fakeValidator{returnErr: true},
 			logReq: &api.AuditLogRequest{
-				Context: &structpb.Struct{
-					Fields: map[string]*structpb.Value{
-						TokenHeaderKey: structpb.NewStringValue("token"),
-					},
-				},
-				Payload: &audit.AuditLog{},
+				JustificationToken: "token",
+				Payload:            &audit.AuditLog{},
 			},
 			wantLogReq: &api.AuditLogRequest{
-				Context: &structpb.Struct{
-					Fields: map[string]*structpb.Value{
-						TokenHeaderKey: structpb.NewStringValue("token"),
-					},
-				},
-				Payload: &audit.AuditLog{},
+				JustificationToken: "token",
+				Payload:            &audit.AuditLog{},
 			},
 			wantErr: "invalid justification token",
 		},

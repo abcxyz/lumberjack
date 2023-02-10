@@ -87,4 +87,8 @@ message AuditLogRequest {
   // Such info is meant for log processors and may not be directly
   // reflected in the final audit log.
   google.protobuf.Struct context = 7;
+
+  // JustificationToken is the optional JWT that is justification for this log
+  // request.
+  string justification_token = 8;
 }

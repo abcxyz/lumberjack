@@ -17,7 +17,6 @@
 package com.abcxyz.lumberjack.auditlogclient.processor;
 
 import com.abcxyz.jvs.JvsClient;
-import com.abcxyz.lumberjack.auditlogclient.AuditLoggingServerInterceptor;
 import com.abcxyz.lumberjack.auditlogclient.processor.LogProcessor.LogMutator;
 import com.abcxyz.lumberjack.v1alpha1.AuditLogRequest;
 import com.auth0.jwk.JwkException;
@@ -66,20 +65,12 @@ public class JustificationProcessor implements LogMutator {
     AuditLogRequest.Builder auditLogRequestBuilder = auditLogRequest.toBuilder();
     AuditLog.Builder auditLogBuilder = auditLogRequest.getPayload().toBuilder();
 
-    Value jvsToken =
-        auditLogRequest
-            .getContext()
-            .getFieldsMap()
-            .get(AuditLoggingServerInterceptor.JUSTIFICATION_TOKEN_HEADER_KEY);
-    // TODO(#257): JVS token might be required in the future
-    if (jvsToken == null || jvsToken.getStringValue().isEmpty()) {
-      log.info("no justification token found in AuditLogRequest");
-      return auditLogRequest;
+    String jvsToken = auditLogRequest.getJustificationToken();
+    if (jvsToken.isEmpty()) {
+      throw new LogProcessingException("Justification token missing in the AuditLogRequest");
     }
 
-    auditLogBuilder =
-        this.auditLogBuilderWithJustification(jvsToken.getStringValue(), auditLogBuilder);
-
+    auditLogBuilder = this.auditLogBuilderWithJustification(jvsToken, auditLogBuilder);
     return auditLogRequestBuilder.setPayload(auditLogBuilder.build()).build();
   }
 

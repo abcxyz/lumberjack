@@ -358,14 +358,15 @@ func (r *AuditRule) SetDefault() {
 
 // Justification specifies the config used to integrate with JVS.
 type Justification struct {
-	// PublicKeysEndpoint is the endpoint where public keys may be retrieved from the JVS.
-	// These will be used to validate JWT tokens that are passed in through the
-	// "justification-token" header.
+	// PublicKeysEndpoint is the endpoint where public keys may be retrieved from
+	// the JVS. These will be used to validate JWT tokens that are passed in
+	// through the "justification-token" header.
 	PublicKeysEndpoint string `yaml:"public_keys_endpoint,omitempty" env:"JUSTIFICATION_PUBLIC_KEYS_ENDPOINT,overwrite"`
 
-	// Enabled indicates whether enables adding justification information to audit logs or not. If this is enabled,
-	// all manual calls are expected to pass in a justification in the "justification-token" header.
-	// If omitted, justifications will not be added to logs, even if provided.
+	// Enabled indicates whether enables adding justification information to audit
+	// logs or not. If this is enabled, all manual calls are expected to pass in a
+	// justification in the "justification-token" header. If omitted,
+	// justifications will not be added to logs, even if provided.
 	Enabled bool `yaml:"enabled,omitempty" env:"JUSTIFICATION_ENABLED,overwrite"`
 
 	// AllowBreakglass indicates whether JVS should allow unsigned justification. By default, it's false.
