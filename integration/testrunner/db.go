@@ -61,7 +61,7 @@ func queryAuditLogs(ctx context.Context, tb testing.TB, query *bigquery.Query) (
 			tb.Logf("failed to get next row")
 			return nil, fmt.Errorf("failed to get next row: %w", err)
 		}
-		pbJSON := &logpb.LogEntry{}
+		logEntry := &logpb.LogEntry{}
 		value, ok := row[0].(string)
 		if !ok {
 			tb.Logf("error converting query results to string")
@@ -70,10 +70,10 @@ func queryAuditLogs(ctx context.Context, tb testing.TB, query *bigquery.Query) (
 		// When there are fields with null values in json string
 		// protojson.Unmarshal will return an error: invalid value for string type: null
 		// but the json string can still be unmarshal into pbJSON.
-		if err := protojson.Unmarshal([]byte(value), pbJSON); err != nil {
+		if err := protojson.Unmarshal([]byte(value), logEntry); err != nil {
 			tb.Logf("ignoring error: %s as this behavior is expected", err.Error())
 		}
-		logEntries = append(logEntries, pbJSON)
+		logEntries = append(logEntries, logEntry)
 	}
 	return logEntries, nil
 }
@@ -105,15 +105,15 @@ func makeBigQueryClient(ctx context.Context, tb testing.TB, projectID string) *b
 
 // This calls the database to check that an audit log exists. It uses the retries that are specified in the Config
 // file. This method allows for specifying how many logs we expect to match, in order to handle streaming use cases.
-func queryIfAuditLogsExistsWithRetries(ctx context.Context, tb testing.TB, bqQuery *bigquery.Query, cfg *Config, testName string) []*logpb.LogEntry {
+func queryAuditLogsWithRetries(ctx context.Context, tb testing.TB, bqQuery *bigquery.Query, cfg *Config, testName string) []*logpb.LogEntry {
 	tb.Helper()
 	var logEntries []*logpb.LogEntry
 	b := retry.NewExponential(cfg.LogRoutingWait)
 	if err := retry.Do(ctx, retry.WithMaxRetries(cfg.MaxDBQueryTries, b), func(ctx context.Context) error {
-		rows, err := queryAuditLogs(ctx, tb, bqQuery)
-		if rows != nil {
+		results, err := queryAuditLogs(ctx, tb, bqQuery)
+		if results != nil {
 			// Early exit retry if queried log already found.
-			logEntries = rows
+			logEntries = results
 			return nil
 		}
 
@@ -131,14 +131,14 @@ func queryIfAuditLogsExistsWithRetries(ctx context.Context, tb testing.TB, bqQue
 
 func parseJsonpayload(tb testing.TB, logEntry *logpb.LogEntry) *audit.AuditLog {
 	tb.Helper()
-	jsonPayloadContent := logEntry.GetJsonPayload()
-	jsonPayloadString, err := jsonPayloadContent.MarshalJSON()
+	jsonPayload := logEntry.GetJsonPayload()
+	jsonPayloadStr, err := jsonPayload.MarshalJSON()
 	if err != nil {
-		err := fmt.Errorf("error parsing *pbstruct.Struct to json: %w)", err)
+		err := fmt.Errorf("error parsing *structpb.Struct to json: %w)", err)
 		tb.Log(err)
 	}
 	var auditLog audit.AuditLog
-	if err := json.Unmarshal(jsonPayloadString, &auditLog); err != nil {
+	if err := json.Unmarshal(jsonPayloadStr, &auditLog); err != nil {
 		err := fmt.Errorf("error parsing json to AuditLog: %w)", err)
 		tb.Logf(err.Error())
 	}
