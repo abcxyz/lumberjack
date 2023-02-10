@@ -108,6 +108,11 @@ func diffResults(tb testing.TB, logEntry *logpb.LogEntry, jsonPayloadInfo *audit
 	wantPrincipalEmail := "gh-access-sa@lumberjack-dev-infra.iam.gserviceaccount.com"
 	wantHTTPServiceName := [2]string{"go-shell-app", "java-shell-app"}
 	wantGRPCServiceName := "abcxyz.test.Talker"
+
+	// Fields including log_name, insert_id, labels,
+	// receive_timestamp, resource timestamp, operation
+	// are fields that we don't want to compare,
+	// and json_payload will be compared below.
 	diffString := cmp.Diff(wantLogEntry, logEntry, protocmp.Transform(),
 		protocmp.IgnoreFields(&logpb.LogEntry{}, "log_name", "insert_id", "labels", "receive_timestamp", "json_payload", "resource", "timestamp", "operation"))
 	if diffString != "" {
@@ -127,6 +132,6 @@ func diffResults(tb testing.TB, logEntry *logpb.LogEntry, jsonPayloadInfo *audit
 	}
 }
 
-func getMode(s string) bool {
+func isHTTP(s string) bool {
 	return s == "HTTP"
 }

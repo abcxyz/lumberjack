@@ -138,7 +138,7 @@ func testGRPCEndpoint(ctx context.Context, t *testing.T, g *GRPC) {
 			t.Errorf("log number doesn't match (-want +got):\n - %d\n + %d\n", wantNum, len(results))
 		} else {
 			jsonPayloadInfo := parseJsonpayload(t, results[0])
-			diffResults(t, results[0], jsonPayloadInfo, getMode("GRPC"), 0)
+			diffResults(t, results[0], jsonPayloadInfo, isHTTP("GRPC"), 0)
 		}
 	})
 
@@ -168,7 +168,7 @@ func testGRPCEndpoint(ctx context.Context, t *testing.T, g *GRPC) {
 			t.Errorf("log number doesn't match (-want +got):\n - %d\n + %d\n", wantNum, len(results))
 		} else {
 			jsonPayloadInfo := parseJsonpayload(t, results[0])
-			diffResults(t, results[0], jsonPayloadInfo, getMode("GRPC"), 0)
+			diffResults(t, results[0], jsonPayloadInfo, isHTTP("GRPC"), 0)
 		}
 	})
 
@@ -202,7 +202,7 @@ func testGRPCEndpoint(ctx context.Context, t *testing.T, g *GRPC) {
 		} else {
 			for i := 0; i < wantNum; i++ {
 				jsonPayloadInfo := parseJsonpayload(t, results[i])
-				diffResults(t, results[i], jsonPayloadInfo, getMode("GRPC"), i)
+				diffResults(t, results[i], jsonPayloadInfo, isHTTP("GRPC"), i)
 			}
 		}
 	})
@@ -238,7 +238,7 @@ func testGRPCEndpoint(ctx context.Context, t *testing.T, g *GRPC) {
 		} else {
 			for i := 0; i < totalNumbers; i++ {
 				jsonPayloadInfo := parseJsonpayload(t, results[i])
-				diffResults(t, results[i], jsonPayloadInfo, getMode("GRPC"), i)
+				diffResults(t, results[i], jsonPayloadInfo, isHTTP("GRPC"), i)
 			}
 		}
 	})
@@ -284,7 +284,7 @@ func testGRPCEndpoint(ctx context.Context, t *testing.T, g *GRPC) {
 		} else {
 			for i := 0; i < wantNum; i++ {
 				jsonPayloadInfo := parseJsonpayload(t, results[i])
-				diffResults(t, results[i], jsonPayloadInfo, getMode("GRPC"), i)
+				diffResults(t, results[i], jsonPayloadInfo, isHTTP("GRPC"), i)
 			}
 		}
 	})

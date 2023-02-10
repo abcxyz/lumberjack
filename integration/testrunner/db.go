@@ -70,6 +70,7 @@ func queryAuditLogs(ctx context.Context, tb testing.TB, query *bigquery.Query) (
 		// When there are fields with null values in json string
 		// protojson.Unmarshal will return an error: invalid value for string type: null
 		// but the json string can still be unmarshal into pbJSON.
+		// See issue here: golang/protobuf#1313
 		if err := protojson.Unmarshal([]byte(value), logEntry); err != nil {
 			tb.Logf("ignoring error: %s as this behavior is expected", err.Error())
 		}
