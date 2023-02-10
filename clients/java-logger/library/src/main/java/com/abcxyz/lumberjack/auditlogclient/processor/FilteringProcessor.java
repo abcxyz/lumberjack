@@ -44,7 +44,8 @@ public class FilteringProcessor implements LogValidator {
    * com.google.cloud.audit.AuthenticationInfo} to filter the {@link AuditLogRequest}
    */
   @Override
-  public AuditLogRequest process(AuditLogRequest auditLogRequest) throws IllegalArgumentException {
+  public AuditLogRequest process(AuditLogRequest auditLogRequest)
+      throws PreconditionFailedException {
     if (includePatterns.isEmpty() && excludePatterns.isEmpty()) {
       return auditLogRequest;
     }
@@ -54,12 +55,12 @@ public class FilteringProcessor implements LogValidator {
       return auditLogRequest;
     }
     if (excludePatterns.isEmpty()) {
-      throw new IllegalArgumentException(
+      throw new PreconditionFailedException(
           "request.Payload.AuthenticationInfo.PrincipalEmail not present in includePattern List");
     }
 
     if (excludePatterns.stream().anyMatch(p -> p.matcher(principalEmail).matches())) {
-      throw new IllegalArgumentException(
+      throw new PreconditionFailedException(
           "request.Payload.AuthenticationInfo.PrincipalEmail " + "present in excludePattern List");
     }
     return auditLogRequest;

@@ -136,15 +136,15 @@ func TestLog(t *testing.T) {
 				testutil.WithMode(api.AuditLogRequest_BEST_EFFORT)),
 		},
 		{
-			name:   "failed_precondition_in_mutator_should_return_nil_on_best_effort",
+			name:   "failed_precondition_in_mutator_should_return_nil",
 			logReq: testutil.NewRequest(),
 			opts: []Option{
 				WithMutator(testOrderProcessor{name: "fake", returnErr: fmt.Errorf("fake error: %w", auditerrors.ErrPreconditionFailed)}),
-				WithLogMode(api.AuditLogRequest_BEST_EFFORT),
+				WithLogMode(api.AuditLogRequest_FAIL_CLOSE),
 			},
 			wantLogReq: testutil.NewRequest(
 				testutil.WithLabels(map[string]string{processorOrderKey: "fake, "}),
-				testutil.WithMode(api.AuditLogRequest_BEST_EFFORT)),
+				testutil.WithMode(api.AuditLogRequest_FAIL_CLOSE)),
 		},
 		{
 			name:   "injected_error_in_backend_should_return_error_on_fail_close",
@@ -159,7 +159,7 @@ func TestLog(t *testing.T) {
 			wantErrSubstr: "failed to execute backend",
 		},
 		{
-			name:   "failed_precondition_in_backend_should_return_error_on_fail_close",
+			name:   "failed_precondition_in_backend_should_return_nil",
 			logReq: testutil.NewRequest(),
 			opts: []Option{
 				WithBackend(testOrderProcessor{name: "fake", returnErr: fmt.Errorf("fake error: %w", auditerrors.ErrPreconditionFailed)}),
@@ -168,7 +168,6 @@ func TestLog(t *testing.T) {
 			wantLogReq: testutil.NewRequest(
 				testutil.WithLabels(map[string]string{processorOrderKey: "fake, "}),
 				testutil.WithMode(api.AuditLogRequest_FAIL_CLOSE)),
-			wantErrSubstr: "failed to execute backend",
 		},
 	}
 

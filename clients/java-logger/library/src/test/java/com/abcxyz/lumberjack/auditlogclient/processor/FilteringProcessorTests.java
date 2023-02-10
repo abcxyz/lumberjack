@@ -62,7 +62,8 @@ public class FilteringProcessorTests {
     FilteringProcessor filteringProcessor = new FilteringProcessor(includes, new ArrayList<>());
     assertThat(filteringProcessor.getExcludePatterns().isEmpty()).isTrue();
     assertThat(filteringProcessor.getIncludePatterns().size()).isEqualTo(1);
-    assertThrows(IllegalArgumentException.class, () -> filteringProcessor.process(auditLogRequest));
+    assertThrows(
+        PreconditionFailedException.class, () -> filteringProcessor.process(auditLogRequest));
   }
 
   @Test
@@ -71,7 +72,8 @@ public class FilteringProcessorTests {
     FilteringProcessor filteringProcessor = new FilteringProcessor(new ArrayList<>(), excludes);
     assertThat(filteringProcessor.getIncludePatterns().isEmpty()).isTrue();
     assertThat(filteringProcessor.getExcludePatterns().size()).isEqualTo(1);
-    assertThrows(IllegalArgumentException.class, () -> filteringProcessor.process(auditLogRequest));
+    assertThrows(
+        PreconditionFailedException.class, () -> filteringProcessor.process(auditLogRequest));
   }
 
   @Test
@@ -90,7 +92,8 @@ public class FilteringProcessorTests {
     FilteringProcessor filteringProcessor = new FilteringProcessor(includes, excludes);
     assertThat(filteringProcessor.getIncludePatterns().size()).isEqualTo(1);
     assertThat(filteringProcessor.getExcludePatterns().size()).isEqualTo(1);
-    assertThrows(IllegalArgumentException.class, () -> filteringProcessor.process(auditLogRequest));
+    assertThrows(
+        PreconditionFailedException.class, () -> filteringProcessor.process(auditLogRequest));
   }
 
   @Test
