@@ -42,14 +42,12 @@ func queryAuditLogs(ctx context.Context, tb testing.TB, query *bigquery.Query) (
 	}
 
 	if status, err := job.Wait(ctx); err != nil {
-		tb.Logf("failed to wait for query: %s", err.Error())
 		return nil, fmt.Errorf("failed to wait for query: %w", err)
 	} else if err = status.Err(); err != nil {
 		return nil, fmt.Errorf("query failed: %w", err)
 	}
 	it, err := job.Read(ctx)
 	if err != nil {
-		tb.Logf("failed to read job: %s", err.Error())
 		return nil, fmt.Errorf("failed to read job: %w", err)
 	}
 	var logEntries []*logpb.LogEntry
@@ -139,10 +137,10 @@ func parseJsonpayload(tb testing.TB, logEntry *logpb.LogEntry) *audit.AuditLog {
 		err := fmt.Errorf("error parsing *pbstruct.Struct to json: %w)", err)
 		tb.Log(err)
 	}
-	auditLog := &audit.AuditLog{}
-	if err := json.Unmarshal(jsonPayloadString, auditLog); err != nil {
+	var auditLog audit.AuditLog
+	if err := json.Unmarshal(jsonPayloadString, &auditLog); err != nil {
 		err := fmt.Errorf("error parsing json to AuditLog: %w)", err)
 		tb.Logf(err.Error())
 	}
-	return auditLog
+	return &auditLog
 }
