@@ -131,14 +131,14 @@ func testGRPCEndpoint(ctx context.Context, t *testing.T, g *GRPC) {
 			t.Errorf("could not greet: %v", err)
 		}
 		query := g.makeQueryForGRPC(id)
+		t.Log("querying bigquery table using the following statement:")
 		t.Log(query.Q)
 		results := queryAuditLogsWithRetries(ctx, t, query, g.Config, "unary_hello")
 		wantNum := 1
 		if len(results) != wantNum {
 			t.Errorf("log number doesn't match (-want +got):\n - %d\n + %d\n", wantNum, len(results))
 		} else {
-			jsonPayloadInfo := parseJsonpayload(t, results[0])
-			diffResults(t, results[0], jsonPayloadInfo, isHTTP("GRPC"), 0)
+			diffLogEntry(t, results[0], isHTTP("GRPC"), 0)
 		}
 	})
 
@@ -161,14 +161,14 @@ func testGRPCEndpoint(ctx context.Context, t *testing.T, g *GRPC) {
 			t.Errorf("Did not get err as expected. Instead got reply: %v", reply)
 		}
 		query := g.makeQueryForGRPC(id)
+		t.Log("querying bigquery table using the following statement:")
 		t.Log(query.Q)
 		results := queryAuditLogsWithRetries(ctx, t, query, g.Config, "unary_fail")
 		wantNum := 1
 		if len(results) != wantNum {
 			t.Errorf("log number doesn't match (-want +got):\n - %d\n + %d\n", wantNum, len(results))
 		} else {
-			jsonPayloadInfo := parseJsonpayload(t, results[0])
-			diffResults(t, results[0], jsonPayloadInfo, isHTTP("GRPC"), 0)
+			diffLogEntry(t, results[0], isHTTP("GRPC"), 0)
 		}
 	})
 
@@ -194,6 +194,7 @@ func testGRPCEndpoint(ctx context.Context, t *testing.T, g *GRPC) {
 			t.Logf("Received value %v", place.Value)
 		}
 		query := g.makeQueryForGRPC(id)
+		t.Log("querying bigquery table using the following statement:")
 		t.Log(query.Q)
 		results := queryAuditLogsWithRetries(ctx, t, query, g.Config, "server_stream_fibonacci")
 		wantNum := places
@@ -201,8 +202,7 @@ func testGRPCEndpoint(ctx context.Context, t *testing.T, g *GRPC) {
 			t.Errorf("log number doesn't match (-want +got):\n - %d\n + %d\n", wantNum, len(results))
 		} else {
 			for i := 0; i < wantNum; i++ {
-				jsonPayloadInfo := parseJsonpayload(t, results[i])
-				diffResults(t, results[i], jsonPayloadInfo, isHTTP("GRPC"), i)
+				diffLogEntry(t, results[i], isHTTP("GRPC"), i)
 			}
 		}
 	})
@@ -231,14 +231,14 @@ func testGRPCEndpoint(ctx context.Context, t *testing.T, g *GRPC) {
 		t.Logf("Value returned: %d", reply.Sum)
 
 		query := g.makeQueryForGRPC(id)
+		t.Log("querying bigquery table using the following statement:")
 		t.Log(query.Q)
 		results := queryAuditLogsWithRetries(ctx, t, query, g.Config, "client_stream_addition")
 		if len(results) != totalNumbers {
 			t.Errorf("log number doesn't match (-want +got):\n - %d\n + %d\n", totalNumbers, len(results))
 		} else {
 			for i := 0; i < totalNumbers; i++ {
-				jsonPayloadInfo := parseJsonpayload(t, results[i])
-				diffResults(t, results[i], jsonPayloadInfo, isHTTP("GRPC"), i)
+				diffLogEntry(t, results[i], isHTTP("GRPC"), i)
 			}
 		}
 	})
@@ -276,6 +276,7 @@ func testGRPCEndpoint(ctx context.Context, t *testing.T, g *GRPC) {
 		}
 		wantNum := 4
 		query := g.makeQueryForGRPC(id)
+		t.Log("querying bigquery table using the following statement:")
 		t.Log(query.Q)
 		// we expect to have 4 audit logs - the last sent number (5) will be after the err occurred.
 		results := queryAuditLogsWithRetries(ctx, t, query, g.Config, "stream_fail_on_four")
@@ -283,8 +284,7 @@ func testGRPCEndpoint(ctx context.Context, t *testing.T, g *GRPC) {
 			t.Errorf("log number doesn't match (-want +got):\n - %d\n + %d\n", totalNumbers, len(results))
 		} else {
 			for i := 0; i < wantNum; i++ {
-				jsonPayloadInfo := parseJsonpayload(t, results[i])
-				diffResults(t, results[i], jsonPayloadInfo, isHTTP("GRPC"), i)
+				diffLogEntry(t, results[i], isHTTP("GRPC"), i)
 			}
 		}
 	})

@@ -26,7 +26,6 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/uuid"
 	"github.com/sethvargo/go-retry"
-	"google.golang.org/genproto/googleapis/cloud/audit"
 	"google.golang.org/protobuf/testing/protocmp"
 
 	logpb "cloud.google.com/go/logging/apiv2/loggingpb"
@@ -78,14 +77,14 @@ func testHTTPEndpoint(ctx context.Context, tb testing.TB, endpointURL, idToken, 
 	bqClient := makeBigQueryClient(ctx, tb, projectID)
 	time.Sleep(10 * time.Second)
 	bqQuery := makeQueryForHTTP(*bqClient, id, projectID, datasetQuery)
+	tb.Log("querying bigquery table using the following statement:")
 	tb.Log(bqQuery.Q)
 	results := queryAuditLogsWithRetries(ctx, tb, bqQuery, cfg, "httpEndpointTest")
 	wantNum := 1
 	if len(results) != wantNum {
 		tb.Errorf("log number doesn't match (-want +got):\n - %d\n + %d\n", wantNum, len(results))
 	} else {
-		jsonPayloadInfo := parseJsonpayload(tb, results[0])
-		diffResults(tb, results[0], jsonPayloadInfo, isHTTP("HTTP"), 0)
+		diffLogEntry(tb, results[0], isHTTP("HTTP"), 0)
 	}
 }
 
@@ -100,7 +99,7 @@ func makeQueryForHTTP(client bigquery.Client, id, projectID, datasetQuery string
 	return makeQuery(client, id, queryString)
 }
 
-func diffResults(tb testing.TB, logEntry *logpb.LogEntry, jsonPayloadInfo *audit.AuditLog, isHTTPService bool, index int) {
+func diffLogEntry(tb testing.TB, logEntry *logpb.LogEntry, isHTTPService bool, index int) {
 	tb.Helper()
 	wantLogEntry := &logpb.LogEntry{
 		LogName: "projects/github-ci-app-0/logs/audit.abcxyz%2Fdata_access",
@@ -109,6 +108,7 @@ func diffResults(tb testing.TB, logEntry *logpb.LogEntry, jsonPayloadInfo *audit
 	wantHTTPServiceName := [2]string{"go-shell-app", "java-shell-app"}
 	wantGRPCServiceName := "abcxyz.test.Talker"
 
+	jsonPayloadInfo := parseJsonpayload(tb, logEntry)
 	// Fields including log_name, insert_id, labels,
 	// receive_timestamp, resource timestamp, operation
 	// are fields that we don't want to compare,
