@@ -85,7 +85,7 @@ func testHTTPEndpoint(ctx context.Context, tb testing.TB, endpointURL, idToken, 
 		tb.Errorf("log number doesn't match (-want +got):\n - %d\n + %d\n", wantNum, len(results))
 	} else {
 		jsonPayloadInfo := parseJsonpayload(tb, results[0])
-		diffResults(tb, results[0], jsonPayloadInfo, getMode("HTTP"), 0)
+		diffResults(tb, results[0], jsonPayloadInfo, isHTTP("HTTP"), 0)
 	}
 }
 
