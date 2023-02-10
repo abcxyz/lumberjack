@@ -142,15 +142,15 @@ func (c *Client) Stop() error {
 func (c *Client) Log(ctx context.Context, logReq *api.AuditLogRequest) error {
 	logger := zlogger.FromContext(ctx)
 
-	if logMode := logReq.Mode; logMode == api.AuditLogRequest_LOG_MODE_UNSPECIFIED {
-		logMode = c.logMode
-		logReq.Mode = logMode
+	if logReq.Mode == api.AuditLogRequest_LOG_MODE_UNSPECIFIED {
+		logReq.Mode = c.logMode
 	}
 
 	for _, p := range c.validators {
 		if err := p.Process(ctx, logReq); err != nil {
 			if errors.Is(err, auditerrors.ErrPreconditionFailed) {
 				logger.Warnf("stopped log request processing as validator %T precondition failed: %v", p, err)
+				return nil
 			}
 			return c.handleReturn(ctx, fmt.Errorf("failed to execute validator %T: %w", p, err), logReq.Mode)
 		}
@@ -160,6 +160,7 @@ func (c *Client) Log(ctx context.Context, logReq *api.AuditLogRequest) error {
 		if err := p.Process(ctx, logReq); err != nil {
 			if errors.Is(err, auditerrors.ErrPreconditionFailed) {
 				logger.Warnf("stopped log request processing as mutator %T precondition failed: %v", p, err)
+				return nil
 			}
 			return c.handleReturn(ctx, fmt.Errorf("failed to execute mutator %T: %w", p, err), logReq.Mode)
 		}
@@ -169,6 +170,7 @@ func (c *Client) Log(ctx context.Context, logReq *api.AuditLogRequest) error {
 		if err := p.Process(ctx, logReq); err != nil {
 			if errors.Is(err, auditerrors.ErrPreconditionFailed) {
 				logger.Warnf("stopped log request processing as backend %T precondition failed: %v", p, err)
+				return nil
 			}
 			return c.handleReturn(ctx, fmt.Errorf("failed to execute backend %T: %w", p, err), logReq.Mode)
 		}
@@ -190,6 +192,6 @@ func (c *Client) handleReturn(ctx context.Context, err error, requestedLogMode a
 	}
 	// If there is an error, and we shouldn't fail close, log and return nil.
 	logger := zlogger.FromContext(ctx)
-	logger.Warn("Error occurred while attempting to audit log, continuing without audit logging.", zap.Error(err))
+	logger.Error("failed to audit log; continuing without audit logging", zap.Error(err))
 	return nil
 }
