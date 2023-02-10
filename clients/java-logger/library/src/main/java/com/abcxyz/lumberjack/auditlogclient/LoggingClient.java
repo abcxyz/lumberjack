@@ -22,6 +22,7 @@ import com.abcxyz.lumberjack.auditlogclient.processor.LogProcessor;
 import com.abcxyz.lumberjack.auditlogclient.processor.LogProcessor.LogBackend;
 import com.abcxyz.lumberjack.auditlogclient.processor.LogProcessor.LogMutator;
 import com.abcxyz.lumberjack.auditlogclient.processor.LogProcessor.LogValidator;
+import com.abcxyz.lumberjack.auditlogclient.processor.PreconditionFailedException;
 import com.abcxyz.lumberjack.auditlogclient.utils.ConfigUtils;
 import com.abcxyz.lumberjack.v1alpha1.AuditLogRequest;
 import com.abcxyz.lumberjack.v1alpha1.AuditLogRequest.LogMode;
@@ -70,15 +71,14 @@ public class LoggingClient {
       for (LogProcessor processor : backends) {
         auditLogRequest = processor.process(auditLogRequest);
       }
+    } catch (PreconditionFailedException e) {
+      log.warn("Stopped log request processing.", e);
     } catch (Exception e) { // TODO(#157): Should we swallow throwable?
 
       if (ConfigUtils.shouldFailClose(logMode)) {
-        throw new LogProcessingException(
-            "Fail close enabled and ran into exception while audit logging.", e);
+        throw new LogProcessingException("Failed to audit log.", e);
       } else {
-        log.error(
-            "Exception occurred while attempting to audit log, continuing without audit logging.",
-            e);
+        log.error("Failed to audit log; continuing without audit logging.", e);
       }
     }
   }

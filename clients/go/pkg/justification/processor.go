@@ -71,14 +71,12 @@ func (p *Processor) Process(ctx context.Context, logReq *api.AuditLogRequest) er
 
 	b, err := json.Marshal(token)
 	if err != nil {
-		// TODO(sethvargo): In Go 1.20, wrap both errors and drop log message.
-		return fmt.Errorf("%w: failed to encode justification token: %s", auditerrors.ErrInternalError, err)
+		return fmt.Errorf("failed to encode justification token: %w", err)
 	}
 
 	var tokStruct structpb.Struct
 	if err := protojson.Unmarshal(b, &tokStruct); err != nil {
-		// TODO(sethvargo): In Go 1.20, wrap both errors and drop log message.
-		return fmt.Errorf("%w: failed to decode justification token: %s", auditerrors.ErrInternalError, err)
+		return fmt.Errorf("failed to decode justification token: %w", err)
 	}
 
 	if logReq.Payload == nil {
@@ -105,8 +103,7 @@ func (p *Processor) Process(ctx context.Context, logReq *api.AuditLogRequest) er
 
 	justificationBytes, err := json.Marshal(justifications)
 	if err != nil {
-		// TODO(sethvargo): In Go 1.20, wrap both errors and drop log message.
-		return fmt.Errorf("%w: failed to marshal justifications: %s", auditerrors.ErrInternalError, err)
+		return fmt.Errorf("failed to marshal justifications: %w", err)
 	}
 	if logReq.Payload.RequestMetadata == nil {
 		logReq.Payload.RequestMetadata = &auditpb.RequestMetadata{}
