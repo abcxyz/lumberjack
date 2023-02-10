@@ -67,7 +67,7 @@ public class JustificationProcessor implements LogMutator {
 
     String jvsToken = auditLogRequest.getJustificationToken();
     if (jvsToken.isEmpty()) {
-      throw new LogProcessingException("Justification token missing in the AuditLogRequest", null);
+      throw new LogProcessingException("Justification token missing in the AuditLogRequest");
     }
 
     auditLogBuilder = this.auditLogBuilderWithJustification(jvsToken, auditLogBuilder);
