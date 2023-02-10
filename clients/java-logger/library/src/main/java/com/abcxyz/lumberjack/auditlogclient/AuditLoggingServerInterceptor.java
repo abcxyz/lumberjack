@@ -120,8 +120,7 @@ public class AuditLoggingServerInterceptor<ReqT extends Message> implements Serv
       next.startCall(call, headers);
     }
 
-    final Struct auditLogRequestContext = getAuditLogRequestContext(headers);
-
+    String justificationToken = headers.get(JUSTIFICATION_METADATA_KEY);
     LogEntryOperation logEntryOperation =
         LogEntryOperation.newBuilder()
             .setId(UUID.randomUUID().toString())
@@ -144,7 +143,7 @@ public class AuditLoggingServerInterceptor<ReqT extends Message> implements Serv
             ReqT unloggedRequest = unloggedRequests.pollLast();
             auditLog(
                 selector,
-                auditLogRequestContext,
+                justificationToken,
                 unloggedRequest,
                 message,
                 logBuilderFinal,
@@ -166,7 +165,7 @@ public class AuditLoggingServerInterceptor<ReqT extends Message> implements Serv
                   Status.newBuilder().setCode(code.getNumber()).setMessage(code.name()).build());
               auditLog(
                   selector,
-                  auditLogRequestContext,
+                  justificationToken,
                   unloggedRequest,
                   null,
                   logBuilder,
@@ -194,7 +193,7 @@ public class AuditLoggingServerInterceptor<ReqT extends Message> implements Serv
           if (unloggedRequest != null) {
             auditLog(
                 selector,
-                auditLogRequestContext,
+                justificationToken,
                 unloggedRequest,
                 null,
                 logBuilderFinal,
@@ -261,7 +260,7 @@ public class AuditLoggingServerInterceptor<ReqT extends Message> implements Serv
 
   <ReqT, RespT> void auditLog(
       Selector selector,
-      Struct auditLogRequestContext,
+      String justificationToken,
       ReqT request,
       RespT response,
       AuditLog.Builder logBuilder,
@@ -281,7 +280,7 @@ public class AuditLoggingServerInterceptor<ReqT extends Message> implements Serv
     Instant now = clock.instant();
     builder.setTimestamp(
         Timestamp.newBuilder().setSeconds(now.getEpochSecond()).setNanos(now.getNano()));
-    builder.setContext(auditLogRequestContext);
+    builder.setJustificationToken(justificationToken);
 
     try {
       log.info("Audit logging...");
@@ -343,21 +342,5 @@ public class AuditLoggingServerInterceptor<ReqT extends Message> implements Serv
     // thread-safe way to update memo
     memo.putIfAbsent(methodIdentifier, mostApplicableSelector);
     return mostApplicableSelector;
-  }
-
-  /**
-   * Get the justification token out of the headers, and create a struct of the correct format for
-   * use in audit logging context.
-   */
-  Struct getAuditLogRequestContext(Metadata headers) {
-    String jvsToken = headers.get(JUSTIFICATION_METADATA_KEY);
-    if (jvsToken != null && !jvsToken.isEmpty()) {
-      return Struct.newBuilder()
-          .putFields(
-              JUSTIFICATION_TOKEN_HEADER_KEY, Value.newBuilder().setStringValue(jvsToken).build())
-          .build();
-    } else {
-      return Struct.getDefaultInstance();
-    }
   }
 }

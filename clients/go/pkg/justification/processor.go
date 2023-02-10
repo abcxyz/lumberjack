@@ -58,13 +58,12 @@ func NewProcessor(v Validator) *Processor {
 // Process populates the given audit log request with the justification info from the given token.
 // If the token is empty, this function does nothing.
 func (p *Processor) Process(ctx context.Context, logReq *api.AuditLogRequest) error {
-	// TODO(#257): We will enforce the token in the future.
-	jvsToken, ok := logReq.Context.GetFields()[TokenHeaderKey]
-	if !ok || jvsToken.GetStringValue() == "" {
+	jvsToken := logReq.JustificationToken
+	if jvsToken == "" {
 		return auditerrors.ErrJustificationMissing
 	}
 
-	token, err := p.validator.ValidateJWT(jvsToken.GetStringValue())
+	token, err := p.validator.ValidateJWT(jvsToken)
 	if err != nil {
 		// TODO(sethvargo): In Go 1.20, wrap both errors and drop log message.
 		return fmt.Errorf("%w: %s", auditerrors.ErrJustificationInvalid, err)
