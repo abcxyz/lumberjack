@@ -16,19 +16,18 @@
 
 package com.abcxyz.lumberjack.auditlogclient.processor;
 
-import java.io.IOException;
 
-/** Thrown when log processors encounter an exception. */
-public class LogProcessingException extends IOException {
-  public LogProcessingException(Throwable cause) {
+/** Thrown when log processors wants to stop processing the log request. */
+public class PreconditionFailedException extends LogProcessingException {
+  public PreconditionFailedException(Throwable cause) {
     super(cause);
   }
 
-  public LogProcessingException(String message, Throwable cause) {
+  public PreconditionFailedException(String message, Throwable cause) {
     super(message, cause);
   }
 
-  public LogProcessingException(String message) {
+  public PreconditionFailedException(String message) {
     super(message);
   }
 }

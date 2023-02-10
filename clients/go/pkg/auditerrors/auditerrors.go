@@ -24,10 +24,6 @@ func (e Error) Error() string {
 }
 
 const (
-	// ErrInternalError is a generic error that indiciates some low-level
-	// operation failed.
-	ErrInternalError = Error("internal error")
-
 	// ErrInvalidRequest is the (base) error to return when a log processor
 	// considers a log request is invalid.
 	ErrInvalidRequest = Error("invalid audit log request")
