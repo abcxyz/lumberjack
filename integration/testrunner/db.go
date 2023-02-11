@@ -20,7 +20,6 @@ import (
 	"errors"
 	"fmt"
 	"testing"
-	"time"
 
 	"cloud.google.com/go/bigquery"
 	"github.com/sethvargo/go-retry"
@@ -34,7 +33,7 @@ import (
 // queryAuditLogs queries the DB and checks if audit log contained in the query exists or not and return the results.
 func queryAuditLogs(ctx context.Context, tb testing.TB, query *bigquery.Query) ([]*loggingpb.LogEntry, error) {
 	tb.Helper()
-	time.Sleep(20 * time.Second)
+	// time.Sleep(20 * time.Second)
 	job, err := query.Run(ctx)
 	if err != nil {
 		tb.Logf("failed to run query: %v", err)
@@ -106,7 +105,7 @@ func makeBigQueryClient(ctx context.Context, tb testing.TB, projectID string) *b
 
 // This calls the database to check that an audit log exists. It uses the retries that are specified in the Config
 // file. This method allows for specifying how many logs we expect to match, in order to handle streaming use cases.
-func queryAuditLogsWithRetries(ctx context.Context, tb testing.TB, bqQuery *bigquery.Query, cfg *Config, testName string) []*loggingpb.LogEntry {
+func queryAuditLogsWithRetries(ctx context.Context, tb testing.TB, bqQuery *bigquery.Query, cfg *Config, testName string, wantNum int) []*loggingpb.LogEntry {
 	tb.Helper()
 	var logEntries []*loggingpb.LogEntry
 	b := retry.NewExponential(cfg.LogRoutingWait)
@@ -114,8 +113,11 @@ func queryAuditLogsWithRetries(ctx context.Context, tb testing.TB, bqQuery *bigq
 		results, err := queryAuditLogs(ctx, tb, bqQuery)
 		if results != nil {
 			// Early exit retry if queried log already found.
-			logEntries = results
-			return nil
+			if len(results) == wantNum {
+				logEntries = results
+				return nil
+			}
+			tb.Logf("Matching entries number doesn't match want %d got %d", wantNum, len(results))
 		}
 
 		tb.Log("Matching entry not found, retrying...")

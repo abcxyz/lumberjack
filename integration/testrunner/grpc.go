@@ -126,8 +126,8 @@ func testGRPCEndpoint(ctx context.Context, t *testing.T, g *GRPC) {
 		}
 		query := g.makeQueryForGRPC(id)
 		t.Logf("querying BigQuery:\n%s", query.Q)
-		results := queryAuditLogsWithRetries(ctx, t, query, g.Config, "unary_hello")
 		wantNum := 1
+		results := queryAuditLogsWithRetries(ctx, t, query, g.Config, "unary_hello", wantNum)
 		if len(results) != wantNum {
 			t.Errorf("log number doesn't match (-want +got):\n - %d\n + %d\n", wantNum, len(results))
 			return
@@ -155,8 +155,8 @@ func testGRPCEndpoint(ctx context.Context, t *testing.T, g *GRPC) {
 		}
 		query := g.makeQueryForGRPC(id)
 		t.Logf("querying BigQuery:\n%s", query.Q)
-		results := queryAuditLogsWithRetries(ctx, t, query, g.Config, "unary_fail")
 		wantNum := 1
+		results := queryAuditLogsWithRetries(ctx, t, query, g.Config, "unary_fail", wantNum)
 		if len(results) != wantNum {
 			t.Errorf("log number doesn't match (-want +got):\n - %d\n + %d\n", wantNum, len(results))
 			return
@@ -187,8 +187,8 @@ func testGRPCEndpoint(ctx context.Context, t *testing.T, g *GRPC) {
 		}
 		query := g.makeQueryForGRPC(id)
 		t.Logf("querying BigQuery:\n%s", query.Q)
-		results := queryAuditLogsWithRetries(ctx, t, query, g.Config, "server_stream_fibonacci")
 		wantNum := places
+		results := queryAuditLogsWithRetries(ctx, t, query, g.Config, "server_stream_fibonacci", wantNum)
 		if len(results) != wantNum {
 			t.Errorf("log number doesn't match (-want +got):\n - %d\n + %d\n", wantNum, len(results))
 			return
@@ -223,7 +223,8 @@ func testGRPCEndpoint(ctx context.Context, t *testing.T, g *GRPC) {
 
 		query := g.makeQueryForGRPC(id)
 		t.Logf("querying BigQuery:\n%s", query.Q)
-		results := queryAuditLogsWithRetries(ctx, t, query, g.Config, "client_stream_addition")
+		wantNum := totalNumbers
+		results := queryAuditLogsWithRetries(ctx, t, query, g.Config, "client_stream_addition", wantNum)
 		if len(results) != totalNumbers {
 			t.Errorf("log number doesn't match (-want +got):\n - %d\n + %d\n", totalNumbers, len(results))
 			return
@@ -268,7 +269,7 @@ func testGRPCEndpoint(ctx context.Context, t *testing.T, g *GRPC) {
 		query := g.makeQueryForGRPC(id)
 		t.Logf("querying BigQuery:\n%s", query.Q)
 		// we expect to have 4 audit logs - the last sent number (5) will be after the err occurred.
-		results := queryAuditLogsWithRetries(ctx, t, query, g.Config, "stream_fail_on_four")
+		results := queryAuditLogsWithRetries(ctx, t, query, g.Config, "stream_fail_on_four", wantNum)
 		if len(results) != wantNum {
 			t.Errorf("log number doesn't match (-want +got):\n - %d\n + %d\n", totalNumbers, len(results))
 			return

@@ -74,8 +74,8 @@ func testHTTPEndpoint(ctx context.Context, tb testing.TB, endpointURL, idToken, 
 	bqQuery := makeQueryForHTTP(*bqClient, id, projectID, datasetQuery)
 	tb.Log("querying bigquery table using the following statement:")
 	tb.Log(bqQuery.Q)
-	results := queryAuditLogsWithRetries(ctx, tb, bqQuery, cfg, "httpEndpointTest")
 	wantNum := 1
+	results := queryAuditLogsWithRetries(ctx, tb, bqQuery, cfg, "httpEndpointTest", wantNum)
 	if len(results) != wantNum {
 		tb.Errorf("log number doesn't match (-want +got):\n - %d\n + %d\n", wantNum, len(results))
 		return
