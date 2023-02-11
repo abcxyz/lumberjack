@@ -62,14 +62,27 @@ const DefaultConfigFilePath = "/etc/lumberjack/config.yaml"
 // audit client. If `path` is nil, we use a default well known
 // path. If the config file is not found, we keep going by
 // using env vars and default values to configure the client.
-func FromConfigFile(ctx context.Context, path string) audit.Option {
-	return fromConfigFile(ctx, path, envconfig.OsLookuper())
+func FromConfigFile(path string) audit.Option {
+	return fromConfigFile(path, envconfig.OsLookuper())
+}
+
+// FromConfig creates an audit client option from the given configuration.
+func FromConfig(cfg *api.Config) audit.Option {
+	return func(ctx context.Context, c *audit.Client) error {
+		if cfg == nil {
+			return fmt.Errorf("nil config")
+		}
+		if err := cfg.Validate(); err != nil {
+			return fmt.Errorf("invalid configuration: %w", err)
+		}
+		return clientFromConfig(ctx, c, cfg)
+	}
 }
 
 // fromConfigFile is like FromConfigFile, but exposes a custom lookuper for
 // testing.
-func fromConfigFile(ctx context.Context, path string, lookuper envconfig.Lookuper) audit.Option {
-	return func(c *audit.Client) error {
+func fromConfigFile(path string, lookuper envconfig.Lookuper) audit.Option {
+	return func(ctx context.Context, c *audit.Client) error {
 		if path == "" {
 			path = DefaultConfigFilePath
 		}
@@ -90,14 +103,14 @@ func fromConfigFile(ctx context.Context, path string, lookuper envconfig.Lookupe
 // InterceptorFromConfigFile returns an interceptor option from the given
 // config file. The returned option can be used to create an interceptor
 // to add capability to gRPC server.
-func InterceptorFromConfigFile(ctx context.Context, path string) audit.InterceptorOption {
-	return interceptorFromConfigFile(ctx, path, envconfig.OsLookuper())
+func InterceptorFromConfigFile(path string) audit.InterceptorOption {
+	return interceptorFromConfigFile(path, envconfig.OsLookuper())
 }
 
 // interceptorFromConfigFile is like InterceptorFromConfigFile, but exposes a
 // custom lookuper for testing.
-func interceptorFromConfigFile(ctx context.Context, path string, lookuper envconfig.Lookuper) audit.InterceptorOption {
-	return func(i *audit.Interceptor) error {
+func interceptorFromConfigFile(path string, lookuper envconfig.Lookuper) audit.InterceptorOption {
+	return func(ctx context.Context, i *audit.Interceptor) error {
 		fc, err := os.ReadFile(path)
 		// We ignore ErrNotExist when reading the file because we
 		// still use env vars and defaults to setup the client.
@@ -133,10 +146,10 @@ func interceptorFromConfigFile(ctx context.Context, path string, lookuper envcon
 		}
 
 		// Add audit client to interceptor.
-		auditOpt := func(c *audit.Client) error {
+		auditOpt := func(ctx context.Context, c *audit.Client) error {
 			return clientFromConfig(ctx, c, cfg)
 		}
-		auditClient, err := audit.NewClient(auditOpt)
+		auditClient, err := audit.NewClient(ctx, auditOpt)
 		if err != nil {
 			return fmt.Errorf("failed to create audit client from config %+v: %w", cfg, err)
 		}
@@ -144,7 +157,7 @@ func interceptorFromConfigFile(ctx context.Context, path string, lookuper envcon
 
 		// Apply all options.
 		for _, o := range opts {
-			if err := o(i); err != nil {
+			if err := o(ctx, i); err != nil {
 				return err
 			}
 		}
@@ -169,7 +182,7 @@ func clientFromConfig(ctx context.Context, c *audit.Client, cfg *api.Config) err
 	}
 	opts = append(opts, withBackends...)
 
-	withLabels := labelsFromConfig(cfg)
+	withLabels := labelsFromConfig(ctx, cfg)
 	opts = append(opts, withLabels)
 
 	if cfg.Justification != nil && cfg.Justification.Enabled {
@@ -181,7 +194,7 @@ func clientFromConfig(ctx context.Context, c *audit.Client, cfg *api.Config) err
 	}
 
 	for _, o := range opts {
-		if err := o(c); err != nil {
+		if err := o(ctx, c); err != nil {
 			return err
 		}
 	}
@@ -255,16 +268,17 @@ func backendsFromConfig(cfg *api.Config) ([]audit.Option, error) {
 	return backendOpts, nil
 }
 
-func labelsFromConfig(cfg *api.Config) audit.Option {
-	lp := audit.LabelProcessor{DefaultLabels: cfg.Labels}
-	return audit.WithMutator(&lp)
+func labelsFromConfig(ctx context.Context, cfg *api.Config) audit.Option {
+	lp := audit.NewLabelProcessor(ctx, cfg.Labels)
+	return audit.WithMutator(lp)
 }
 
 func justificationFromConfig(ctx context.Context, cfg *api.Config) (audit.Option, error) {
 	jvsconfig := client.JVSConfig{
-		JWKSEndpoint: cfg.Justification.PublicKeysEndpoint,
+		JWKSEndpoint:    cfg.Justification.PublicKeysEndpoint,
+		AllowBreakglass: cfg.Justification.AllowBreakglass,
 	}
-	if err := cfgloader.Load(ctx, &jvsconfig, cfgloader.WithEnvPrefix("JVS_")); err != nil {
+	if err := cfgloader.Load(ctx, &jvsconfig, cfgloader.WithEnvPrefix("AUDIT_CLIENT_")); err != nil {
 		return nil, fmt.Errorf("failed to load JVS config: %w", err)
 	}
 	jvsClient, err := client.NewJVSClient(ctx, &jvsconfig)

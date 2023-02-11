@@ -24,7 +24,9 @@ import (
 	"google.golang.org/protobuf/testing/protocmp"
 
 	api "github.com/abcxyz/lumberjack/clients/go/apis/v1alpha1"
+	"github.com/abcxyz/lumberjack/clients/go/pkg/auditerrors"
 	"github.com/abcxyz/lumberjack/clients/go/pkg/testutil"
+	"github.com/abcxyz/pkg/logging"
 	pkgtestutil "github.com/abcxyz/pkg/testutil"
 )
 
@@ -46,8 +48,9 @@ func (p testOrderProcessor) Process(_ context.Context, logReq *api.AuditLogReque
 func TestLog(t *testing.T) {
 	t.Parallel()
 
-	ctx := context.Background()
-	tests := []struct {
+	ctx := logging.WithLogger(context.Background(), logging.TestLogger(t))
+
+	cases := []struct {
 		name          string
 		logReq        *api.AuditLogRequest
 		opts          []Option
@@ -99,7 +102,7 @@ func TestLog(t *testing.T) {
 			logReq: testutil.NewRequest(),
 			opts: []Option{
 				WithValidator(testOrderProcessor{name: "validator0"}),
-				WithValidator(testOrderProcessor{name: "validator1", returnErr: fmt.Errorf("skip: %w", ErrFailedPrecondition)}),
+				WithValidator(testOrderProcessor{name: "validator1", returnErr: fmt.Errorf("skip: %w", auditerrors.ErrPreconditionFailed)}),
 				WithBackend(testOrderProcessor{name: "backend0"}),
 				WithBackend(testOrderProcessor{name: "backend1"}),
 			},
@@ -133,15 +136,15 @@ func TestLog(t *testing.T) {
 				testutil.WithMode(api.AuditLogRequest_BEST_EFFORT)),
 		},
 		{
-			name:   "failed_precondition_in_mutator_should_return_nil_on_best_effort",
+			name:   "failed_precondition_in_mutator_should_return_nil",
 			logReq: testutil.NewRequest(),
 			opts: []Option{
-				WithMutator(testOrderProcessor{name: "fake", returnErr: fmt.Errorf("fake error: %w", ErrFailedPrecondition)}),
-				WithLogMode(api.AuditLogRequest_BEST_EFFORT),
+				WithMutator(testOrderProcessor{name: "fake", returnErr: fmt.Errorf("fake error: %w", auditerrors.ErrPreconditionFailed)}),
+				WithLogMode(api.AuditLogRequest_FAIL_CLOSE),
 			},
 			wantLogReq: testutil.NewRequest(
 				testutil.WithLabels(map[string]string{processorOrderKey: "fake, "}),
-				testutil.WithMode(api.AuditLogRequest_BEST_EFFORT)),
+				testutil.WithMode(api.AuditLogRequest_FAIL_CLOSE)),
 		},
 		{
 			name:   "injected_error_in_backend_should_return_error_on_fail_close",
@@ -156,24 +159,25 @@ func TestLog(t *testing.T) {
 			wantErrSubstr: "failed to execute backend",
 		},
 		{
-			name:   "failed_precondition_in_backend_should_return_error_on_fail_close",
+			name:   "failed_precondition_in_backend_should_return_nil",
 			logReq: testutil.NewRequest(),
 			opts: []Option{
-				WithBackend(testOrderProcessor{name: "fake", returnErr: fmt.Errorf("fake error: %w", ErrFailedPrecondition)}),
+				WithBackend(testOrderProcessor{name: "fake", returnErr: fmt.Errorf("fake error: %w", auditerrors.ErrPreconditionFailed)}),
 				WithLogMode(api.AuditLogRequest_FAIL_CLOSE),
 			},
 			wantLogReq: testutil.NewRequest(
 				testutil.WithLabels(map[string]string{processorOrderKey: "fake, "}),
 				testutil.WithMode(api.AuditLogRequest_FAIL_CLOSE)),
-			wantErrSubstr: "failed to execute backend",
 		},
 	}
-	for _, test := range tests {
-		test := test
-		t.Run(test.name, func(t *testing.T) {
+
+	for _, tc := range cases {
+		tc := tc
+
+		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
-			c, err := NewClient(test.opts...)
+			c, err := NewClient(ctx, tc.opts...)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -183,12 +187,12 @@ func TestLog(t *testing.T) {
 					t.Errorf("failed to stop client: %v", err)
 				}
 			})
-			err = c.Log(ctx, test.logReq)
-			if diff := pkgtestutil.DiffErrString(err, test.wantErrSubstr); diff != "" {
-				t.Errorf("Log(%+v) got unexpected error substring: %v", test.logReq, diff)
+			err = c.Log(ctx, tc.logReq)
+			if diff := pkgtestutil.DiffErrString(err, tc.wantErrSubstr); diff != "" {
+				t.Errorf("Log(%+v) got unexpected error substring: %v", tc.logReq, diff)
 			}
-			if diff := cmp.Diff(test.wantLogReq, test.logReq, protocmp.Transform()); diff != "" {
-				t.Errorf("Process(%+v) got diff (-want, +got): %v", test.logReq, diff)
+			if diff := cmp.Diff(tc.wantLogReq, tc.logReq, protocmp.Transform()); diff != "" {
+				t.Errorf("Process(%+v) got diff (-want, +got): %v", tc.logReq, diff)
 			}
 		})
 	}
@@ -196,9 +200,10 @@ func TestLog(t *testing.T) {
 
 func TestHandleReturn_Client(t *testing.T) {
 	t.Parallel()
-	ctx := context.Background()
 
-	tests := []struct {
+	ctx := logging.WithLogger(context.Background(), logging.TestLogger(t))
+
+	cases := []struct {
 		name    string
 		logMode api.AuditLogRequest_LogMode
 		err     error
@@ -222,11 +227,14 @@ func TestHandleReturn_Client(t *testing.T) {
 			wantErr: false,
 		},
 	}
-	for _, tc := range tests {
+
+	for _, tc := range cases {
 		tc := tc
+
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			c, err := NewClient()
+
+			c, err := NewClient(ctx)
 			if err != nil {
 				t.Fatal(err)
 			}

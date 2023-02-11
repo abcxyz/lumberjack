@@ -23,6 +23,7 @@ import (
 	"go.uber.org/zap"
 
 	api "github.com/abcxyz/lumberjack/clients/go/apis/v1alpha1"
+	"github.com/abcxyz/lumberjack/clients/go/pkg/auditerrors"
 	zlogger "github.com/abcxyz/pkg/logging"
 	"github.com/hashicorp/go-multierror"
 )
@@ -49,13 +50,13 @@ type StoppableProcessor interface {
 }
 
 // An Option is a configuration Option for NewClient.
-type Option func(o *Client) error
+type Option func(ctx context.Context, o *Client) error
 
 // WithValidator adds the given log processor to validate audit log requests.
 // The validators are executed in the order provided with this
 // option and before any further audit log processing.
 func WithValidator(p LogProcessor) Option {
-	return func(o *Client) error {
+	return func(ctx context.Context, o *Client) error {
 		o.validators = append(o.validators, p)
 		return nil
 	}
@@ -65,7 +66,7 @@ func WithValidator(p LogProcessor) Option {
 // The mutators are executed in the order provided with this
 // option. Mutators are executed after validators, but before backends.
 func WithMutator(p LogProcessor) Option {
-	return func(o *Client) error {
+	return func(ctx context.Context, o *Client) error {
 		o.mutators = append(o.mutators, p)
 		return nil
 	}
@@ -73,7 +74,7 @@ func WithMutator(p LogProcessor) Option {
 
 // WithRuntimeInfo adds the runtime info to all the audit log requests.
 func WithRuntimeInfo() Option {
-	return func(o *Client) error {
+	return func(ctx context.Context, o *Client) error {
 		r, err := newRuntimeInfo()
 		if err != nil {
 			return fmt.Errorf("error extracting runtime environment info: %w", err)
@@ -90,7 +91,7 @@ func WithRuntimeInfo() Option {
 //   - The Cloud Logging GCP service
 //   - The custom Lumberjack gRPC service
 func WithBackend(p LogProcessor) Option {
-	return func(o *Client) error {
+	return func(ctx context.Context, o *Client) error {
 		o.backends = append(o.backends, p)
 		return nil
 	}
@@ -99,20 +100,22 @@ func WithBackend(p LogProcessor) Option {
 // Sets FailClose value. This specifies whether errors should be surfaced
 // or swalled. Can be overridden on a per-request basis.
 func WithLogMode(mode api.AuditLogRequest_LogMode) Option {
-	return func(o *Client) error {
+	return func(ctx context.Context, o *Client) error {
 		o.logMode = mode
 		return nil
 	}
 }
 
 // NewClient initializes a logger with the given options.
-func NewClient(options ...Option) (*Client, error) {
+func NewClient(ctx context.Context, opts ...Option) (*Client, error) {
 	client := &Client{
 		// Default processors.
-		validators: []LogProcessor{requestValidation{}},
+		validators: []LogProcessor{
+			NewRequestValidator(ctx),
+		},
 	}
-	for _, f := range options {
-		if err := f(client); err != nil {
+	for _, f := range opts {
+		if err := f(ctx, client); err != nil {
 			return nil, fmt.Errorf("failed to apply client options: %w", err)
 		}
 	}
@@ -139,34 +142,40 @@ func (c *Client) Stop() error {
 func (c *Client) Log(ctx context.Context, logReq *api.AuditLogRequest) error {
 	logger := zlogger.FromContext(ctx)
 
-	if logMode := logReq.Mode; logMode == api.AuditLogRequest_LOG_MODE_UNSPECIFIED {
-		logMode = c.logMode
-		logReq.Mode = logMode
+	if logReq.Mode == api.AuditLogRequest_LOG_MODE_UNSPECIFIED {
+		logReq.Mode = c.logMode
 	}
+
 	for _, p := range c.validators {
 		if err := p.Process(ctx, logReq); err != nil {
-			if errors.Is(err, ErrFailedPrecondition) {
+			if errors.Is(err, auditerrors.ErrPreconditionFailed) {
 				logger.Warnf("stopped log request processing as validator %T precondition failed: %v", p, err)
+				return nil
 			}
 			return c.handleReturn(ctx, fmt.Errorf("failed to execute validator %T: %w", p, err), logReq.Mode)
 		}
 	}
+
 	for _, p := range c.mutators {
 		if err := p.Process(ctx, logReq); err != nil {
-			if errors.Is(err, ErrFailedPrecondition) {
+			if errors.Is(err, auditerrors.ErrPreconditionFailed) {
 				logger.Warnf("stopped log request processing as mutator %T precondition failed: %v", p, err)
+				return nil
 			}
 			return c.handleReturn(ctx, fmt.Errorf("failed to execute mutator %T: %w", p, err), logReq.Mode)
 		}
 	}
+
 	for _, p := range c.backends {
 		if err := p.Process(ctx, logReq); err != nil {
-			if errors.Is(err, ErrFailedPrecondition) {
+			if errors.Is(err, auditerrors.ErrPreconditionFailed) {
 				logger.Warnf("stopped log request processing as backend %T precondition failed: %v", p, err)
+				return nil
 			}
 			return c.handleReturn(ctx, fmt.Errorf("failed to execute backend %T: %w", p, err), logReq.Mode)
 		}
 	}
+
 	return nil
 }
 
@@ -183,6 +192,6 @@ func (c *Client) handleReturn(ctx context.Context, err error, requestedLogMode a
 	}
 	// If there is an error, and we shouldn't fail close, log and return nil.
 	logger := zlogger.FromContext(ctx)
-	logger.Warn("Error occurred while attempting to audit log, continuing without audit logging.", zap.Error(err))
+	logger.Error("failed to audit log; continuing without audit logging", zap.Error(err))
 	return nil
 }

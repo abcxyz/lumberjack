@@ -21,7 +21,7 @@ import (
 	"regexp"
 
 	api "github.com/abcxyz/lumberjack/clients/go/apis/v1alpha1"
-	"github.com/abcxyz/lumberjack/clients/go/pkg/audit"
+	"github.com/abcxyz/lumberjack/clients/go/pkg/auditerrors"
 )
 
 // PrincipalEmailMatcher applies regexp filters on AuditLogRequest
@@ -105,7 +105,7 @@ func (p *PrincipalEmailMatcher) Process(_ context.Context, logReq *api.AuditLogR
 	}
 
 	if logReq.Payload == nil || logReq.Payload.AuthenticationInfo == nil {
-		return fmt.Errorf("request.Payload.AuthenticationInfo is missing to check principal email: %w", audit.ErrInvalidRequest)
+		return fmt.Errorf("request.Payload.AuthenticationInfo is missing to check principal email: %w", auditerrors.ErrInvalidRequest)
 	}
 
 	for _, r := range p.includes {
@@ -116,13 +116,13 @@ func (p *PrincipalEmailMatcher) Process(_ context.Context, logReq *api.AuditLogR
 	if len(p.excludes) == 0 {
 		// Here, len(p.include) != nil and there was no match in the includes.
 		// We drop the request because it was not explicitly included.
-		return fmt.Errorf("request.Payload.AuthenticationInfo.PrincipalEmail not included in %q: %w", p.includes, audit.ErrFailedPrecondition)
+		return fmt.Errorf("request.Payload.AuthenticationInfo.PrincipalEmail not included in %q: %w", p.includes, auditerrors.ErrPreconditionFailed)
 	}
 
 	for _, r := range p.excludes {
 		if r.MatchString(logReq.Payload.AuthenticationInfo.PrincipalEmail) {
 			// When explicitly excluded, drop the request.
-			return fmt.Errorf("request.Payload.AuthenticationInfo.PrincipalEmail matches exclude regexp %q: %w", r, audit.ErrFailedPrecondition)
+			return fmt.Errorf("request.Payload.AuthenticationInfo.PrincipalEmail matches exclude regexp %q: %w", r, auditerrors.ErrPreconditionFailed)
 		}
 	}
 	// Otherwise, pass the request.

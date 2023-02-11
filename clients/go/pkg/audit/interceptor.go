@@ -19,6 +19,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"regexp"
+	"strings"
 	"sync"
 	"time"
 
@@ -45,12 +46,12 @@ import (
 type auditLogReqKey struct{}
 
 // InterceptorOption defines the option func to configure an interceptor.
-type InterceptorOption func(i *Interceptor) error
+type InterceptorOption func(ctx context.Context, i *Interceptor) error
 
 // WithAuditClient configures the interceptor to use the given audit client
 // to send audit logs.
 func WithAuditClient(c *Client) InterceptorOption {
-	return func(i *Interceptor) error {
+	return func(ctx context.Context, i *Interceptor) error {
 		i.Client = c
 		return nil
 	}
@@ -59,7 +60,7 @@ func WithAuditClient(c *Client) InterceptorOption {
 // WithSecurityContext configures the interceptor to use the given security
 // context to retrieve authentication info.
 func WithSecurityContext(sc security.GRPCContext) InterceptorOption {
-	return func(i *Interceptor) error {
+	return func(ctx context.Context, i *Interceptor) error {
 		i.sc = sc
 		return nil
 	}
@@ -68,7 +69,7 @@ func WithSecurityContext(sc security.GRPCContext) InterceptorOption {
 // WithAuditRules configures the interceptor to use the given rules to match
 // methods and instruct audit logging.
 func WithAuditRules(rs ...*api.AuditRule) InterceptorOption {
-	return func(i *Interceptor) error {
+	return func(ctx context.Context, i *Interceptor) error {
 		i.rules = rs
 		return nil
 	}
@@ -76,7 +77,7 @@ func WithAuditRules(rs ...*api.AuditRule) InterceptorOption {
 
 // WithInterceptorLogMode configures the interceptor to honor the given log mode.
 func WithInterceptorLogMode(m api.AuditLogRequest_LogMode) InterceptorOption {
-	return func(i *Interceptor) error {
+	return func(ctx context.Context, i *Interceptor) error {
 		i.logMode = m
 		return nil
 	}
@@ -92,14 +93,14 @@ type Interceptor struct {
 }
 
 // NewInterceptor creates a new interceptor with the given options.
-func NewInterceptor(options ...InterceptorOption) (*Interceptor, error) {
-	it := &Interceptor{}
-	for _, o := range options {
-		if err := o(it); err != nil {
+func NewInterceptor(ctx context.Context, opts ...InterceptorOption) (*Interceptor, error) {
+	var it Interceptor
+	for _, o := range opts {
+		if err := o(ctx, &it); err != nil {
 			return nil, fmt.Errorf("failed to apply interceptor option: %w", err)
 		}
 	}
-	return it, nil
+	return &it, nil
 }
 
 // UnaryInterceptor is a gRPC unary interceptor that automatically emits application audit logs.
@@ -252,24 +253,20 @@ func (i *Interceptor) StreamInterceptor(srv interface{}, ss grpc.ServerStream, i
 	return handlerErr
 }
 
+// fillJVSToken looks for the JVS token on the request header and injects it
+// into the log request, if it was present.
 func fillJVSToken(ctx context.Context, logReq *api.AuditLogRequest) {
-	// Look for justification info and set justification token.
-	jvsToken := ""
 	md, ok := grpcmetadata.FromIncomingContext(ctx)
-	if ok {
-		vals := md.Get(justification.TokenHeaderKey)
-		if len(vals) > 0 {
-			jvsToken = vals[0]
-		}
+	if !ok {
+		return
 	}
-	if jvsToken != "" {
-		if logReq.Context == nil {
-			logReq.Context = &structpb.Struct{
-				Fields: map[string]*structpb.Value{},
-			}
-		}
-		logReq.Context.Fields[justification.TokenHeaderKey] = structpb.NewStringValue(jvsToken)
+
+	vals := md.Get(justification.TokenHeaderKey)
+	if len(vals) == 0 {
+		return
 	}
+
+	logReq.JustificationToken = strings.TrimSpace(vals[0])
 }
 
 type serverStreamWrapper struct {
@@ -409,7 +406,7 @@ func (i *Interceptor) handleReturnUnary(ctx context.Context, req interface{}, ha
 	if err != nil {
 		// There was an error, but we are failing open.
 		logger := zlogger.FromContext(ctx)
-		logger.Warn("Error occurred while attempting to audit log, but continuing without audit logging or raising error.",
+		logger.Error("failed to audit log; continuing without audit logging",
 			zap.Error(err))
 	}
 	return handler(ctx, req)
@@ -422,7 +419,7 @@ func (i *Interceptor) handleReturnStream(ctx context.Context, ss grpc.ServerStre
 	if err != nil {
 		// There was an error, but we are failing open.
 		logger := zlogger.FromContext(ctx)
-		logger.Warn("Error occurred while attempting to audit log, but continuing without audit logging or raising error.",
+		logger.Error("failed to audit log; continuing without audit logging",
 			zap.Error(err))
 	}
 	return handler(ctx, ss)
@@ -438,7 +435,7 @@ func (i *Interceptor) handleReturnWithResponse(ctx context.Context, handlerResp 
 	if err != nil {
 		// There was an error, but we are failing open.
 		logger := zlogger.FromContext(ctx)
-		logger.Warn("Error occurred while attempting to audit log, but continuing without audit logging or raising error.",
+		logger.Error("failed to audit log; continuing without audit logging",
 			zap.Error(err))
 	}
 	return handlerResp, nil

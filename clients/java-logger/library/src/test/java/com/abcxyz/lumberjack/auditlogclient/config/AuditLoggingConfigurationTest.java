@@ -17,7 +17,7 @@
 package com.abcxyz.lumberjack.auditlogclient.config;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.abcxyz.lumberjack.auditlogclient.modules.AuditLoggingConfigurationModule;
 import com.abcxyz.lumberjack.auditlogclient.modules.AuditLoggingModule;
@@ -43,8 +43,7 @@ public class AuditLoggingConfigurationTest {
     assertThat(config.getConditions()).isNull();
     assertThat(config.getRules().size()).isEqualTo(1);
     assertThat(config.getLogMode()).isEqualTo(LogMode.LOG_MODE_UNSPECIFIED);
-    assertThat(config.getJustification().getPublicKeysEndpoint()).isNull();
-    assertFalse(config.getJustificaiton().isEnabled());
+    assertThat(config.getJustificaiton()).isEqualTo(new Justification());
 
     assertThat(module.backendContext(config)).isEqualTo(expectedBackendContext);
     assertThat(module.filters(config)).isEqualTo(new Filters());
@@ -69,7 +68,8 @@ public class AuditLoggingConfigurationTest {
 
     assertThat(module.backendContext(config)).isEqualTo(expectedBackendContext);
     assertThat(module.filters(config)).isEqualTo(new Filters());
-    assertThat(config.getJustification().isEnabled()).isEqualTo(true);
+    assertTrue(config.getJustification().isEnabled());
+    assertTrue(config.getJustification().allowBreakglass());
     assertThat(config.getJustification().getPublicKeysEndpoint()).isEqualTo("example.com:123");
 
     Map<String, String> expectedLabels = new HashMap<>();
@@ -95,8 +95,7 @@ public class AuditLoggingConfigurationTest {
     assertThat(config.getFilters().getExcludes()).isEqualTo("*.exclude.example.com");
     assertThat(config.getRules().size()).isEqualTo(1);
     assertThat(config.getLogMode()).isEqualTo(LogMode.LOG_MODE_UNSPECIFIED);
-    assertThat(config.getJustification().getPublicKeysEndpoint()).isNull();
-    assertFalse(config.getJustificaiton().isEnabled());
+    assertThat(config.getJustificaiton()).isEqualTo(new Justification());
 
     assertThat(module.backendContext(config)).isEqualTo(expectedBackendContext);
   }

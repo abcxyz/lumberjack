@@ -33,6 +33,7 @@ import com.abcxyz.lumberjack.auditlogclient.processor.JustificationProcessor;
 import com.abcxyz.lumberjack.auditlogclient.processor.LabelProcessor;
 import com.abcxyz.lumberjack.auditlogclient.processor.LocalLogProcessor;
 import com.abcxyz.lumberjack.auditlogclient.processor.LogProcessingException;
+import com.abcxyz.lumberjack.auditlogclient.processor.PreconditionFailedException;
 import com.abcxyz.lumberjack.auditlogclient.processor.RemoteProcessor;
 import com.abcxyz.lumberjack.auditlogclient.processor.RuntimeInfoProcessor;
 import com.abcxyz.lumberjack.auditlogclient.processor.ValidationProcessor;
@@ -279,6 +280,32 @@ public class LoggingClientTests {
     verify(runtimeInfoProcessor).process(logRequest);
     verify(cloudLoggingProcessor).process(logRequest);
     verify(remoteProcessor).process(logRequest);
+  }
+
+  @Test
+  void preconditionFailedPass() throws LogProcessingException {
+    // Set config to fail open
+    doReturn(LogMode.FAIL_CLOSE).when(auditLoggingConfiguration).getLogMode();
+    LoggingClient loggingClient =
+        loggingClientBuilder
+            .withValidationProcessor()
+            .withFilteringProcessor()
+            .withRuntimeInfoProcessor()
+            .withCloudLoggingProcessor()
+            .withRemoteProcessor()
+            .build();
+    AuditLogRequest logRequest = AuditLogRequest.newBuilder().getDefaultInstanceForType();
+    when(validationProcessor.process(any()))
+        .thenThrow(new PreconditionFailedException("injected error"));
+
+    // No exception is thrown
+    Assertions.assertDoesNotThrow(() -> loggingClient.log(logRequest));
+
+    // No other processors were run after the exception was swallowed.
+    verify(filteringProcessor, times(0)).process(logRequest);
+    verify(runtimeInfoProcessor, times(0)).process(logRequest);
+    verify(cloudLoggingProcessor, times(0)).process(logRequest);
+    verify(remoteProcessor, times(0)).process(logRequest);
   }
 
   @Test

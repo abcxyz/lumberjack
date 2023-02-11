@@ -30,6 +30,7 @@ import (
 	api "github.com/abcxyz/lumberjack/clients/go/apis/v1alpha1"
 	"github.com/abcxyz/lumberjack/clients/go/pkg/audit"
 	"github.com/abcxyz/lumberjack/clients/go/pkg/testutil"
+	"github.com/abcxyz/pkg/logging"
 	pkgtestutil "github.com/abcxyz/pkg/testutil"
 )
 
@@ -45,6 +46,8 @@ func (s *fakeServer) ProcessLog(_ context.Context, logReq *api.AuditLogRequest) 
 
 func TestFromConfigFile(t *testing.T) {
 	t.Parallel()
+
+	ctx := logging.WithLogger(context.Background(), logging.TestLogger(t))
 
 	configFileContentByName := map[string]string{
 		"valid.yaml": `
@@ -121,23 +124,88 @@ backend:
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
-			ctx := context.Background()
 			r := &fakeServer{}
 
 			addr, _ := testutil.TestFakeGRPCServer(t, func(s *grpc.Server) {
 				api.RegisterAuditLogAgentServer(s, r)
 			})
 
-			c, err := audit.NewClient(fromConfigFile(ctx, tc.path, envconfig.MultiLookuper(
+			l := envconfig.MultiLookuper(
 				envconfig.MapLookuper(map[string]string{"AUDIT_CLIENT_BACKEND_REMOTE_ADDRESS": addr}),
-				envconfig.MapLookuper(tc.envs))))
+				envconfig.MapLookuper(tc.envs),
+			)
+			c, err := audit.NewClient(ctx, fromConfigFile(tc.path, l))
 			if diff := pkgtestutil.DiffErrString(err, tc.wantErrSubstr); diff != "" {
 				t.Errorf("audit.NewClient(FromConfigFile(%v)) got unexpected error substring: %v", tc.path, diff)
 			}
 			if err != nil {
 				return
 			}
-			if err := c.Log(context.Background(), tc.req); err != nil {
+			if err := c.Log(ctx, tc.req); err != nil {
+				t.Fatal(err)
+			}
+			cmpopts := []cmp.Option{
+				protocmp.Transform(),
+				// We ignore `AuditLog.Metadata` because it contains the
+				// runtime information which varies depending on the
+				// environment executing the unit test.
+				protocmp.IgnoreFields(&capi.AuditLog{}, "metadata"),
+			}
+			if diff := cmp.Diff(tc.wantReq, r.gotReq, cmpopts...); diff != "" {
+				t.Errorf("audit logging backend got request (-want,+got):\n%s", diff)
+			}
+		})
+	}
+}
+
+func TestFromConfig(t *testing.T) {
+	t.Parallel()
+
+	ctx := logging.WithLogger(context.Background(), logging.TestLogger(t))
+
+	r := &fakeServer{}
+	addr, _ := testutil.TestFakeGRPCServer(t, func(s *grpc.Server) {
+		api.RegisterAuditLogAgentServer(s, r)
+	})
+
+	cases := []struct {
+		name          string
+		cfg           *api.Config
+		req           *api.AuditLogRequest
+		wantReq       *api.AuditLogRequest
+		wantErrSubstr string
+	}{{
+		name: "valid_config_success",
+		cfg: &api.Config{
+			Backend: &api.Backend{
+				Remote: &api.Remote{
+					InsecureEnabled: true,
+					Address:         addr,
+				},
+			},
+		},
+		req:     testutil.NewRequest(testutil.WithPrincipal("abc@project.iam.gserviceaccount.com")),
+		wantReq: testutil.NewRequest(testutil.WithPrincipal("abc@project.iam.gserviceaccount.com")),
+	}, {
+		name:          "invalid_config_error",
+		cfg:           &api.Config{}, // Empty config is invalid
+		wantErrSubstr: "invalid configuration:",
+	}}
+
+	for _, tc := range cases {
+		tc := tc
+
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			c, err := audit.NewClient(ctx, FromConfig(tc.cfg))
+			if diff := pkgtestutil.DiffErrString(err, tc.wantErrSubstr); diff != "" {
+				t.Errorf("audit.NewClient(FromConfig(%v)) got unexpected error substring: %v", tc.cfg, diff)
+			}
+			if err != nil {
+				return
+			}
+			if err := c.Log(ctx, tc.req); err != nil {
 				t.Fatal(err)
 			}
 			cmpopts := []cmp.Option{
@@ -268,6 +336,7 @@ security_context:
 justification:
   public_keys_endpoint: example.com:123
   enabled: true
+  allow_breakglass: false
 `,
 			wantCfg: &api.Config{
 				Version:         "v1alpha1",
@@ -276,6 +345,7 @@ justification:
 				Justification: &api.Justification{
 					PublicKeysEndpoint: "example.com:123",
 					Enabled:            true,
+					AllowBreakglass:    false,
 				},
 			},
 		},
@@ -309,7 +379,8 @@ justification:
 
 func TestInterceptorFromConfigFile(t *testing.T) {
 	t.Parallel()
-	ctx := context.Background()
+
+	ctx := logging.WithLogger(context.Background(), logging.TestLogger(t))
 
 	cases := []struct {
 		name          string
@@ -434,7 +505,7 @@ rules:
 				}
 			})
 
-			_, err := audit.NewInterceptor(interceptorFromConfigFile(ctx, path, envconfig.MapLookuper(tc.envs)))
+			_, err := audit.NewInterceptor(ctx, interceptorFromConfigFile(path, envconfig.MapLookuper(tc.envs)))
 			if diff := pkgtestutil.DiffErrString(err, tc.wantErrSubstr); diff != "" {
 				t.Errorf("WithInterceptorFromConfigFile(path) got unexpected error substring: %v", diff)
 			}

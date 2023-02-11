@@ -17,8 +17,6 @@
 package com.abcxyz.lumberjack.auditlogclient;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -29,7 +27,6 @@ import com.abcxyz.lumberjack.v1alpha1.AuditLogRequest;
 import com.google.cloud.audit.AuditLog;
 import com.google.protobuf.Struct;
 import com.google.protobuf.Value;
-import io.grpc.Metadata;
 import java.time.Clock;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -142,23 +139,5 @@ public class AuditLoggingServerInterceptorTests {
     assertThat(chosenSelector.get()).isEqualTo(selector3);
     // We expect the cache to have this method, and therefore rules should not be read again.
     verify(auditLoggingConfiguration, times(2)).getRules();
-  }
-
-  @Test
-  public void getAuditLogRequestContext() throws Exception {
-    // Create Metadata
-    Metadata md = new Metadata();
-    Metadata.Key<String> metadataKey =
-        Metadata.Key.of("justification-token", Metadata.ASCII_STRING_MARSHALLER);
-    md.put(metadataKey, "token");
-
-    Struct context = interceptor.getAuditLogRequestContext(md);
-    assertEquals("token", context.getFieldsMap().get("justification-token").getStringValue());
-  }
-
-  @Test
-  public void getAuditLogRequestContext_Empty() throws Exception {
-    Struct context = interceptor.getAuditLogRequestContext(new Metadata());
-    assertNull(context.getFieldsMap().get("justification-token"));
   }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright 2021 Lumberjack authors (see AUTHORS file)
+ * Copyright 2023 Lumberjack authors (see AUTHORS file)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,19 +16,17 @@
 
 package com.abcxyz.lumberjack.auditlogclient.processor;
 
-import java.io.IOException;
-
-/** Thrown when log processors encounter an exception. */
-public class LogProcessingException extends IOException {
-  public LogProcessingException(Throwable cause) {
+/** Thrown when log processors wants to stop processing the log request. */
+public class PreconditionFailedException extends LogProcessingException {
+  public PreconditionFailedException(Throwable cause) {
     super(cause);
   }
 
-  public LogProcessingException(String message, Throwable cause) {
+  public PreconditionFailedException(String message, Throwable cause) {
     super(message, cause);
   }
 
-  public LogProcessingException(String message) {
+  public PreconditionFailedException(String message) {
     super(message);
   }
 }

@@ -25,7 +25,6 @@ import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.verifyNoInteractions;
 
 import com.abcxyz.jvs.JvsClient;
-import com.abcxyz.lumberjack.auditlogclient.AuditLoggingServerInterceptor;
 import com.abcxyz.lumberjack.v1alpha1.AuditLogRequest;
 import com.auth0.jwk.JwkException;
 import com.auth0.jwt.JWT;
@@ -70,7 +69,8 @@ public class JustificationProcessorTests {
     claims.put("justs", List.of(justification));
 
     String token = Jwts.builder().setClaims(claims).setAudience("test-aud").compact();
-    AuditLogRequest auditLogReqWithToken = getAuditLogRequestWithJvsToken(token);
+    AuditLogRequest auditLogReqWithToken =
+        auditLogRequest.toBuilder().setJustificationToken(token).build();
 
     // Set up JVS mock to return the correct token
     DecodedJWT jwt = JWT.decode(token);
@@ -140,7 +140,7 @@ public class JustificationProcessorTests {
     JustificationProcessor processor = new JustificationProcessor(jvsClient);
     assertThrows(
         LogProcessingException.class,
-        () -> processor.process(getAuditLogRequestWithJvsToken(token)));
+        () -> processor.process(auditLogRequest.toBuilder().setJustificationToken(token).build()));
   }
 
   @Test
@@ -152,13 +152,9 @@ public class JustificationProcessorTests {
   }
 
   @Test
-  public void processLogReqWithNullJVSToken() throws Exception {
-    verifyNoOp(auditLogRequest);
-  }
-
-  @Test
-  public void processLogReqWithEmptyJVSToken() throws Exception {
-    verifyNoOp(getAuditLogRequestWithJvsToken(""));
+  public void processShouldThrowExceptionWithoutJVSToken() throws Exception {
+    JustificationProcessor processor = new JustificationProcessor(jvsClient);
+    assertThrows(LogProcessingException.class, () -> processor.process(auditLogRequest));
   }
 
   @Test
@@ -268,16 +264,6 @@ public class JustificationProcessorTests {
 
     JustificationProcessor processor = new JustificationProcessor(jvsClient);
     assertNull(processor.getJustificationList(jwt));
-  }
-
-  private AuditLogRequest getAuditLogRequestWithJvsToken(String token) {
-    Struct context =
-        Struct.newBuilder()
-            .putFields(
-                AuditLoggingServerInterceptor.JUSTIFICATION_TOKEN_HEADER_KEY,
-                Value.newBuilder().setStringValue(token).build())
-            .build();
-    return auditLogRequest.toBuilder().setContext(context).build();
   }
 
   private void verifyNoOp(AuditLogRequest request) throws Exception {

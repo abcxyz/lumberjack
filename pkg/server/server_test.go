@@ -31,7 +31,9 @@ import (
 
 	api "github.com/abcxyz/lumberjack/clients/go/apis/v1alpha1"
 	"github.com/abcxyz/lumberjack/clients/go/pkg/audit"
+	"github.com/abcxyz/lumberjack/clients/go/pkg/auditerrors"
 	"github.com/abcxyz/lumberjack/clients/go/pkg/testutil"
+	"github.com/abcxyz/pkg/logging"
 )
 
 type fakeLogProcessor struct {
@@ -56,6 +58,8 @@ func (p *fakeLogProcessor) Process(_ context.Context, logReq *api.AuditLogReques
 
 func TestAuditLogAgent_ProcessLog(t *testing.T) {
 	t.Parallel()
+
+	ctx := logging.WithLogger(context.Background(), logging.TestLogger(t))
 
 	cases := []struct {
 		name        string
@@ -94,7 +98,7 @@ func TestAuditLogAgent_ProcessLog(t *testing.T) {
 		name: "invaid_argument_failure",
 		req:  testutil.NewRequest(testutil.WithServiceName("test-service")),
 		p: &fakeLogProcessor{
-			returnErr: fmt.Errorf("injected: %w", audit.ErrInvalidRequest),
+			returnErr: fmt.Errorf("injected: %w", auditerrors.ErrInvalidRequest),
 		},
 		wantSentReq: testutil.NewRequest(testutil.WithServiceName("test-service"), testutil.WithMode(api.AuditLogRequest_FAIL_CLOSE)),
 		wantErr:     status.Error(codes.InvalidArgument, "failed to execute backend *server.fakeLogProcessor: injected: invalid audit log request"),
@@ -102,7 +106,7 @@ func TestAuditLogAgent_ProcessLog(t *testing.T) {
 		name: "invaid_argument_failure_with_requst_overriding_fail_close",
 		req:  testutil.NewRequest(testutil.WithServiceName("test-service"), testutil.WithMode(api.AuditLogRequest_BEST_EFFORT)),
 		p: &fakeLogProcessor{
-			returnErr: fmt.Errorf("injected: %w", audit.ErrInvalidRequest),
+			returnErr: fmt.Errorf("injected: %w", auditerrors.ErrInvalidRequest),
 		},
 		wantSentReq: testutil.NewRequest(testutil.WithServiceName("test-service"), testutil.WithMode(api.AuditLogRequest_BEST_EFFORT)),
 		wantResp: &api.AuditLogResponse{
@@ -121,7 +125,10 @@ func TestAuditLogAgent_ProcessLog(t *testing.T) {
 			s := grpc.NewServer()
 			defer s.Stop()
 
-			ac, err := audit.NewClient(audit.WithBackend(tc.p), audit.WithLogMode(api.AuditLogRequest_FAIL_CLOSE))
+			ac, err := audit.NewClient(ctx,
+				audit.WithBackend(tc.p),
+				audit.WithLogMode(api.AuditLogRequest_FAIL_CLOSE),
+			)
 			if err != nil {
 				t.Fatalf("Failed to create audit client: %v", err)
 			}

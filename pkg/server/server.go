@@ -24,6 +24,7 @@ import (
 
 	api "github.com/abcxyz/lumberjack/clients/go/apis/v1alpha1"
 	"github.com/abcxyz/lumberjack/clients/go/pkg/audit"
+	"github.com/abcxyz/lumberjack/clients/go/pkg/auditerrors"
 )
 
 // AuditLogAgent is the implementation of the audit log agent server.
@@ -50,7 +51,7 @@ func (a *AuditLogAgent) ProcessLog(ctx context.Context, logReq *api.AuditLogRequ
 }
 
 func codifyErr(err error) error {
-	if errors.Is(err, audit.ErrInvalidRequest) {
+	if errors.Is(err, auditerrors.ErrInvalidRequest) {
 		return status.Error(codes.InvalidArgument, err.Error())
 	}
 	// TODO: Handle other well-known errors if we have more.

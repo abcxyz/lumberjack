@@ -82,8 +82,7 @@ func realMain() (outErr error) {
 	if err != nil {
 		return fmt.Errorf("failed to create jvs client: %w", err)
 	}
-	interceptor, err := audit.NewInterceptor(
-		auditopt.InterceptorFromConfigFile(ctx, auditopt.DefaultConfigFilePath))
+	interceptor, err := audit.NewInterceptor(ctx, auditopt.InterceptorFromConfigFile(auditopt.DefaultConfigFilePath))
 	if err != nil {
 		return fmt.Errorf("failed to setup audit interceptor: %w", err)
 	}
