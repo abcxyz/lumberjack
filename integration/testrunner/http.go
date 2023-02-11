@@ -28,13 +28,8 @@ import (
 	"github.com/sethvargo/go-retry"
 	"google.golang.org/protobuf/testing/protocmp"
 
-	logpb "cloud.google.com/go/logging/apiv2/loggingpb"
+	"cloud.google.com/go/logging/apiv2/loggingpb"
 )
-
-type HTTPFields struct {
-	PrincipalEmail string
-	ServiceName    string
-}
 
 // testHTTPEndpoint runs the integration tests against a Lumberjack-integrated
 // HTTP endpoint.
@@ -83,9 +78,9 @@ func testHTTPEndpoint(ctx context.Context, tb testing.TB, endpointURL, idToken, 
 	wantNum := 1
 	if len(results) != wantNum {
 		tb.Errorf("log number doesn't match (-want +got):\n - %d\n + %d\n", wantNum, len(results))
-	} else {
-		diffLogEntry(tb, results[0], isHTTP("HTTP"), 0)
+		return
 	}
+	diffLogEntry(tb, results[0], isHTTP("HTTP"), 0)
 }
 
 func makeQueryForHTTP(client bigquery.Client, id, projectID, datasetQuery string) *bigquery.Query {
@@ -99,22 +94,22 @@ func makeQueryForHTTP(client bigquery.Client, id, projectID, datasetQuery string
 	return makeQuery(client, id, queryString)
 }
 
-func diffLogEntry(tb testing.TB, logEntry *logpb.LogEntry, isHTTPService bool, index int) {
+func diffLogEntry(tb testing.TB, logEntry *loggingpb.LogEntry, isHTTPService bool, index int) {
 	tb.Helper()
-	wantLogEntry := &logpb.LogEntry{
+	wantLogEntry := &loggingpb.LogEntry{
 		LogName: "projects/github-ci-app-0/logs/audit.abcxyz%2Fdata_access",
 	}
 	wantPrincipalEmail := "gh-access-sa@lumberjack-dev-infra.iam.gserviceaccount.com"
 	wantHTTPServiceName := [2]string{"go-shell-app", "java-shell-app"}
 	wantGRPCServiceName := "abcxyz.test.Talker"
 
-	jsonPayloadInfo := parseJsonpayload(tb, logEntry)
+	jsonPayloadInfo := parseJSONPayload(tb, logEntry)
 	// Fields including log_name, insert_id, labels,
 	// receive_timestamp, resource timestamp, operation
 	// are fields that we don't want to compare,
 	// and json_payload will be compared below.
 	diffString := cmp.Diff(wantLogEntry, logEntry, protocmp.Transform(),
-		protocmp.IgnoreFields(&logpb.LogEntry{}, "log_name", "insert_id", "labels", "receive_timestamp", "json_payload", "resource", "timestamp", "operation"))
+		protocmp.IgnoreFields(&loggingpb.LogEntry{}, "log_name", "insert_id", "labels", "receive_timestamp", "json_payload", "resource", "timestamp", "operation"))
 	if diffString != "" {
 		tb.Errorf("queryResult misMatch (-want +got): on log %d\n %s", index, diffString)
 	}
