@@ -59,7 +59,6 @@ func queryAuditLogs(ctx context.Context, tb testing.TB, query *bigquery.Query) (
 			tb.Logf("failed to get next row")
 			return nil, fmt.Errorf("failed to get next row: %w", err)
 		}
-		logEntry := &loggingpb.LogEntry{}
 		value, ok := row[0].(string)
 		if !ok {
 			tb.Logf("error converting query results to string")
@@ -69,8 +68,9 @@ func queryAuditLogs(ctx context.Context, tb testing.TB, query *bigquery.Query) (
 		// protojson.Unmarshal will return an error: invalid value for string type: null
 		// but the json string can still be unmarshal into pbJSON.
 		// See issue here: golang/protobuf#1313
+		logEntry := &loggingpb.LogEntry{}
 		if err := protojson.Unmarshal([]byte(value), logEntry); err != nil {
-			tb.Logf("ignoring error: %v as this behavior is expected", err)
+			tb.Logf("ignoring expected protojson.Unmarshal 'null string' error: %v", err)
 		}
 		logEntries = append(logEntries, logEntry)
 	}
