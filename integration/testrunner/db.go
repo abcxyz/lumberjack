@@ -33,7 +33,6 @@ import (
 // queryAuditLogs queries the DB and checks if audit log contained in the query exists or not and return the results.
 func queryAuditLogs(ctx context.Context, tb testing.TB, query *bigquery.Query) ([]*loggingpb.LogEntry, error) {
 	tb.Helper()
-	// time.Sleep(20 * time.Second)
 	job, err := query.Run(ctx)
 	if err != nil {
 		tb.Logf("failed to run query: %v", err)
