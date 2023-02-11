@@ -166,7 +166,7 @@ public class AuditLoggingServerInterceptor<ReqT extends Message> implements Serv
                     Status.newBuilder().setCode(code.getNumber()).setMessage(code.name()).build());
                 auditLog(
                     selector,
-                    auditLogRequestContext,
+                    justificationToken,
                     unloggedRequest,
                     null,
                     logBuilder,
