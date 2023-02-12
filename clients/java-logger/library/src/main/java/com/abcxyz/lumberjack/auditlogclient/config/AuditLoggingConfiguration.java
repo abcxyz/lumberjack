@@ -56,7 +56,7 @@ public class AuditLoggingConfiguration {
   }
 
   public LogMode getLogMode() {
-    return logMode == null ? LogMode.LOG_MODE_UNSPECIFIED : logMode;
+    return logMode == null ? LogMode.FAIL_CLOSE : logMode;
   }
 
   public Justification getJustificaiton() {

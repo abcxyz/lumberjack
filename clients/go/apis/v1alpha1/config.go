@@ -114,9 +114,13 @@ func (cfg *Config) Validate() error {
 
 // SetDefault sets default for the config.
 func (cfg *Config) SetDefault() {
-	// TODO: set defaults for other fields if necessary.
 	if cfg.Version == "" {
 		cfg.Version = Version
+	}
+
+	// Default log mode to "fail close".
+	if cfg.LogMode == "" || cfg.LogMode == "LOG_MODE_UNSPECIFIED" {
+		cfg.LogMode = "FAIL_CLOSE"
 	}
 
 	// TODO(#74): set default backend to logging to stdout.

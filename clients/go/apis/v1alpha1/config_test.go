@@ -375,20 +375,25 @@ func TestSetDefault(t *testing.T) {
 		wantCfg *Config
 	}{{
 		name: "default_version",
-		cfg:  &Config{},
+		cfg: &Config{
+			LogMode: "BEST_EFFORT",
+		},
 		wantCfg: &Config{
 			Version: "v1alpha1",
+			LogMode: "BEST_EFFORT",
 		},
 	}, {
 		name: "default_rule_fields",
 		cfg: &Config{
 			Version: "v1alpha1",
+			LogMode: "BEST_EFFORT",
 			Rules: []*AuditRule{{
 				Selector: "*",
 			}},
 		},
 		wantCfg: &Config{
 			Version: "v1alpha1",
+			LogMode: "BEST_EFFORT",
 			Rules: []*AuditRule{{
 				Selector:  "*",
 				Directive: "AUDIT",
@@ -399,17 +404,28 @@ func TestSetDefault(t *testing.T) {
 		name: "default_backend_cloudlogging",
 		cfg: &Config{
 			Version: "v1alpha1",
+			LogMode: "BEST_EFFORT",
 			Backend: &Backend{
 				CloudLogging: &CloudLogging{},
 			},
 		},
 		wantCfg: &Config{
 			Version: "v1alpha1",
+			LogMode: "BEST_EFFORT",
 			Backend: &Backend{
 				CloudLogging: &CloudLogging{
 					DefaultProject: true,
 				},
 			},
+		},
+	}, {
+		name: "default_fail_close_log_mode",
+		cfg: &Config{
+			Version: "v1alpha1",
+		},
+		wantCfg: &Config{
+			Version: "v1alpha1",
+			LogMode: "FAIL_CLOSE",
 		},
 	}}
 
