@@ -244,7 +244,7 @@ security_context:
 `,
 			wantCfg: &api.Config{
 				Version:         "v1alpha1",
-				LogMode:         "FAIL_CLOSE",
+				LogMode:         api.AuditLogRequest_FAIL_CLOSE.String(),
 				Backend:         &api.Backend{Remote: &api.Remote{Address: "foo:443", InsecureEnabled: true}},
 				SecurityContext: &api.SecurityContext{FromRawJWT: []*api.FromRawJWT{{Key: "authorization"}}},
 			},
@@ -264,7 +264,7 @@ security_context:
 `,
 			wantCfg: &api.Config{
 				Version:         "v1alpha1",
-				LogMode:         "FAIL_CLOSE",
+				LogMode:         api.AuditLogRequest_FAIL_CLOSE.String(),
 				Backend:         &api.Backend{Remote: &api.Remote{Address: "foo:443", InsecureEnabled: true}},
 				SecurityContext: &api.SecurityContext{FromRawJWT: []*api.FromRawJWT{{Key: "x-jwt-assertion", Prefix: "somePrefix"}}},
 			},
@@ -284,7 +284,7 @@ security_context:
 `,
 			wantCfg: &api.Config{
 				Version:         "v1alpha1",
-				LogMode:         "FAIL_CLOSE",
+				LogMode:         api.AuditLogRequest_FAIL_CLOSE.String(),
 				Backend:         &api.Backend{Remote: &api.Remote{Address: "foo:443", InsecureEnabled: true}},
 				SecurityContext: &api.SecurityContext{FromRawJWT: []*api.FromRawJWT{{Key: "x-jwt-assertion"}}},
 			},
@@ -303,7 +303,7 @@ security_context:
 `,
 			wantCfg: &api.Config{
 				Version:         "v1alpha1",
-				LogMode:         "FAIL_CLOSE",
+				LogMode:         api.AuditLogRequest_FAIL_CLOSE.String(),
 				Backend:         &api.Backend{Remote: &api.Remote{Address: "foo:443", InsecureEnabled: true}},
 				SecurityContext: &api.SecurityContext{FromRawJWT: []*api.FromRawJWT{{Key: "x-jwt-assertion"}}},
 			},
@@ -322,7 +322,7 @@ condition:
 `,
 			wantCfg: &api.Config{
 				Version:   "v1alpha1",
-				LogMode:   "FAIL_CLOSE",
+				LogMode:   api.AuditLogRequest_FAIL_CLOSE.String(),
 				Backend:   &api.Backend{Remote: &api.Remote{Address: "foo:443", InsecureEnabled: true}},
 				Condition: &api.Condition{Regex: &api.RegexCondition{PrincipalInclude: "user@example.com"}},
 			},
@@ -345,7 +345,7 @@ justification:
 `,
 			wantCfg: &api.Config{
 				Version:         "v1alpha1",
-				LogMode:         "FAIL_CLOSE",
+				LogMode:         api.AuditLogRequest_FAIL_CLOSE.String(),
 				Backend:         &api.Backend{Remote: &api.Remote{Address: "foo:443", InsecureEnabled: true}},
 				SecurityContext: &api.SecurityContext{FromRawJWT: []*api.FromRawJWT{{Key: "authorization"}}},
 				Justification: &api.Justification{

@@ -425,7 +425,7 @@ func TestSetDefault(t *testing.T) {
 		},
 		wantCfg: &Config{
 			Version: "v1alpha1",
-			LogMode: "FAIL_CLOSE",
+			LogMode: AuditLogRequest_FAIL_CLOSE.String(),
 		},
 	}}
 

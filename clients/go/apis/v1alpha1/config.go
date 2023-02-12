@@ -119,8 +119,8 @@ func (cfg *Config) SetDefault() {
 	}
 
 	// Default log mode to "fail close".
-	if cfg.LogMode == "" || cfg.LogMode == "LOG_MODE_UNSPECIFIED" {
-		cfg.LogMode = "FAIL_CLOSE"
+	if cfg.LogMode == "" || cfg.LogMode == AuditLogRequest_LOG_MODE_UNSPECIFIED.String() {
+		cfg.LogMode = AuditLogRequest_FAIL_CLOSE.String()
 	}
 
 	// TODO(#74): set default backend to logging to stdout.
