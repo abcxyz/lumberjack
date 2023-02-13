@@ -340,7 +340,7 @@ jobs:
           grpc_client_endpoints=$(echo -e "${ingestion_backend_grpc_client_endpoints}${cloudlogging_backend_grpc_client_endpoints}" | jq -cs 'flatten(1)')
           http_client_endpoints=$(echo -e "${ingestion_backend_http_client_endpoints}${cloudlogging_backend_http_client_endpoints}" | jq -cs 'flatten(1)')
 
-          echo "GRPC_ENDPOINTS=${grpc_client_endpoints}" >> $GITHUB_ENV;
+#          echo "GRPC_ENDPOINTS=${grpc_client_endpoints}" >> $GITHUB_ENV;
           echo "HTTP_ENDPOINTS=${http_client_endpoints}" >> $GITHUB_ENV;
       - uses: 'actions/setup-go@6edd4406fa81c3da01a34fa6f6343087c207a568' # ratchet:actions/setup-go@v3
         with:
