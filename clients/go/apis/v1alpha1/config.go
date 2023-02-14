@@ -16,6 +16,7 @@ package v1alpha1
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/hashicorp/go-multierror"
 )
@@ -98,7 +99,7 @@ func (cfg *Config) Validate() error {
 	}
 
 	if cfg.LogMode != "" {
-		if _, ok := AuditLogRequest_LogMode_value[cfg.LogMode]; !ok {
+		if _, ok := AuditLogRequest_LogMode_value[strings.ToUpper(cfg.LogMode)]; !ok {
 			merr = multierror.Append(merr, fmt.Errorf("invalid LogMode %q", cfg.LogMode))
 		}
 	}
@@ -119,7 +120,7 @@ func (cfg *Config) SetDefault() {
 	}
 
 	// Default log mode to "fail close".
-	if cfg.LogMode == "" || cfg.LogMode == AuditLogRequest_LOG_MODE_UNSPECIFIED.String() {
+	if cfg.LogMode == "" || strings.ToUpper(cfg.LogMode) == AuditLogRequest_LOG_MODE_UNSPECIFIED.String() {
 		cfg.LogMode = AuditLogRequest_FAIL_CLOSE.String()
 	}
 
@@ -137,7 +138,7 @@ func (cfg *Config) SetDefault() {
 
 // GetLogMode converts the LogMode string to a AuditLogRequest_LogMode.
 func (cfg *Config) GetLogMode() AuditLogRequest_LogMode {
-	return AuditLogRequest_LogMode(AuditLogRequest_LogMode_value[cfg.LogMode])
+	return AuditLogRequest_LogMode(AuditLogRequest_LogMode_value[strings.ToUpper(cfg.LogMode)])
 }
 
 // Backend holds information on the backends to send logs to.

@@ -442,3 +442,54 @@ func TestSetDefault(t *testing.T) {
 		})
 	}
 }
+
+func TestGetLogMode(t *testing.T) {
+	t.Parallel()
+
+	cases := []struct {
+		name string
+		cfg  *Config
+		want AuditLogRequest_LogMode
+	}{{
+		name: "unspecified_if_missing",
+		cfg:  &Config{},
+		want: AuditLogRequest_LOG_MODE_UNSPECIFIED,
+	}, {
+		name: "fail_close_upper_case",
+		cfg: &Config{
+			LogMode: "FAIL_CLOSE",
+		},
+		want: AuditLogRequest_FAIL_CLOSE,
+	}, {
+		name: "fail_close_lower_case",
+		cfg: &Config{
+			LogMode: "fail_close",
+		},
+		want: AuditLogRequest_FAIL_CLOSE,
+	}, {
+		name: "best_effort_upper_case",
+		cfg: &Config{
+			LogMode: "BEST_EFFORT",
+		},
+		want: AuditLogRequest_BEST_EFFORT,
+	}, {
+		name: "best_effort_lower_case",
+		cfg: &Config{
+			LogMode: "best_effort",
+		},
+		want: AuditLogRequest_BEST_EFFORT,
+	}}
+
+	for _, tc := range cases {
+		tc := tc
+
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			got := tc.cfg.GetLogMode()
+			if got != tc.want {
+				t.Errorf("log mode got %v want %v", got, tc.want)
+			}
+		})
+	}
+}
