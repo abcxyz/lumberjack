@@ -375,20 +375,25 @@ func TestSetDefault(t *testing.T) {
 		wantCfg *Config
 	}{{
 		name: "default_version",
-		cfg:  &Config{},
+		cfg: &Config{
+			LogMode: "BEST_EFFORT",
+		},
 		wantCfg: &Config{
 			Version: "v1alpha1",
+			LogMode: "BEST_EFFORT",
 		},
 	}, {
 		name: "default_rule_fields",
 		cfg: &Config{
 			Version: "v1alpha1",
+			LogMode: "BEST_EFFORT",
 			Rules: []*AuditRule{{
 				Selector: "*",
 			}},
 		},
 		wantCfg: &Config{
 			Version: "v1alpha1",
+			LogMode: "BEST_EFFORT",
 			Rules: []*AuditRule{{
 				Selector:  "*",
 				Directive: "AUDIT",
@@ -399,17 +404,28 @@ func TestSetDefault(t *testing.T) {
 		name: "default_backend_cloudlogging",
 		cfg: &Config{
 			Version: "v1alpha1",
+			LogMode: "BEST_EFFORT",
 			Backend: &Backend{
 				CloudLogging: &CloudLogging{},
 			},
 		},
 		wantCfg: &Config{
 			Version: "v1alpha1",
+			LogMode: "BEST_EFFORT",
 			Backend: &Backend{
 				CloudLogging: &CloudLogging{
 					DefaultProject: true,
 				},
 			},
+		},
+	}, {
+		name: "default_fail_close_log_mode",
+		cfg: &Config{
+			Version: "v1alpha1",
+		},
+		wantCfg: &Config{
+			Version: "v1alpha1",
+			LogMode: AuditLogRequest_FAIL_CLOSE.String(),
 		},
 	}}
 
@@ -422,6 +438,62 @@ func TestSetDefault(t *testing.T) {
 			tc.cfg.SetDefault()
 			if diff := cmp.Diff(tc.wantCfg, tc.cfg); diff != "" {
 				t.Errorf("SetDefault() unexpected diff (-want,+got):\n%s", diff)
+			}
+		})
+	}
+}
+
+func TestGetLogMode(t *testing.T) {
+	t.Parallel()
+
+	cases := []struct {
+		name string
+		cfg  *Config
+		want AuditLogRequest_LogMode
+	}{
+		{
+			name: "unspecified_if_missing",
+			cfg:  &Config{},
+			want: AuditLogRequest_LOG_MODE_UNSPECIFIED,
+		},
+		{
+			name: "fail_close_upper_case",
+			cfg: &Config{
+				LogMode: "FAIL_CLOSE",
+			},
+			want: AuditLogRequest_FAIL_CLOSE,
+		},
+		{
+			name: "fail_close_lower_case",
+			cfg: &Config{
+				LogMode: "fail_close",
+			},
+			want: AuditLogRequest_FAIL_CLOSE,
+		},
+		{
+			name: "best_effort_upper_case",
+			cfg: &Config{
+				LogMode: "BEST_EFFORT",
+			},
+			want: AuditLogRequest_BEST_EFFORT,
+		},
+		{
+			name: "best_effort_lower_case",
+			cfg: &Config{
+				LogMode: "best_effort",
+			},
+			want: AuditLogRequest_BEST_EFFORT,
+		},
+	}
+
+	for _, tc := range cases {
+		tc := tc
+
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			if got, want := tc.cfg.GetLogMode(), tc.want; got != want {
+				t.Errorf("log mode got %v want %v", got, want)
 			}
 		})
 	}

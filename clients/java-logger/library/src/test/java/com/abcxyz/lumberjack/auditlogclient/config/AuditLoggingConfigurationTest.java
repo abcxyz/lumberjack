@@ -42,7 +42,7 @@ public class AuditLoggingConfigurationTest {
 
     assertThat(config.getConditions()).isNull();
     assertThat(config.getRules().size()).isEqualTo(1);
-    assertThat(config.getLogMode()).isEqualTo(LogMode.LOG_MODE_UNSPECIFIED);
+    assertThat(config.getLogMode()).isEqualTo(LogMode.FAIL_CLOSE);
     assertThat(config.getJustificaiton()).isEqualTo(new Justification());
 
     assertThat(module.backendContext(config)).isEqualTo(expectedBackendContext);
@@ -64,7 +64,7 @@ public class AuditLoggingConfigurationTest {
 
     assertThat(config.getConditions()).isNull();
     assertThat(config.getRules().size()).isEqualTo(1);
-    assertThat(config.getLogMode()).isEqualTo(LogMode.LOG_MODE_UNSPECIFIED);
+    assertThat(config.getLogMode()).isEqualTo(LogMode.FAIL_CLOSE);
 
     assertThat(module.backendContext(config)).isEqualTo(expectedBackendContext);
     assertThat(module.filters(config)).isEqualTo(new Filters());
@@ -94,7 +94,7 @@ public class AuditLoggingConfigurationTest {
     assertThat(config.getFilters().getIncludes()).isEqualTo("*.include.example.com");
     assertThat(config.getFilters().getExcludes()).isEqualTo("*.exclude.example.com");
     assertThat(config.getRules().size()).isEqualTo(1);
-    assertThat(config.getLogMode()).isEqualTo(LogMode.LOG_MODE_UNSPECIFIED);
+    assertThat(config.getLogMode()).isEqualTo(LogMode.FAIL_CLOSE);
     assertThat(config.getJustificaiton()).isEqualTo(new Justification());
 
     assertThat(module.backendContext(config)).isEqualTo(expectedBackendContext);
