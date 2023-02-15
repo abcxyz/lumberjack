@@ -106,6 +106,7 @@ func (h *handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			AuthenticationInfo: &cal.AuthenticationInfo{
 				PrincipalEmail: email,
 			},
+			MethodName: "loggingShell",
 		},
 		Labels: map[string]string{traceIDKey: traceID},
 	}

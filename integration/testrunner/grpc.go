@@ -26,19 +26,20 @@ import (
 	"time"
 
 	"cloud.google.com/go/bigquery"
-	jvspb "github.com/abcxyz/jvs/apis/v0"
 	"github.com/abcxyz/lumberjack/internal/talkerpb"
 	"github.com/google/uuid"
 	"github.com/lestrrat-go/jwx/v2/jwa"
 	"github.com/lestrrat-go/jwx/v2/jws"
 	"github.com/lestrrat-go/jwx/v2/jwt"
 	"golang.org/x/oauth2"
-	rpccode "google.golang.org/genproto/googleapis/rpc/code"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/credentials/oauth"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
+
+	jvspb "github.com/abcxyz/jvs/apis/v0"
+	rpccode "google.golang.org/genproto/googleapis/rpc/code"
 )
 
 type GRPC struct {
@@ -78,7 +79,6 @@ func testGRPCEndpoint(ctx context.Context, t *testing.T, g *GRPC) {
 	// Don't mark t.Helper().
 	// Here locates the actual test logic so we want to be able to locate the
 	// actual line of error here instead of the main test.
-
 	if g.ProjectID == "" {
 		t.Fatal("ProjectID must be set")
 	}
@@ -119,19 +119,20 @@ func testGRPCEndpoint(ctx context.Context, t *testing.T, g *GRPC) {
 	t.Run("hello_req_unary_success", func(t *testing.T) {
 		t.Parallel()
 		id := uuid.New().String()
+		t.Logf("using uuid %s", id)
 		_, err := g.TalkerClient.Hello(ctx, &talkerpb.HelloRequest{Message: "Some Message", Target: id})
 		if err != nil {
 			t.Errorf("could not greet: %v", err)
 		}
-		query := g.makeQueryForGRPCUnary(id)
-		queryIfAuditLogExistsWithRetries(ctx, t, query, g.Config, "unary_hello")
+		query := g.makeQueryForGRPC(id)
+		validateAuditLogsWithRetries(ctx, t, query, g.Config, 1, g.RequireJustification)
 	})
 
 	t.Run("fail_req_unary_failure", func(t *testing.T) {
 		t.Parallel()
 		id := uuid.New().String()
+		t.Logf("using uuid %s", id)
 		reply, err := g.TalkerClient.Fail(ctx, &talkerpb.FailRequest{Message: "Some Message", Target: id})
-
 		if err != nil {
 			returnStatus, ok := status.FromError(err)
 			if !ok {
@@ -145,14 +146,14 @@ func testGRPCEndpoint(ctx context.Context, t *testing.T, g *GRPC) {
 		} else {
 			t.Errorf("Did not get err as expected. Instead got reply: %v", reply)
 		}
-
-		query := g.makeQueryForGRPCUnary(id)
-		queryIfAuditLogExistsWithRetries(ctx, t, query, g.Config, "unary_fail")
+		query := g.makeQueryForGRPC(id)
+		validateAuditLogsWithRetries(ctx, t, query, g.Config, 1, g.RequireJustification)
 	})
 
 	t.Run("fibonacci_req_server_streaming_success", func(t *testing.T) {
 		t.Parallel()
 		id := uuid.New().String()
+		t.Logf("using uuid %s", id)
 		places := 5
 		stream, err := g.TalkerClient.Fibonacci(ctx, &talkerpb.FibonacciRequest{Places: uint32(places), Target: id})
 		if err != nil {
@@ -170,13 +171,14 @@ func testGRPCEndpoint(ctx context.Context, t *testing.T, g *GRPC) {
 			}
 			t.Logf("Received value %v", place.Value)
 		}
-		query := g.makeQueryForGRPCStream(id)
-		queryIfAuditLogsExistWithRetries(ctx, t, query, g.Config, "server_stream_fibonacci", int64(places))
+		query := g.makeQueryForGRPC(id)
+		validateAuditLogsWithRetries(ctx, t, query, g.Config, places, g.RequireJustification)
 	})
 
 	t.Run("addition_req_client_streaming_success", func(t *testing.T) {
 		t.Parallel()
 		id := uuid.New().String()
+		t.Logf("using uuid %s", id)
 		stream, err := g.TalkerClient.Addition(ctx)
 		if err != nil {
 			t.Errorf("addition call failed: %v", err)
@@ -196,13 +198,14 @@ func testGRPCEndpoint(ctx context.Context, t *testing.T, g *GRPC) {
 		}
 		t.Logf("Value returned: %d", reply.Sum)
 
-		query := g.makeQueryForGRPCStream(id)
-		queryIfAuditLogsExistWithRetries(ctx, t, query, g.Config, "client_stream_addition", int64(totalNumbers))
+		query := g.makeQueryForGRPC(id)
+		validateAuditLogsWithRetries(ctx, t, query, g.Config, totalNumbers, g.RequireJustification)
 	})
 
 	t.Run("fail_on_four_req_client_stream_failure", func(t *testing.T) {
 		t.Parallel()
 		id := uuid.New().String()
+		t.Logf("using uuid %s", id)
 		stream, err := g.TalkerClient.FailOnFour(ctx)
 		if err != nil {
 			t.Errorf("addition call failed: %v", err)
@@ -230,10 +233,9 @@ func testGRPCEndpoint(ctx context.Context, t *testing.T, g *GRPC) {
 		} else {
 			t.Errorf("Did not get err as expected. Instead got reply: %v", reply)
 		}
-
-		query := g.makeQueryForGRPCStream(id)
+		query := g.makeQueryForGRPC(id)
 		// we expect to have 4 audit logs - the last sent number (5) will be after the err occurred.
-		queryIfAuditLogsExistWithRetries(ctx, t, query, g.Config, "stream_fail_on_four", int64(4))
+		validateAuditLogsWithRetries(ctx, t, query, g.Config, 4, g.RequireJustification)
 	})
 }
 
@@ -307,29 +309,13 @@ func createConnection(ctx context.Context, t *testing.T, addr, idToken string) *
 // This query is used to find the relevant audit log in BigQuery, which we assume will be added by the server.
 // We specifically look up the log using the UUID specified in the request as we know the server will add that
 // as the resource name, and provides us a unique key to find logs with.
-func (g *GRPC) makeQueryForGRPCUnary(id string) *bigquery.Query {
-	// Cast to int64 because the result checker expects a number.
-	queryString := fmt.Sprintf("SELECT CAST(EXISTS (SELECT * FROM `%s.%s` WHERE jsonPayload.resource_name=?", g.ProjectID, g.DatasetQuery)
-	if g.RequireJustification {
-		// TODO(#265): For back-compatibility, we need to ensure justification in either metadata key.
-		queryString += ` AND jsonPayload.metadata.justification IS NOT NULL`
-	}
-	queryString += ` AND jsonPayload.service_name IS NOT NULL`
-	queryString += ` AND jsonPayload.method_name IS NOT NULL`
-	queryString += ` AND jsonPayload.authentication_info.principal_email IS NOT NULL`
-	queryString += ") AS INT64)"
-	return makeQuery(*g.BigQueryClient, id, queryString)
-}
-
-// Similar to the above function, but can return multiple results, which is what we expect for streaming.
-func (g *GRPC) makeQueryForGRPCStream(id string) *bigquery.Query {
-	queryString := fmt.Sprintf("SELECT count(*) FROM `%s.%s` WHERE jsonPayload.resource_name=?", g.ProjectID, g.DatasetQuery)
-	if g.RequireJustification {
-		// TODO(#265): For back-compatibility, we need to ensure justification in either metadata key.
-		queryString += ` AND jsonPayload.metadata.justification IS NOT NULL`
-	}
-	queryString += ` AND jsonPayload.service_name IS NOT NULL`
-	queryString += ` AND jsonPayload.method_name IS NOT NULL`
-	queryString += ` AND jsonPayload.authentication_info.principal_email IS NOT NULL`
+func (g *GRPC) makeQueryForGRPC(id string) *bigquery.Query {
+	queryString := fmt.Sprintf(` WITH temptable AS (
+		SELECT *
+		FROM %s.%s
+		WHERE jsonPayload.resource_name=?
+ 	)
+ 	SELECT TO_JSON(t) as result FROM temptable as t
+ 	`, g.ProjectID, g.DatasetQuery)
 	return makeQuery(*g.BigQueryClient, id, queryString)
 }
