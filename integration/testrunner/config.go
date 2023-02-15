@@ -27,9 +27,9 @@ type Config struct {
 	AuditLogRequestWait     time.Duration `env:"AUDIT_CLIENT_TEST_AUDIT_LOG_REQUEST_WAIT,default=4s"`
 	HTTPEndpoints           string        `env:"HTTP_ENDPOINTS,required"`
 	GRPCEndpoints           string        `env:"GRPC_ENDPOINTS,required"`
-	LogRoutingWait          time.Duration `env:"AUDIT_CLIENT_TEST_AUDIT_LOG_ROUTING_WAIT,default=3s"`
+	LogRoutingWait          time.Duration `env:"AUDIT_CLIENT_TEST_AUDIT_LOG_ROUTING_WAIT,default=5s"`
 	MaxAuditLogRequestTries uint64        `env:"AUDIT_CLIENT_TEST_MAX_AUDIT_LOG_REQUEST_TRIES,default=4"`
-	MaxDBQueryTries         uint64        `env:"AUDIT_CLIENT_TEST_MAX_DB_QUERY_TRIES,default=5"`
+	MaxDBQueryTries         uint64        `env:"AUDIT_CLIENT_TEST_MAX_DB_QUERY_TRIES,default=60"`
 }
 
 func newTestConfig(ctx context.Context) (*Config, error) {
