@@ -226,8 +226,6 @@ public class TalkerService {
       AuditLog.Builder auditLogBuilder = AuditLogs.getBuilderFromContext();
       auditLogBuilder.setResourceName(req.getTarget());
       StatusRuntimeException e = new StatusRuntimeException(Status.RESOURCE_EXHAUSTED);
-      // Send the error to the client
-      responseObserver.onError(e);
       // Throw the error from the server's perspective
       throw e;
     }

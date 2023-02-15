@@ -38,7 +38,7 @@ func testHTTPEndpoint(ctx context.Context, tb testing.TB, endpointURL, idToken, 
 	id := uuid.New().String()
 	tb.Logf("using uuid %s", id)
 
-	b := retry.NewExponential(cfg.AuditLogRequestWait)
+	b := retry.NewConstant(cfg.AuditLogRequestWait)
 	if err := retry.Do(ctx, retry.WithMaxRetries(cfg.MaxAuditLogRequestTries, b), func(ctx context.Context) error {
 		resp, err := MakeAuditLogRequest(id, endpointURL, cfg.AuditLogRequestTimeout, idToken)
 		if err != nil {
@@ -64,18 +64,18 @@ func testHTTPEndpoint(ctx context.Context, tb testing.TB, endpointURL, idToken, 
 	}); err != nil {
 		tb.Fatal(err)
 	}
-
 	bqClient := makeBigQueryClient(ctx, tb, projectID)
-
 	bqQuery := makeQueryForHTTP(*bqClient, id, projectID, datasetQuery)
-	queryIfAuditLogExistsWithRetries(ctx, tb, bqQuery, cfg, "httpEndpointTest")
+	validateAuditLogsWithRetries(ctx, tb, bqQuery, cfg, 1, false)
 }
 
 func makeQueryForHTTP(client bigquery.Client, id, projectID, datasetQuery string) *bigquery.Query {
-	// Cast to int64 because the result checker expects a number.
-	queryString := fmt.Sprintf("SELECT CAST(EXISTS (SELECT * FROM `%s.%s` WHERE labels.trace_id=?", projectID, datasetQuery)
-	queryString += ` AND jsonPayload.service_name IS NOT NULL`
-	queryString += ` AND jsonPayload.authentication_info.principal_email IS NOT NULL`
-	queryString += ") AS INT64)"
+	queryString := fmt.Sprintf(` WITH temptable AS (
+		SELECT *
+		FROM %s.%s
+		WHERE labels.trace_id=?
+ 	)
+ 	SELECT TO_JSON(t) as result FROM temptable as t
+	`, projectID, datasetQuery)
 	return makeQuery(client, id, queryString)
 }
