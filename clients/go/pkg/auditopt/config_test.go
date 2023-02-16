@@ -86,10 +86,12 @@ backend:
 		wantErrSubstr string
 	}{
 		{
-			name:    "use_config_file_when_provided",
-			path:    path.Join(dir, "valid.yaml"),
-			req:     testutil.NewRequest(testutil.WithPrincipal("abc@project.iam.gserviceaccount.com")),
-			wantReq: testutil.NewRequest(testutil.WithPrincipal("abc@project.iam.gserviceaccount.com")),
+			name: "use_config_file_when_provided",
+			path: path.Join(dir, "valid.yaml"),
+			req:  testutil.NewRequest(testutil.WithPrincipal("abc@project.iam.gserviceaccount.com")),
+			wantReq: testutil.NewRequest(
+				testutil.WithPrincipal("abc@project.iam.gserviceaccount.com"),
+				testutil.WithMode(api.AuditLogRequest_FAIL_CLOSE)),
 		},
 		{
 			name: "use_env_var_when_config_file_not_found",
@@ -98,9 +100,12 @@ backend:
 				"AUDIT_CLIENT_CONDITION_REGEX_PRINCIPAL_EXCLUDE":  "user@example.com$",
 				"AUDIT_CLIENT_BACKEND_REMOTE_INSECURE_ENABLED":    "true",
 				"AUDIT_CLIENT_BACKEND_REMOTE_IMPERSONATE_ACCOUNT": "example@test.iam.gserviceaccount.com",
+				"AUDIT_CLIENT_LOG_MODE":                           "BEST_EFFORT",
 			},
-			req:     testutil.NewRequest(testutil.WithPrincipal("abc@project.iam.gserviceaccount.com")),
-			wantReq: testutil.NewRequest(testutil.WithPrincipal("abc@project.iam.gserviceaccount.com")),
+			req: testutil.NewRequest(testutil.WithPrincipal("abc@project.iam.gserviceaccount.com")),
+			wantReq: testutil.NewRequest(
+				testutil.WithPrincipal("abc@project.iam.gserviceaccount.com"),
+				testutil.WithMode(api.AuditLogRequest_BEST_EFFORT)),
 		},
 		{
 			name: "use_defaults_when_config_file_not_found",
@@ -108,9 +113,12 @@ backend:
 			envs: map[string]string{
 				"AUDIT_CLIENT_BACKEND_REMOTE_INSECURE_ENABLED":    "true",
 				"AUDIT_CLIENT_BACKEND_REMOTE_IMPERSONATE_ACCOUNT": "example@test.iam.gserviceaccount.com",
+				"AUDIT_CLIENT_LOG_MODE":                           "LOG_MODE_UNSPECIFIED",
 			},
-			req:     testutil.NewRequest(testutil.WithPrincipal("abc@project.iam.gserviceaccount.com")),
-			wantReq: testutil.NewRequest(testutil.WithPrincipal("abc@project.iam.gserviceaccount.com")),
+			req: testutil.NewRequest(testutil.WithPrincipal("abc@project.iam.gserviceaccount.com")),
+			wantReq: testutil.NewRequest(
+				testutil.WithPrincipal("abc@project.iam.gserviceaccount.com"),
+				testutil.WithMode(api.AuditLogRequest_FAIL_CLOSE)),
 		},
 		{
 			name:          "invalid_config_file_should_error",
@@ -184,8 +192,10 @@ func TestFromConfig(t *testing.T) {
 				},
 			},
 		},
-		req:     testutil.NewRequest(testutil.WithPrincipal("abc@project.iam.gserviceaccount.com")),
-		wantReq: testutil.NewRequest(testutil.WithPrincipal("abc@project.iam.gserviceaccount.com")),
+		req: testutil.NewRequest(testutil.WithPrincipal("abc@project.iam.gserviceaccount.com")),
+		wantReq: testutil.NewRequest(
+			testutil.WithPrincipal("abc@project.iam.gserviceaccount.com"),
+			testutil.WithMode(api.AuditLogRequest_FAIL_CLOSE)),
 	}, {
 		name:          "invalid_config_error",
 		cfg:           &api.Config{}, // Empty config is invalid

@@ -23,10 +23,7 @@ public class ConfigUtils {
     // no-op
   }
 
-  /**
-   * Returns whether we should fail close on errors. Unspecified (LOG_MODE_UNSPECIFIED) is handled
-   * equivalently to BEST_EFFORT, which is to not fail close.
-   */
+  /** Returns whether we should fail close on errors. */
   public static boolean shouldFailClose(LogMode logMode) {
     return logMode.equals(LogMode.FAIL_CLOSE);
   }

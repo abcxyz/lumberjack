@@ -119,7 +119,7 @@ func (cfg *Config) SetDefault() {
 		cfg.Version = Version
 	}
 
-	// Default log mode to "fail close".
+	// Default empty and LOG_MODE_UNSPECIFIED log mode to FAIL_CLOSE.
 	if cfg.LogMode == "" || strings.ToUpper(cfg.LogMode) == AuditLogRequest_LOG_MODE_UNSPECIFIED.String() {
 		cfg.LogMode = AuditLogRequest_FAIL_CLOSE.String()
 	}
