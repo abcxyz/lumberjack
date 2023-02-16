@@ -69,12 +69,6 @@ func FromConfigFile(path string) audit.Option {
 // FromConfig creates an audit client option from the given configuration.
 func FromConfig(cfg *api.Config) audit.Option {
 	return func(ctx context.Context, c *audit.Client) error {
-		if cfg == nil {
-			return fmt.Errorf("nil config")
-		}
-		if err := cfg.Validate(); err != nil {
-			return fmt.Errorf("invalid configuration: %w", err)
-		}
 		return clientFromConfig(ctx, c, cfg)
 	}
 }
@@ -166,6 +160,13 @@ func interceptorFromConfigFile(path string, lookuper envconfig.Lookuper) audit.I
 }
 
 func clientFromConfig(ctx context.Context, c *audit.Client, cfg *api.Config) error {
+	if cfg == nil {
+		return fmt.Errorf("nil config")
+	}
+	if err := cfg.Validate(); err != nil {
+		return fmt.Errorf("invalid configuration: %w", err)
+	}
+
 	opts := []audit.Option{audit.WithRuntimeInfo()}
 
 	withPrincipalFilter, err := principalFilterFromConfig(cfg)
@@ -184,6 +185,9 @@ func clientFromConfig(ctx context.Context, c *audit.Client, cfg *api.Config) err
 
 	withLabels := labelsFromConfig(ctx, cfg)
 	opts = append(opts, withLabels)
+
+	withLogMode := audit.WithLogMode(cfg.GetLogMode())
+	opts = append(opts, withLogMode)
 
 	if cfg.Justification != nil && cfg.Justification.Enabled {
 		withJustification, err := justificationFromConfig(ctx, cfg)
