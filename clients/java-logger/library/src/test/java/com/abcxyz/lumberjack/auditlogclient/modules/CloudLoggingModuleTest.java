@@ -35,10 +35,17 @@ class CloudLoggingModuleTest {
   }
 
   @Test
-  void whenLogModeIsUnspecifiedLoggingIsAsync() {
-    AuditLoggingConfigurationTestModule.logMode = LogMode.LOG_MODE_UNSPECIFIED;
+  void whenLogModeIsBestEffortLoggingIsAsync() {
+    AuditLoggingConfigurationTestModule.logMode = LogMode.BEST_EFFORT;
     Logging logging = injector().getInstance(Logging.class);
     assertThat(logging.getWriteSynchronicity()).isEqualTo(Synchronicity.ASYNC);
+  }
+
+  @Test
+  void whenLogModeIsUnspecifiedLoggingIsSync() {
+    AuditLoggingConfigurationTestModule.logMode = LogMode.LOG_MODE_UNSPECIFIED;
+    Logging logging = injector().getInstance(Logging.class);
+    assertThat(logging.getWriteSynchronicity()).isEqualTo(Synchronicity.SYNC);
   }
 
   @Test

@@ -16,6 +16,7 @@
 
 package com.abcxyz.lumberjack.auditlogclient.config;
 
+import com.abcxyz.lumberjack.auditlogclient.utils.ConfigUtils;
 import com.abcxyz.lumberjack.v1alpha1.AuditLogRequest.LogMode;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonSetter;
@@ -31,6 +32,8 @@ import lombok.NoArgsConstructor;
 @Data
 @NoArgsConstructor
 public class AuditLoggingConfiguration {
+  private static final String LOG_MODE_ENV_KEY = "AUDIT_CLIENT_LOG_MODE";
+
   private String version;
   private BackendContext backend;
 
@@ -55,8 +58,13 @@ public class AuditLoggingConfiguration {
     return conditions == null ? new Filters() : conditions.getFilters();
   }
 
+  // Defaul null and LOG_MODE_UNSPECIFIED log mode to FAIL_CLOSE.
   public LogMode getLogMode() {
-    return logMode == null ? LogMode.FAIL_CLOSE : logMode;
+    if (logMode == null) {
+      logMode = LogMode.FAIL_CLOSE;
+    }
+    logMode = LogMode.valueOf(ConfigUtils.getEnvOrDefault(LOG_MODE_ENV_KEY, logMode.toString()));
+    return logMode == LogMode.LOG_MODE_UNSPECIFIED ? LogMode.FAIL_CLOSE : logMode;
   }
 
   public Justification getJustificaiton() {
