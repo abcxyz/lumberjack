@@ -80,7 +80,7 @@ public class CloudLoggingProcessor implements LogBackend {
                       .setLast(operation.getLast())
                       .build());
 
-      if (!(auditLogRequest.getTimestamp()).equals(Timestamp.getDefaultInstance())) {
+      if (auditLogRequest.hasTimestamp()) {
         entryBuilder.setTimestamp(
             Instant.ofEpochSecond(
                 auditLogRequest.getTimestamp().getSeconds(),
