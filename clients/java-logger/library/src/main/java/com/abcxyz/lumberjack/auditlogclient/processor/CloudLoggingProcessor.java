@@ -31,7 +31,6 @@ import com.google.cloud.logging.Payload;
 import com.google.inject.Inject;
 import com.google.logging.v2.LogEntryOperation;
 import com.google.protobuf.InvalidProtocolBufferException;
-import com.google.protobuf.Timestamp;
 import com.google.protobuf.util.JsonFormat;
 import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
