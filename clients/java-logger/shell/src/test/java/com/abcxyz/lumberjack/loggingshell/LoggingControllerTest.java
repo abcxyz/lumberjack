@@ -25,6 +25,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.abcxyz.lumberjack.auditlogclient.LoggingClient;
 import com.abcxyz.lumberjack.v1alpha1.AuditLogRequest;
+import com.google.protobuf.Timestamp;
+import java.time.Clock;
+import java.time.Instant;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -40,6 +43,9 @@ public class LoggingControllerTest {
   private static final String REQUEST_PATH = "/";
   private static final String TEST_TRACE_ID = "testTraceId";
   private static final String TEST_EMAIL = "testEmail";
+
+  private static final Timestamp TEST_TIMESTAMP =
+      Timestamp.newBuilder().setSeconds(1577836800).build();
   private static final MockHttpServletRequestBuilder GET_REQUEST_BUILDER = get(REQUEST_PATH);
   private static final MockHttpServletRequestBuilder GET_REQUEST_BUILDER_WITH_EMAIL =
       get(REQUEST_PATH).requestAttr(TokenInterceptor.INTERCEPTOR_USER_EMAIL_KEY, TEST_EMAIL);
@@ -50,12 +56,14 @@ public class LoggingControllerTest {
 
   @Autowired private MockMvc mockMvc;
   @MockBean private LoggingClient loggingClient;
+  @MockBean private Clock clock;
   @MockBean private TokenInterceptor interceptor;
   @Captor private ArgumentCaptor<AuditLogRequest> auditLogRequestCaptor;
 
   @BeforeEach
   void setUp() {
     when(interceptor.preHandle(any(), any(), any())).thenReturn(true);
+    when(clock.instant()).thenReturn(Instant.ofEpochSecond(1577836800));
   }
 
   @Test
@@ -66,6 +74,13 @@ public class LoggingControllerTest {
   @Test
   void loggingWithTraceIdReturnsOk() throws Exception {
     mockMvc.perform(GET_REQUEST_BUILDER_WITH_EMAIL_AND_TRACE_ID).andExpect(status().isOk());
+  }
+
+  @Test
+  void loggingWithTimestampSet() throws Exception {
+    mockMvc.perform(GET_REQUEST_BUILDER_WITH_EMAIL_AND_TRACE_ID);
+    verify(loggingClient).log(auditLogRequestCaptor.capture());
+    assertThat(auditLogRequestCaptor.getValue().getTimestamp()).isEqualTo(TEST_TIMESTAMP);
   }
 
   @Test

@@ -23,7 +23,6 @@ import com.abcxyz.lumberjack.v1alpha1.AuditLogRequestProto;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.google.cloud.MonitoredResource;
 import com.google.cloud.logging.LogEntry;
 import com.google.cloud.logging.Logging;
 import com.google.cloud.logging.LoggingException;
@@ -47,7 +46,6 @@ import lombok.extern.java.Log;
 @Log
 @AllArgsConstructor(access = AccessLevel.PRIVATE, onConstructor = @__({@Inject}))
 public class CloudLoggingProcessor implements LogBackend {
-  private static final String MONITORED_RESOURCE_TYPE = "global";
   private final ObjectMapper mapper;
   private final Logging logging;
 
@@ -84,7 +82,6 @@ public class CloudLoggingProcessor implements LogBackend {
                   Instant.ofEpochSecond(
                       auditLogRequest.getTimestamp().getSeconds(),
                       auditLogRequest.getTimestamp().getNanos()))
-              .setResource(MonitoredResource.newBuilder(MONITORED_RESOURCE_TYPE).build())
               .build();
       logging.write(Collections.singleton(entry));
       return auditLogRequest;
