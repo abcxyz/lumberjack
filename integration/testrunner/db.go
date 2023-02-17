@@ -66,13 +66,10 @@ func queryAuditLogs(ctx context.Context, tb testing.TB, query *bigquery.Query) [
 		if !ok {
 			tb.Fatalf("error converting query (%T) to string: %v", value[0], err)
 		}
-
+		tb.Logf("bq row is %s", value)
 		logEntry := &loggingpb.LogEntry{}
 		if err := protojson.Unmarshal([]byte(value), logEntry); err != nil {
-			// See issue here: https://github.com/golang/protobuf/issues/1313
-			// The protojson package only supports null values as direct field values,
-			// not if they are elements in JSON arrays or values in JSON maps.
-			tb.Logf("ignoring expected protojson.Unmarshal 'null string' error: %v", err)
+			tb.Fatalf("error when unmarshal bq row to logEntry: %v", err)
 		}
 		logEntries = append(logEntries, logEntry)
 	}
@@ -161,6 +158,10 @@ func diffLogEntry(tb testing.TB, logEntry *loggingpb.LogEntry, requireJustificat
 
 	if logEntry.LogName == "" {
 		tb.Errorf("queryResult field %v is blank", "logName")
+	}
+
+	if logEntry.Timestamp == nil {
+		tb.Errorf("queryResult field %v is blank", "timestamp")
 	}
 	if !isValidEmail(jsonPayloadInfo.AuthenticationInfo.PrincipalEmail) {
 		tb.Errorf("queryResult field %v is invalid, got %v", "jsonPayload.authentication_info.principal_email", jsonPayloadInfo.AuthenticationInfo.PrincipalEmail)
