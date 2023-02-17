@@ -22,6 +22,9 @@ import com.abcxyz.lumberjack.v1alpha1.AuditLogRequest;
 import com.abcxyz.lumberjack.v1alpha1.AuditLogRequest.LogType;
 import com.google.cloud.audit.AuditLog;
 import com.google.cloud.audit.AuthenticationInfo;
+import com.google.protobuf.Timestamp;
+import java.time.Clock;
+import java.time.Instant;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
@@ -41,14 +44,19 @@ public class LoggingController {
 
   private final LoggingClient loggingClient;
 
+  private final Clock clock;
+
   @GetMapping
   @ResponseStatus(value = HttpStatus.OK)
   void loggingShell(
       @RequestParam(value = TRACE_ID_PARAMETER_KEY) String traceId,
       @RequestAttribute(TokenInterceptor.INTERCEPTOR_USER_EMAIL_KEY) String userEmail)
       throws LogProcessingException {
+    Instant now = clock.instant();
     AuditLogRequest record =
         AuditLogRequest.newBuilder()
+            .setTimestamp(
+                Timestamp.newBuilder().setSeconds(now.getEpochSecond()).setNanos(now.getNano()))
             .setPayload(
                 AuditLog.newBuilder()
                     .setServiceName(SERVICE_NAME)

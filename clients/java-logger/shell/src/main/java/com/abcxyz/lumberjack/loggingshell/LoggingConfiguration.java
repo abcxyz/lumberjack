@@ -21,6 +21,7 @@ import com.abcxyz.lumberjack.auditlogclient.LoggingClientBuilder;
 import com.abcxyz.lumberjack.auditlogclient.modules.AuditLoggingModule;
 import com.google.inject.Guice;
 import com.google.inject.Injector;
+import java.time.Clock;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -32,5 +33,10 @@ public class LoggingConfiguration {
     Injector injector = Guice.createInjector(new AuditLoggingModule());
     LoggingClientBuilder builder = injector.getInstance(LoggingClientBuilder.class);
     return builder.withDefaultProcessors().build();
+  }
+
+  @Bean
+  Clock clock() {
+    return Clock.systemUTC();
   }
 }
