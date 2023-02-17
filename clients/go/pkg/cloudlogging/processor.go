@@ -129,7 +129,10 @@ func (p *Processor) Process(ctx context.Context, logReq *api.AuditLogRequest) er
 		Payload:   logReq.Payload,
 		Labels:    logReq.Labels,
 		Operation: logReq.Operation,
-		Timestamp: logReq.Timestamp.AsTime(),
+	}
+
+	if logReq.Timestamp != nil {
+		logEntry.Timestamp = logReq.Timestamp.AsTime()
 	}
 
 	bestEffort := p.bestEffort

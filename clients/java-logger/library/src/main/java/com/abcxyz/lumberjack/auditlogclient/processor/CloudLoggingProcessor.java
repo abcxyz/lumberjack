@@ -61,7 +61,7 @@ public class CloudLoggingProcessor implements LogBackend {
   public AuditLogRequest process(AuditLogRequest auditLogRequest) throws LogProcessingException {
     try {
       LogEntryOperation operation = auditLogRequest.getOperation();
-      LogEntry entry =
+      LogEntry.Builder entryBuilder =
           LogEntry.newBuilder(
                   Payload.JsonPayload.of(
                       mapper.readValue(
@@ -77,12 +77,15 @@ public class CloudLoggingProcessor implements LogBackend {
                   Operation.newBuilder(operation.getId(), operation.getProducer())
                       .setFirst(operation.getFirst())
                       .setLast(operation.getLast())
-                      .build())
-              .setTimestamp(
-                  Instant.ofEpochSecond(
-                      auditLogRequest.getTimestamp().getSeconds(),
-                      auditLogRequest.getTimestamp().getNanos()))
-              .build();
+                      .build());
+
+      if (auditLogRequest.hasTimestamp()) {
+        entryBuilder.setTimestamp(
+            Instant.ofEpochSecond(
+                auditLogRequest.getTimestamp().getSeconds(),
+                auditLogRequest.getTimestamp().getNanos()));
+      }
+      LogEntry entry = entryBuilder.build();
       logging.write(Collections.singleton(entry));
       return auditLogRequest;
     } catch (InvalidProtocolBufferException
