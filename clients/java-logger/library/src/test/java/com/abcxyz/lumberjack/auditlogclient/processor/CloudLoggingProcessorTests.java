@@ -17,6 +17,7 @@
 package com.abcxyz.lumberjack.auditlogclient.processor;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.doThrow;
@@ -125,6 +126,31 @@ public class CloudLoggingProcessorTests {
     assertThat(logEntry.getLabels()).isEqualTo(Map.of(LABEL_KEY, LABEL_VALUE));
     assertThat(logEntry.getOperation()).isEqualTo(Operation.of(OPERATION_ID, OPERATION_PRODUCER));
     assertThat(logEntry.getInstantTimestamp()).isEqualTo(now);
+  }
+
+  @Test
+  void shouldWriteCorrectLogEntryOmitsTimestamp() throws LogProcessingException {
+    AuditLog payload = AuditLog.newBuilder().setResourceName(TEST_RESOURCE).build();
+    LogEntryOperation logEntryOperation =
+        LogEntryOperation.newBuilder().setId(OPERATION_ID).setProducer(OPERATION_PRODUCER).build();
+    cloudLoggingProcessor.process(
+        AuditLogRequest.getDefaultInstance()
+            .newBuilderForType()
+            .setPayload(payload)
+            .putLabels(LABEL_KEY, LABEL_VALUE)
+            .setOperation(logEntryOperation)
+            .build());
+    verify(logging).write(logEntryCaptor.capture());
+    verify(logging).flush();
+    LogEntry logEntry =
+        logEntryCaptor.getValue().stream()
+            .findFirst()
+            .orElse(LogEntry.newBuilder(Payload.StringPayload.of("")).build());
+    assertThat(((JsonPayload) logEntry.getPayload()).getDataAsMap())
+        .isEqualTo(Map.of("resource_name", TEST_RESOURCE));
+    assertThat(logEntry.getLabels()).isEqualTo(Map.of(LABEL_KEY, LABEL_VALUE));
+    assertThat(logEntry.getOperation()).isEqualTo(Operation.of(OPERATION_ID, OPERATION_PRODUCER));
+    assertNull(logEntry.getInstantTimestamp(), "timestamp should be null");
   }
 
   @Test
