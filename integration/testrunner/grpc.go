@@ -286,7 +286,10 @@ func justificationToken() (string, error) {
 func createConnection(ctx context.Context, t *testing.T, addr, idToken string) *grpc.ClientConn {
 	t.Helper()
 
-	rpcCreds := oauth.NewOauthAccess(&oauth2.Token{AccessToken: idToken})
+	oauthToken := &oauth2.Token{AccessToken: idToken}
+	rpcCreds := oauth.TokenSource{
+		TokenSource: oauth2.StaticTokenSource(oauthToken),
+	}
 
 	pool, err := x509.SystemCertPool()
 	if err != nil {

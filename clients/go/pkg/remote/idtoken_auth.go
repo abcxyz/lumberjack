@@ -92,5 +92,10 @@ func (a *idTokenAuth) callOpts() ([]grpc.CallOption, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate id token: %w", err)
 	}
-	return []grpc.CallOption{grpc.PerRPCCredentials(oauth.NewOauthAccess(token))}, nil
+
+	rpcCreds := oauth.TokenSource{
+		TokenSource: oauth2.StaticTokenSource(token),
+	}
+
+	return []grpc.CallOption{grpc.PerRPCCredentials(rpcCreds)}, nil
 }
