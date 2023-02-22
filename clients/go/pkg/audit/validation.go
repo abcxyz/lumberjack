@@ -35,8 +35,7 @@ func NewRequestValidator(ctx context.Context) *RequestValidator {
 // AuditLogRequest is properly formed.
 func (p *RequestValidator) Process(ctx context.Context, logReq *api.AuditLogRequest) error {
 	if err := p.process(ctx, logReq); err != nil {
-		// TODO(sethvargo): In Go 1.20, wrap both errors
-		return fmt.Errorf("%w: %s", auditerrors.ErrInvalidRequest, err)
+		return fmt.Errorf("%w: %w", auditerrors.ErrInvalidRequest, err)
 	}
 	return nil
 }
