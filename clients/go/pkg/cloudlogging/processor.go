@@ -18,11 +18,11 @@ import (
 	"context"
 	"fmt"
 
-	"cloud.google.com/go/compute/metadata"
 	"cloud.google.com/go/logging"
 	"google.golang.org/protobuf/reflect/protoreflect"
 
 	api "github.com/abcxyz/lumberjack/clients/go/apis/v1alpha1"
+	"github.com/abcxyz/pkg/gcputil"
 	"github.com/hashicorp/go-multierror"
 )
 
@@ -77,10 +77,7 @@ func NewProcessor(ctx context.Context, opts ...Option) (*Processor, error) {
 
 	// If the options didn't provide a Cloud Logging client, create one.
 	if p.client == nil {
-		projectID, err := metadata.ProjectID()
-		if err != nil {
-			return nil, fmt.Errorf("error getting project ID from metadata to initialize the default Cloud Logging client: %w", err)
-		}
+		projectID := gcputil.ProjectID(ctx)
 		client, err := logging.NewClient(ctx, projectID)
 		if err != nil {
 			return nil, fmt.Errorf("error creating the default Cloud Logging client for project %v: %w", projectID, err)
