@@ -66,7 +66,7 @@ func testHTTPEndpoint(ctx context.Context, tb testing.TB, endpointURL, idToken, 
 	}
 	bqClient := makeBigQueryClient(ctx, tb, projectID)
 	bqQuery := makeQueryForHTTP(*bqClient, id, projectID, datasetQuery)
-	validateAuditLogsWithRetries(ctx, tb, bqQuery, cfg, 1, false)
+	validateAuditLogsWithRetries(ctx, tb, bqQuery, cfg, 1, true)
 }
 
 func makeQueryForHTTP(client bigquery.Client, id, projectID, datasetQuery string) *bigquery.Query {

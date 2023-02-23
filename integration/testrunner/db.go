@@ -16,10 +16,15 @@ package testrunner
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net/mail"
 	"testing"
+
+	"github.com/google/go-cmp/cmp"
+	"google.golang.org/protobuf/testing/protocmp"
+	"google.golang.org/protobuf/types/known/structpb"
 
 	"cloud.google.com/go/bigquery"
 	"cloud.google.com/go/logging/apiv2/loggingpb"
@@ -174,10 +179,28 @@ func diffLogEntry(tb testing.TB, logEntry *loggingpb.LogEntry, requireJustificat
 	}
 
 	if requireJustification {
-		if _, ok := jsonPayloadInfo.Metadata.AsMap()["justification"]; !ok {
+		justification := getJustification(tb, jsonPayloadInfo)
+		if diff := cmp.Diff(&structpb.Struct{}, &justification, protocmp.Transform()); diff == "" {
 			tb.Errorf("queryResult field %v is blank", "jsonPayload.metadata.justification")
 		}
 	}
+}
+
+func getJustification(tb testing.TB, jsonPayloadInfo *audit.AuditLog) *structpb.Struct {
+	tb.Helper()
+	justification, ok := jsonPayloadInfo.Metadata.AsMap()["justification"]
+	if !ok {
+		tb.Fatalf("queryResult field %v doesn't exist", "jsonPayload.metadata.justification")
+	}
+	b, err := json.Marshal(justification)
+	if err != nil {
+		tb.Fatalf("failed to marshal justification: %v", err)
+	}
+	var tokStruct structpb.Struct
+	if err := protojson.Unmarshal(b, &tokStruct); err != nil {
+		tb.Fatalf("failed to decode justification token: %v", err)
+	}
+	return &tokStruct
 }
 
 func isValidEmail(email string) bool {

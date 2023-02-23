@@ -27,6 +27,11 @@ func MakeAuditLogRequest(id, endpointURL string, requestTimeout time.Duration, a
 		return nil, fmt.Errorf("failed to create audit log http request: %w", err)
 	}
 
+	signedToken, err := justificationToken("talker-app")
+	if err != nil {
+		return nil, fmt.Errorf("couldn't generate justification token: %w", err)
+	}
+	req.Header.Set("justification-token", signedToken)
 	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", authToken))
 
 	// Insert the UUID used in tracing the log as a query parameter.
