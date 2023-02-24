@@ -51,9 +51,8 @@ type GRPC struct {
 	EndpointURL  string
 	TalkerClient talkerpb.TalkerClient
 
-	Config               *Config
-	BigQueryClient       *bigquery.Client
-	RequireJustification bool
+	Config         *Config
+	BigQueryClient *bigquery.Client
 }
 
 // Matching public key here: https://github.com/abcxyz/lumberjack/blob/92782c326681157221df37e0897ba234c5a22240/clients/go/test/grpc-app/main.go#L47
@@ -125,7 +124,7 @@ func testGRPCEndpoint(ctx context.Context, t *testing.T, g *GRPC) {
 			t.Errorf("could not greet: %v", err)
 		}
 		query := g.makeQueryForGRPC(id)
-		validateAuditLogsWithRetries(ctx, t, query, g.Config, 1, g.RequireJustification)
+		validateAuditLogsWithRetries(ctx, t, query, g.Config, 1)
 	})
 
 	t.Run("fail_req_unary_failure", func(t *testing.T) {
@@ -147,7 +146,7 @@ func testGRPCEndpoint(ctx context.Context, t *testing.T, g *GRPC) {
 			t.Errorf("Did not get err as expected. Instead got reply: %v", reply)
 		}
 		query := g.makeQueryForGRPC(id)
-		validateAuditLogsWithRetries(ctx, t, query, g.Config, 1, g.RequireJustification)
+		validateAuditLogsWithRetries(ctx, t, query, g.Config, 1)
 	})
 
 	t.Run("fibonacci_req_server_streaming_success", func(t *testing.T) {
@@ -172,7 +171,7 @@ func testGRPCEndpoint(ctx context.Context, t *testing.T, g *GRPC) {
 			t.Logf("Received value %v", place.Value)
 		}
 		query := g.makeQueryForGRPC(id)
-		validateAuditLogsWithRetries(ctx, t, query, g.Config, places, g.RequireJustification)
+		validateAuditLogsWithRetries(ctx, t, query, g.Config, places)
 	})
 
 	t.Run("addition_req_client_streaming_success", func(t *testing.T) {
@@ -199,7 +198,7 @@ func testGRPCEndpoint(ctx context.Context, t *testing.T, g *GRPC) {
 		t.Logf("Value returned: %d", reply.Sum)
 
 		query := g.makeQueryForGRPC(id)
-		validateAuditLogsWithRetries(ctx, t, query, g.Config, totalNumbers, g.RequireJustification)
+		validateAuditLogsWithRetries(ctx, t, query, g.Config, totalNumbers)
 	})
 
 	t.Run("fail_on_four_req_client_stream_failure", func(t *testing.T) {
@@ -235,7 +234,7 @@ func testGRPCEndpoint(ctx context.Context, t *testing.T, g *GRPC) {
 		}
 		query := g.makeQueryForGRPC(id)
 		// we expect to have 4 audit logs - the last sent number (5) will be after the err occurred.
-		validateAuditLogsWithRetries(ctx, t, query, g.Config, 4, g.RequireJustification)
+		validateAuditLogsWithRetries(ctx, t, query, g.Config, 4)
 	})
 }
 

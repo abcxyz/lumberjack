@@ -105,7 +105,7 @@ func makeBigQueryClient(ctx context.Context, tb testing.TB, projectID string) *b
 // This calls the database to validate that an audit log exists with expected format
 // and validate how many logs we expect to match, in order to handle streaming use cases.
 // It uses the retries that are specified in the Config file.
-func validateAuditLogsWithRetries(ctx context.Context, tb testing.TB, bqQuery *bigquery.Query, cfg *Config, wantNum int, requireJustification bool) {
+func validateAuditLogsWithRetries(ctx context.Context, tb testing.TB, bqQuery *bigquery.Query, cfg *Config, wantNum int) {
 	tb.Helper()
 	tb.Logf("querying BigQuery:\n%s", bqQuery.Q)
 	var logEntries []*loggingpb.LogEntry
@@ -127,7 +127,7 @@ func validateAuditLogsWithRetries(ctx context.Context, tb testing.TB, bqQuery *b
 	}
 	for i, logEntry := range logEntries {
 		tb.Logf("diffing LogEntry for index %v", i)
-		diffLogEntry(tb, logEntry, requireJustification)
+		diffLogEntry(tb, logEntry)
 	}
 }
 
@@ -147,7 +147,7 @@ func parseJSONPayload(tb testing.TB, logEntry *loggingpb.LogEntry) (*audit.Audit
 // TODO: https://github.com/abcxyz/lumberjack/issues/381
 // Make test logs consistent and
 // see whether we can compare the whole log entry instead of validating specific fields.
-func diffLogEntry(tb testing.TB, logEntry *loggingpb.LogEntry, requireJustification bool) {
+func diffLogEntry(tb testing.TB, logEntry *loggingpb.LogEntry) {
 	tb.Helper()
 
 	tb.Logf("Got logEntry is %s", logEntry.String())
@@ -174,9 +174,7 @@ func diffLogEntry(tb testing.TB, logEntry *loggingpb.LogEntry, requireJustificat
 		tb.Errorf("queryResult field %v is blank", "jsonPayload.method_name")
 	}
 
-	if requireJustification {
-		checkJustification(tb, jsonPayloadInfo)
-	}
+	checkJustification(tb, jsonPayloadInfo)
 }
 
 func checkJustification(tb testing.TB, jsonPayloadInfo *audit.AuditLog) {

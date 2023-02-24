@@ -123,8 +123,7 @@ func TestGRPCEndpoints(t *testing.T) {
 				IDToken:     idToken,
 				EndpointURL: test,
 
-				Config:               cfg,
-				RequireJustification: true,
+				Config: cfg,
 			})
 		})
 	}
