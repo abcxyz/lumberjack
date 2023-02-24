@@ -22,3 +22,7 @@ backend:
     address:
     insecure_enabled: false
     impersonate_account:
+justification:
+  enabled: true
+  # fake public_keys_endpoint, will get overridden by environment variables.
+  public_keys_endpoint: "localhost:8080"
