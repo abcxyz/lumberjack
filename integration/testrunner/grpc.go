@@ -99,7 +99,7 @@ func testGRPCEndpoint(ctx context.Context, t *testing.T, g *GRPC) {
 		g.TalkerClient = talkerpb.NewTalkerClient(conn)
 	}
 
-	signedToken, err := justificationToken()
+	signedToken, err := justificationToken("talker-app")
 	if err != nil {
 		t.Fatalf("couldn't generate justification token: %v", err)
 	}
