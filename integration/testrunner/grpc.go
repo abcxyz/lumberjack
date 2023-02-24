@@ -35,6 +35,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/credentials/oauth"
+	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
 
 	jvspb "github.com/abcxyz/jvs/apis/v0"
@@ -97,6 +98,18 @@ func testGRPCEndpoint(ctx context.Context, t *testing.T, g *GRPC) {
 		})
 		g.TalkerClient = talkerpb.NewTalkerClient(conn)
 	}
+
+	signedToken, err := justificationToken()
+	if err != nil {
+		t.Fatalf("couldn't generate justification token: %v", err)
+	}
+
+	md, ok := metadata.FromOutgoingContext(ctx)
+	if !ok {
+		md = metadata.New(map[string]string{})
+	}
+	md.Set("justification-token", signedToken)
+	ctx = metadata.NewOutgoingContext(ctx, md)
 
 	if g.BigQueryClient == nil {
 		bqClient := makeBigQueryClient(ctx, t, g.ProjectID)
