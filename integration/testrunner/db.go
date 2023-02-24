@@ -196,6 +196,7 @@ func getJustification(tb testing.TB, jsonPayloadInfo *audit.AuditLog) *structpb.
 	if err != nil {
 		tb.Fatalf("failed to marshal justification: %v", err)
 	}
+	tb.Logf("bytes is %s", string(b))
 	var tokStruct structpb.Struct
 	if err := protojson.Unmarshal(b, &tokStruct); err != nil {
 		tb.Fatalf("failed to decode justification token: %v", err)
