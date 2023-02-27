@@ -60,6 +60,7 @@ import io.grpc.StatusRuntimeException;
 import io.grpc.stub.StreamObserver;
 import java.io.IOException;
 import java.io.OutputStream;
+import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.util.HashMap;
 import java.util.Map;
@@ -134,7 +135,9 @@ public class TalkerService {
 
   /** Main launches the server from the command line. */
   public static void main(String[] args) throws IOException, InterruptedException {
-    HttpServer jwkServer = HttpServer.create(new InetSocketAddress(8081), 0);
+    InetAddress localhost = InetAddress.getByName("localhost");
+    HttpServer jwkServer =
+        HttpServer.create(new InetSocketAddress(localhost.getHostName(), 8080), 0);
     jwkServer.createContext("/.well-known/jwks", new JWKHandler());
     jwkServer.setExecutor(null); // creates a default executor
     jwkServer.start();
