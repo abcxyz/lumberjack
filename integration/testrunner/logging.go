@@ -27,7 +27,7 @@ func MakeAuditLogRequest(id, endpointURL string, requestTimeout time.Duration, a
 		return nil, fmt.Errorf("failed to create audit log http request: %w", err)
 	}
 
-	signedToken, err := justificationToken("talker-app")
+	signedToken, err := justificationToken("logging-shell")
 	if err != nil {
 		return nil, fmt.Errorf("couldn't generate justification token: %w", err)
 	}
