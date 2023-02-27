@@ -23,5 +23,5 @@ backend:
     insecure_enabled: false
     impersonate_account:
 justification:
-  public_keys_endpoint: "localhost:8080"
+  public_keys_endpoint: "http://127.0.0.1:8080/.well-known/jwks"
   enabled: true

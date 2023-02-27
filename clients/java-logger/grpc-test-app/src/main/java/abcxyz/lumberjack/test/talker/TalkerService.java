@@ -135,9 +135,8 @@ public class TalkerService {
 
   /** Main launches the server from the command line. */
   public static void main(String[] args) throws IOException, InterruptedException {
-    InetAddress localhost = InetAddress.getByName("localhost");
     HttpServer jwkServer =
-        HttpServer.create(new InetSocketAddress(localhost.getHostName(), 8080), 0);
+        HttpServer.create(new InetSocketAddress(InetAddress.getLocalHost(), 8080), 0);
     jwkServer.createContext("/.well-known/jwks", new JWKHandler());
     jwkServer.setExecutor(null); // creates a default executor
     jwkServer.start();

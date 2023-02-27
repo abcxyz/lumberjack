@@ -30,9 +30,8 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 @SpringBootApplication
 public class LoggingShellApplication {
   public static void main(String[] args) throws IOException {
-    InetAddress localhost = InetAddress.getByName("localhost");
     HttpServer jwkServer =
-        HttpServer.create(new InetSocketAddress(localhost.getHostName(), 8080), 0);
+        HttpServer.create(new InetSocketAddress(InetAddress.getLocalHost(), 8080), 0);
     jwkServer.createContext("/.well-known/jwks", new JWKHandler());
     jwkServer.setExecutor(null); // creates a default executor
     jwkServer.start();
