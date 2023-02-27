@@ -41,7 +41,7 @@ public class Selector {
 
   @JsonProperty("selector")
   @NonNull
-  private String pattern;
+  private String selector;
 
   private Directive directive;
   private LogType logType;
@@ -55,17 +55,17 @@ public class Selector {
   }
 
   public int getLength() {
-    return pattern.length();
+    return selector.length();
   }
 
   /** Determines if this selector should be applied to the method. */
   public boolean isApplicable(String methodIdentifier) {
-    if (pattern.equals(WILD_CARD)) {
+    if (selector.equals(WILD_CARD)) {
       return true;
-    } else if (pattern.endsWith(WILD_CARD)) {
-      return methodIdentifier.startsWith(pattern.substring(0, pattern.length() - 1));
+    } else if (selector.endsWith(WILD_CARD)) {
+      return methodIdentifier.startsWith(selector.substring(0, selector.length() - 1));
     } else {
-      return methodIdentifier.startsWith(pattern);
+      return methodIdentifier.startsWith(selector);
     }
   }
 

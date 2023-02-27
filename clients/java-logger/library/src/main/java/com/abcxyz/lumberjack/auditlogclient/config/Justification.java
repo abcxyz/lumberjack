@@ -31,7 +31,6 @@ public class Justification {
   @JsonProperty("public_keys_endpoint")
   private String publicKeysEndpoint;
 
-  @JsonProperty("enabled")
   private boolean enabled;
 
   // Default value is false, this field will be ignored if justification is not enabled.

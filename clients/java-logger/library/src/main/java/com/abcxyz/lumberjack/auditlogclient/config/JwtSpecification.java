@@ -21,7 +21,6 @@ import com.auth0.jwt.JWT;
 import com.auth0.jwt.exceptions.JWTDecodeException;
 import com.auth0.jwt.interfaces.Claim;
 import com.auth0.jwt.interfaces.DecodedJWT;
-import com.fasterxml.jackson.annotation.JsonProperty;
 import io.grpc.Metadata;
 import java.util.Map;
 import java.util.Optional;
@@ -38,8 +37,7 @@ public class JwtSpecification implements SecuritySpecification {
   private String key;
   private String prefix;
 
-  @JsonProperty("jwks")
-  private JwksSpecification jwksSpecification;
+  private JwksSpecification jwks;
 
   @Override
   public boolean isApplicable(Metadata headers) {

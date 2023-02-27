@@ -69,7 +69,7 @@ public class SecurityContextTest {
     JwksSpecification expectedJwksSpec = new JwksSpecification();
     expectedJwksSpec.setEndpoint("https://example.com");
     expectedJwksSpec.setObject("object");
-    expectedJwtSpec.setJwksSpecification(expectedJwksSpec);
+    expectedJwtSpec.setJwks(expectedJwksSpec);
     expectedSecurityContext.setJwtSpecifications(List.of(expectedJwtSpec));
 
     assertThat(securityContext).isEqualTo(expectedSecurityContext);

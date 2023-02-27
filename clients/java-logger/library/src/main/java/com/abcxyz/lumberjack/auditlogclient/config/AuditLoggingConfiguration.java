@@ -40,8 +40,7 @@ public class AuditLoggingConfiguration {
   @JsonProperty("log_mode")
   private LogMode logMode;
 
-  @JsonProperty("condition")
-  private ConditionConfig conditions;
+  private ConditionConfig condition;
 
   private List<Selector> rules;
 
@@ -49,13 +48,12 @@ public class AuditLoggingConfiguration {
   @JsonProperty("security_context")
   private SecurityContext securityContext;
 
-  @JsonProperty("justification")
   private Justification justification = new Justification();
 
   private Map<String, String> labels;
 
-  public Filters getFilters() {
-    return conditions == null ? new Filters() : conditions.getFilters();
+  public Filters getRegex() {
+    return condition == null ? new Filters() : condition.getRegex();
   }
 
   // Defaul null and LOG_MODE_UNSPECIFIED log mode to FAIL_CLOSE.
@@ -76,8 +74,7 @@ public class AuditLoggingConfiguration {
 
   @Data
   private class ConditionConfig {
-    @JsonProperty("regex")
-    private Filters filters;
+    private Filters regex;
   }
 
   public BackendContext getBackend() {
