@@ -5,8 +5,8 @@ on:
     tags:
       - 'v*'
 env:
-  # .goreleaser.docker.yaml reads DOCKER_REPO
-  DOCKER_REPO: 'us-docker.pkg.dev/abcxyz-artifacts/docker-images'
+  SOURCE_DOCKER_IMAGE: 'us-docker.pkg.dev/lumberjack-dev-infra/images/lumberjack-server:${{ github.sha }}'
+  TARGET_DOCKER_IMAGE: 'us-docker.pkg.dev/abcxyz-artifacts/docker-images/lumberjack-server:${{ github.ref_name }}'
   WIF_PROVIDER: 'projects/638387980668/locations/global/workloadIdentityPools/github-pool/providers/github-provider'
   WIF_SERVICE_ACCOUNT: 'gh-access-sa@lumberjack-dev-infra.iam.gserviceaccount.com'
 
@@ -25,33 +25,20 @@ jobs:
       contents: 'read'
       id-token: 'write'
     steps:
-      - uses: 'docker/setup-qemu-action@e81a89b1732b9c48d79cd809d8d81d79c4647a18' # ratchet:docker/setup-qemu-action@v2
-
-      - uses: 'actions/checkout@755da8c3cf115ac066823e79a1e1788f8940201b' # ratchet:actions/checkout@v3
-        with:
-          fetch-depth: 0
-
-      - uses: 'actions/setup-go@6edd4406fa81c3da01a34fa6f6343087c207a568' # ratchet:actions/setup-go@v3
-        with:
-          go-version: '1.20'
-
       - id: 'auth'
         uses: 'google-github-actions/auth@c4799db9111fba4461e9f9da8732e5057b394f72' # ratchet:google-github-actions/auth@v0
         with:
           workload_identity_provider: '${{ env.WIF_PROVIDER }}'
           service_account: '${{ env.WIF_SERVICE_ACCOUNT }}'
-          token_format: 'access_token'
 
-      - uses: 'docker/login-action@f4ef78c080cd8ba55a85445d5b36e214a81df20a' # ratchet:docker/login-action@v2
-        with:
-          username: 'oauth2accesstoken'
-          password: '${{ steps.auth.outputs.access_token }}'
-          registry: 'us-docker.pkg.dev'
+      - name: 'Set up Cloud SDK'
+        uses: 'google-github-actions/setup-gcloud@62d4898025f6041e16b1068643bfc5a696863587' # ratchet:google-github-actions/setup-gcloud@v1
 
-      - uses: 'goreleaser/goreleaser-action@b508e2e3ef3b19d4e4146d4f8fb3ba9db644a757' # ratchet:goreleaser/goreleaser-action@v3
-        with:
-          version: 'v1.12.3' # Manually pinned
-          args: 'release -f .goreleaser.docker.yaml --rm-dist'
+      - name: 'Copy images to Release registry'
+        run: |-
+          gcloud container images add-tag --quiet ${{ env.SOURCE_DOCKER_IMAGE }}-amd64 ${{ env.TARGET_DOCKER_IMAGE }}-amd64
+          gcloud container images add-tag --quiet ${{ env.SOURCE_DOCKER_IMAGE }}-arm64 ${{ env.TARGET_DOCKER_IMAGE }}-arm64
+          gcloud container images add-tag --quiet ${{ env.SOURCE_DOCKER_IMAGE }} ${{ env.TARGET_DOCKER_IMAGE }}
 
   maven-release:
     # Run tests before the release
