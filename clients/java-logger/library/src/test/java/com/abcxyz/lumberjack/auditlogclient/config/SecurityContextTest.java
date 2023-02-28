@@ -21,6 +21,7 @@ import static org.mockito.Mockito.mock;
 
 import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.PropertyNamingStrategies;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 import io.grpc.Metadata;
 import java.io.IOException;
@@ -28,6 +29,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 public class SecurityContextTest {
@@ -39,12 +41,19 @@ public class SecurityContextTest {
    */
   private static final String ENCODED_Jwt =
       "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyLCJlbWFpbCI6Im1lQGV4YW1wbGUuY29tIn0.6hBdfWsZcIn4crnRNBSMgztRaacHWmZmAtbaOc-efnI";
+  private ObjectMapper mapper;
+
+  @BeforeEach
+  public void setupPropertyNaming() {
+    mapper = new ObjectMapper(new YAMLFactory());
+    mapper.setPropertyNamingStrategy(PropertyNamingStrategies.SNAKE_CASE);
+  }
 
   @Test
   public void getsJwtSpecifications() {
     JwtSpecification jwtSpecification = mock(JwtSpecification.class);
     SecurityContext securityContext = new SecurityContext(List.of(jwtSpecification));
-    assertThat(securityContext.getJwtSpecifications().get(0)).isEqualTo(jwtSpecification);
+    assertThat(securityContext.getFromRawJwt().get(0)).isEqualTo(jwtSpecification);
   }
 
   @Test
@@ -55,7 +64,6 @@ public class SecurityContextTest {
 
   @Test
   public void deserializesCorrectly() throws Exception {
-    ObjectMapper mapper = new ObjectMapper(new YAMLFactory());
     SecurityContext securityContext =
         mapper
             .readValue(
@@ -69,22 +77,21 @@ public class SecurityContextTest {
     JwksSpecification expectedJwksSpec = new JwksSpecification();
     expectedJwksSpec.setEndpoint("https://example.com");
     expectedJwksSpec.setObject("object");
-    expectedJwtSpec.setJwksSpecification(expectedJwksSpec);
-    expectedSecurityContext.setJwtSpecifications(List.of(expectedJwtSpec));
+    expectedJwtSpec.setJwks(expectedJwksSpec);
+    expectedSecurityContext.setFromRawJwt(List.of(expectedJwtSpec));
 
     assertThat(securityContext).isEqualTo(expectedSecurityContext);
   }
 
   @Test
   public void deserializesCorrectly_default() throws Exception {
-    ObjectMapper mapper = new ObjectMapper(new YAMLFactory());
     SecurityContext securityContext =
         mapper
             .readValue(
                 getClass().getClassLoader().getResourceAsStream("jwt_default.yml"),
                 AuditLoggingConfiguration.class)
             .getSecurityContext();
-    assertThat(securityContext.getJwtSpecifications()).isEmpty();
+    assertThat(securityContext.getFromRawJwt()).isEmpty();
 
     securityContext =
         mapper
@@ -92,12 +99,11 @@ public class SecurityContextTest {
                 getClass().getClassLoader().getResourceAsStream("jwt_default_2.yml"),
                 AuditLoggingConfiguration.class)
             .getSecurityContext();
-    assertThat(securityContext.getJwtSpecifications()).isEmpty();
+    assertThat(securityContext.getFromRawJwt()).isEmpty();
   }
 
   @Test
   public void failsWithNoSecurityContext() throws IOException {
-    ObjectMapper mapper = new ObjectMapper(new YAMLFactory());
     Assertions.assertThrows(
         JsonMappingException.class,
         () ->

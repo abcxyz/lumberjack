@@ -40,7 +40,7 @@ public class AuditLoggingConfigurationTest {
     expectedBackendContext.setLocal(local);
     assertThat(config.getBackend()).isEqualTo(expectedBackendContext);
 
-    assertThat(config.getConditions()).isNull();
+    assertThat(config.getCondition()).isNull();
     assertThat(config.getRules().size()).isEqualTo(1);
     assertThat(config.getLogMode()).isEqualTo(LogMode.FAIL_CLOSE);
     assertThat(config.getJustificaiton()).isEqualTo(new Justification());
@@ -62,7 +62,7 @@ public class AuditLoggingConfigurationTest {
     expectedBackendContext.setLocal(local);
     assertThat(config.getBackend()).isEqualTo(expectedBackendContext);
 
-    assertThat(config.getConditions()).isNull();
+    assertThat(config.getCondition()).isNull();
     assertThat(config.getRules().size()).isEqualTo(1);
     assertThat(config.getLogMode()).isEqualTo(LogMode.FAIL_CLOSE);
 
@@ -91,8 +91,8 @@ public class AuditLoggingConfigurationTest {
     expectedBackendContext.setLocal(local);
     assertThat(config.getBackend()).isEqualTo(expectedBackendContext);
 
-    assertThat(config.getFilters().getIncludes()).isEqualTo("*.include.example.com");
-    assertThat(config.getFilters().getExcludes()).isEqualTo("*.exclude.example.com");
+    assertThat(config.getRegex().getPrincipalInclude()).isEqualTo("*.include.example.com");
+    assertThat(config.getRegex().getPrincipalExclude()).isEqualTo("*.exclude.example.com");
     assertThat(config.getRules().size()).isEqualTo(1);
     assertThat(config.getLogMode()).isEqualTo(LogMode.FAIL_CLOSE);
     assertThat(config.getJustificaiton()).isEqualTo(new Justification());

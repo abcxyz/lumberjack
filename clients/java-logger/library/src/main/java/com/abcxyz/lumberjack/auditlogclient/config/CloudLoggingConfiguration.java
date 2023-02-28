@@ -17,7 +17,6 @@
 package com.abcxyz.lumberjack.auditlogclient.config;
 
 import com.abcxyz.lumberjack.auditlogclient.utils.ConfigUtils;
-import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.EqualsAndHashCode;
 import lombok.Setter;
 
@@ -28,7 +27,6 @@ public class CloudLoggingConfiguration {
       "AUDIT_CLIENT_BACKEND_CLOUDLOGGING_DEFAULT_PROJECT";
   private static final String CLOUD_LOG_PROJECT_KEY = "AUDIT_CLIENT_BACKEND_CLOUDLOGGING_PROJECT";
 
-  @JsonProperty("default_project")
   private boolean defaultProject;
 
   private String project;

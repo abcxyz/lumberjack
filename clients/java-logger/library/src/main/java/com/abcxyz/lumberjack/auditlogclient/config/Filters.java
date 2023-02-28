@@ -17,7 +17,6 @@
 package com.abcxyz.lumberjack.auditlogclient.config;
 
 import com.abcxyz.lumberjack.auditlogclient.utils.ConfigUtils;
-import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Data;
 
 @Data
@@ -25,17 +24,15 @@ public class Filters {
   static final String PRINCIPAL_INCLUDE_ENV_KEY = "AUDIT_CLIENT_CONDITION_REGEX_PRINCIPAL_INCLUDE";
   static final String PRINCIPAL_EXCLUDE_ENV_KEY = "AUDIT_CLIENT_CONDITION_REGEX_PRINCIPAL_EXCLUDE";
 
-  @JsonProperty("principal_include")
-  private String includes;
+  private String principalInclude;
 
-  @JsonProperty("principal_exclude")
-  private String excludes;
+  private String principalExclude;
 
-  public String getIncludes() {
-    return ConfigUtils.getEnvOrDefault(PRINCIPAL_INCLUDE_ENV_KEY, includes);
+  public String getPrincipalInclude() {
+    return ConfigUtils.getEnvOrDefault(PRINCIPAL_INCLUDE_ENV_KEY, principalInclude);
   }
 
-  public String getExcludes() {
-    return ConfigUtils.getEnvOrDefault(PRINCIPAL_EXCLUDE_ENV_KEY, excludes);
+  public String getPrincipalExclude() {
+    return ConfigUtils.getEnvOrDefault(PRINCIPAL_EXCLUDE_ENV_KEY, principalExclude);
   }
 }

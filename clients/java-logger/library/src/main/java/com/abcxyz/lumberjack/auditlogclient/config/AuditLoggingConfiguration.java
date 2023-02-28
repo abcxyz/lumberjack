@@ -18,7 +18,6 @@ package com.abcxyz.lumberjack.auditlogclient.config;
 
 import com.abcxyz.lumberjack.auditlogclient.utils.ConfigUtils;
 import com.abcxyz.lumberjack.v1alpha1.AuditLogRequest.LogMode;
-import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonSetter;
 import com.fasterxml.jackson.annotation.Nulls;
 import java.util.List;
@@ -37,25 +36,21 @@ public class AuditLoggingConfiguration {
   private String version;
   private BackendContext backend;
 
-  @JsonProperty("log_mode")
   private LogMode logMode;
 
-  @JsonProperty("condition")
-  private ConditionConfig conditions;
+  private ConditionConfig condition;
 
   private List<Selector> rules;
 
   @JsonSetter(nulls = Nulls.FAIL)
-  @JsonProperty("security_context")
   private SecurityContext securityContext;
 
-  @JsonProperty("justification")
   private Justification justification = new Justification();
 
   private Map<String, String> labels;
 
-  public Filters getFilters() {
-    return conditions == null ? new Filters() : conditions.getFilters();
+  public Filters getRegex() {
+    return condition == null ? new Filters() : condition.getRegex();
   }
 
   // Defaul null and LOG_MODE_UNSPECIFIED log mode to FAIL_CLOSE.
@@ -76,8 +71,7 @@ public class AuditLoggingConfiguration {
 
   @Data
   private class ConditionConfig {
-    @JsonProperty("regex")
-    private Filters filters;
+    private Filters regex;
   }
 
   public BackendContext getBackend() {

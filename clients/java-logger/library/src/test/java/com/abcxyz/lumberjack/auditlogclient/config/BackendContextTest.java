@@ -19,17 +19,26 @@ package com.abcxyz.lumberjack.auditlogclient.config;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.PropertyNamingStrategies;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 import java.io.IOException;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 @ExtendWith(MockitoExtension.class)
 public class BackendContextTest {
+  private ObjectMapper mapper;
+
+  @BeforeEach
+  void setupPropertyNaming() {
+    mapper = new ObjectMapper(new YAMLFactory());
+    mapper.setPropertyNamingStrategy(PropertyNamingStrategies.SNAKE_CASE);
+  }
+
   @Test
   public void remoteBackend() throws IOException {
-    ObjectMapper mapper = new ObjectMapper(new YAMLFactory());
     BackendContext backendContext =
         mapper
             .readValue(
@@ -44,7 +53,6 @@ public class BackendContextTest {
 
   @Test
   public void localBackend() throws IOException {
-    ObjectMapper mapper = new ObjectMapper(new YAMLFactory());
     BackendContext backendContext =
         mapper
             .readValue(
@@ -59,7 +67,6 @@ public class BackendContextTest {
 
   @Test
   public void cloudLoggingBackend_Default() throws IOException {
-    ObjectMapper mapper = new ObjectMapper(new YAMLFactory());
     BackendContext backendContext =
         mapper
             .readValue(
@@ -74,7 +81,6 @@ public class BackendContextTest {
 
   @Test
   public void cloudLoggingBackend_CustomProject() throws IOException {
-    ObjectMapper mapper = new ObjectMapper(new YAMLFactory());
     BackendContext backendContext =
         mapper
             .readValue(
@@ -89,7 +95,6 @@ public class BackendContextTest {
 
   @Test
   public void allAsBackend() throws IOException {
-    ObjectMapper mapper = new ObjectMapper(new YAMLFactory());
     BackendContext backendContext =
         mapper
             .readValue(

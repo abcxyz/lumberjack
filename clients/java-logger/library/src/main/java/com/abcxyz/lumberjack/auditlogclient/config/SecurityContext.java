@@ -17,7 +17,6 @@
 package com.abcxyz.lumberjack.auditlogclient.config;
 
 import com.abcxyz.lumberjack.auditlogclient.exceptions.AuthorizationException;
-import com.fasterxml.jackson.annotation.JsonProperty;
 import io.grpc.Metadata;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -31,19 +30,16 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 @NoArgsConstructor
 public class SecurityContext {
-  @JsonProperty("from_raw_jwt")
-  List<JwtSpecification> jwtSpecifications;
+  List<JwtSpecification> fromRawJwt;
 
-  List<JwtSpecification> getJwtSpecifications() {
-    return jwtSpecifications == null || jwtSpecifications.isEmpty()
-        ? Collections.emptyList()
-        : jwtSpecifications;
+  List<JwtSpecification> getFromRawJwt() {
+    return fromRawJwt == null || fromRawJwt.isEmpty() ? Collections.emptyList() : fromRawJwt;
   }
 
   /** This is intended to be extended as we add more ways to specify security contexts. */
   public List<SecuritySpecification> getSecuritySpecifications() {
     List<SecuritySpecification> securitySpecifications = new ArrayList<>();
-    securitySpecifications.addAll(getJwtSpecifications());
+    securitySpecifications.addAll(getFromRawJwt());
     return securitySpecifications;
   }
 

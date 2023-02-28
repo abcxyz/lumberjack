@@ -17,7 +17,6 @@
 package com.abcxyz.lumberjack.auditlogclient.config;
 
 import com.abcxyz.lumberjack.auditlogclient.utils.ConfigUtils;
-import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Data;
 
 @Data
@@ -31,13 +30,10 @@ public class RemoteConfiguration {
 
   private String address;
 
-  @JsonProperty("auth_audience")
   private String authAudience;
 
-  @JsonProperty("impersonate_account")
   private String impersonateAccount;
 
-  @JsonProperty("insecure_enabled")
   private boolean insecureEnabled; // meant for use in unit tests only
 
   public String getAddress() {
