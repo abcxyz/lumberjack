@@ -28,17 +28,15 @@ import java.time.Instant;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestAttribute;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.ResponseStatus;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 /** Endpoints for the shell app that imports/uses the Audit Logging client library. */
 @Slf4j
 @RequiredArgsConstructor
 @RestController
 public class LoggingController {
+
+  static final String JUSTIFICATION_TOKEN_HEADER_NAME = "justification-token";
   static final String TRACE_ID_PARAMETER_KEY = "trace_id";
   private static final String SERVICE_NAME = "java-shell-app";
 
@@ -50,7 +48,8 @@ public class LoggingController {
   @ResponseStatus(value = HttpStatus.OK)
   void loggingShell(
       @RequestParam(value = TRACE_ID_PARAMETER_KEY) String traceId,
-      @RequestAttribute(TokenInterceptor.INTERCEPTOR_USER_EMAIL_KEY) String userEmail)
+      @RequestAttribute(TokenInterceptor.INTERCEPTOR_USER_EMAIL_KEY) String userEmail,
+      @RequestHeader(JUSTIFICATION_TOKEN_HEADER_NAME) String jvsToken)
       throws LogProcessingException {
     Instant now = clock.instant();
     AuditLogRequest record =
@@ -66,8 +65,13 @@ public class LoggingController {
                         AuthenticationInfo.newBuilder().setPrincipalEmail(userEmail).build()))
             .setType(LogType.DATA_ACCESS)
             .putLabels(TRACE_ID_PARAMETER_KEY, traceId)
+            .setJustificationToken(jvsToken)
             .build();
     loggingClient.log(record);
-    log.info("Logged successfully with trace id: {} for user: {}", traceId, userEmail);
+    log.info(
+        "Logged successfully with trace id: {} justification tokenL {} for user: {}",
+        traceId,
+        jvsToken,
+        userEmail);
   }
 }

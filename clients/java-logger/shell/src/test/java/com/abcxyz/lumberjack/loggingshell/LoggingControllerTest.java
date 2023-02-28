@@ -44,15 +44,20 @@ public class LoggingControllerTest {
   private static final String TEST_TRACE_ID = "testTraceId";
   private static final String TEST_EMAIL = "testEmail";
 
+  private static final String TEST_JVS_TOKEN =
+      "eyJhbGciOiJFUzI1NiIsImtpZCI6ImludGVnLWtleSIsInR5cCI6IkpXVCJ9.eyJhdWQiOlsiaHR0cCJdLCJleHAiOjE2NzcyODAzMjEsImlhdCI6MTY3NzI3NjcyMSwiaXNzIjoibHVtYmVyamFjay10ZXN0LXJ1bm5lciIsImp0aSI6IjkwMTdiZGJkLTViNDktNGVmOS1hZjllLTdmMDkxOWZmNGFiZiIsImp1c3RzIjpbeyJjYXRlZ29yeSI6InRlc3QiLCJ2YWx1ZSI6InRlc3QifV0sIm5iZiI6MTY3NzI3NjcyMSwic3ViIjoibHVtYmVyamFjay1pbnRlZyJ9.GzwrHJg2DbQAA64lOJcNGcBynFftIzY5eGUR9brHd9t6GTRImDHQUiuE4sQBYkDaKoEoPUh_cDca5UkGTbqmcg";
+
   private static final Timestamp TEST_TIMESTAMP =
       Timestamp.newBuilder().setSeconds(1577836800).build();
   private static final MockHttpServletRequestBuilder GET_REQUEST_BUILDER = get(REQUEST_PATH);
   private static final MockHttpServletRequestBuilder GET_REQUEST_BUILDER_WITH_EMAIL =
       get(REQUEST_PATH).requestAttr(TokenInterceptor.INTERCEPTOR_USER_EMAIL_KEY, TEST_EMAIL);
-  private static final MockHttpServletRequestBuilder GET_REQUEST_BUILDER_WITH_EMAIL_AND_TRACE_ID =
-      get(REQUEST_PATH)
-          .requestAttr(TokenInterceptor.INTERCEPTOR_USER_EMAIL_KEY, TEST_EMAIL)
-          .param(LoggingController.TRACE_ID_PARAMETER_KEY, TEST_TRACE_ID);
+  private static final MockHttpServletRequestBuilder
+      GET_REQUEST_BUILDER_WITH_EMAIL_AND_TRACE_ID_AND_JVS_TOKEN =
+          get(REQUEST_PATH)
+              .requestAttr(TokenInterceptor.INTERCEPTOR_USER_EMAIL_KEY, TEST_EMAIL)
+              .param(LoggingController.TRACE_ID_PARAMETER_KEY, TEST_TRACE_ID)
+              .header(LoggingController.JUSTIFICATION_TOKEN_HEADER_NAME, TEST_JVS_TOKEN);
 
   @Autowired private MockMvc mockMvc;
   @MockBean private LoggingClient loggingClient;
@@ -73,19 +78,21 @@ public class LoggingControllerTest {
 
   @Test
   void loggingWithTraceIdReturnsOk() throws Exception {
-    mockMvc.perform(GET_REQUEST_BUILDER_WITH_EMAIL_AND_TRACE_ID).andExpect(status().isOk());
+    mockMvc
+        .perform(GET_REQUEST_BUILDER_WITH_EMAIL_AND_TRACE_ID_AND_JVS_TOKEN)
+        .andExpect(status().isOk());
   }
 
   @Test
   void loggingWithTimestampSet() throws Exception {
-    mockMvc.perform(GET_REQUEST_BUILDER_WITH_EMAIL_AND_TRACE_ID);
+    mockMvc.perform(GET_REQUEST_BUILDER_WITH_EMAIL_AND_TRACE_ID_AND_JVS_TOKEN);
     verify(loggingClient).log(auditLogRequestCaptor.capture());
     assertThat(auditLogRequestCaptor.getValue().getTimestamp()).isEqualTo(TEST_TIMESTAMP);
   }
 
   @Test
   void loggingUsesTheEmailInRequestAuthenticationInfo() throws Exception {
-    mockMvc.perform(GET_REQUEST_BUILDER_WITH_EMAIL_AND_TRACE_ID);
+    mockMvc.perform(GET_REQUEST_BUILDER_WITH_EMAIL_AND_TRACE_ID_AND_JVS_TOKEN);
     verify(loggingClient).log(auditLogRequestCaptor.capture());
     assertThat(
             auditLogRequestCaptor
@@ -97,13 +104,20 @@ public class LoggingControllerTest {
   }
 
   @Test
+  void loggingUsesJVSToken() throws Exception {
+    mockMvc.perform(GET_REQUEST_BUILDER_WITH_EMAIL_AND_TRACE_ID_AND_JVS_TOKEN);
+    verify(loggingClient).log(auditLogRequestCaptor.capture());
+    assertThat(auditLogRequestCaptor.getValue().getJustificationToken()).isEqualTo(TEST_JVS_TOKEN);
+  }
+
+  @Test
   void loggingWithoutInterceptedEmailCausesBadRequestError() throws Exception {
     mockMvc.perform(GET_REQUEST_BUILDER).andExpect(status().isBadRequest());
   }
 
   @Test
   void loggingWithCustomTraceIdMakesAuditLoggingClientCallWithCustomTraceId() throws Exception {
-    mockMvc.perform(GET_REQUEST_BUILDER_WITH_EMAIL_AND_TRACE_ID);
+    mockMvc.perform(GET_REQUEST_BUILDER_WITH_EMAIL_AND_TRACE_ID_AND_JVS_TOKEN);
     verify(loggingClient).log(auditLogRequestCaptor.capture());
     assertThat(
             auditLogRequestCaptor

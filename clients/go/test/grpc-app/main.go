@@ -16,23 +16,16 @@ package main
 
 import (
 	"context"
-	"crypto/x509"
-	"encoding/json"
-	"encoding/pem"
 	"errors"
 	"flag"
 	"fmt"
 	"io"
 	"log"
 	"net"
-	"net/http"
-	"net/http/httptest"
 	"os"
 	"os/signal"
-	"strings"
 	"syscall"
 
-	"github.com/lestrrat-go/jwx/v2/jwk"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/reflection"
@@ -40,18 +33,11 @@ import (
 
 	"github.com/abcxyz/lumberjack/clients/go/pkg/audit"
 	"github.com/abcxyz/lumberjack/clients/go/pkg/auditopt"
+	"github.com/abcxyz/lumberjack/clients/go/test/util"
 	"github.com/abcxyz/lumberjack/internal/talkerpb"
 )
 
 var port = flag.Int("port", 8080, "The server port")
-
-// Matching private key here: https://github.com/abcxyz/lumberjack/blob/92782c326681157221df37e0897ba234c5a22240/integration/testrunner/grpcrunner/grpc.go#L60
-const publicKeyString = `
------BEGIN PUBLIC KEY-----
-MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEhBWj8vw5LkPRWbCr45k0cOarIcWg
-ApM03mSYF911de5q1wGOL7R9N8pC7jo2xbS+i1wGsMiz+AWnhhZIQcNTKg==
------END PUBLIC KEY-----
-`
 
 func main() {
 	if err := realMain(); err != nil {
@@ -63,9 +49,9 @@ func realMain() (outErr error) {
 	ctx, done := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer done()
 
-	pubKeyEndpoint, shutdown, err := startLocalPublicKeyServer()
+	pubKeyEndpoint, shutdown, err := util.StartLocalPublicKeyServer()
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to start local public key server: %w", err)
 	}
 	defer shutdown()
 
@@ -113,42 +99,6 @@ func realMain() (outErr error) {
 	log.Println("server stopped.")
 
 	return nil
-}
-
-// Parse pre-made key and set up a server to host it in JWKS format.
-// This is intended to stand in for the JVS in the integration tests.
-func startLocalPublicKeyServer() (string, func(), error) {
-	block, _ := pem.Decode([]byte(strings.TrimSpace(publicKeyString)))
-	key, err := x509.ParsePKIXPublicKey(block.Bytes)
-	if err != nil {
-		log.Printf("Err when parsing key %v", err)
-		return "", nil, fmt.Errorf("failed to parse public key: %w", err)
-	}
-	ecdsaKey, err := jwk.FromRaw(key)
-	if err != nil {
-		log.Printf("Err when converting key to jwk %v", err)
-		return "", nil, fmt.Errorf("failed to parse jwk: %w", err)
-	}
-	if err := ecdsaKey.Set(jwk.KeyIDKey, "integ-key"); err != nil {
-		log.Printf("Err when setting key id %v", err)
-		return "", nil, fmt.Errorf("failed to set key id: %w", err)
-	}
-
-	jwks := make(map[string][]jwk.Key)
-	jwks["keys"] = []jwk.Key{ecdsaKey}
-	j, err := json.MarshalIndent(jwks, "", " ")
-	if err != nil {
-		log.Printf("Err when creating jwks json %v", err)
-		return "", nil, fmt.Errorf("failed to marshal jwks: %w", err)
-	}
-	path := "/.well-known/jwks"
-	mux := http.NewServeMux()
-	mux.HandleFunc(path, func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusOK)
-		fmt.Fprintf(w, "%s", j)
-	})
-	svr := httptest.NewServer(mux)
-	return svr.URL + path, func() { svr.Close() }, nil
 }
 
 type server struct {
