@@ -13,15 +13,14 @@
 # limitations under the License.
 
 version: v1alpha1
-condition:
-  regex:
-    principal_include:
-    principal_exclude:
-backend:
-  remote:
-    address:
-    insecure_enabled: false
-    impersonate_account:
+security_context:
+  from_raw_jwt:
+  - key: "authorization"
+    prefix: "Bearer "
+rules:
+- selector: "*"
+  directive: AUDIT_REQUEST_AND_RESPONSE
 justification:
-  public_keys_endpoint: "http://127.0.0.1:8080/.well-known/jwks"
   enabled: true
+  # fake public_keys_endpoint, will get overridden by environment variables.
+  public_keys_endpoint: "localhost:8080"

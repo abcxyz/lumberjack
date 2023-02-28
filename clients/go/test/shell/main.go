@@ -35,6 +35,7 @@ import (
 	"github.com/abcxyz/lumberjack/clients/go/apis/v1alpha1"
 	"github.com/abcxyz/lumberjack/clients/go/pkg/audit"
 	"github.com/abcxyz/lumberjack/clients/go/pkg/auditopt"
+	"github.com/abcxyz/lumberjack/clients/go/test/util"
 	"github.com/abcxyz/pkg/logging"
 )
 
@@ -97,6 +98,12 @@ func (h *handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	jvsToken := strings.TrimSpace(r.Header.Get("justification-token"))
+	if jvsToken == "" {
+		http.Error(w, "justification-token header cannot be blank", http.StatusBadRequest)
+		return
+	}
+
 	// Generate a minimal and valid AuditLogRequest that stores the traceID in the
 	// labels.
 	auditLogRequest := &v1alpha1.AuditLogRequest{
@@ -108,7 +115,8 @@ func (h *handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			},
 			MethodName: "loggingShell",
 		},
-		Labels: map[string]string{traceIDKey: traceID},
+		Labels:             map[string]string{traceIDKey: traceID},
+		JustificationToken: jvsToken,
 	}
 
 	// Use the audit client to emit an application audit
@@ -140,6 +148,17 @@ func main() {
 //   - using a cancellable context
 //   - listening to incoming requests in a goroutine
 func realMain(ctx context.Context) error {
+	pubKeyEndpoint, shutdown, err := util.StartLocalPublicKeyServer()
+	if err != nil {
+		return fmt.Errorf("failed to start local public key server: %w", err)
+	}
+	defer shutdown()
+
+	// Override JVS public key endpoint since we start a local one here in test.
+	if err := os.Setenv("AUDIT_CLIENT_JUSTIFICATION_PUBLIC_KEYS_ENDPOINT", pubKeyEndpoint); err != nil {
+		return fmt.Errorf("failed to set env: %w", err)
+	}
+
 	// Create a ServeMux with a handler containing the audit client.
 	client, err := audit.NewClient(ctx, auditopt.FromConfigFile(""))
 	if err != nil {

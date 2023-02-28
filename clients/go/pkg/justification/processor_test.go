@@ -137,7 +137,7 @@ type fakeValidator struct {
 	justifications []*jvspb.Justification
 }
 
-func (v *fakeValidator) ValidateJWT(jvsToken string) (jwt.Token, error) {
+func (v *fakeValidator) ValidateJWT(_ context.Context, jvsToken string) (jwt.Token, error) {
 	if v.returnErr {
 		return nil, fmt.Errorf("failed to validate JWT")
 	}
