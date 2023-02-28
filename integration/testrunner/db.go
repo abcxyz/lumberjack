@@ -187,7 +187,7 @@ func checkJustification(tb testing.TB, jsonPayloadInfo *audit.AuditLog) {
 	if err != nil {
 		tb.Fatalf("failed to marshal justification: %v", err)
 	}
-	if string(b) == "null" {
+	if string(b) == "null" || string(b) == "" {
 		tb.Errorf("queryResult field %v is blank", "jsonPayload.metadata.justification")
 	}
 }
