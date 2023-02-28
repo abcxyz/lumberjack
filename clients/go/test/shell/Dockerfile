@@ -23,6 +23,8 @@ FROM scratch
 COPY --from=builder /tmp/etc-passwd /etc/passwd
 COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
 COPY --from=builder /go/bin/app /app
+# Copy the client config.
+COPY clients/go/test/shell/config.yaml /etc/lumberjack/config.yaml
 USER nobody
 
 EXPOSE 8080

@@ -16,13 +16,47 @@
 
 package com.abcxyz.lumberjack.loggingshell;
 
+import com.sun.net.httpserver.HttpExchange;
+import com.sun.net.httpserver.HttpHandler;
+import com.sun.net.httpserver.HttpServer;
+import java.io.IOException;
+import java.io.OutputStream;
+import java.net.InetAddress;
+import java.net.InetSocketAddress;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 
 /** Entry point for the Logging Shell/Test app. */
 @SpringBootApplication
 public class LoggingShellApplication {
-  public static void main(String[] args) {
+  public static void main(String[] args) throws IOException {
+    HttpServer jwkServer =
+        HttpServer.create(new InetSocketAddress(InetAddress.getLocalHost(), 8080), 0);
+    jwkServer.createContext("/.well-known/jwks", new JWKHandler());
+    jwkServer.setExecutor(null); // creates a default executor
+    jwkServer.start();
     SpringApplication.run(LoggingShellApplication.class, args);
+  }
+
+  static class JWKHandler implements HttpHandler {
+    // Matching private key here:
+    // https://github.com/abcxyz/lumberjack/blob/main/integration/testrunner/grpcrunner/grpc.go#L59
+    private static final String PUBLIC_JWK =
+        "{"
+            + "\"crv\": \"P-256\","
+            + "\"kid\": \"integ-key\","
+            + "\"kty\": \"EC\","
+            + "\"x\": \"hBWj8vw5LkPRWbCr45k0cOarIcWgApM03mSYF911de4\","
+            + "\"y\": \"atcBji-0fTfKQu46NsW0votcBrDIs_gFp4YWSEHDUyo\""
+            + "}";
+
+    @Override
+    public void handle(HttpExchange t) throws IOException {
+      String response = String.format("{\"keys\": [%s]}", PUBLIC_JWK);
+      t.sendResponseHeaders(200, response.length());
+      OutputStream os = t.getResponseBody();
+      os.write(response.getBytes());
+      os.close();
+    }
   }
 }
