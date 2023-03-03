@@ -17,14 +17,12 @@
 package com.abcxyz.lumberjack.auditlogclient.config;
 
 import com.abcxyz.lumberjack.auditlogclient.utils.ConfigUtils;
-import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Data;
 
 @Data
 public class LocalConfiguration {
   private static final String LOG_OUT_ENABLED_KEY = "AUDIT_CLIENT_LOG_OUT_ENABLED";
 
-  @JsonProperty("log_out_enabled")
   private boolean logOutEnabled;
 
   public boolean logOutEnabled() {

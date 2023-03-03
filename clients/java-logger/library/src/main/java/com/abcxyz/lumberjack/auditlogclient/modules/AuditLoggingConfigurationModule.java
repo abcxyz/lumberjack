@@ -19,6 +19,7 @@ package com.abcxyz.lumberjack.auditlogclient.modules;
 import com.abcxyz.lumberjack.auditlogclient.config.AuditLoggingConfiguration;
 import com.abcxyz.lumberjack.auditlogclient.utils.ConfigUtils;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.PropertyNamingStrategies;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 import com.google.inject.AbstractModule;
 import com.google.inject.Provides;
@@ -36,6 +37,7 @@ public class AuditLoggingConfigurationModule extends AbstractModule {
     try {
       try (InputStream input = getClass().getClassLoader().getResourceAsStream(configName)) {
         ObjectMapper mapper = new ObjectMapper(new YAMLFactory());
+        mapper.setPropertyNamingStrategy(PropertyNamingStrategies.SNAKE_CASE);
         return mapper.readValue(input, AuditLoggingConfiguration.class);
       }
     } catch (IOException e) {
