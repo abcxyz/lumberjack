@@ -17,7 +17,6 @@
 package com.abcxyz.lumberjack.auditlogclient.config;
 
 import com.abcxyz.lumberjack.auditlogclient.utils.ConfigUtils;
-import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Data;
 
 @Data
@@ -28,14 +27,11 @@ public class Justification {
   private static final String JUSTIFICATION_ALLOW_BREAKGLASS_ENV_KEY =
       "AUDIT_CLIENT_JUSTIFICATION_ALLOW_BREAKGLASS";
 
-  @JsonProperty("public_keys_endpoint")
   private String publicKeysEndpoint;
 
-  @JsonProperty("enabled")
   private boolean enabled;
 
   // Default value is false, this field will be ignored if justification is not enabled.
-  @JsonProperty("allow_breakglass")
   private boolean allowBreakglass;
 
   public String getPublicKeysEndpoint() {

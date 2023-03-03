@@ -27,22 +27,26 @@ import java.util.regex.Pattern;
 
 public class FilteringProcessorModule extends AbstractModule {
   private List<Pattern> includePatterns(Filters filters) {
-    if (filters == null || filters.getIncludes() == null || filters.getIncludes().isBlank()) {
+    if (filters == null
+        || filters.getPrincipalInclude() == null
+        || filters.getPrincipalInclude().isBlank()) {
       return Collections.emptyList();
     }
     List<Pattern> includePatternsFromString = new ArrayList<>();
-    for (String regex : filters.getIncludes().split(",")) {
+    for (String regex : filters.getPrincipalInclude().split(",")) {
       includePatternsFromString.add(Pattern.compile(regex.strip()));
     }
     return includePatternsFromString;
   }
 
   private List<Pattern> excludePatterns(Filters filters) {
-    if (filters == null || filters.getExcludes() == null || filters.getExcludes().isBlank()) {
+    if (filters == null
+        || filters.getPrincipalExclude() == null
+        || filters.getPrincipalExclude().isBlank()) {
       return Collections.emptyList();
     }
     List<Pattern> excludePatternsFromString = new ArrayList<>();
-    for (String regex : filters.getExcludes().split(",")) {
+    for (String regex : filters.getPrincipalExclude().split(",")) {
       excludePatternsFromString.add(Pattern.compile(regex.strip()));
     }
     return excludePatternsFromString;

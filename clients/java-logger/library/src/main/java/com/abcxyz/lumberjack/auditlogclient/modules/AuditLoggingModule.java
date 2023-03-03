@@ -42,7 +42,7 @@ public class AuditLoggingModule extends AbstractModule {
 
   @Provides
   public Filters filters(AuditLoggingConfiguration auditLoggingConfiguration) {
-    return auditLoggingConfiguration.getFilters();
+    return auditLoggingConfiguration.getRegex();
   }
 
   @Provides

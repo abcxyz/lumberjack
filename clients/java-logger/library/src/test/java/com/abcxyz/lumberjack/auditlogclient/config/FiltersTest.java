@@ -30,14 +30,14 @@ public class FiltersTest {
   @Test
   public void getsIncludes() {
     String includeString = "*.default.com";
-    filters.setIncludes(includeString);
-    assertThat(filters.getIncludes()).isEqualTo(includeString);
+    filters.setPrincipalInclude(includeString);
+    assertThat(filters.getPrincipalInclude()).isEqualTo(includeString);
   }
 
   @Test
   public void getsExcludes() {
     String excludeString = "*.default.com";
-    filters.setExcludes(excludeString);
-    assertThat(filters.getExcludes()).isEqualTo(excludeString);
+    filters.setPrincipalExclude(excludeString);
+    assertThat(filters.getPrincipalExclude()).isEqualTo(excludeString);
   }
 }
