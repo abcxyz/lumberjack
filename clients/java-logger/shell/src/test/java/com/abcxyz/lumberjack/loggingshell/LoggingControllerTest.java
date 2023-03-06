@@ -77,23 +77,18 @@ public class LoggingControllerTest {
   }
 
   @Test
-  void loggingWithTraceIdReturnsOk() throws Exception {
+  void loggingWithoutInterceptedEmailCausesBadRequestError() throws Exception {
+    mockMvc.perform(GET_REQUEST_BUILDER).andExpect(status().isBadRequest());
+  }
+
+  @Test
+  void loggingWithTraceIdAndCustomInfoAndAssertResult() throws Exception {
     mockMvc
         .perform(GET_REQUEST_BUILDER_WITH_EMAIL_AND_TRACE_ID_AND_JVS_TOKEN)
         .andExpect(status().isOk());
-  }
-
-  @Test
-  void loggingWithTimestampSet() throws Exception {
-    mockMvc.perform(GET_REQUEST_BUILDER_WITH_EMAIL_AND_TRACE_ID_AND_JVS_TOKEN);
     verify(loggingClient).log(auditLogRequestCaptor.capture());
     assertThat(auditLogRequestCaptor.getValue().getTimestamp()).isEqualTo(TEST_TIMESTAMP);
-  }
-
-  @Test
-  void loggingUsesTheEmailInRequestAuthenticationInfo() throws Exception {
-    mockMvc.perform(GET_REQUEST_BUILDER_WITH_EMAIL_AND_TRACE_ID_AND_JVS_TOKEN);
-    verify(loggingClient).log(auditLogRequestCaptor.capture());
+    assertThat(auditLogRequestCaptor.getValue().getJustificationToken()).isEqualTo(TEST_JVS_TOKEN);
     assertThat(
             auditLogRequestCaptor
                 .getValue()
@@ -101,24 +96,6 @@ public class LoggingControllerTest {
                 .getAuthenticationInfo()
                 .getPrincipalEmail())
         .isEqualTo(TEST_EMAIL);
-  }
-
-  @Test
-  void loggingUsesJVSToken() throws Exception {
-    mockMvc.perform(GET_REQUEST_BUILDER_WITH_EMAIL_AND_TRACE_ID_AND_JVS_TOKEN);
-    verify(loggingClient).log(auditLogRequestCaptor.capture());
-    assertThat(auditLogRequestCaptor.getValue().getJustificationToken()).isEqualTo(TEST_JVS_TOKEN);
-  }
-
-  @Test
-  void loggingWithoutInterceptedEmailCausesBadRequestError() throws Exception {
-    mockMvc.perform(GET_REQUEST_BUILDER).andExpect(status().isBadRequest());
-  }
-
-  @Test
-  void loggingWithCustomTraceIdMakesAuditLoggingClientCallWithCustomTraceId() throws Exception {
-    mockMvc.perform(GET_REQUEST_BUILDER_WITH_EMAIL_AND_TRACE_ID_AND_JVS_TOKEN);
-    verify(loggingClient).log(auditLogRequestCaptor.capture());
     assertThat(
             auditLogRequestCaptor
                 .getValue()
