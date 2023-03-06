@@ -37,9 +37,12 @@ public class SelectorTest {
   }
 
   @Test
-  public void getsSelectorlength() {
+  public void getsSelectorlengthAndIsApplicable() {
     Selector selector = new Selector("com.example", null, null);
     assertThat(selector.getLength()).isEqualTo(11);
+    assertThat(selector.isApplicable("com.example")).isTrue();
+    assertThat(selector.isApplicable("com.example.Hello")).isTrue();
+    assertThat(selector.isApplicable("com.other.Hello")).isFalse();
   }
 
   @Test
@@ -52,14 +55,6 @@ public class SelectorTest {
   public void getsDirective_default() {
     Selector selector = new Selector("", null, null);
     assertThat(selector.getDirective()).isEqualTo(Directive.AUDIT);
-  }
-
-  @Test
-  public void isApplicable() {
-    Selector selector = new Selector("com.example", null, null);
-    assertThat(selector.isApplicable("com.example")).isTrue();
-    assertThat(selector.isApplicable("com.example.Hello")).isTrue();
-    assertThat(selector.isApplicable("com.other.Hello")).isFalse();
   }
 
   @Test
