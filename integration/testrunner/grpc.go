@@ -23,14 +23,10 @@ import (
 	"io"
 	"strings"
 	"testing"
-	"time"
 
 	"cloud.google.com/go/bigquery"
 	"github.com/abcxyz/lumberjack/internal/talkerpb"
 	"github.com/google/uuid"
-	"github.com/lestrrat-go/jwx/v2/jwa"
-	"github.com/lestrrat-go/jwx/v2/jws"
-	"github.com/lestrrat-go/jwx/v2/jwt"
 	"golang.org/x/oauth2"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
@@ -38,10 +34,10 @@ import (
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
 
-	jvspb "github.com/abcxyz/jvs/apis/v0"
 	rpccode "google.golang.org/genproto/googleapis/rpc/code"
 )
 
+// TODO(#396): This config should be cleaned up and combined with HTTP test config.
 type GRPC struct {
 	ProjectID    string
 	DatasetQuery string
@@ -98,7 +94,7 @@ func testGRPCEndpoint(ctx context.Context, t *testing.T, g *GRPC) {
 		g.TalkerClient = talkerpb.NewTalkerClient(conn)
 	}
 
-	signedToken, err := justificationToken("talker-app")
+	signedToken, err := justificationToken("talker-app", g.Config.ServivceAccount)
 	if err != nil {
 		t.Fatalf("couldn't generate justification token: %v", err)
 	}
@@ -236,47 +232,6 @@ func testGRPCEndpoint(ctx context.Context, t *testing.T, g *GRPC) {
 		// we expect to have 4 audit logs - the last sent number (5) will be after the err occurred.
 		validateAuditLogsWithRetries(ctx, t, query, g.Config, 4)
 	})
-}
-
-// create a justification token to pass in the call to services.
-func justificationToken(audience string) (string, error) {
-	now := time.Now().UTC()
-
-	token, err := jwt.NewBuilder().
-		Audience([]string{audience}).
-		Expiration(now.Add(time.Hour)).
-		JwtID(uuid.New().String()).
-		IssuedAt(now).
-		Issuer("lumberjack-test-runner").
-		NotBefore(now).
-		Subject("lumberjack-integ").
-		Build()
-	if err != nil {
-		return "", fmt.Errorf("failed to build justification token: %w", err)
-	}
-
-	if err := jvspb.SetJustifications(token, []*jvspb.Justification{
-		{
-			Category: "test",
-			Value:    "test",
-		},
-	}); err != nil {
-		return "", fmt.Errorf("failed to set justifications: %w", err)
-	}
-
-	// Build custom headers and set the "kid" as the signer ID.
-	headers := jws.NewHeaders()
-	if err := headers.Set(jws.KeyIDKey, "integ-key"); err != nil {
-		return "", fmt.Errorf("failed to set header: %w", err)
-	}
-
-	// Sign the token.
-	b, err := jwt.Sign(token, jwt.WithKey(jwa.ES256, privateKey,
-		jws.WithProtectedHeaders(headers)))
-	if err != nil {
-		return "", fmt.Errorf("failed to sign token: %w", err)
-	}
-	return string(b), nil
 }
 
 // Server is in cloud run. Example: https://cloud.google.com/run/docs/triggering/grpc#request-auth

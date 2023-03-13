@@ -70,11 +70,11 @@ public class JustificationProcessorTests {
 
     String token = Jwts.builder().setClaims(claims).setAudience("test-aud").compact();
     AuditLogRequest auditLogReqWithToken =
-        auditLogRequest.toBuilder().setJustificationToken(token).build();
+        auditLogRequest.toBuilder().setJustificationToken(token).setPayload(auditLog).build();
 
     // Set up JVS mock to return the correct token
     DecodedJWT jwt = JWT.decode(token);
-    doReturn(jwt).when(jvsClient).validateJWT(token);
+    doReturn(jwt).when(jvsClient).validateJWT(token, "user@example.com");
 
     AuditLogRequest wantAuditLogReq = AuditLogRequest.parseFrom(auditLogReqWithToken.toByteArray());
     Struct wantJustificationsClaim =
@@ -135,7 +135,7 @@ public class JustificationProcessorTests {
     String token = Jwts.builder().setClaims(claims).compact();
 
     // Set up JVS mock to throw exception
-    doThrow(new JwkException("")).when(jvsClient).validateJWT(token);
+    doThrow(new JwkException("")).when(jvsClient).validateJWT(token, "user@example.com");
 
     JustificationProcessor processor = new JustificationProcessor(jvsClient);
     assertThrows(
@@ -167,7 +167,7 @@ public class JustificationProcessorTests {
 
     // Set up JVS mock to return the correct token
     DecodedJWT jwt = JWT.decode(token);
-    doReturn(jwt).when(jvsClient).validateJWT(token);
+    doReturn(jwt).when(jvsClient).validateJWT(token, "user@example.com");
 
     Struct wantJustification =
         Struct.newBuilder()
@@ -204,7 +204,7 @@ public class JustificationProcessorTests {
     String token = Jwts.builder().setClaims(claims).compact();
 
     // Set up JVS mock to throw exception
-    doThrow(new JwkException("")).when(jvsClient).validateJWT(token);
+    doThrow(new JwkException("")).when(jvsClient).validateJWT(token, "user@example.com");
 
     JustificationProcessor processor = new JustificationProcessor(jvsClient);
     assertThrows(

@@ -5,25 +5,25 @@ go 1.20
 require (
 	cloud.google.com/go/bigquery v1.47.0
 	cloud.google.com/go/compute/metadata v0.2.3
-	cloud.google.com/go/logging v1.6.1
+	cloud.google.com/go/logging v1.7.0
 	github.com/GoogleCloudPlatform/opentelemetry-operations-go/exporter/trace v1.11.2
 	github.com/GoogleCloudPlatform/opentelemetry-operations-go/propagator v0.35.2
-	github.com/abcxyz/jvs v0.0.3-0.20230222172604-6d080ef730ef
-	github.com/abcxyz/pkg v0.1.2-0.20230210171106-ffe3fe77144d
+	github.com/abcxyz/jvs v0.0.3
+	github.com/abcxyz/pkg v0.2.1-0.20230303233413-15bcefa8d6e1
 	github.com/google/go-cmp v0.5.9
 	github.com/google/uuid v1.3.0
 	github.com/hashicorp/go-multierror v1.1.1
 	github.com/lestrrat-go/jwx/v2 v2.0.8
 	github.com/sethvargo/go-envconfig v0.9.0
 	github.com/sethvargo/go-retry v0.2.4
-	go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc v0.39.0
-	go.opentelemetry.io/otel v1.13.0
+	go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc v0.40.0
+	go.opentelemetry.io/otel v1.14.0
 	go.opentelemetry.io/otel/sdk v1.13.0
 	go.uber.org/zap v1.24.0
 	golang.org/x/oauth2 v0.5.0
 	golang.org/x/sync v0.1.0
-	google.golang.org/api v0.110.0
-	google.golang.org/genproto v0.0.0-20230221151758-ace64dc21148
+	google.golang.org/api v0.111.0
+	google.golang.org/genproto v0.0.0-20230301171018-9ab4bdc49ad5
 	google.golang.org/grpc v1.53.0
 	google.golang.org/protobuf v1.28.1
 	gopkg.in/yaml.v2 v2.4.0
@@ -66,8 +66,8 @@ require (
 	github.com/pierrec/lz4/v4 v4.1.17 // indirect
 	github.com/zeebo/xxh3 v1.0.2 // indirect
 	go.opencensus.io v0.24.0 // indirect
-	go.opentelemetry.io/otel/metric v0.36.0 // indirect
-	go.opentelemetry.io/otel/trace v1.13.0 // indirect
+	go.opentelemetry.io/otel/metric v0.37.0 // indirect
+	go.opentelemetry.io/otel/trace v1.14.0 // indirect
 	go.uber.org/atomic v1.10.0 // indirect
 	go.uber.org/multierr v1.9.0 // indirect
 	golang.org/x/crypto v0.6.0 // indirect
