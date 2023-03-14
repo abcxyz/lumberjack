@@ -88,7 +88,8 @@ public class JustificationProcessor implements LogMutator {
 
     AuditLog.Builder auditLogBuilderCopy = auditLogBuilder.build().toBuilder();
     try {
-      DecodedJWT jwt = jvs.validateJWT(jvsToken);
+      DecodedJWT jwt =
+          jvs.validateJWT(jvsToken, auditLogBuilder.getAuthenticationInfo().getPrincipalEmail());
       String jsonString = StringUtils.newStringUtf8(Base64.decodeBase64(jwt.getPayload()));
       Struct.Builder justificationStructBuilder = Struct.newBuilder();
       JsonFormat.parser().merge(jsonString, justificationStructBuilder);

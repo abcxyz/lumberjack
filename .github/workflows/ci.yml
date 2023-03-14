@@ -348,6 +348,7 @@ jobs:
       - name: 'Run tests'
         env:
           TEST_INTEGRATION: 'true'
+          AUDIT_CLIENT_TEST_JUSTIFICATION_SUB: '${{ env.WIF_SERVICE_ACCOUNT }}'
         run: |-
           export ID_TOKEN="$(gcloud auth print-identity-token --impersonate-service-account=${{ env.WIF_SERVICE_ACCOUNT }} --include-email)"
 
