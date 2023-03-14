@@ -40,7 +40,7 @@ func testHTTPEndpoint(ctx context.Context, tb testing.TB, endpointURL, idToken, 
 
 	b := retry.NewConstant(cfg.AuditLogRequestWait)
 	if err := retry.Do(ctx, retry.WithMaxRetries(cfg.MaxAuditLogRequestTries, b), func(ctx context.Context) error {
-		resp, err := makeAuditLogRequest(id, endpointURL, cfg.AuditLogRequestTimeout, idToken, cfg.ServivceAccount)
+		resp, err := makeAuditLogRequest(id, endpointURL, cfg.AuditLogRequestTimeout, idToken, cfg.JustificationSubject)
 		if err != nil {
 			return fmt.Errorf("failed to make audit log request: %w", err)
 		}
