@@ -30,17 +30,17 @@ import (
 // HTTP endpoint.
 //
 //nolint:thelper // Not really a helper.
-func testHTTPEndpoint(ctx context.Context, tb testing.TB, endpointURL, idToken, projectID, datasetQuery string, cfg *Config) {
+func testHTTPEndpoint(ctx context.Context, tb testing.TB, tcfg *TestCaseConfig) {
 	// Don't mark t.Helper().
 	// Here locates the actual test logic so we want to be able to locate the
 	// actual line of error here instead of the main test.
 
-	id := uuid.New().String()
-	tb.Logf("using uuid %s", id)
+	tcfg.TraceID = uuid.New().String()
+	tb.Logf("Using trace ID: %s", tcfg.TraceID)
 
-	b := retry.NewConstant(cfg.AuditLogRequestWait)
-	if err := retry.Do(ctx, retry.WithMaxRetries(cfg.MaxAuditLogRequestTries, b), func(ctx context.Context) error {
-		resp, err := makeAuditLogRequest(id, endpointURL, cfg.AuditLogRequestTimeout, idToken, cfg.JustificationSubject)
+	b := retry.NewConstant(tcfg.AuditLogRequestWait)
+	if err := retry.Do(ctx, retry.WithMaxRetries(tcfg.MaxAuditLogRequestTries, b), func(ctx context.Context) error {
+		resp, err := makeHTTPAuditLogRequest(tcfg)
 		if err != nil {
 			return fmt.Errorf("failed to make audit log request: %w", err)
 		}
@@ -64,18 +64,43 @@ func testHTTPEndpoint(ctx context.Context, tb testing.TB, endpointURL, idToken, 
 	}); err != nil {
 		tb.Fatal(err)
 	}
-	bqClient := makeBigQueryClient(ctx, tb, projectID)
-	bqQuery := makeQueryForHTTP(*bqClient, id, projectID, datasetQuery)
-	validateAuditLogsWithRetries(ctx, tb, bqQuery, cfg, 1)
+	bqQuery := makeQueryForHTTP(tcfg)
+	validateAuditLogsWithRetries(ctx, tb, tcfg, bqQuery, 1)
 }
 
-func makeQueryForHTTP(client bigquery.Client, id, projectID, datasetQuery string) *bigquery.Query {
+func makeQueryForHTTP(tc *TestCaseConfig) *bigquery.Query {
 	queryString := fmt.Sprintf(` WITH temptable AS (
 		SELECT *
 		FROM %s.%s
 		WHERE labels.trace_id=?
  	)
  	SELECT TO_JSON(t) as result FROM temptable as t
-	`, projectID, datasetQuery)
-	return makeQuery(client, id, queryString)
+	`, tc.ProjectID, tc.BigQueryDataset)
+	return makeQuery(tc.BigQueryClient, tc.TraceID, queryString)
+}
+
+func makeHTTPAuditLogRequest(tcfg *TestCaseConfig) (*http.Response, error) {
+	req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, tcfg.Endpoint, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create audit log http request: %w", err)
+	}
+
+	signedToken, err := justificationToken("logging-shell", tcfg.JustificationSubject)
+	if err != nil {
+		return nil, fmt.Errorf("couldn't generate justification token: %w", err)
+	}
+	req.Header.Set("justification-token", signedToken)
+	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", tcfg.IDToken))
+
+	// Insert the UUID used in tracing the log as a query parameter.
+	q := req.URL.Query()
+	q.Add("trace_id", tcfg.TraceID)
+	req.URL.RawQuery = q.Encode()
+
+	httpClient := &http.Client{Timeout: tcfg.AuditLogRequestTimeout}
+	resp, err := httpClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to execute audit log request: %w", err)
+	}
+	return resp, nil
 }
