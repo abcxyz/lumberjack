@@ -78,7 +78,7 @@ type fakeJVS struct {
 	returnErr bool
 }
 
-func (j *fakeJVS) ValidateJWT(ctx context.Context, _ string) (jwt.Token, error) {
+func (j *fakeJVS) ValidateJWT(ctx context.Context, _, _ string) (jwt.Token, error) {
 	if j.returnErr {
 		return nil, fmt.Errorf("validate jwt error")
 	}
