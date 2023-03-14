@@ -18,8 +18,8 @@ package testrunner
 import (
 	"context"
 	"encoding/json"
-	"flag"
 	"fmt"
+	"log"
 	"os"
 	"testing"
 
@@ -27,63 +27,48 @@ import (
 	"google.golang.org/api/idtoken"
 )
 
-var (
-	idTokenPtr      = flag.String("id-token", "", `Identity token, can be obtained with "gcloud auth print-identity-token", can be omitted if service account key is provided.`)
-	projectIDPtr    = flag.String("project-id", "", "Cloud project ID of which the Database will be queried.")
-	datasetQueryPtr = flag.String("dataset-query", "", "BigQuery dataset query string to get the audit logs.")
-)
+// Global integration test config.
+var cfg *Config
 
 func TestMain(m *testing.M) {
-	flag.Parse()
-	os.Exit(m.Run())
-}
-
-func validateCfg(t *testing.T) *Config {
-	t.Helper()
-
-	if *projectIDPtr == "" {
-		t.Fatal("Cloud Project ID of the Database to query must be provided with the -project-id flag.")
-	}
-	if *datasetQueryPtr == "" {
-		t.Fatal("BigQuery dataset query string must be provided with the -dataset-query flag.")
-	}
-
-	cfg, err := newTestConfig(context.Background())
+	c, err := newTestConfig(context.Background())
 	if err != nil {
-		t.Fatal(err)
+		log.Fatalf("Failed to parse integration test config: %v", err)
 	}
-
-	return cfg
+	cfg = c
+	os.Exit(m.Run())
 }
 
 func TestHTTPEndpoints(t *testing.T) {
 	t.Parallel()
 	testutil.SkipIfNotIntegration(t)
 
-	cfg := validateCfg(t)
 	testsData := cfg.HTTPEndpoints
 	var tests []string
 	if err := json.Unmarshal([]byte(testsData), &tests); err != nil {
 		t.Fatalf("Unable to parse HTTP endpoints: %v.", err)
 	}
 
-	for i, tc := range tests {
-		i, tc := i, tc
+	for i, test := range tests {
+		i, test := i, test
 
-		t.Run(tc, func(t *testing.T) {
+		t.Run(test, func(t *testing.T) {
 			t.Parallel()
-
-			if tc == "" {
+			if test == "" {
 				t.Fatalf("URL for test with index %v not found.", i)
 			}
 
-			idToken, err := resolveIDToken(tc)
-			if err != nil {
+			ctx := context.Background()
+			tc := &TestCase{
+				Config:         cfg,
+				Endpoint:       test,
+				BigQueryClient: makeBigQueryClient(ctx, t, cfg.ProjectID),
+			}
+			if err := resolveIDToken(tc); err != nil {
 				t.Fatalf("Resolving ID Token failed: %v.", err)
 			}
 
-			ctx := context.Background()
-			testHTTPEndpoint(ctx, t, tc, idToken, *projectIDPtr, *datasetQueryPtr, cfg)
+			testHTTPEndpoint(ctx, t, tc)
 		})
 	}
 }
@@ -92,7 +77,6 @@ func TestGRPCEndpoints(t *testing.T) {
 	t.Parallel()
 	testutil.SkipIfNotIntegration(t)
 
-	cfg := validateCfg(t)
 	testsData := cfg.GRPCEndpoints
 	var tests []string
 	if err := json.Unmarshal([]byte(testsData), &tests); err != nil {
@@ -104,46 +88,40 @@ func TestGRPCEndpoints(t *testing.T) {
 
 		t.Run(test, func(t *testing.T) {
 			t.Parallel()
-
 			if test == "" {
 				t.Fatalf("URL for test with index %v not found.", i)
 			}
 
-			idToken, err := resolveIDToken(test)
-			if err != nil {
+			ctx := context.Background()
+			tc := &TestCase{
+				Config:         cfg,
+				Endpoint:       test,
+				BigQueryClient: makeBigQueryClient(ctx, t, cfg.ProjectID),
+			}
+			if err := resolveIDToken(tc); err != nil {
 				t.Fatalf("Resolving ID Token failed: %v.", err)
 			}
 
-			ctx := context.Background()
-			testGRPCEndpoint(ctx, t, &GRPC{
-				ProjectID:    *projectIDPtr,
-				DatasetQuery: *datasetQueryPtr,
-
-				IDToken:     idToken,
-				EndpointURL: test,
-
-				Config: cfg,
-			})
+			testGRPCEndpoint(ctx, t, tc)
 		})
 	}
 }
 
-// resolveIDToken Resolves the ID token passed via the "id-token" flag if provided,
-// otherwise looks for the ID token from the provided service account, if any.
-func resolveIDToken(endpointURL string) (string, error) {
-	if *idTokenPtr != "" {
+func resolveIDToken(tc *TestCase) error {
+	if tc.IDToken != "" {
 		// ID token was provided via command line flag.
-		return *idTokenPtr, nil
+		return nil
 	}
 
 	// Attempt getting ID Token from service account if any.
-	ts, err := idtoken.NewTokenSource(context.Background(), endpointURL)
+	ts, err := idtoken.NewTokenSource(context.Background(), tc.Endpoint)
 	if err != nil {
-		return "", fmt.Errorf("unable to create token source: %w", err)
+		return fmt.Errorf("unable to create token source: %w", err)
 	}
 	t, err := ts.Token()
 	if err != nil {
-		return "", fmt.Errorf("unable to get token: %w", err)
+		return fmt.Errorf("unable to get token: %w", err)
 	}
-	return t.AccessToken, nil
+	tc.IDToken = t.AccessToken
+	return nil
 }
