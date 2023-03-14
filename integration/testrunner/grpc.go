@@ -17,7 +17,6 @@ package testrunner
 import (
 	"context"
 	"crypto/x509"
-	"encoding/pem"
 	"errors"
 	"fmt"
 	"io"
@@ -37,64 +36,24 @@ import (
 	rpccode "google.golang.org/genproto/googleapis/rpc/code"
 )
 
-// TODO(#396): This config should be cleaned up and combined with HTTP test config.
-type GRPC struct {
-	ProjectID    string
-	DatasetQuery string
-
-	// IDToken and endpoint URL are required unless a custom TalkerClient is provided.
-	IDToken      string
-	EndpointURL  string
-	TalkerClient talkerpb.TalkerClient
-
-	Config         *Config
-	BigQueryClient *bigquery.Client
-}
-
-// Matching public key here: https://github.com/abcxyz/lumberjack/blob/92782c326681157221df37e0897ba234c5a22240/clients/go/test/grpc-app/main.go#L47
-const privateKeyString = `
------BEGIN EC PRIVATE KEY-----
-MHcCAQEEIITZ4357UsTCbhxXu8w8cY54ZLlsAIJj/Aej9ylb/ZfBoAoGCCqGSM49
-AwEHoUQDQgAEhBWj8vw5LkPRWbCr45k0cOarIcWgApM03mSYF911de5q1wGOL7R9
-N8pC7jo2xbS+i1wGsMiz+AWnhhZIQcNTKg==
------END EC PRIVATE KEY-----
-`
-
-var (
-	privateKeyPEM, _ = pem.Decode([]byte(strings.TrimSpace(privateKeyString)))
-	privateKey, _    = x509.ParseECPrivateKey(privateKeyPEM.Bytes)
-)
-
 // testGRPCEndpoint runs tests against a GRPC endpoint. The given GRPC must
 // define a projectID and datasetQuery. If a TalkerClient or BigQueryClient are
 // not provided, they are instantiated via the defaults.
 //
 //nolint:thelper // Not really a helper.
-func testGRPCEndpoint(ctx context.Context, t *testing.T, g *GRPC) {
+func testGRPCEndpoint(ctx context.Context, t *testing.T, tcfg *TestCaseConfig) {
 	// Don't mark t.Helper().
 	// Here locates the actual test logic so we want to be able to locate the
 	// actual line of error here instead of the main test.
-	if g.ProjectID == "" {
-		t.Fatal("ProjectID must be set")
-	}
-
-	if g.DatasetQuery == "" {
-		t.Fatal("DatasetQuery must be set")
-	}
-
-	if g.TalkerClient == nil {
-		if g.IDToken == "" || g.EndpointURL == "" {
-			t.Fatal("IDToken and EndpointURL are required to create a TalkerClient")
-		}
-
-		conn := createConnection(ctx, t, g.EndpointURL, g.IDToken)
+	if tcfg.TalkerClient == nil {
+		conn := createConnection(ctx, t, tcfg.Endpoint, tcfg.IDToken)
 		t.Cleanup(func() {
 			conn.Close()
 		})
-		g.TalkerClient = talkerpb.NewTalkerClient(conn)
+		tcfg.TalkerClient = talkerpb.NewTalkerClient(conn)
 	}
 
-	signedToken, err := justificationToken("talker-app", g.Config.JustificationSubject)
+	signedToken, err := justificationToken("talker-app", tcfg.JustificationSubject)
 	if err != nil {
 		t.Fatalf("couldn't generate justification token: %v", err)
 	}
@@ -106,28 +65,25 @@ func testGRPCEndpoint(ctx context.Context, t *testing.T, g *GRPC) {
 	md.Set("justification-token", signedToken)
 	ctx = metadata.NewOutgoingContext(ctx, md)
 
-	if g.BigQueryClient == nil {
-		bqClient := makeBigQueryClient(ctx, t, g.ProjectID)
-		g.BigQueryClient = bqClient
-	}
-
 	t.Run("hello_req_unary_success", func(t *testing.T) {
 		t.Parallel()
-		id := uuid.New().String()
-		t.Logf("using uuid %s", id)
-		_, err := g.TalkerClient.Hello(ctx, &talkerpb.HelloRequest{Message: "Some Message", Target: id})
+		tcfg := *tcfg // Make a shallow copy to avoid sharing trace ID.
+		tcfg.TraceID = uuid.New().String()
+		t.Logf("Using trace ID: %s", tcfg.TraceID)
+		_, err := tcfg.TalkerClient.Hello(ctx, &talkerpb.HelloRequest{Message: "Some Message", Target: tcfg.TraceID})
 		if err != nil {
 			t.Errorf("could not greet: %v", err)
 		}
-		query := g.makeQueryForGRPC(id)
-		validateAuditLogsWithRetries(ctx, t, query, g.Config, 1)
+		query := makeQueryForGRPC(&tcfg)
+		validateAuditLogsWithRetries(ctx, t, &tcfg, query, 1)
 	})
 
 	t.Run("fail_req_unary_failure", func(t *testing.T) {
 		t.Parallel()
-		id := uuid.New().String()
-		t.Logf("using uuid %s", id)
-		reply, err := g.TalkerClient.Fail(ctx, &talkerpb.FailRequest{Message: "Some Message", Target: id})
+		tcfg := *tcfg // Make a shallow copy to avoid sharing trace ID.
+		tcfg.TraceID = uuid.New().String()
+		t.Logf("Using trace ID: %s", tcfg.TraceID)
+		reply, err := tcfg.TalkerClient.Fail(ctx, &talkerpb.FailRequest{Message: "Some Message", Target: tcfg.TraceID})
 		if err != nil {
 			returnStatus, ok := status.FromError(err)
 			if !ok {
@@ -141,16 +97,17 @@ func testGRPCEndpoint(ctx context.Context, t *testing.T, g *GRPC) {
 		} else {
 			t.Errorf("Did not get err as expected. Instead got reply: %v", reply)
 		}
-		query := g.makeQueryForGRPC(id)
-		validateAuditLogsWithRetries(ctx, t, query, g.Config, 1)
+		query := makeQueryForGRPC(&tcfg)
+		validateAuditLogsWithRetries(ctx, t, &tcfg, query, 1)
 	})
 
 	t.Run("fibonacci_req_server_streaming_success", func(t *testing.T) {
 		t.Parallel()
-		id := uuid.New().String()
-		t.Logf("using uuid %s", id)
+		tcfg := *tcfg // Make a shallow copy to avoid sharing trace ID.
+		tcfg.TraceID = uuid.New().String()
+		t.Logf("Using trace ID: %s", tcfg.TraceID)
 		places := 5
-		stream, err := g.TalkerClient.Fibonacci(ctx, &talkerpb.FibonacciRequest{Places: uint32(places), Target: id})
+		stream, err := tcfg.TalkerClient.Fibonacci(ctx, &talkerpb.FibonacciRequest{Places: uint32(places), Target: tcfg.TraceID})
 		if err != nil {
 			t.Errorf("fibonacci call failed: %v", err)
 		}
@@ -166,15 +123,16 @@ func testGRPCEndpoint(ctx context.Context, t *testing.T, g *GRPC) {
 			}
 			t.Logf("Received value %v", place.Value)
 		}
-		query := g.makeQueryForGRPC(id)
-		validateAuditLogsWithRetries(ctx, t, query, g.Config, places)
+		query := makeQueryForGRPC(&tcfg)
+		validateAuditLogsWithRetries(ctx, t, &tcfg, query, places)
 	})
 
 	t.Run("addition_req_client_streaming_success", func(t *testing.T) {
 		t.Parallel()
-		id := uuid.New().String()
-		t.Logf("using uuid %s", id)
-		stream, err := g.TalkerClient.Addition(ctx)
+		tcfg := *tcfg // Make a shallow copy to avoid sharing trace ID.
+		tcfg.TraceID = uuid.New().String()
+		t.Logf("Using trace ID: %s", tcfg.TraceID)
+		stream, err := tcfg.TalkerClient.Addition(ctx)
 		if err != nil {
 			t.Errorf("addition call failed: %v", err)
 		}
@@ -182,7 +140,7 @@ func testGRPCEndpoint(ctx context.Context, t *testing.T, g *GRPC) {
 		for i := 0; i < totalNumbers; i++ {
 			if err := stream.Send(&talkerpb.AdditionRequest{
 				Addend: uint32(i),
-				Target: id,
+				Target: tcfg.TraceID,
 			}); err != nil {
 				t.Errorf("sending value to addition failed: %v", err)
 			}
@@ -193,15 +151,16 @@ func testGRPCEndpoint(ctx context.Context, t *testing.T, g *GRPC) {
 		}
 		t.Logf("Value returned: %d", reply.Sum)
 
-		query := g.makeQueryForGRPC(id)
-		validateAuditLogsWithRetries(ctx, t, query, g.Config, totalNumbers)
+		query := makeQueryForGRPC(&tcfg)
+		validateAuditLogsWithRetries(ctx, t, &tcfg, query, totalNumbers)
 	})
 
 	t.Run("fail_on_four_req_client_stream_failure", func(t *testing.T) {
 		t.Parallel()
-		id := uuid.New().String()
-		t.Logf("using uuid %s", id)
-		stream, err := g.TalkerClient.FailOnFour(ctx)
+		tcfg := *tcfg // Make a shallow copy to avoid sharing trace ID.
+		tcfg.TraceID = uuid.New().String()
+		t.Logf("Using trace ID: %s", tcfg.TraceID)
+		stream, err := tcfg.TalkerClient.FailOnFour(ctx)
 		if err != nil {
 			t.Errorf("addition call failed: %v", err)
 		}
@@ -209,7 +168,7 @@ func testGRPCEndpoint(ctx context.Context, t *testing.T, g *GRPC) {
 		for i := 1; i <= totalNumbers; i++ {
 			if err := stream.Send(&talkerpb.FailOnFourRequest{
 				Value:  uint32(i),
-				Target: id,
+				Target: tcfg.TraceID,
 			}); err != nil {
 				t.Errorf("sending value to addition failed: %v", err)
 			}
@@ -228,9 +187,9 @@ func testGRPCEndpoint(ctx context.Context, t *testing.T, g *GRPC) {
 		} else {
 			t.Errorf("Did not get err as expected. Instead got reply: %v", reply)
 		}
-		query := g.makeQueryForGRPC(id)
+		query := makeQueryForGRPC(&tcfg)
 		// we expect to have 4 audit logs - the last sent number (5) will be after the err occurred.
-		validateAuditLogsWithRetries(ctx, t, query, g.Config, 4)
+		validateAuditLogsWithRetries(ctx, t, &tcfg, query, 4)
 	})
 }
 
@@ -266,13 +225,13 @@ func createConnection(ctx context.Context, t *testing.T, addr, idToken string) *
 // This query is used to find the relevant audit log in BigQuery, which we assume will be added by the server.
 // We specifically look up the log using the UUID specified in the request as we know the server will add that
 // as the resource name, and provides us a unique key to find logs with.
-func (g *GRPC) makeQueryForGRPC(id string) *bigquery.Query {
+func makeQueryForGRPC(tcfg *TestCaseConfig) *bigquery.Query {
 	queryString := fmt.Sprintf(` WITH temptable AS (
 		SELECT *
 		FROM %s.%s
 		WHERE jsonPayload.resource_name=?
  	)
  	SELECT TO_JSON(t) as result FROM temptable as t
- 	`, g.ProjectID, g.DatasetQuery)
-	return makeQuery(*g.BigQueryClient, id, queryString)
+ 	`, tcfg.ProjectID, tcfg.BigQueryDataset)
+	return makeQuery(tcfg.BigQueryClient, tcfg.TraceID, queryString)
 }

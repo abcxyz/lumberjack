@@ -77,7 +77,7 @@ func queryAuditLogs(ctx context.Context, tb testing.TB, query *bigquery.Query) [
 	return logEntries
 }
 
-func makeQuery(bqClient bigquery.Client, id, queryString string) *bigquery.Query {
+func makeQuery(bqClient *bigquery.Client, id, queryString string) *bigquery.Query {
 	bqQuery := bqClient.Query(queryString)
 	bqQuery.Parameters = []bigquery.QueryParameter{{Value: id}}
 	return bqQuery
@@ -105,12 +105,12 @@ func makeBigQueryClient(ctx context.Context, tb testing.TB, projectID string) *b
 // This calls the database to validate that an audit log exists with expected format
 // and validate how many logs we expect to match, in order to handle streaming use cases.
 // It uses the retries that are specified in the Config file.
-func validateAuditLogsWithRetries(ctx context.Context, tb testing.TB, bqQuery *bigquery.Query, cfg *Config, wantNum int) {
+func validateAuditLogsWithRetries(ctx context.Context, tb testing.TB, tcfg *TestCaseConfig, bqQuery *bigquery.Query, wantNum int) {
 	tb.Helper()
 	tb.Logf("querying BigQuery:\n%s", bqQuery.Q)
 	var logEntries []*loggingpb.LogEntry
-	b := retry.NewConstant(cfg.LogRoutingWait)
-	if err := retry.Do(ctx, retry.WithMaxRetries(cfg.MaxDBQueryTries, b), func(ctx context.Context) error {
+	b := retry.NewConstant(tcfg.LogRoutingWait)
+	if err := retry.Do(ctx, retry.WithMaxRetries(tcfg.MaxDBQueryTries, b), func(ctx context.Context) error {
 		results := queryAuditLogs(ctx, tb, bqQuery)
 		// Early exit retry if queried log already found.
 		if len(results) == wantNum {
