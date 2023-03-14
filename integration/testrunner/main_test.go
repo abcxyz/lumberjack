@@ -55,26 +55,26 @@ func TestHTTPEndpoints(t *testing.T) {
 		t.Fatalf("Unable to parse HTTP endpoints: %v.", err)
 	}
 
-	for i, test := range tests {
-		i, test := i, test
+	for i, tc := range tests {
+		i, tc := i, tc
 
-		t.Run(test, func(t *testing.T) {
+		t.Run(tc, func(t *testing.T) {
 			t.Parallel()
-			if test == "" {
+			if tc == "" {
 				t.Fatalf("URL for test with index %v not found.", i)
 			}
 
 			ctx := context.Background()
-			tc := &TestCase{
+			tcfg := &TestCaseConfig{
 				Config:         cfg,
-				Endpoint:       test,
+				Endpoint:       tc,
 				BigQueryClient: makeBigQueryClient(ctx, t, cfg.ProjectID),
 			}
-			if err := resolveIDToken(tc); err != nil {
+			if err := resolveIDToken(tcfg); err != nil {
 				t.Fatalf("Resolving ID Token failed: %v.", err)
 			}
 
-			testHTTPEndpoint(ctx, t, tc)
+			testHTTPEndpoint(ctx, t, tcfg)
 		})
 	}
 }
@@ -89,38 +89,38 @@ func TestGRPCEndpoints(t *testing.T) {
 		t.Fatalf("Unable to parse HTTP endpoints: %v.", err)
 	}
 
-	for i, test := range tests {
-		i, test := i, test
+	for i, tc := range tests {
+		i, tc := i, tc
 
-		t.Run(test, func(t *testing.T) {
+		t.Run(tc, func(t *testing.T) {
 			t.Parallel()
-			if test == "" {
+			if tc == "" {
 				t.Fatalf("URL for test with index %v not found.", i)
 			}
 
 			ctx := context.Background()
-			tc := &TestCase{
+			tcfg := &TestCaseConfig{
 				Config:         cfg,
-				Endpoint:       test,
+				Endpoint:       tc,
 				BigQueryClient: makeBigQueryClient(ctx, t, cfg.ProjectID),
 			}
-			if err := resolveIDToken(tc); err != nil {
+			if err := resolveIDToken(tcfg); err != nil {
 				t.Fatalf("Resolving ID Token failed: %v.", err)
 			}
 
-			testGRPCEndpoint(ctx, t, tc)
+			testGRPCEndpoint(ctx, t, tcfg)
 		})
 	}
 }
 
-func resolveIDToken(tc *TestCase) error {
-	if tc.IDToken != "" {
+func resolveIDToken(tcfg *TestCaseConfig) error {
+	if tcfg.IDToken != "" {
 		// ID token was provided via command line flag.
 		return nil
 	}
 
 	// Attempt getting ID Token from service account if any.
-	ts, err := idtoken.NewTokenSource(context.Background(), tc.Endpoint)
+	ts, err := idtoken.NewTokenSource(context.Background(), tcfg.Endpoint)
 	if err != nil {
 		return fmt.Errorf("unable to create token source: %w", err)
 	}
@@ -128,6 +128,6 @@ func resolveIDToken(tc *TestCase) error {
 	if err != nil {
 		return fmt.Errorf("unable to get token: %w", err)
 	}
-	tc.IDToken = t.AccessToken
+	tcfg.IDToken = t.AccessToken
 	return nil
 }

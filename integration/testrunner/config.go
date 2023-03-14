@@ -62,8 +62,8 @@ type Config struct {
 	BigQueryDataset         string        `env:"AUDIT_CLIENT_TEST_BIGQUERY_DATASET,required"`
 }
 
-// TestCase contains all configuration needed in a test case.
-type TestCase struct {
+// TestCaseConfig contains all configuration needed in a test case.
+type TestCaseConfig struct {
 	*Config
 
 	Endpoint string
