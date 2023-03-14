@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strings"
 	"testing"
 
 	"github.com/abcxyz/pkg/testutil"
@@ -31,6 +32,11 @@ import (
 var cfg *Config
 
 func TestMain(m *testing.M) {
+	if strings.ToLower(os.Getenv("TEST_INTEGRATION")) != "true" {
+		// Not integration test. Exit.
+		os.Exit(0)
+	}
+
 	c, err := newTestConfig(context.Background())
 	if err != nil {
 		log.Fatalf("Failed to parse integration test config: %v", err)
