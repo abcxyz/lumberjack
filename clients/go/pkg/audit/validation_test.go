@@ -109,7 +109,7 @@ func TestRequestValidation_Process(t *testing.T) {
 				Payload: &audit.AuditLog{
 					ServiceName: "",
 					AuthenticationInfo: &audit.AuthenticationInfo{
-						PrincipalEmail: "user",
+						PrincipalEmail: "user@test.com",
 					},
 				},
 			},
@@ -117,7 +117,7 @@ func TestRequestValidation_Process(t *testing.T) {
 				Payload: &audit.AuditLog{
 					ServiceName: "",
 					AuthenticationInfo: &audit.AuthenticationInfo{
-						PrincipalEmail: "user",
+						PrincipalEmail: "user@test.com",
 					},
 				},
 			},
