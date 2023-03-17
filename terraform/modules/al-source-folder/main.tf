@@ -15,9 +15,11 @@
  */
 
 resource "google_logging_folder_sink" "bigquery_sink" {
-  for_each         = { for dest in var.destination_log_sinks : dest.name => dest if dest.kind == "bigquery" }
+  for_each = { for dest in var.destination_log_sinks : dest.name => dest if dest.kind == "bigquery" }
+
+  folder = var.folder_id
+
   name             = format("%s-%s", var.log_sink_name, each.value.name)
-  folder           = var.folder_id
   include_children = true
   destination      = "bigquery.googleapis.com/projects/${each.value.project_id}/datasets/${each.value.name}"
 
@@ -41,17 +43,21 @@ resource "google_logging_folder_sink" "bigquery_sink" {
 }
 
 resource "google_bigquery_dataset_iam_member" "bigquery_sink_member" {
-  for_each   = { for dest in var.destination_log_sinks : dest.name => dest if dest.kind == "bigquery" }
+  for_each = { for dest in var.destination_log_sinks : dest.name => dest if dest.kind == "bigquery" }
+
+  project = each.value.project_id
+
   dataset_id = each.value.name
-  project    = each.value.project_id
   role       = "roles/bigquery.dataEditor"
   member     = google_logging_folder_sink.bigquery_sink[each.value.name].writer_identity
 }
 
 resource "google_logging_folder_sink" "pubsub_sink" {
-  for_each         = { for dest in var.destination_log_sinks : dest.name => dest if dest.kind == "pubsub" }
+  for_each = { for dest in var.destination_log_sinks : dest.name => dest if dest.kind == "pubsub" }
+
+  folder = var.folder_id
+
   name             = format("ps-%s-%s", var.log_sink_name, each.value.name)
-  folder           = var.folder_id
   include_children = true
   destination      = "pubsub.googleapis.com/projects/${each.value.project_id}/topics/${each.value.name}"
 
@@ -71,8 +77,10 @@ resource "google_logging_folder_sink" "pubsub_sink" {
 
 resource "google_pubsub_topic_iam_member" "pubsub_sink_member" {
   for_each = { for dest in var.destination_log_sinks : dest.name => dest if dest.kind == "pubsub" }
-  topic    = each.value.name
-  project  = each.value.project_id
-  role     = "roles/pubsub.publisher"
-  member   = google_logging_folder_sink.pubsub_sink[each.value.name].writer_identity
+
+  project = each.value.project_id
+
+  topic  = each.value.name
+  role   = "roles/pubsub.publisher"
+  member = google_logging_folder_sink.pubsub_sink[each.value.name].writer_identity
 }

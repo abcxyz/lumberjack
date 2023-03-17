@@ -15,16 +15,19 @@
  */
 
 resource "google_project_service" "resourcemanager" {
-  project            = var.project_id
+  project = var.project_id
+
   service            = "cloudresourcemanager.googleapis.com"
   disable_on_destroy = false
 }
 
 resource "google_project_service" "services" {
-  project = var.project_id
   for_each = toset([
     "pubsub.googleapis.com",
   ])
+
+  project = var.project_id
+
   service            = each.value
   disable_on_destroy = false
 
@@ -34,14 +37,16 @@ resource "google_project_service" "services" {
 }
 
 resource "google_pubsub_topic" "audit_logs_topic" {
-  name    = var.topic_id
   project = var.project_id
+
+  name = var.topic_id
 }
 
 resource "google_pubsub_subscription" "audit_logs_sub" {
-  name    = var.subscription_id
-  topic   = google_pubsub_topic.audit_logs_topic.name
   project = var.project_id
+
+  name  = var.subscription_id
+  topic = google_pubsub_topic.audit_logs_topic.name
 
   // Maximize retention duration 7d.
   message_retention_duration = "604800s"

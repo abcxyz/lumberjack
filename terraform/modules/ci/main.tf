@@ -27,8 +27,10 @@ locals {
 }
 
 module "server_service" {
-  source       = "../server-service"
-  project_id   = var.server_project_id
+  source = "../server-service"
+
+  project_id = var.server_project_id
+
   server_image = var.server_image
   service_name = "${var.server_service_name}-${local.short_sha}"
   region       = var.region
@@ -42,8 +44,9 @@ module "server_service" {
 resource "google_cloud_run_service" "ingestion_backend_client_services" {
   for_each = var.client_images
 
+  project = var.client_project_id
+
   name     = "${each.key}-${local.short_sha}-ingestion"
-  project  = var.client_project_id
   location = var.region
 
   template {
@@ -73,8 +76,9 @@ resource "google_cloud_run_service" "ingestion_backend_client_services" {
 resource "google_cloud_run_service" "cloudlogging_backend_client_services" {
   for_each = var.client_images
 
+  project = var.client_project_id
+
   name     = "${each.key}-${local.short_sha}-cloudlogging"
-  project  = var.client_project_id
   location = var.region
 
   template {
