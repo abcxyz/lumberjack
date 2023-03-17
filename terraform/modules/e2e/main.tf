@@ -154,7 +154,7 @@ resource "google_project_service" "app_project_services" {
 }
 
 resource "google_artifact_registry_repository" "app_project_image_registry" {
-  count         = var.apps_count
+  count    = var.apps_count
   provider = google-beta
 
   project = google_project.app_project[count.index].project_id
