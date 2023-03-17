@@ -17,9 +17,11 @@
 # Run `terraform init` and `terraform validate`.
 
 module "al_project_sources" {
-  for_each   = toset(["fake-proj1", "fake-proj2", "fake-proj3"])
-  source     = "../modules/al-source-project"
+  for_each = toset(["fake-proj1", "fake-proj2", "fake-proj3"])
+  source   = "../modules/al-source-project"
+
   project_id = each.key
+
   destination_log_sinks = [
     {
       kind       = "bigquery"
@@ -35,9 +37,11 @@ module "al_project_sources" {
 }
 
 module "al_folder_sources" {
-  for_each  = toset(["fake-folder1", "fake-folder2"])
-  source    = "../modules/al-source-folder"
+  for_each = toset(["fake-folder1", "fake-folder2"])
+  source   = "../modules/al-source-folder"
+
   folder_id = each.key
+
   destination_log_sinks = [
     {
       kind       = "bigquery"
@@ -52,9 +56,11 @@ module "al_folder_sources" {
   ]
 }
 
-module "server-sink" {
-  source     = "../modules/server-sink"
+module "server_sink" {
+  source = "../modules/server-sink"
+
   project_id = "lumberjack-server"
+
   destination_log_sinks = [
     {
       kind       = "bigquery"
@@ -64,18 +70,24 @@ module "server-sink" {
   ]
 }
 
-module "server-service" {
-  source       = "../modules/server-service"
-  project_id   = "lumberjack-server"
+module "server_service" {
+  source = "../modules/server-service"
+
+  project_id = "lumberjack-server"
+
   server_image = "gcr.io/lumberjack-server/lumberjack-server:fake"
 }
 
-module "bigquery-destination" {
-  source     = "../modules/bigquery-destination"
+module "bigquery_destination" {
+  source = "../modules/bigquery-destination"
+
   project_id = "bigquery-destination"
+
 }
 
-module "pubsub-destination" {
-  source     = "../modules/pubsub-destination"
+module "pubsub_destination" {
+  source = "../modules/pubsub-destination"
+
   project_id = "pubsub-destination"
+
 }

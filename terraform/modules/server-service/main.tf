@@ -29,19 +29,22 @@ locals {
 }
 
 resource "google_project_service" "resourcemanager" {
-  project            = var.project_id
+  project = var.project_id
+
   service            = "cloudresourcemanager.googleapis.com"
   disable_on_destroy = false
 }
 
 resource "google_project_service" "services" {
-  project = var.project_id
   for_each = toset([
     "containerregistry.googleapis.com",
     "monitoring.googleapis.com",
     "run.googleapis.com",
     "stackdriver.googleapis.com",
   ])
+
+  project = var.project_id
+
   service            = each.value
   disable_on_destroy = false
 
@@ -51,8 +54,10 @@ resource "google_project_service" "services" {
 }
 
 resource "google_service_account" "server" {
-  count        = var.disable_dedicated_sa ? 0 : 1
-  project      = var.project_id
+  count = var.disable_dedicated_sa ? 0 : 1
+
+  project = var.project_id
+
   account_id   = "${var.service_name}-sa"
   display_name = "Audit Logging Server Service Account"
 }
@@ -66,14 +71,16 @@ resource "google_project_iam_member" "server_roles" {
   ])
 
   project = var.project_id
-  role    = each.key
-  member  = "serviceAccount:${google_service_account.server[0].email}"
+
+  role   = each.key
+  member = "serviceAccount:${google_service_account.server[0].email}"
 }
 
 resource "google_cloud_run_service_iam_member" "audit_log_writer" {
   for_each = toset(var.audit_log_writers)
 
-  project  = google_cloud_run_service.server.project
+  project = google_cloud_run_service.server.project
+
   location = google_cloud_run_service.server.location
   service  = google_cloud_run_service.server.name
   role     = "roles/run.invoker"
@@ -81,9 +88,10 @@ resource "google_cloud_run_service_iam_member" "audit_log_writer" {
 }
 
 resource "google_cloud_run_service" "server" {
+  project = var.project_id
+
   name     = var.service_name
   location = var.region
-  project  = var.project_id
 
   metadata {
     annotations = merge(

@@ -15,16 +15,19 @@
  */
 
 resource "google_project_service" "resourcemanager" {
-  project            = var.project_id
+  project = var.project_id
+
   service            = "cloudresourcemanager.googleapis.com"
   disable_on_destroy = false
 }
 
 resource "google_project_service" "services" {
-  project = var.project_id
   for_each = toset([
     "bigquery.googleapis.com",
   ])
+
+  project = var.project_id
+
   service            = each.value
   disable_on_destroy = false
 
@@ -34,9 +37,10 @@ resource "google_project_service" "services" {
 }
 
 resource "google_bigquery_dataset" "dataset" {
+  project = var.project_id
+
   dataset_id = var.dataset_id
   location   = var.region
-  project    = var.project_id
 
   depends_on = [
     google_project_service.services["bigquery.googleapis.com"],
