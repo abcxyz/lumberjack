@@ -34,6 +34,7 @@ package abcxyz.lumberjack.test.talker;
 import com.abcxyz.lumberjack.auditlogclient.AuditLoggingServerInterceptor;
 import com.abcxyz.lumberjack.auditlogclient.AuditLogs;
 import com.abcxyz.lumberjack.auditlogclient.modules.AuditLoggingModule;
+import com.abcxyz.lumberjack.auditlogclient.utils.PublicKeysUtil;
 import com.abcxyz.lumberjack.test.talker.AdditionRequest;
 import com.abcxyz.lumberjack.test.talker.AdditionResponse;
 import com.abcxyz.lumberjack.test.talker.FailOnFourRequest;
@@ -114,14 +115,7 @@ public class TalkerService {
   static class JWKHandler implements HttpHandler {
     // Matching private key here:
     // https://github.com/abcxyz/lumberjack/blob/main/integration/testrunner/grpcrunner/grpc.go#L59
-    private static final String PUBLIC_JWK =
-        "{"
-            + "\"crv\": \"P-256\","
-            + "\"kid\": \"integ-key\","
-            + "\"kty\": \"EC\","
-            + "\"x\": \"hBWj8vw5LkPRWbCr45k0cOarIcWgApM03mSYF911de4\","
-            + "\"y\": \"atcBji-0fTfKQu46NsW0votcBrDIs_gFp4YWSEHDUyo\""
-            + "}";
+    private static final String PUBLIC_JWK = PublicKeysUtil.getPublicJWKString();
 
     @Override
     public void handle(HttpExchange t) throws IOException {
