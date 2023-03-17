@@ -37,9 +37,10 @@ resource "null_resource" "shell_app_build" {
 }
 
 resource "google_cloud_run_service" "shell_app_service" {
+  project = var.project_id
+
   name     = var.service_name
   location = var.region
-  project  = var.project_id
 
   template {
     spec {

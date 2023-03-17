@@ -49,8 +49,10 @@ resource "google_folder" "apps_folder" {
 }
 
 resource "google_folder_iam_audit_config" "apps_audit_config" {
-  count   = var.enable_all_cal ? 1 : 0
-  folder  = google_folder.apps_folder.name
+  count = var.enable_all_cal ? 1 : 0
+
+  folder = google_folder.apps_folder.name
+
   service = "allServices"
   audit_log_config {
     log_type = "ADMIN_READ"
@@ -64,17 +66,20 @@ resource "google_folder_iam_audit_config" "apps_audit_config" {
 }
 
 resource "google_project" "server_project" {
+  folder_id  = google_folder.top_folder.name
+  project_id = "${var.top_folder_id}-server"
+
   name            = "${var.top_folder_id}-server"
-  project_id      = "${var.top_folder_id}-server"
-  folder_id       = google_folder.top_folder.name
   billing_account = var.billing_account
 }
 
 resource "google_project_iam_member" "server_project_editor" {
   for_each = toset(var.projects_editors)
-  project  = google_project.server_project.project_id
-  role     = "roles/editor"
-  member   = each.value
+
+  project = google_project.server_project.project_id
+
+  role   = "roles/editor"
+  member = each.value
 }
 
 # Give the default compute engine service account in each app project
@@ -82,10 +87,12 @@ resource "google_project_iam_member" "server_project_editor" {
 # Given the project level roles/run.invoker to simplify the e2e env set up and avoid the IAM propagation delay
 # which may cause flakiness. Ideally, project level roles/run.invoker is not needed. We only need roles/run.invoker for the audit logging server.
 resource "google_project_iam_member" "audit_log_writer_iam" {
-  count   = var.apps_count
+  count = var.apps_count
+
   project = google_project.server_project.project_id
-  role    = "roles/run.invoker"
-  member  = "serviceAccount:${google_project.app_project[count.index].number}-compute@developer.gserviceaccount.com"
+
+  role   = "roles/run.invoker"
+  member = "serviceAccount:${google_project.app_project[count.index].number}-compute@developer.gserviceaccount.com"
 
   depends_on = [
     google_project_service.app_project_services,
@@ -93,30 +100,38 @@ resource "google_project_iam_member" "audit_log_writer_iam" {
 }
 
 resource "google_project" "app_project" {
-  count           = var.apps_count
+  count = var.apps_count
+
+  folder_id  = google_folder.apps_folder.name
+  project_id = "${var.top_folder_id}-app-${count.index}"
+
   name            = "${var.top_folder_id}-app-${count.index}"
-  project_id      = "${var.top_folder_id}-app-${count.index}"
-  folder_id       = google_folder.apps_folder.name
   billing_account = var.billing_account
 }
 
 resource "google_project_iam_member" "app_project_editor" {
   for_each = { for e in local.app_projects_editors : "${e.editor}-${e.index}" => e }
-  project  = google_project.server_project.project_id
-  role     = "roles/editor"
-  member   = each.value.editor
+
+  project = google_project.server_project.project_id
+
+  role   = "roles/editor"
+  member = each.value.editor
 }
 
 resource "google_project_service" "app_project_serviceusage" {
-  count              = var.apps_count
-  project            = google_project.app_project[count.index].project_id
+  count = var.apps_count
+
+  project = google_project.app_project[count.index].project_id
+
   service            = "serviceusage.googleapis.com"
   disable_on_destroy = false
 }
 
 resource "google_project_service" "app_project_resourcemanager" {
-  count              = var.apps_count
-  project            = google_project.app_project[count.index].project_id
+  count = var.apps_count
+
+  project = google_project.app_project[count.index].project_id
+
   service            = "cloudresourcemanager.googleapis.com"
   disable_on_destroy = false
 
@@ -126,8 +141,10 @@ resource "google_project_service" "app_project_resourcemanager" {
 }
 
 resource "google_project_service" "app_project_services" {
-  for_each           = { for s in local.app_projects_services : "${s.service}-${s.index}" => s }
-  project            = google_project.app_project[each.value.index].project_id
+  for_each = { for s in local.app_projects_services : "${s.service}-${s.index}" => s }
+
+  project = google_project.app_project[each.value.index].project_id
+
   service            = each.value.service
   disable_on_destroy = false
 
@@ -137,11 +154,12 @@ resource "google_project_service" "app_project_services" {
 }
 
 resource "google_artifact_registry_repository" "app_project_image_registry" {
+  count         = var.apps_count
   provider = google-beta
 
-  count         = var.apps_count
+  project = google_project.app_project[count.index].project_id
+
   location      = var.registry_location
-  project       = google_project.app_project[count.index].project_id
   repository_id = "images"
   description   = "Container Registry for the images."
   format        = "DOCKER"
@@ -153,7 +171,8 @@ resource "google_artifact_registry_repository" "app_project_image_registry" {
 
 // Create the log storage in the same server project.
 module "log_storage" {
-  source     = "../bigquery-destination"
+  source = "../bigquery-destination"
+
   project_id = google_project.server_project.project_id
 
   depends_on = [
@@ -162,9 +181,9 @@ module "log_storage" {
 }
 
 module "pubsub_sink" {
-  count = var.enable_pubsub_sink ? 1 : 0
+  count  = var.enable_pubsub_sink ? 1 : 0
+  source = "../pubsub-destination"
 
-  source     = "../pubsub-destination"
   project_id = google_project.server_project.project_id
 
   depends_on = [
@@ -173,8 +192,10 @@ module "pubsub_sink" {
 }
 
 module "server_sink" {
-  source     = "../server-sink"
+  source = "../server-sink"
+
   project_id = google_project.server_project.project_id
+
   destination_log_sinks = concat(
     [module.log_storage.destination_log_sink],
     module.pubsub_sink[*].destination_log_sink,
@@ -186,13 +207,15 @@ module "server_sink" {
 }
 
 resource "google_project_service" "server_project_serviceusage" {
-  project            = google_project.server_project.project_id
+  project = google_project.server_project.project_id
+
   service            = "serviceusage.googleapis.com"
   disable_on_destroy = false
 }
 
 resource "google_project_service" "server_project_resourcemanager" {
-  project            = google_project.server_project.project_id
+  project = google_project.server_project.project_id
+
   service            = "cloudresourcemanager.googleapis.com"
   disable_on_destroy = false
 
@@ -202,18 +225,22 @@ resource "google_project_service" "server_project_resourcemanager" {
 }
 
 module "monitoring_dashboards" {
-  source       = "../monitoring"
-  project_id   = google_project.server_project.project_id
+  source = "../monitoring"
+
+  project_id = google_project.server_project.project_id
+
   service_name = var.service_name
   dataset_id   = module.log_storage.destination_log_sink.name
 }
 
 resource "google_project_service" "server_project_services" {
-  project = google_project.server_project.project_id
   for_each = toset([
     "serviceusage.googleapis.com",
     "artifactregistry.googleapis.com",
   ])
+
+  project = google_project.server_project.project_id
+
   service            = each.value
   disable_on_destroy = false
 
@@ -225,8 +252,9 @@ resource "google_project_service" "server_project_services" {
 resource "google_artifact_registry_repository" "image_registry" {
   provider = google-beta
 
+  project = google_project.server_project.project_id
+
   location      = var.registry_location
-  project       = google_project.server_project.project_id
   repository_id = "images"
   description   = "Container Registry for the images."
   format        = "DOCKER"
@@ -237,8 +265,10 @@ resource "google_artifact_registry_repository" "image_registry" {
 }
 
 module "server_service" {
-  source       = "../server-service"
-  project_id   = google_project.server_project.project_id
+  source = "../server-service"
+
+  project_id = google_project.server_project.project_id
+
   server_image = var.server_image
   service_name = var.service_name
 
@@ -252,8 +282,10 @@ module "server_service" {
 }
 
 module "folder_sink" {
-  source          = "../al-source-folder"
-  folder_id       = google_folder.apps_folder.name
+  source = "../al-source-folder"
+
+  folder_id = google_folder.apps_folder.name
+
   query_overwrite = var.cal_query_overwrite
   destination_log_sinks = concat(
     [module.log_storage.destination_log_sink],

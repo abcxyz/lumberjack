@@ -15,16 +15,19 @@
  */
 
 resource "google_project_service" "resourcemanager" {
-  project            = var.project_id
+  project = var.project_id
+
   service            = "cloudresourcemanager.googleapis.com"
   disable_on_destroy = false
 }
 
 resource "google_project_service" "services" {
-  project = var.project_id
   for_each = toset([
     "logging.googleapis.com",
   ])
+
+  project = var.project_id
+
   service            = each.value
   disable_on_destroy = false
 
@@ -34,9 +37,11 @@ resource "google_project_service" "services" {
 }
 
 resource "google_logging_project_sink" "bigquery_sink" {
-  for_each    = { for dest in var.destination_log_sinks : dest.name => dest if dest.kind == "bigquery" }
+  for_each = { for dest in var.destination_log_sinks : dest.name => dest if dest.kind == "bigquery" }
+
+  project = var.project_id
+
   name        = format("%s-%s", var.log_sink_name, each.value.name)
-  project     = var.project_id
   destination = "bigquery.googleapis.com/projects/${each.value.project_id}/datasets/${each.value.name}"
 
   filter = var.query_overwrite != "" ? var.query_overwrite : <<-EOT
@@ -64,17 +69,21 @@ resource "google_logging_project_sink" "bigquery_sink" {
 }
 
 resource "google_bigquery_dataset_iam_member" "bigquery_sink_memeber" {
-  for_each   = { for dest in var.destination_log_sinks : dest.name => dest if dest.kind == "bigquery" }
+  for_each = { for dest in var.destination_log_sinks : dest.name => dest if dest.kind == "bigquery" }
+
+  project = each.value.project_id
+
   dataset_id = each.value.name
-  project    = each.value.project_id
   role       = "roles/bigquery.dataEditor"
   member     = google_logging_project_sink.bigquery_sink[each.value.name].writer_identity
 }
 
 resource "google_logging_project_sink" "pubsub_sink" {
-  for_each    = { for dest in var.destination_log_sinks : dest.name => dest if dest.kind == "pubsub" }
+  for_each = { for dest in var.destination_log_sinks : dest.name => dest if dest.kind == "pubsub" }
+
+  project = var.project_id
+
   name        = format("ps-%s-%s", var.log_sink_name, each.value.name)
-  project     = var.project_id
   destination = "pubsub.googleapis.com/projects/${each.value.project_id}/topics/${each.value.name}"
 
   filter = var.query_overwrite != "" ? var.query_overwrite : <<-EOT
@@ -100,8 +109,10 @@ resource "google_logging_project_sink" "pubsub_sink" {
 
 resource "google_pubsub_topic_iam_member" "pubsub_sink_member" {
   for_each = { for dest in var.destination_log_sinks : dest.name => dest if dest.kind == "pubsub" }
-  topic    = each.value.name
-  project  = each.value.project_id
-  role     = "roles/pubsub.publisher"
-  member   = google_logging_project_sink.pubsub_sink[each.value.name].writer_identity
+
+  project = each.value.project_id
+
+  topic  = each.value.name
+  role   = "roles/pubsub.publisher"
+  member = google_logging_project_sink.pubsub_sink[each.value.name].writer_identity
 }
