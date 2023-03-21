@@ -4,6 +4,8 @@ import java.io.FileReader;
 import org.json.simple.*;
 import org.json.simple.parser.*;
 
+// Read public key from file, and the public key matches private key here:
+// https://github.com/abcxyz/lumberjack/blob/main/integration/testrunner/grpcrunner/grpc.go#L59
 public class PublicKeyUtils {
 
   public static String parsePublicKey() {

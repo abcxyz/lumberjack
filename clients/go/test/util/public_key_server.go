@@ -29,37 +29,33 @@ import (
 	"github.com/lestrrat-go/jwx/v2/jwk"
 )
 
-// Matching private key here: https://github.com/abcxyz/lumberjack/blob/92782c326681157221df37e0897ba234c5a22240/integration/testrunner/grpcrunner/grpc.go#L60
-// const publicKeyString = `
-// -----BEGIN PUBLIC KEY-----
-// MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEhBWj8vw5LkPRWbCr45k0cOarIcWg
-// ApM03mSYF911de5q1wGOL7R9N8pC7jo2xbS+i1wGsMiz+AWnhhZIQcNTKg==
-// -----END PUBLIC KEY-----
-// `
-
 // StartLocalPublicKeyServer parse pre-made key and set up a server to host it in JWKS format.
 // This is intended to stand in for the JVS in the integration tests.
-type jsonData struct {
+type publicKeyJSONData struct {
 	Encoded string
 	Decoded string
 }
 
-func loadJSON() jsonData {
+func loadJSON() (publicKeyJSONData, error) {
+	var data publicKeyJSONData
 	jsonFile, err := os.Open("/etc/lumberjack/public_key.json")
 	if err != nil {
-		fmt.Println("Error opening files")
+		return data, fmt.Errorf("failed opening files %w", err)
 	}
 	byteValue, _ := io.ReadAll(jsonFile)
-	var data jsonData
 	err = json.Unmarshal(byteValue, &data)
 	if err != nil {
-		fmt.Println("Error parsing files")
+		return data, fmt.Errorf("failed parsing files: %w", err)
 	}
-	return data
+	return data, nil
 }
 
 func StartLocalPublicKeyServer() (string, func(), error) {
-	block, _ := pem.Decode([]byte(strings.TrimSpace(loadJSON().Encoded)))
+	publicKeyString, err := loadJSON()
+	if err != nil {
+		return "", nil, fmt.Errorf("failed to load public key: %w", err)
+	}
+	block, _ := pem.Decode([]byte(strings.TrimSpace(publicKeyString.Encoded)))
 	key, err := x509.ParsePKIXPublicKey(block.Bytes)
 	if err != nil {
 		log.Printf("Error when parsing key %v", err)

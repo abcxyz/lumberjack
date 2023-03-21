@@ -37,20 +37,6 @@ import (
 	jvspb "github.com/abcxyz/jvs/apis/v0"
 )
 
-// Matching public key here: https://github.com/abcxyz/lumberjack/blob/92782c326681157221df37e0897ba234c5a22240/clients/go/test/grpc-app/main.go#L47
-// const privateKeyString = `
-// -----BEGIN EC PRIVATE KEY-----
-// MHcCAQEEIITZ4357UsTCbhxXu8w8cY54ZLlsAIJj/Aej9ylb/ZfBoAoGCCqGSM49
-// AwEHoUQDQgAEhBWj8vw5LkPRWbCr45k0cOarIcWgApM03mSYF911de5q1wGOL7R9
-// N8pC7jo2xbS+i1wGsMiz+AWnhhZIQcNTKg==
-// -----END EC PRIVATE KEY-----
-// `
-
-// var (
-//      privateKeyPEM, _ = pem.Decode([]byte(strings.TrimSpace(privateKeyString)))
-//      privateKey, _    = x509.ParseECPrivateKey(privateKeyPEM.Bytes)
-// )
-
 // Config is the global configuration for integration tests.
 type Config struct {
 	AuditLogRequestTimeout  time.Duration `env:"AUDIT_CLIENT_TEST_AUDIT_LOG_REQUEST_TIMEOUT,default=30s"`
