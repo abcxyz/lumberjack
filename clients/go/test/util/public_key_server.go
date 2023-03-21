@@ -15,17 +15,11 @@
 package util
 
 import (
-	"crypto/x509"
-	"encoding/json"
-	"encoding/pem"
 	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
 	"os"
-	"strings"
-
-	"github.com/lestrrat-go/jwx/v2/jwk"
 )
 
 // StartLocalPublicKeyServer parse pre-made key and set up a server to host it in JWKS format.
@@ -34,45 +28,58 @@ type publicKeyJSONData struct {
 	Encoded string
 }
 
-func loadJSON() (*publicKeyJSONData, error) {
-	var data publicKeyJSONData
-	jsonFile, err := os.Open("public_key.json")
+// func loadJSON() (*publicKeyJSONData, error) {
+// 	var data publicKeyJSONData
+// 	jsonFile, err := os.Open("public_key.json")
+// 	if err != nil {
+// 		return nil, fmt.Errorf("failed to open file: %w", err)
+// 	}
+// 	b, err := io.ReadAll(jsonFile)
+// 	if err != nil {
+// 		return nil, fmt.Errorf("failed to read from file: %w", err)
+// 	}
+// 	if err = json.Unmarshal(b, &data); err != nil {
+// 		return nil, fmt.Errorf("failed to parse files: %w", err)
+// 	}
+// 	return &data, nil
+// }
+
+func readBytes() (*[]byte, error) {
+	f, err := os.Open("decoded_public_key.pub")
 	if err != nil {
 		return nil, fmt.Errorf("failed to open file: %w", err)
 	}
-	b, err := io.ReadAll(jsonFile)
+	b, err := io.ReadAll(f)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read from file: %w", err)
 	}
-	if err = json.Unmarshal(b, &data); err != nil {
-		return nil, fmt.Errorf("failed to parse files: %w", err)
-	}
-	return &data, nil
+	return &b, nil
 }
 
 func StartLocalPublicKeyServer() (string, func(), error) {
-	publicKeyStr, err := loadJSON()
-	if err != nil {
-		return "", nil, fmt.Errorf("failed to load public key: %w", err)
-	}
-	// TODO: Enable this code to use decoded public key
-	// https://github.com/abcxyz/lumberjack/issues/406
-	block, _ := pem.Decode([]byte(strings.TrimSpace(publicKeyStr.Encoded)))
-	key, err := x509.ParsePKIXPublicKey(block.Bytes)
-	if err != nil {
-		return "", nil, fmt.Errorf("failed to parse public key: %w", err)
-	}
-	ecdsaKey, err := jwk.FromRaw(key)
-	if err != nil {
-		return "", nil, fmt.Errorf("failed to parse jwk: %w", err)
-	}
-	if err := ecdsaKey.Set(jwk.KeyIDKey, "integ-key"); err != nil {
-		return "", nil, fmt.Errorf("failed to set key id: %w", err)
-	}
+	// publicKeyStr, err := loadJSON()
+	// if err != nil {
+	// 	return "", nil, fmt.Errorf("failed to load public key: %w", err)
+	// }
+	// // TODO: Enable this code to use decoded public key
+	// // https://github.com/abcxyz/lumberjack/issues/406
+	// block, _ := pem.Decode([]byte(strings.TrimSpace(publicKeyStr.Encoded)))
+	// key, err := x509.ParsePKIXPublicKey(block.Bytes)
+	// if err != nil {
+	// 	return "", nil, fmt.Errorf("failed to parse public key: %w", err)
+	// }
+	// ecdsaKey, err := jwk.FromRaw(key)
+	// if err != nil {
+	// 	return "", nil, fmt.Errorf("failed to parse jwk: %w", err)
+	// }
+	// if err := ecdsaKey.Set(jwk.KeyIDKey, "integ-key"); err != nil {
+	// 	return "", nil, fmt.Errorf("failed to set key id: %w", err)
+	// }
 
-	jwks := make(map[string][]jwk.Key)
-	jwks["keys"] = []jwk.Key{ecdsaKey}
-	j, err := json.MarshalIndent(jwks, "", " ")
+	// jwks := make(map[string][]jwk.Key)
+	// jwks["keys"] = []jwk.Key{ecdsaKey}
+	// j, err := json.MarshalIndent(jwks, "", " ")
+	j, err := readBytes()
 	if err != nil {
 		return "", nil, fmt.Errorf("failed to marshal jwks: %w", err)
 	}
