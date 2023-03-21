@@ -20,7 +20,6 @@ import (
 	"encoding/pem"
 	"fmt"
 	"io"
-	"log"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -36,17 +35,19 @@ type publicKeyJSONData struct {
 }
 
 func loadJSON() (*publicKeyJSONData, error) {
-	var data *publicKeyJSONData
+	var data publicKeyJSONData
 	jsonFile, err := os.Open("/etc/lumberjack/public_key.json")
 	if err != nil {
 		return nil, fmt.Errorf("failed to open file: %w", err)
 	}
-	byteValue, _ := io.ReadAll(jsonFile)
-	err = json.Unmarshal(byteValue, &data)
+	b, err := io.ReadAll(jsonFile)
 	if err != nil {
+		return nil, fmt.Errorf("failed to read from file: %w", err)
+	}
+	if err = json.Unmarshal(b, &data); err != nil {
 		return nil, fmt.Errorf("failed to parse files: %w", err)
 	}
-	return data, nil
+	return &data, nil
 }
 
 func StartLocalPublicKeyServer() (string, func(), error) {
@@ -59,16 +60,13 @@ func StartLocalPublicKeyServer() (string, func(), error) {
 	block, _ := pem.Decode([]byte(strings.TrimSpace(publicKeyStr.Encoded)))
 	key, err := x509.ParsePKIXPublicKey(block.Bytes)
 	if err != nil {
-		log.Printf("Error when parsing key %v", err)
 		return "", nil, fmt.Errorf("failed to parse public key: %w", err)
 	}
 	ecdsaKey, err := jwk.FromRaw(key)
 	if err != nil {
-		log.Printf("Err when converting key to jwk %v", err)
 		return "", nil, fmt.Errorf("failed to parse jwk: %w", err)
 	}
 	if err := ecdsaKey.Set(jwk.KeyIDKey, "integ-key"); err != nil {
-		log.Printf("Err when setting key id %v", err)
 		return "", nil, fmt.Errorf("failed to set key id: %w", err)
 	}
 
@@ -76,7 +74,6 @@ func StartLocalPublicKeyServer() (string, func(), error) {
 	jwks["keys"] = []jwk.Key{ecdsaKey}
 	j, err := json.MarshalIndent(jwks, "", " ")
 	if err != nil {
-		log.Printf("Err when creating jwks json %v", err)
 		return "", nil, fmt.Errorf("failed to marshal jwks: %w", err)
 	}
 

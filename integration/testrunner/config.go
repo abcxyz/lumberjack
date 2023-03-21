@@ -51,6 +51,7 @@ type Config struct {
 	ProjectID               string        `env:"AUDIT_CLIENT_TEST_PROJECT_ID,required"`
 	BigQueryDataset         string        `env:"AUDIT_CLIENT_TEST_BIGQUERY_DATASET,required"`
 	PrivateKeyFilePath      string        `env:"AUDIT_CLIENT_TEST_PRIVATE_KEY_PATH,required"`
+	PrivateKey              ecdsa.PrivateKey
 }
 
 // TestCaseConfig contains all configuration needed in a test case.
@@ -68,7 +69,6 @@ type TestCaseConfig struct {
 
 type privateKeyJSONData struct {
 	Encoded string
-	Decoded string
 }
 
 func parsePrivateKey(path string) (*ecdsa.PrivateKey, error) {
@@ -76,14 +76,20 @@ func parsePrivateKey(path string) (*ecdsa.PrivateKey, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse private key: %w from file: %s", err, path)
 	}
-	byteValue, _ := io.ReadAll(jsonFile)
+	b, err := io.ReadAll(jsonFile)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read data from key file: %w", err)
+	}
 	var data privateKeyJSONData
-	err = json.Unmarshal(byteValue, &data)
+	err = json.Unmarshal(b, &data)
 	if err != nil {
 		return nil, fmt.Errorf("failed to unmarshal to privateKeyJSONData: %w", err)
 	}
 	privateKeyPEM, _ := pem.Decode([]byte(strings.TrimSpace(data.Encoded)))
-	privateKey, _ := x509.ParseECPrivateKey(privateKeyPEM.Bytes)
+	privateKey, err := x509.ParseECPrivateKey(privateKeyPEM.Bytes)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse EC private key: %w", err)
+	}
 	return privateKey, nil
 }
 
@@ -92,11 +98,17 @@ func newTestConfig(ctx context.Context) (*Config, error) {
 	if err := envconfig.ProcessWith(ctx, &c, envconfig.OsLookuper()); err != nil {
 		return nil, fmt.Errorf("failed to process environment: %w", err)
 	}
+	PrivateKey, err := parsePrivateKey(c.PrivateKeyFilePath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse private key: %w", err)
+	}
+	c.PrivateKey = *PrivateKey
+
 	return &c, nil
 }
 
 // create a justification token to pass in the call to services.
-func justificationToken(audience, subject, path string) (string, error) {
+func justificationToken(audience, subject string, key *ecdsa.PrivateKey) (string, error) {
 	now := time.Now().UTC()
 
 	token, err := jwt.NewBuilder().
@@ -127,12 +139,8 @@ func justificationToken(audience, subject, path string) (string, error) {
 		return "", fmt.Errorf("failed to set header: %w", err)
 	}
 
-	privateKey, err := parsePrivateKey(path)
-	if err != nil {
-		return "", fmt.Errorf("failed to parse private key: %w", err)
-	}
 	// Sign the token.
-	b, err := jwt.Sign(token, jwt.WithKey(jwa.ES256, privateKey,
+	b, err := jwt.Sign(token, jwt.WithKey(jwa.ES256, key,
 		jws.WithProtectedHeaders(headers)))
 	if err != nil {
 		return "", fmt.Errorf("failed to sign token: %w", err)

@@ -44,8 +44,6 @@ public class LoggingShellApplication {
   }
 
   static class JWKHandler implements HttpHandler {
-    // Matching private key here:
-    // https://github.com/abcxyz/lumberjack/blob/main/integration/testrunner/grpcrunner/grpc.go#L59
     private static String parsePublicKey() throws Exception {
       JSONParser parser = new JSONParser();
       try {
