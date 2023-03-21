@@ -21,7 +21,6 @@ env:
   SERVER_PROJECT_ID: 'github-ci-server'
   CLIENT_PROJECT_ID: 'github-ci-app-0'
   BIGQUERY_DATASET_ID: 'audit_logs.audit_abcxyz_data_access'
-  AUDIT_CLIENT_TEST_PRIVATE_KEY_PATH: './integration/testrunner/private_key.json'
 
 concurrency:
   group: '${{ github.workflow }}-${{ github.head_ref || github.ref }}-ci'

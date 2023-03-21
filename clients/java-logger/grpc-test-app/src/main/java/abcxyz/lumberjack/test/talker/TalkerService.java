@@ -129,16 +129,19 @@ public class TalkerService {
 
     @Override
     public void handle(HttpExchange t) throws IOException {
+      String PUBLIC_JWK;
       try {
-        String PUBLIC_JWK = parsePublicKey();
-        String response = String.format("{\"keys\": [%s]}", PUBLIC_JWK);
-        t.sendResponseHeaders(200, response.length());
-        OutputStream os = t.getResponseBody();
-        os.write(response.getBytes());
-        os.close();
+        PUBLIC_JWK = parsePublicKey();
       } catch (Exception e) {
         log.error("Failed to parse public key from file.", e);
+        t.sendResponseHeaders(500, -1);
+        return;
       }
+      String response = String.format("{\"keys\": [%s]}", PUBLIC_JWK);
+      t.sendResponseHeaders(200, response.length());
+      OutputStream os = t.getResponseBody();
+      os.write(response.getBytes());
+      os.close();
     }
   }
 
