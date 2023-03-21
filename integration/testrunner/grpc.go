@@ -53,7 +53,7 @@ func testGRPCEndpoint(ctx context.Context, t *testing.T, tcfg *TestCaseConfig) {
 		tcfg.TalkerClient = talkerpb.NewTalkerClient(conn)
 	}
 
-	signedToken, err := justificationToken("talker-app", tcfg.JustificationSubject)
+	signedToken, err := justificationToken("talker-app", tcfg.JustificationSubject, tcfg.PrivateKeyFilePath)
 	if err != nil {
 		t.Fatalf("couldn't generate justification token: %v", err)
 	}

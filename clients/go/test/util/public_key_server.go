@@ -50,19 +50,19 @@ func loadJSON() jsonData {
 		fmt.Println("Error opening files")
 	}
 	byteValue, _ := io.ReadAll(jsonFile)
-	var tmp jsonData
-	err = json.Unmarshal(byteValue, &tmp)
+	var data jsonData
+	err = json.Unmarshal(byteValue, &data)
 	if err != nil {
 		fmt.Println("Error parsing files")
 	}
-	return tmp
+	return data
 }
 
 func StartLocalPublicKeyServer() (string, func(), error) {
 	block, _ := pem.Decode([]byte(strings.TrimSpace(loadJSON().Encoded)))
 	key, err := x509.ParsePKIXPublicKey(block.Bytes)
 	if err != nil {
-		log.Printf("Err when parsing key %v", err)
+		log.Printf("Error when parsing key %v", err)
 		return "", nil, fmt.Errorf("failed to parse public key: %w", err)
 	}
 	ecdsaKey, err := jwk.FromRaw(key)

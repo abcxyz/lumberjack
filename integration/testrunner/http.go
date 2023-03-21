@@ -85,7 +85,7 @@ func makeHTTPAuditLogRequest(tcfg *TestCaseConfig) (*http.Response, error) {
 		return nil, fmt.Errorf("failed to create audit log http request: %w", err)
 	}
 
-	signedToken, err := justificationToken("logging-shell", tcfg.JustificationSubject)
+	signedToken, err := justificationToken("logging-shell", tcfg.JustificationSubject, tcfg.PrivateKeyFilePath)
 	if err != nil {
 		return nil, fmt.Errorf("couldn't generate justification token: %w", err)
 	}
