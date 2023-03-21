@@ -16,14 +16,16 @@
 
 package com.abcxyz.lumberjack.loggingshell;
 
-import com.abcxyz.lumberjack.auditlogclient.utils.PublicKeyUtils;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpHandler;
 import com.sun.net.httpserver.HttpServer;
+import java.io.FileReader;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
+import org.json.simple.*;
+import org.json.simple.parser.*;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 
@@ -39,10 +41,22 @@ public class LoggingShellApplication {
     SpringApplication.run(LoggingShellApplication.class, args);
   }
 
+  public static String parsePublicKey() {
+    JSONParser parser = new JSONParser();
+    try {
+      Object obj = parser.parse(new FileReader("/etc/lumberjack/public_key.json"));
+      JSONObject jsonObject = (JSONObject) obj;
+      String decoded = (String) jsonObject.get("decoded");
+      return decoded;
+    } catch (Exception e) {
+      return "";
+    }
+  }
+
   static class JWKHandler implements HttpHandler {
     // Matching private key here:
     // https://github.com/abcxyz/lumberjack/blob/main/integration/testrunner/grpcrunner/grpc.go#L59
-    private static String PUBLIC_JWK = PublicKeyUtils.parsePublicKey();
+    private static String PUBLIC_JWK = parsePublicKey();
 
     @Override
     public void handle(HttpExchange t) throws IOException {

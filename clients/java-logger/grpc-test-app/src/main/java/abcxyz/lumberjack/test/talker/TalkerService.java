@@ -34,7 +34,6 @@ package abcxyz.lumberjack.test.talker;
 import com.abcxyz.lumberjack.auditlogclient.AuditLoggingServerInterceptor;
 import com.abcxyz.lumberjack.auditlogclient.AuditLogs;
 import com.abcxyz.lumberjack.auditlogclient.modules.AuditLoggingModule;
-import com.abcxyz.lumberjack.auditlogclient.utils.PublicKeyUtils;
 import com.abcxyz.lumberjack.test.talker.AdditionRequest;
 import com.abcxyz.lumberjack.test.talker.AdditionResponse;
 import com.abcxyz.lumberjack.test.talker.FailOnFourRequest;
@@ -59,6 +58,7 @@ import io.grpc.ServerBuilder;
 import io.grpc.Status;
 import io.grpc.StatusRuntimeException;
 import io.grpc.stub.StreamObserver;
+import java.io.FileReader;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.net.InetAddress;
@@ -67,6 +67,8 @@ import java.util.HashMap;
 import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.json.simple.*;
+import org.json.simple.parser.*;
 
 /** Server that manages startup/shutdown of a {@code Talker} server with TLS enabled. */
 @RequiredArgsConstructor
@@ -112,10 +114,22 @@ public class TalkerService {
     }
   }
 
+  public static String parsePublicKey() {
+    JSONParser parser = new JSONParser();
+    try {
+      Object obj = parser.parse(new FileReader("/etc/lumberjack/public_key.json"));
+      JSONObject jsonObject = (JSONObject) obj;
+      String decoded = (String) jsonObject.get("decoded");
+      return decoded;
+    } catch (Exception e) {
+      return "";
+    }
+  }
+
   static class JWKHandler implements HttpHandler {
     // Matching private key here:
     // https://github.com/abcxyz/lumberjack/blob/main/integration/testrunner/grpcrunner/grpc.go#L59
-    private static String PUBLIC_JWK = PublicKeyUtils.parsePublicKey();
+    private static String PUBLIC_JWK = parsePublicKey();
 
     @Override
     public void handle(HttpExchange t) throws IOException {
