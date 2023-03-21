@@ -25,7 +25,7 @@ COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
 COPY --from=builder /go/bin/app /app
 # Copy the client config.
 COPY clients/go/test/shell/config.yaml /etc/lumberjack/config.yaml
-COPY integration/testrunner/public_key.json ./integration/testrunner/public_key.json
+COPY integration/testrunner/public_key.json public_key.json
 
 USER nobody
 

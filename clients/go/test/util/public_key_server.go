@@ -36,7 +36,7 @@ type publicKeyJSONData struct {
 
 func loadJSON() (*publicKeyJSONData, error) {
 	var data publicKeyJSONData
-	jsonFile, err := os.Open("./integration/testrunner/public_key.json")
+	jsonFile, err := os.Open("public_key.json")
 	if err != nil {
 		return nil, fmt.Errorf("failed to open file: %w", err)
 	}

@@ -117,27 +117,23 @@ public class TalkerService {
   static class JWKHandler implements HttpHandler {
     private static String parsePublicKey() throws Exception {
       JSONParser parser = new JSONParser();
-      try {
-        Object obj = parser.parse(new FileReader("./integration/testrunner/public_key.json"));
-        JSONObject jsonObject = (JSONObject) obj;
-        String decoded = (String) jsonObject.get("decoded");
-        return decoded;
-      } catch (Exception e) {
-        throw e;
-      }
+      Object obj = parser.parse(new FileReader("public_key.json"));
+      JSONObject jsonObject = (JSONObject) obj;
+      String decoded = (String) jsonObject.get("decoded");
+      return decoded;
     }
 
     @Override
     public void handle(HttpExchange t) throws IOException {
-      String PUBLIC_JWK;
+      String publicKey;
       try {
-        PUBLIC_JWK = parsePublicKey();
+        publicKey = parsePublicKey();
       } catch (Exception e) {
         log.error("Failed to parse public key from file.", e);
         t.sendResponseHeaders(500, -1);
         return;
       }
-      String response = String.format("{\"keys\": [%s]}", PUBLIC_JWK);
+      String response = String.format("{\"keys\": [%s]}", publicKey);
       t.sendResponseHeaders(200, response.length());
       OutputStream os = t.getResponseBody();
       os.write(response.getBytes());
