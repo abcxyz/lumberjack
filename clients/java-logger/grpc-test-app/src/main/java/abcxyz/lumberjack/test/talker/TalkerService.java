@@ -118,7 +118,7 @@ public class TalkerService {
     private static String parsePublicKey() throws Exception {
       JSONParser parser = new JSONParser();
       try {
-        Object obj = parser.parse(new FileReader("/etc/lumberjack/public_key.json"));
+        Object obj = parser.parse(new FileReader("./integration/testrunner/public_key.json"));
         JSONObject jsonObject = (JSONObject) obj;
         String decoded = (String) jsonObject.get("decoded");
         return decoded;
