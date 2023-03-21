@@ -67,8 +67,8 @@ import java.util.HashMap;
 import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.json.simple.*;
-import org.json.simple.parser.*;
+import org.json.simple.JSONObject;
+import org.json.simple.parser.JSONParser;
 
 /** Server that manages startup/shutdown of a {@code Talker} server with TLS enabled. */
 @RequiredArgsConstructor
@@ -114,34 +114,37 @@ public class TalkerService {
     }
   }
 
-  public static String parsePublicKey() {
-    JSONParser parser = new JSONParser();
-    try {
-      Object obj = parser.parse(new FileReader("/etc/lumberjack/public_key.json"));
-      JSONObject jsonObject = (JSONObject) obj;
-      String decoded = (String) jsonObject.get("decoded");
-      return decoded;
-    } catch (Exception e) {
-      return "";
-    }
-  }
-
   static class JWKHandler implements HttpHandler {
     // Matching private key here:
     // https://github.com/abcxyz/lumberjack/blob/main/integration/testrunner/grpcrunner/grpc.go#L59
-    private static String PUBLIC_JWK = parsePublicKey();
+    private static String parsePublicKey() throws Exception {
+      JSONParser parser = new JSONParser();
+      try {
+        Object obj = parser.parse(new FileReader("/etc/lumberjack/public_key.json"));
+        JSONObject jsonObject = (JSONObject) obj;
+        String decoded = (String) jsonObject.get("decoded");
+        return decoded;
+      } catch (Exception e) {
+        throw e;
+      }
+    }
 
     @Override
     public void handle(HttpExchange t) throws IOException {
-      String response = String.format("{\"keys\": [%s]}", PUBLIC_JWK);
-      t.sendResponseHeaders(200, response.length());
-      OutputStream os = t.getResponseBody();
-      os.write(response.getBytes());
-      os.close();
+      try {
+        String PUBLIC_JWK = parsePublicKey();
+        String response = String.format("{\"keys\": [%s]}", PUBLIC_JWK);
+        t.sendResponseHeaders(200, response.length());
+        OutputStream os = t.getResponseBody();
+        os.write(response.getBytes());
+        os.close();
+      } catch (Exception e) {
+        log.error("Failed to parse public key from file.", e);
+      }
     }
   }
 
-  /** Main launches the server from the command line. */
+  /** Main launches the server fsrom the command line. */
   public static void main(String[] args) throws IOException, InterruptedException {
     HttpServer jwkServer =
         HttpServer.create(new InetSocketAddress(InetAddress.getLocalHost(), 8080), 0);

@@ -50,7 +50,7 @@ type Config struct {
 	IDToken                 string        `env:"AUDIT_CLIENT_TEST_IDTOKEN"`
 	ProjectID               string        `env:"AUDIT_CLIENT_TEST_PROJECT_ID,required"`
 	BigQueryDataset         string        `env:"AUDIT_CLIENT_TEST_BIGQUERY_DATASET,required"`
-	PrivateKeyFilePath      string        `env:"PRIVATE_KEY_PATH,required"`
+	PrivateKeyFilePath      string        `env:"AUDIT_CLIENT_TEST_PRIVATE_KEY_PATH,required"`
 }
 
 // TestCaseConfig contains all configuration needed in a test case.

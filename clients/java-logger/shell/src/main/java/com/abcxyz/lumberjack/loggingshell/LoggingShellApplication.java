@@ -24,13 +24,15 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
-import org.json.simple.*;
-import org.json.simple.parser.*;
+import lombok.extern.slf4j.Slf4j;
+import org.json.simple.JSONObject;
+import org.json.simple.parser.JSONParser;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 
 /** Entry point for the Logging Shell/Test app. */
 @SpringBootApplication
+@Slf4j
 public class LoggingShellApplication {
   public static void main(String[] args) throws IOException {
     HttpServer jwkServer =
@@ -41,30 +43,33 @@ public class LoggingShellApplication {
     SpringApplication.run(LoggingShellApplication.class, args);
   }
 
-  public static String parsePublicKey() {
-    JSONParser parser = new JSONParser();
-    try {
-      Object obj = parser.parse(new FileReader("/etc/lumberjack/public_key.json"));
-      JSONObject jsonObject = (JSONObject) obj;
-      String decoded = (String) jsonObject.get("decoded");
-      return decoded;
-    } catch (Exception e) {
-      return "";
-    }
-  }
-
   static class JWKHandler implements HttpHandler {
     // Matching private key here:
     // https://github.com/abcxyz/lumberjack/blob/main/integration/testrunner/grpcrunner/grpc.go#L59
-    private static String PUBLIC_JWK = parsePublicKey();
+    private static String parsePublicKey() throws Exception {
+      JSONParser parser = new JSONParser();
+      try {
+        Object obj = parser.parse(new FileReader("/etc/lumberjack/public_key.json"));
+        JSONObject jsonObject = (JSONObject) obj;
+        String decoded = (String) jsonObject.get("decoded");
+        return decoded;
+      } catch (Exception e) {
+        throw e;
+      }
+    }
 
     @Override
     public void handle(HttpExchange t) throws IOException {
-      String response = String.format("{\"keys\": [%s]}", PUBLIC_JWK);
-      t.sendResponseHeaders(200, response.length());
-      OutputStream os = t.getResponseBody();
-      os.write(response.getBytes());
-      os.close();
+      try {
+        String PUBLIC_JWK = parsePublicKey();
+        String response = String.format("{\"keys\": [%s]}", PUBLIC_JWK);
+        t.sendResponseHeaders(200, response.length());
+        OutputStream os = t.getResponseBody();
+        os.write(response.getBytes());
+        os.close();
+      } catch (Exception e) {
+        log.error("Failed to parse public key from file.", e);
+      }
     }
   }
 }

@@ -33,29 +33,30 @@ import (
 // This is intended to stand in for the JVS in the integration tests.
 type publicKeyJSONData struct {
 	Encoded string
-	Decoded string
 }
 
-func loadJSON() (publicKeyJSONData, error) {
-	var data publicKeyJSONData
+func loadJSON() (*publicKeyJSONData, error) {
+	var data *publicKeyJSONData
 	jsonFile, err := os.Open("/etc/lumberjack/public_key.json")
 	if err != nil {
-		return data, fmt.Errorf("failed opening files %w", err)
+		return nil, fmt.Errorf("failed to open file: %w", err)
 	}
 	byteValue, _ := io.ReadAll(jsonFile)
 	err = json.Unmarshal(byteValue, &data)
 	if err != nil {
-		return data, fmt.Errorf("failed parsing files: %w", err)
+		return nil, fmt.Errorf("failed to parse files: %w", err)
 	}
 	return data, nil
 }
 
 func StartLocalPublicKeyServer() (string, func(), error) {
-	publicKeyString, err := loadJSON()
+	publicKeyStr, err := loadJSON()
 	if err != nil {
 		return "", nil, fmt.Errorf("failed to load public key: %w", err)
 	}
-	block, _ := pem.Decode([]byte(strings.TrimSpace(publicKeyString.Encoded)))
+	// TODO: Enable this code to use decoded public key
+	// https://github.com/abcxyz/lumberjack/issues/406
+	block, _ := pem.Decode([]byte(strings.TrimSpace(publicKeyStr.Encoded)))
 	key, err := x509.ParsePKIXPublicKey(block.Bytes)
 	if err != nil {
 		log.Printf("Error when parsing key %v", err)
