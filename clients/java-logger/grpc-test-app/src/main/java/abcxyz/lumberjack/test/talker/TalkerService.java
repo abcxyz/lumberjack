@@ -58,18 +58,16 @@ import io.grpc.ServerBuilder;
 import io.grpc.Status;
 import io.grpc.StatusRuntimeException;
 import io.grpc.stub.StreamObserver;
-import java.io.FileReader;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.HashMap;
 import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.json.simple.JSONArray;
-import org.json.simple.JSONObject;
-import org.json.simple.parser.JSONParser;
 
 /** Server that manages startup/shutdown of a {@code Talker} server with TLS enabled. */
 @RequiredArgsConstructor
@@ -116,18 +114,14 @@ public class TalkerService {
   }
 
   static class JWKHandler implements HttpHandler {
-    private static String parsePublicKey() throws Exception {
-      JSONParser parser = new JSONParser();
-      Object obj = parser.parse(new FileReader("test_public_key.key"));
-      JSONObject jsonObject = (JSONObject) obj;
-      JSONArray keys = (JSONArray) jsonObject.get("keys");
-      String decoded = keys.get(0).toString();
-      return decoded;
+    private static byte[] parsePublicKey() throws Exception {
+      byte[] data = Files.readAllBytes(Paths.get("test_public_key.key"));
+      return data;
     }
 
     @Override
     public void handle(HttpExchange t) throws IOException {
-      String publicKey;
+      byte[] publicKey;
       try {
         publicKey = parsePublicKey();
       } catch (Exception e) {
@@ -135,7 +129,7 @@ public class TalkerService {
         t.sendResponseHeaders(500, -1);
         return;
       }
-      String response = String.format("{\"keys\": [%s]}", publicKey);
+      String response = new String(publicKey);
       t.sendResponseHeaders(200, response.length());
       OutputStream os = t.getResponseBody();
       os.write(response.getBytes());

@@ -70,18 +70,6 @@ type TestCaseConfig struct {
 // }
 
 func parsePrivateKey(path string) (*ecdsa.PrivateKey, error) {
-	// jsonFile, err := os.Open(path)
-	// if err != nil {
-	// 	return nil, fmt.Errorf("failed to parse private key from file %s: %w", path, err)
-	// }
-	// b, err := io.ReadAll(jsonFile)
-	// if err != nil {
-	// 	return nil, fmt.Errorf("failed to read data from key file: %w", err)
-	// }
-	// var data privateKeyJSONData
-	// if err := json.Unmarshal(b, &data); err != nil {
-	// 	return nil, fmt.Errorf("failed to unmarshal to privateKeyJSONData: %w", err)
-	// }
 	b, err := os.ReadFile(path)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read data from key file %s: %w", path, err)
