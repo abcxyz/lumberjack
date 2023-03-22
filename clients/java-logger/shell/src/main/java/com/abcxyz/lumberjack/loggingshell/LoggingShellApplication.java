@@ -43,18 +43,13 @@ public class LoggingShellApplication {
   }
 
   static class JWKHandler implements HttpHandler {
-    private static byte[] parsePublicKey() throws Exception {
-      byte[] data = Files.readAllBytes(Paths.get("test_public_key.key"));
-      return data;
-    }
-
     @Override
     public void handle(HttpExchange t) throws IOException {
       byte[] publicKey;
       try {
-        publicKey = parsePublicKey();
+        publicKey = Files.readAllBytes(Paths.get("test_public_key.key"));
       } catch (Exception e) {
-        log.error("Failed to parse public key from file.", e);
+        log.error("Failed to read public key from file.", e);
         t.sendResponseHeaders(500, -1);
         return;
       }

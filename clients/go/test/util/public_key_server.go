@@ -21,17 +21,9 @@ import (
 	"os"
 )
 
-func readBytes() ([]byte, error) {
-	b, err := os.ReadFile("test_public_key.key")
-	if err != nil {
-		return nil, fmt.Errorf("faile to read from file: %w", err)
-	}
-	return b, nil
-}
-
 // StartLocalPublicKeyServer parse pre-made key and set up a server to host it in JWKS format.
 func StartLocalPublicKeyServer() (string, func(), error) {
-	j, err := readBytes()
+	j, err := os.ReadFile("test_public_key.key")
 	if err != nil {
 		return "", nil, fmt.Errorf("failed to read public key file: %w", err)
 	}
