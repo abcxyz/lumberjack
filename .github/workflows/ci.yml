@@ -351,6 +351,7 @@ jobs:
           AUDIT_CLIENT_TEST_JUSTIFICATION_SUB: '${{ env.WIF_SERVICE_ACCOUNT }}'
           AUDIT_CLIENT_TEST_PROJECT_ID: '${{ env.SERVER_PROJECT_ID }}'
           AUDIT_CLIENT_TEST_BIGQUERY_DATASET: '${{ env.BIGQUERY_DATASET_ID }}'
+          AUDIT_CLIENT_TEST_PRIVATE_KEY_PATH: '${{ github.workspace }}/integration/testrunner/test_private_key'
         run: |-
           export AUDIT_CLIENT_TEST_IDTOKEN="$(gcloud auth print-identity-token --impersonate-service-account=${{ env.WIF_SERVICE_ACCOUNT }} --include-email)"
           go test ./integration/testrunner -timeout=15m
