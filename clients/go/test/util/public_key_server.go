@@ -23,7 +23,7 @@ import (
 
 // StartLocalPublicKeyServer parse pre-made key and set up a server to host it in JWKS format.
 func StartLocalPublicKeyServer() (string, func(), error) {
-	j, err := os.ReadFile("test_public_key.key")
+	j, err := os.ReadFile("test_jwks")
 	if err != nil {
 		return "", nil, fmt.Errorf("failed to read public key file: %w", err)
 	}

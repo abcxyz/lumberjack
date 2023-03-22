@@ -47,7 +47,7 @@ public class LoggingShellApplication {
     public void handle(HttpExchange t) throws IOException {
       byte[] publicKey;
       try {
-        publicKey = Files.readAllBytes(Paths.get("test_public_key.key"));
+        publicKey = Files.readAllBytes(Paths.get("test_jwks"));
       } catch (Exception e) {
         log.error("Failed to read public key from file.", e);
         t.sendResponseHeaders(500, -1);
