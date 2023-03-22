@@ -16,20 +16,15 @@ package util
 
 import (
 	"fmt"
-	"io"
 	"net/http"
 	"net/http/httptest"
 	"os"
 )
 
 func readBytes() ([]byte, error) {
-	f, err := os.Open("public_key.json")
+	b, err := os.ReadFile("test_public_key.key")
 	if err != nil {
-		return nil, fmt.Errorf("failed to open file: %w", err)
-	}
-	b, err := io.ReadAll(f)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read from file: %w", err)
+		return nil, fmt.Errorf("faile to read from file: %w", err)
 	}
 	return b, nil
 }

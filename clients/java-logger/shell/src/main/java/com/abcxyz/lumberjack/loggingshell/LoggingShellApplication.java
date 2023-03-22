@@ -47,8 +47,7 @@ public class LoggingShellApplication {
   static class JWKHandler implements HttpHandler {
     private static String parsePublicKey() throws Exception {
       JSONParser parser = new JSONParser();
-      String path = "public_key.json";
-      Object obj = parser.parse(new FileReader(path));
+      Object obj = parser.parse(new FileReader("test_public_key.key"));
       JSONObject jsonObject = (JSONObject) obj;
       JSONArray keys = (JSONArray) jsonObject.get("keys");
       String decoded = keys.get(0).toString();

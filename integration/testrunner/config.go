@@ -18,12 +18,9 @@ import (
 	"context"
 	"crypto/ecdsa"
 	"crypto/x509"
-	"encoding/json"
 	"encoding/pem"
 	"fmt"
-	"io"
 	"os"
-	"strings"
 	"time"
 
 	"cloud.google.com/go/bigquery"
@@ -51,7 +48,8 @@ type Config struct {
 	ProjectID               string        `env:"AUDIT_CLIENT_TEST_PROJECT_ID,required"`
 	BigQueryDataset         string        `env:"AUDIT_CLIENT_TEST_BIGQUERY_DATASET,required"`
 	PrivateKeyFilePath      string        `env:"AUDIT_CLIENT_TEST_PRIVATE_KEY_PATH,required"`
-	PrivateKey              *ecdsa.PrivateKey
+	// Parsed private key for all test cases to use.
+	PrivateKey *ecdsa.PrivateKey
 }
 
 // TestCaseConfig contains all configuration needed in a test case.
@@ -67,24 +65,28 @@ type TestCaseConfig struct {
 	TalkerClient talkerpb.TalkerClient
 }
 
-type privateKeyJSONData struct {
-	Encoded string
-}
+// type privateKeyJSONData struct {
+// 	Encoded string
+// }
 
 func parsePrivateKey(path string) (*ecdsa.PrivateKey, error) {
-	jsonFile, err := os.Open(path)
+	// jsonFile, err := os.Open(path)
+	// if err != nil {
+	// 	return nil, fmt.Errorf("failed to parse private key from file %s: %w", path, err)
+	// }
+	// b, err := io.ReadAll(jsonFile)
+	// if err != nil {
+	// 	return nil, fmt.Errorf("failed to read data from key file: %w", err)
+	// }
+	// var data privateKeyJSONData
+	// if err := json.Unmarshal(b, &data); err != nil {
+	// 	return nil, fmt.Errorf("failed to unmarshal to privateKeyJSONData: %w", err)
+	// }
+	b, err := os.ReadFile(path)
 	if err != nil {
-		return nil, fmt.Errorf("failed to parse private key from file %s: %w", path, err)
+		return nil, fmt.Errorf("failed to read data from key file %s: %w", path, err)
 	}
-	b, err := io.ReadAll(jsonFile)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read data from key file: %w", err)
-	}
-	var data privateKeyJSONData
-	if err := json.Unmarshal(b, &data); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal to privateKeyJSONData: %w", err)
-	}
-	privateKeyPEM, _ := pem.Decode([]byte(strings.TrimSpace(data.Encoded)))
+	privateKeyPEM, _ := pem.Decode(b)
 	privateKey, err := x509.ParseECPrivateKey(privateKeyPEM.Bytes)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse EC private key: %w", err)
@@ -97,11 +99,11 @@ func newTestConfig(ctx context.Context) (*Config, error) {
 	if err := envconfig.ProcessWith(ctx, &c, envconfig.OsLookuper()); err != nil {
 		return nil, fmt.Errorf("failed to process environment: %w", err)
 	}
-	PrivateKey, err := parsePrivateKey(c.PrivateKeyFilePath)
+	pk, err := parsePrivateKey(c.PrivateKeyFilePath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse private key: %w", err)
 	}
-	c.PrivateKey = PrivateKey
+	c.PrivateKey = pk
 
 	return &c, nil
 }
