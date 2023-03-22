@@ -51,7 +51,7 @@ type Config struct {
 	ProjectID               string        `env:"AUDIT_CLIENT_TEST_PROJECT_ID,required"`
 	BigQueryDataset         string        `env:"AUDIT_CLIENT_TEST_BIGQUERY_DATASET,required"`
 	PrivateKeyFilePath      string        `env:"AUDIT_CLIENT_TEST_PRIVATE_KEY_PATH,required"`
-	PrivateKey              ecdsa.PrivateKey
+	PrivateKey              *ecdsa.PrivateKey
 }
 
 // TestCaseConfig contains all configuration needed in a test case.
@@ -74,15 +74,14 @@ type privateKeyJSONData struct {
 func parsePrivateKey(path string) (*ecdsa.PrivateKey, error) {
 	jsonFile, err := os.Open(path)
 	if err != nil {
-		return nil, fmt.Errorf("failed to parse private key: %w from file: %s", err, path)
+		return nil, fmt.Errorf("failed to parse private key from file %s: %w", path, err)
 	}
 	b, err := io.ReadAll(jsonFile)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read data from key file: %w", err)
 	}
 	var data privateKeyJSONData
-	err = json.Unmarshal(b, &data)
-	if err != nil {
+	if err := json.Unmarshal(b, &data); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal to privateKeyJSONData: %w", err)
 	}
 	privateKeyPEM, _ := pem.Decode([]byte(strings.TrimSpace(data.Encoded)))
@@ -102,7 +101,7 @@ func newTestConfig(ctx context.Context) (*Config, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse private key: %w", err)
 	}
-	c.PrivateKey = *PrivateKey
+	c.PrivateKey = PrivateKey
 
 	return &c, nil
 }

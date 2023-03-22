@@ -1,4 +1,11 @@
 {
-  "encoded": "-----BEGIN PUBLIC KEY-----\nMFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEhBWj8vw5LkPRWbCr45k0cOarIcWg\nApM03mSYF911de5q1wGOL7R9N8pC7jo2xbS+i1wGsMiz+AWnhhZIQcNTKg==\n-----END PUBLIC KEY-----\n",
-  "decoded": "{\"crv\": \"P-256\",\"kid\": \"integ-key\",\"kty\": \"EC\",\"x\": \"hBWj8vw5LkPRWbCr45k0cOarIcWgApM03mSYF911de4\",\"y\": \"atcBji-0fTfKQu46NsW0votcBrDIs_gFp4YWSEHDUyo\"}"
-}
+  "keys": [
+   {
+    "crv": "P-256",
+    "kid": "integ-key",
+    "kty": "EC",
+    "x": "hBWj8vw5LkPRWbCr45k0cOarIcWgApM03mSYF911de4",
+    "y": "atcBji-0fTfKQu46NsW0votcBrDIs_gFp4YWSEHDUyo"
+   }
+  ]
+ }

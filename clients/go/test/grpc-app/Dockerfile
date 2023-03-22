@@ -27,7 +27,6 @@ COPY --from=builder /go/bin/app /app
 # Copy the client config.
 COPY clients/go/test/grpc-app/config.yaml /etc/lumberjack/config.yaml
 COPY integration/testrunner/public_key.json public_key.json
-COPY integration/testrunner/decoded_public_key.pub decoded_public_key.pub
 
 USER nobody
 

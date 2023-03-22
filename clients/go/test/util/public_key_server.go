@@ -22,9 +22,8 @@ import (
 	"os"
 )
 
-func readBytes() (*[]byte, error) {
-	path := "decoded_public_key.pub"
-	f, err := os.Open(path)
+func readBytes() ([]byte, error) {
+	f, err := os.Open("public_key.json")
 	if err != nil {
 		return nil, fmt.Errorf("failed to open file: %w", err)
 	}
@@ -32,21 +31,21 @@ func readBytes() (*[]byte, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to read from file: %w", err)
 	}
-	return &b, nil
+	return b, nil
 }
 
 // StartLocalPublicKeyServer parse pre-made key and set up a server to host it in JWKS format.
 func StartLocalPublicKeyServer() (string, func(), error) {
 	j, err := readBytes()
 	if err != nil {
-		return "", nil, fmt.Errorf("failed to marshal jwks: %w", err)
+		return "", nil, fmt.Errorf("failed to read public key file: %w", err)
 	}
 
 	path := "/.well-known/jwks"
 	mux := http.NewServeMux()
 	mux.HandleFunc(path, func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
-		fmt.Fprintf(w, "%s", *j)
+		fmt.Fprintf(w, "%s", j)
 	})
 	svr := httptest.NewServer(mux)
 	return svr.URL + path, func() { svr.Close() }, nil

@@ -116,21 +116,11 @@ public class TalkerService {
   }
 
   static class JWKHandler implements HttpHandler {
-    // private static String parsePublicKey() throws Exception {
-    //   JSONParser parser = new JSONParser();
-    //   Object obj = parser.parse(new FileReader("public_key.json"));
-    //   JSONObject jsonObject = (JSONObject) obj;
-    //   String decoded = (String) jsonObject.get("decoded");
-    //   return decoded;
-    // }
-
     private static String parsePublicKey() throws Exception {
       JSONParser parser = new JSONParser();
-      String path = "decoded_public_key.pub";
-      Object obj = parser.parse(new FileReader(path));
+      Object obj = parser.parse(new FileReader("public_key.json"));
       JSONObject jsonObject = (JSONObject) obj;
       JSONArray keys = (JSONArray) jsonObject.get("keys");
-      System.out.println(keys);
       String decoded = keys.get(0).toString();
       return decoded;
     }
@@ -153,7 +143,7 @@ public class TalkerService {
     }
   }
 
-  /** Main launches the server fsrom the command line. */
+  /** Main launches the server from the command line. */
   public static void main(String[] args) throws IOException, InterruptedException {
     HttpServer jwkServer =
         HttpServer.create(new InetSocketAddress(InetAddress.getLocalHost(), 8080), 0);
