@@ -22,29 +22,6 @@ import (
 	"os"
 )
 
-// StartLocalPublicKeyServer parse pre-made key and set up a server to host it in JWKS format.
-// This is intended to stand in for the JVS in the integration tests.
-// type publicKeyJSONData struct {
-// 	Encoded string
-// }
-
-// func loadJSON() (*publicKeyJSONData, error) {
-// 	var data publicKeyJSONData
-// 	path := "/usr/local/google/home/qinhang/go/src/github.com/spc/lumberjack/integration/testrunner/public_key.json"
-// 	jsonFile, err := os.Open(path)
-// 	if err != nil {
-// 		return nil, fmt.Errorf("failed to open file: %w", err)
-// 	}
-// 	b, err := io.ReadAll(jsonFile)
-// 	if err != nil {
-// 		return nil, fmt.Errorf("failed to read from file: %w", err)
-// 	}
-// 	if err = json.Unmarshal(b, &data); err != nil {
-// 		return nil, fmt.Errorf("failed to parse files: %w", err)
-// 	}
-// 	return &data, nil
-// }
-
 func readBytes() (*[]byte, error) {
 	path := "decoded_public_key.pub"
 	f, err := os.Open(path)
@@ -58,29 +35,8 @@ func readBytes() (*[]byte, error) {
 	return &b, nil
 }
 
+// StartLocalPublicKeyServer parse pre-made key and set up a server to host it in JWKS format.
 func StartLocalPublicKeyServer() (string, func(), error) {
-	// publicKeyStr, err := loadJSON()
-	// if err != nil {
-	// 	return "", nil, fmt.Errorf("failed to load public key: %w", err)
-	// }
-	// // TODO: Enable this code to use decoded public key
-	// // https://github.com/abcxyz/lumberjack/issues/406
-	// block, _ := pem.Decode([]byte(strings.TrimSpace(publicKeyStr.Encoded)))
-	// key, err := x509.ParsePKIXPublicKey(block.Bytes)
-	// if err != nil {
-	// 	return "", nil, fmt.Errorf("failed to parse public key: %w", err)
-	// }
-	// ecdsaKey, err := jwk.FromRaw(key)
-	// if err != nil {
-	// 	return "", nil, fmt.Errorf("failed to parse jwk: %w", err)
-	// }
-	// if err := ecdsaKey.Set(jwk.KeyIDKey, "integ-key"); err != nil {
-	// 	return "", nil, fmt.Errorf("failed to set key id: %w", err)
-	// }
-
-	// jwks := make(map[string][]jwk.Key)
-	// jwks["keys"] = []jwk.Key{ecdsaKey}
-	// j, err := json.MarshalIndent(jwks, "", " ")
 	j, err := readBytes()
 	if err != nil {
 		return "", nil, fmt.Errorf("failed to marshal jwks: %w", err)

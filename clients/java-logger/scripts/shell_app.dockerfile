@@ -4,5 +4,6 @@ RUN mvn clean package --no-transfer-progress -f /src/clients/java-logger/pom.xml
 
 FROM gcr.io/distroless/java-debian11:11
 COPY integration/testrunner/public_key.json public_key.json
+COPY integration/testrunner/decoded_public_key.pub decoded_public_key.pub
 COPY --from=builder /src/clients/java-logger/shell/target/*.jar app.jar
 CMD ["app.jar"]

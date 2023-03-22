@@ -25,6 +25,7 @@ import java.io.OutputStream;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import lombok.extern.slf4j.Slf4j;
+import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
 import org.json.simple.parser.JSONParser;
 import org.springframework.boot.SpringApplication;
@@ -46,9 +47,12 @@ public class LoggingShellApplication {
   static class JWKHandler implements HttpHandler {
     private static String parsePublicKey() throws Exception {
       JSONParser parser = new JSONParser();
-      Object obj = parser.parse(new FileReader("public_key.json"));
+      String path = "decoded_public_key.pub";
+      Object obj = parser.parse(new FileReader(path));
       JSONObject jsonObject = (JSONObject) obj;
-      String decoded = (String) jsonObject.get("decoded");
+      JSONArray keys = (JSONArray) jsonObject.get("keys");
+      System.out.println(keys);
+      String decoded = keys.get(0).toString();
       return decoded;
     }
 

@@ -67,6 +67,7 @@ import java.util.HashMap;
 import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
 import org.json.simple.parser.JSONParser;
 
@@ -115,11 +116,22 @@ public class TalkerService {
   }
 
   static class JWKHandler implements HttpHandler {
+    // private static String parsePublicKey() throws Exception {
+    //   JSONParser parser = new JSONParser();
+    //   Object obj = parser.parse(new FileReader("public_key.json"));
+    //   JSONObject jsonObject = (JSONObject) obj;
+    //   String decoded = (String) jsonObject.get("decoded");
+    //   return decoded;
+    // }
+
     private static String parsePublicKey() throws Exception {
       JSONParser parser = new JSONParser();
-      Object obj = parser.parse(new FileReader("public_key.json"));
+      String path = "decoded_public_key.pub";
+      Object obj = parser.parse(new FileReader(path));
       JSONObject jsonObject = (JSONObject) obj;
-      String decoded = (String) jsonObject.get("decoded");
+      JSONArray keys = (JSONArray) jsonObject.get("keys");
+      System.out.println(keys);
+      String decoded = keys.get(0).toString();
       return decoded;
     }
 
