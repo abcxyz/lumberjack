@@ -23,11 +23,15 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 
 /** Entry point for the Logging Shell/Test app. */
 @SpringBootApplication
+@Slf4j
 public class LoggingShellApplication {
   public static void main(String[] args) throws IOException {
     HttpServer jwkServer =
@@ -39,20 +43,17 @@ public class LoggingShellApplication {
   }
 
   static class JWKHandler implements HttpHandler {
-    // Matching private key here:
-    // https://github.com/abcxyz/lumberjack/blob/main/integration/testrunner/grpcrunner/grpc.go#L59
-    private static final String PUBLIC_JWK =
-        "{"
-            + "\"crv\": \"P-256\","
-            + "\"kid\": \"integ-key\","
-            + "\"kty\": \"EC\","
-            + "\"x\": \"hBWj8vw5LkPRWbCr45k0cOarIcWgApM03mSYF911de4\","
-            + "\"y\": \"atcBji-0fTfKQu46NsW0votcBrDIs_gFp4YWSEHDUyo\""
-            + "}";
-
     @Override
     public void handle(HttpExchange t) throws IOException {
-      String response = String.format("{\"keys\": [%s]}", PUBLIC_JWK);
+      byte[] publicKey;
+      try {
+        publicKey = Files.readAllBytes(Paths.get("test_jwks"));
+      } catch (Exception e) {
+        log.error("Failed to read public key from file.", e);
+        t.sendResponseHeaders(500, -1);
+        return;
+      }
+      String response = new String(publicKey);
       t.sendResponseHeaders(200, response.length());
       OutputStream os = t.getResponseBody();
       os.write(response.getBytes());

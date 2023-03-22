@@ -15,52 +15,19 @@
 package util
 
 import (
-	"crypto/x509"
-	"encoding/json"
-	"encoding/pem"
 	"fmt"
-	"log"
 	"net/http"
 	"net/http/httptest"
-	"strings"
-
-	"github.com/lestrrat-go/jwx/v2/jwk"
+	"os"
 )
 
-// Matching private key here: https://github.com/abcxyz/lumberjack/blob/92782c326681157221df37e0897ba234c5a22240/integration/testrunner/grpcrunner/grpc.go#L60
-const publicKeyString = `
------BEGIN PUBLIC KEY-----
-MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEhBWj8vw5LkPRWbCr45k0cOarIcWg
-ApM03mSYF911de5q1wGOL7R9N8pC7jo2xbS+i1wGsMiz+AWnhhZIQcNTKg==
------END PUBLIC KEY-----
-`
-
 // StartLocalPublicKeyServer parse pre-made key and set up a server to host it in JWKS format.
-// This is intended to stand in for the JVS in the integration tests.
 func StartLocalPublicKeyServer() (string, func(), error) {
-	block, _ := pem.Decode([]byte(strings.TrimSpace(publicKeyString)))
-	key, err := x509.ParsePKIXPublicKey(block.Bytes)
+	j, err := os.ReadFile("test_jwks")
 	if err != nil {
-		log.Printf("Err when parsing key %v", err)
-		return "", nil, fmt.Errorf("failed to parse public key: %w", err)
-	}
-	ecdsaKey, err := jwk.FromRaw(key)
-	if err != nil {
-		log.Printf("Err when converting key to jwk %v", err)
-		return "", nil, fmt.Errorf("failed to parse jwk: %w", err)
-	}
-	if err := ecdsaKey.Set(jwk.KeyIDKey, "integ-key"); err != nil {
-		log.Printf("Err when setting key id %v", err)
-		return "", nil, fmt.Errorf("failed to set key id: %w", err)
+		return "", nil, fmt.Errorf("failed to read public key file: %w", err)
 	}
 
-	jwks := make(map[string][]jwk.Key)
-	jwks["keys"] = []jwk.Key{ecdsaKey}
-	j, err := json.MarshalIndent(jwks, "", " ")
-	if err != nil {
-		log.Printf("Err when creating jwks json %v", err)
-		return "", nil, fmt.Errorf("failed to marshal jwks: %w", err)
-	}
 	path := "/.well-known/jwks"
 	mux := http.NewServeMux()
 	mux.HandleFunc(path, func(w http.ResponseWriter, r *http.Request) {
