@@ -24,13 +24,14 @@ import (
 
 // StartLocalPublicKeyServer parse pre-made key and set up a server to host it in JWKS format.
 // This is intended to stand in for the JVS in the integration tests.
-type publicKeyJSONData struct {
-	Encoded string
-}
+// type publicKeyJSONData struct {
+// 	Encoded string
+// }
 
 // func loadJSON() (*publicKeyJSONData, error) {
 // 	var data publicKeyJSONData
-// 	jsonFile, err := os.Open("public_key.json")
+// 	path := "/usr/local/google/home/qinhang/go/src/github.com/spc/lumberjack/integration/testrunner/public_key.json"
+// 	jsonFile, err := os.Open(path)
 // 	if err != nil {
 // 		return nil, fmt.Errorf("failed to open file: %w", err)
 // 	}
@@ -45,7 +46,8 @@ type publicKeyJSONData struct {
 // }
 
 func readBytes() (*[]byte, error) {
-	f, err := os.Open("decoded_public_key.pub")
+	path := "decoded_public_key.pub"
+	f, err := os.Open(path)
 	if err != nil {
 		return nil, fmt.Errorf("failed to open file: %w", err)
 	}
@@ -88,7 +90,7 @@ func StartLocalPublicKeyServer() (string, func(), error) {
 	mux := http.NewServeMux()
 	mux.HandleFunc(path, func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
-		fmt.Fprintf(w, "%s", j)
+		fmt.Fprintf(w, "%s", *j)
 	})
 	svr := httptest.NewServer(mux)
 	return svr.URL + path, func() { svr.Close() }, nil
