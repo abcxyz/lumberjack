@@ -48,6 +48,12 @@ message AuditLogRequest {
     // Reads of configuration data and all access to user data through public
     // APIs.
     DATA_ACCESS = 2 [(log_name) = "audit.abcxyz/data_access"];
+
+    // For audit logging consent approval / revocation events.
+    CONSENT_EVENT = 3 [(log_name) = "audit.abcxyz/consent"];
+
+    // For audit logging system (vs. human) generated events.
+    SYSTEM_EVENT = 50 [(log_name) = "audit.abcxyz/system_event"];
   }
 
   LogType type = 1;
