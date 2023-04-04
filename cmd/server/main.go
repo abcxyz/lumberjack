@@ -16,14 +16,13 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
-	"net"
 	"os/signal"
 	"syscall"
 
 	"cloud.google.com/go/logging"
 	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
-	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
 
@@ -35,6 +34,7 @@ import (
 	"github.com/abcxyz/lumberjack/pkg/server"
 	"github.com/abcxyz/pkg/gcputil"
 	zlogger "github.com/abcxyz/pkg/logging"
+	"github.com/abcxyz/pkg/serving"
 )
 
 func main() {
@@ -51,7 +51,7 @@ func main() {
 	logger.Info("successful shutdown")
 }
 
-func realMain(ctx context.Context) error {
+func realMain(ctx context.Context) (retErr error) {
 	logger := zlogger.FromContext(ctx)
 	logger.Debugw("server starting",
 		"commit", version.Commit,
@@ -69,6 +69,11 @@ func realMain(ctx context.Context) error {
 	if err := trace.Init(cfg.TraceRatio); err != nil {
 		return fmt.Errorf("failed to init tracing: %w", err)
 	}
+	defer func() {
+		if err := trace.Shutdown(); err != nil {
+			retErr = errors.Join(retErr, fmt.Errorf("failed to shutdown tracing: %w", err))
+		}
+	}()
 
 	// Set up other log processors as we add more.
 	// TODO(b/202328178): Allow setting other log processor(s) via config.
@@ -81,49 +86,30 @@ func realMain(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("failed to create audit client: %w", err)
 	}
+	defer func() {
+		if err := client.Stop(); err != nil {
+			retErr = errors.Join(retErr, fmt.Errorf("failed to stop audit client: %w", err))
+		}
+	}()
+
 	logAgent, err := server.NewAuditLogAgent(client)
 	if err != nil {
 		return fmt.Errorf("failed to create audit log agent: %w", err)
 	}
 
 	// TODO(b/202320320): Build interceptors for observability, logger, etc.
-	s := grpc.NewServer(grpc.ChainUnaryInterceptor(
+	grpcServer := grpc.NewServer(grpc.ChainUnaryInterceptor(
 		otelgrpc.UnaryServerInterceptor(),
 		zlogger.GRPCUnaryInterceptor(logger, projectID),
 	))
-	api.RegisterAuditLogAgentServer(s, logAgent)
-	reflection.Register(s)
+	api.RegisterAuditLogAgentServer(grpcServer, logAgent)
+	reflection.Register(grpcServer)
 
-	lis, err := net.Listen("tcp", ":"+cfg.Port)
+	server, err := serving.New(cfg.Port)
 	if err != nil {
-		return fmt.Errorf("failed to listen on port %q: %w", cfg.Port, err)
+		return fmt.Errorf("failed to create serving infrastructure: %w", err)
 	}
-
-	// TODO: Do we need a gRPC health check server?
-	// https://github.com/grpc/grpc/blob/master/doc/health-checking.md
-	g, ctx := errgroup.WithContext(ctx)
-	g.Go(func() error {
-		logger.Infof("server listening at %v", lis.Addr())
-		if err := s.Serve(lis); err != nil {
-			return fmt.Errorf("failed to start grpc server: %w", err)
-		}
-		return nil
-	})
-
-	// Either we have received a TERM signal or errgroup has encountered an err.
-	<-ctx.Done()
-	s.GracefulStop()
-	if err := client.Stop(); err != nil {
-		return fmt.Errorf("error stopping audit client: %w", err)
-	}
-	if err := trace.Shutdown(); err != nil {
-		return fmt.Errorf("error shutdown tracing: %w", err)
-	}
-
-	if err := g.Wait(); err != nil {
-		return fmt.Errorf("error running server: %w", err)
-	}
-	return nil
+	return server.StartGRPC(ctx, grpcServer)
 }
 
 func newCloudLoggingProcessor(ctx context.Context, projectID string) (*cloudlogging.Processor, error) {
