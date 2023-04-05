@@ -17,11 +17,9 @@ package main
 import (
 	"context"
 	"errors"
-	"flag"
 	"fmt"
 	"io"
 	"log"
-	"net"
 	"os"
 	"os/signal"
 	"syscall"
@@ -35,19 +33,31 @@ import (
 	"github.com/abcxyz/lumberjack/clients/go/pkg/auditopt"
 	"github.com/abcxyz/lumberjack/clients/go/test/util"
 	"github.com/abcxyz/lumberjack/internal/talkerpb"
+	"github.com/abcxyz/pkg/logging"
+	"github.com/abcxyz/pkg/serving"
 )
 
-var port = flag.Int("port", 8080, "The server port")
-
 func main() {
-	if err := realMain(); err != nil {
+	ctx, done := signal.NotifyContext(context.Background(),
+		syscall.SIGINT, syscall.SIGTERM)
+	defer done()
+
+	logger := logging.NewFromEnv("")
+	ctx = logging.WithLogger(ctx, logger)
+
+	if err := realMain(ctx); err != nil {
+		done()
 		log.Fatal(err)
 	}
 }
 
-func realMain() (outErr error) {
-	ctx, done := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
-	defer done()
+func realMain(ctx context.Context) (retErr error) {
+	logger := logging.FromContext(ctx)
+
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "8080"
+	}
 
 	pubKeyEndpoint, shutdown, err := util.StartLocalPublicKeyServer()
 	if err != nil {
@@ -59,46 +69,30 @@ func realMain() (outErr error) {
 	if err := os.Setenv("AUDIT_CLIENT_JUSTIFICATION_PUBLIC_KEYS_ENDPOINT", pubKeyEndpoint); err != nil {
 		return fmt.Errorf("failed to set env: %w", err)
 	}
+	logger.Debugw("using public key endpoint", "endpoint", pubKeyEndpoint)
 
-	flag.Parse()
-	lis, err := net.Listen("tcp", fmt.Sprintf(":%d", *port))
-	if err != nil {
-		return fmt.Errorf("failed to listen: %w", err)
-	}
-	if err != nil {
-		return fmt.Errorf("failed to create jvs client: %w", err)
-	}
 	interceptor, err := audit.NewInterceptor(ctx, auditopt.InterceptorFromConfigFile(auditopt.DefaultConfigFilePath))
 	if err != nil {
 		return fmt.Errorf("failed to setup audit interceptor: %w", err)
 	}
 	defer func() {
 		if err := interceptor.Stop(); err != nil {
-			outErr = fmt.Errorf("failed to stop interceptor: %w", err)
+			retErr = errors.Join(retErr, fmt.Errorf("failed to stop interceptor: %w", err))
 		}
 	}()
-	s := grpc.NewServer(grpc.UnaryInterceptor(interceptor.UnaryInterceptor), grpc.StreamInterceptor(interceptor.StreamInterceptor))
-	talkerpb.RegisterTalkerServer(s, &server{})
+
+	grpcServer := grpc.NewServer(
+		grpc.UnaryInterceptor(interceptor.UnaryInterceptor),
+		grpc.StreamInterceptor(interceptor.StreamInterceptor))
+	talkerpb.RegisterTalkerServer(grpcServer, &server{})
 	// Register the reflection service makes it easier for some clients.
-	reflection.Register(s)
+	reflection.Register(grpcServer)
 
-	// Gracefully stop the server on ctrl-c.
-	intrCh := make(chan os.Signal, 1)
-	signal.Notify(intrCh, os.Interrupt)
-	go func() {
-		<-intrCh
-		log.Println("gracefully stopping...")
-		s.GracefulStop()
-	}()
-
-	log.Printf("server listening at %v\n", lis.Addr())
-	if err := s.Serve(lis); err != nil {
-		return fmt.Errorf("failed to serve: %w", err)
+	server, err := serving.New(port)
+	if err != nil {
+		return fmt.Errorf("failed to create serving infrastructure: %w", err)
 	}
-
-	log.Println("server stopped.")
-
-	return nil
+	return server.StartGRPC(ctx, grpcServer)
 }
 
 type server struct {

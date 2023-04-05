@@ -21,7 +21,8 @@ import (
 	"os"
 )
 
-// StartLocalPublicKeyServer parse pre-made key and set up a server to host it in JWKS format.
+// StartLocalPublicKeyServer parse pre-made key and set up a server to host it
+// in JWKS format. It serves the JWKS at "/.well-known/jwks".
 func StartLocalPublicKeyServer() (string, func(), error) {
 	j, err := os.ReadFile("test_jwks")
 	if err != nil {
@@ -31,8 +32,7 @@ func StartLocalPublicKeyServer() (string, func(), error) {
 	path := "/.well-known/jwks"
 	mux := http.NewServeMux()
 	mux.HandleFunc(path, func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusOK)
-		fmt.Fprintf(w, "%s", j)
+		fmt.Fprint(w, string(j))
 	})
 	svr := httptest.NewServer(mux)
 	return svr.URL + path, func() { svr.Close() }, nil
