@@ -59,3 +59,17 @@ configured to write application-level audit logs to the ingestion service via
 [a gRPC API](./protos/v1alpha1/audit_log_agent.proto) instead. A central
 ingestion service could come in handy when you need to add common audit log
 processing logic.
+
+## Other Kinds of Audit Logging
+
+The audit logging described above is the typical **user data access** audit
+logging. Lumberjack could also help with other kinds of audit logging:
+
+*   **Consent Events**: Audit logging user consent events (agreement and
+    revocation). The request principal in such logs should be the user who's
+    approving/revoking the consent agreement.
+*   **System Events**: Audit logging system produced events, e.g. GitHub
+    workflow requesting GitHub token with elevated permissions. The request
+    principal in such logs should be the system identity making the request.
+
+See [supported log types here](./protos/v1alpha1/audit_log_request.proto).
