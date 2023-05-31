@@ -1,0 +1,5 @@
+LOG_ID("audit.abcxyz/unspecified") OR
+LOG_ID("audit.abcxyz/activity") OR
+LOG_ID("audit.abcxyz/data_access") OR
+LOG_ID("audit.abcxyz/consent") OR
+LOG_ID("audit.abcxyz/system_event")

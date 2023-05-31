@@ -1,0 +1,3 @@
+LOG_ID("cloudaudit.googleapis.com/activity") OR
+LOG_ID("cloudaudit.googleapis.com/system_event") OR
+LOG_ID("cloudaudit.googleapis.com/data_access")
