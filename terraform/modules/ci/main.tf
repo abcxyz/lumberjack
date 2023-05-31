@@ -28,6 +28,7 @@ locals {
 
 resource "google_project_service" "client_services" {
   for_each = toset([
+    "iam.googleapis.com",
     "logging.googleapis.com",
     "run.googleapis.com",
     "serviceusage.googleapis.com",
