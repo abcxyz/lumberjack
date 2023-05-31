@@ -15,7 +15,7 @@
  */
 
 output "server_url" {
-  value = module.server_service.audit_log_server_url
+  value = google_cloud_run_service.server.status[0].url
 }
 
 output "ingestion_backend_client_endpoints" {

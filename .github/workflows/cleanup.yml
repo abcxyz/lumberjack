@@ -1,11 +1,11 @@
 name: 'cleanup'
 
 on:
-  pull_request:
-    paths:
-      - '.github/workflows/cleanup.yml'
-  schedule:
-    - cron: '0 0 */1 * *'
+  # pull_request:
+  #   paths:
+  #     - '.github/workflows/cleanup.yml'
+  # schedule:
+  #   - cron: '0 0 */1 * *'
   workflow_dispatch:
 
 env:

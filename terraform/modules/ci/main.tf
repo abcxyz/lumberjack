@@ -16,7 +16,7 @@
 
 locals {
   ingestion_backed_client_env_vars = {
-    "AUDIT_CLIENT_BACKEND_REMOTE_ADDRESS" : "${trimprefix(module.server_service.audit_log_server_url, "https://")}:443",
+    "AUDIT_CLIENT_BACKEND_REMOTE_ADDRESS" : "${trimprefix(google_cloud_run_service.server.status[0].url, "https://")}:443",
     "AUDIT_CLIENT_CONDITION_REGEX_PRINCIPAL_INCLUDE" : ".*",
   }
   cloudlogging_backend_client_env_vars = {
@@ -26,19 +26,46 @@ locals {
   short_sha = substr(var.commit_sha, 0, 7)
 }
 
-module "server_service" {
-  source = "../server-service"
+resource "google_project_service" "client_services" {
+  for_each = toset([
+    "iam.googleapis.com",
+    "logging.googleapis.com",
+    "run.googleapis.com",
+    "serviceusage.googleapis.com",
+  ])
 
-  project_id = var.server_project_id
+  project = var.client_project_id
 
-  server_image = var.server_image
-  service_name = "${var.server_service_name}-${local.short_sha}"
-  region       = var.region
+  service            = each.value
+  disable_on_destroy = false
+}
 
-  // Disable dedicated service account for audit logging server.
-  // Otherwise a new service account will be created per CI run
-  // and cause unnecessary resource waste.
-  disable_dedicated_sa = true
+resource "google_cloud_run_service" "server" {
+  project = var.server_project_id
+
+  name     = "${var.server_service_name}-${local.short_sha}"
+  location = var.region
+
+  template {
+    spec {
+      containers {
+        image = var.server_image
+      }
+    }
+  }
+}
+
+data "google_compute_default_service_account" "default_client_sa" {
+  project = var.client_project_id
+}
+
+resource "google_cloud_run_service_iam_member" "audit_log_writer" {
+  project = var.server_project_id
+
+  location = google_cloud_run_service.server.location
+  service  = google_cloud_run_service.server.name
+  role     = "roles/run.invoker"
+  member   = "serviceAccount:${data.google_compute_default_service_account.default_client_sa.email}"
 }
 
 resource "google_cloud_run_service" "ingestion_backend_client_services" {
@@ -53,12 +80,6 @@ resource "google_cloud_run_service" "ingestion_backend_client_services" {
     spec {
       containers {
         image = each.value
-
-        resources {
-          limits = {
-            memory = "1G"
-          }
-        }
 
         dynamic "env" {
           for_each = local.ingestion_backed_client_env_vars
@@ -85,12 +106,6 @@ resource "google_cloud_run_service" "cloudlogging_backend_client_services" {
     spec {
       containers {
         image = each.value
-
-        resources {
-          limits = {
-            memory = "1G"
-          }
-        }
 
         dynamic "env" {
           for_each = local.cloudlogging_backend_client_env_vars
