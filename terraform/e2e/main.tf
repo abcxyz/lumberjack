@@ -52,8 +52,13 @@ resource "google_logging_organization_sink" "org_cal_sink" {
   name        = "lj-cloud-audit"
   description = "Lumberjack log sink for cloud audit logs."
 
-  destination = "bigquery.googleapis.com/${google_bigquery_dataset.log_storage.id}"
-  filter      = file(local.cloud_audit_logs_filter_file)
+  destination      = "bigquery.googleapis.com/${google_bigquery_dataset.log_storage.id}"
+  filter           = file(local.cloud_audit_logs_filter_file)
+  include_children = true
+
+  bigquery_options {
+    use_partitioned_tables = true
+  }
 }
 
 resource "google_logging_organization_sink" "org_aal_sink" {
@@ -64,8 +69,13 @@ resource "google_logging_organization_sink" "org_aal_sink" {
   name        = "lj-app-audit"
   description = "Lumberjack log sink for application audit logs."
 
-  destination = "bigquery.googleapis.com/${google_bigquery_dataset.log_storage.id}"
-  filter      = file(local.application_audit_logs_filter_file)
+  destination      = "bigquery.googleapis.com/${google_bigquery_dataset.log_storage.id}"
+  filter           = file(local.application_audit_logs_filter_file)
+  include_children = true
+
+  bigquery_options {
+    use_partitioned_tables = true
+  }
 }
 
 resource "google_bigquery_dataset_iam_member" "org_cal_writer" {
@@ -97,8 +107,13 @@ resource "google_logging_folder_sink" "folder_cal_sink" {
   description = "Lumberjack log sink for cloud audit logs."
 
 
-  destination = "bigquery.googleapis.com/${google_bigquery_dataset.log_storage.id}"
-  filter      = file(local.cloud_audit_logs_filter_file)
+  destination      = "bigquery.googleapis.com/${google_bigquery_dataset.log_storage.id}"
+  filter           = file(local.cloud_audit_logs_filter_file)
+  include_children = true
+
+  bigquery_options {
+    use_partitioned_tables = true
+  }
 }
 
 resource "google_logging_folder_sink" "folder_aal_sink" {
@@ -110,8 +125,13 @@ resource "google_logging_folder_sink" "folder_aal_sink" {
   description = "Lumberjack log sink for application audit logs."
 
 
-  destination = "bigquery.googleapis.com/${google_bigquery_dataset.log_storage.id}"
-  filter      = file(local.application_audit_logs_filter_file)
+  destination      = "bigquery.googleapis.com/${google_bigquery_dataset.log_storage.id}"
+  filter           = file(local.application_audit_logs_filter_file)
+  include_children = true
+
+  bigquery_options {
+    use_partitioned_tables = true
+  }
 }
 
 resource "google_bigquery_dataset_iam_member" "folder_cal_writer" {
@@ -143,8 +163,13 @@ resource "google_logging_project_sink" "project_cal_sink" {
   description = "Lumberjack log sink for cloud audit logs."
 
 
-  destination = "bigquery.googleapis.com/${google_bigquery_dataset.log_storage.id}"
-  filter      = file(local.cloud_audit_logs_filter_file)
+  destination            = "bigquery.googleapis.com/${google_bigquery_dataset.log_storage.id}"
+  filter                 = file(local.cloud_audit_logs_filter_file)
+  unique_writer_identity = true
+
+  bigquery_options {
+    use_partitioned_tables = true
+  }
 }
 
 resource "google_logging_project_sink" "project_aal_sink" {
@@ -156,8 +181,13 @@ resource "google_logging_project_sink" "project_aal_sink" {
   description = "Lumberjack log sink for application audit logs."
 
 
-  destination = "bigquery.googleapis.com/${google_bigquery_dataset.log_storage.id}"
-  filter      = file(local.application_audit_logs_filter_file)
+  destination            = "bigquery.googleapis.com/${google_bigquery_dataset.log_storage.id}"
+  filter                 = file(local.application_audit_logs_filter_file)
+  unique_writer_identity = true
+
+  bigquery_options {
+    use_partitioned_tables = true
+  }
 }
 
 resource "google_bigquery_dataset_iam_member" "project_cal_writer" {
