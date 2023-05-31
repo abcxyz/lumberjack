@@ -359,3 +359,10 @@ jobs:
   #       if: always()
   #       run: |-
   #         terraform -chdir=${{ env.tf_module_dir}} apply -destroy -auto-approve -var-file=${{env.tfvar_file}};
+
+  integration:
+    runs-on: 'ubuntu-latest'
+    steps:
+    - name: 'Reenable integration test'
+      run: |
+        echo "Reenable integration test!"
