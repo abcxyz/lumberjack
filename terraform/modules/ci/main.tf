@@ -26,20 +26,6 @@ locals {
   short_sha = substr(var.commit_sha, 0, 7)
 }
 
-resource "google_project_service" "client_services" {
-  for_each = toset([
-    "iam.googleapis.com",
-    "logging.googleapis.com",
-    "run.googleapis.com",
-    "serviceusage.googleapis.com",
-  ])
-
-  project = var.client_project_id
-
-  service            = each.value
-  disable_on_destroy = false
-}
-
 resource "google_cloud_run_service" "server" {
   project = var.server_project_id
 
@@ -48,15 +34,14 @@ resource "google_cloud_run_service" "server" {
 
   template {
     spec {
+
+      service_account_name = var.server_run_sa
+
       containers {
         image = var.server_image
       }
     }
   }
-}
-
-data "google_compute_default_service_account" "default_client_sa" {
-  project = var.client_project_id
 }
 
 resource "google_cloud_run_service_iam_member" "audit_log_writer" {
@@ -65,7 +50,7 @@ resource "google_cloud_run_service_iam_member" "audit_log_writer" {
   location = google_cloud_run_service.server.location
   service  = google_cloud_run_service.server.name
   role     = "roles/run.invoker"
-  member   = "serviceAccount:${data.google_compute_default_service_account.default_client_sa.email}"
+  member   = "serviceAccount:${var.client_run_sa}"
 }
 
 resource "google_cloud_run_service" "ingestion_backend_client_services" {
@@ -78,6 +63,9 @@ resource "google_cloud_run_service" "ingestion_backend_client_services" {
 
   template {
     spec {
+
+      service_account_name = var.client_run_sa
+
       containers {
         image = each.value
 
@@ -104,6 +92,9 @@ resource "google_cloud_run_service" "cloudlogging_backend_client_services" {
 
   template {
     spec {
+
+      service_account_name = var.client_run_sa
+
       containers {
         image = each.value
 
