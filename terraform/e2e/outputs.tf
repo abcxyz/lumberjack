@@ -14,5 +14,5 @@
 
 output "dataset_id" {
   description = "The BigQuery dataset id of the log storage."
-  value = google_bigquery_dataset.log_storage.id
+  value       = google_bigquery_dataset.log_storage.id
 }
