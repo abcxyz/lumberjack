@@ -10,7 +10,7 @@ on:
   workflow_dispatch:
   workflow_call:
   merge_group:
-    types: [checks_requested]
+    types: ['checks_requested']
 
 env:
   DOCKER_REGISTRY: 'us-docker.pkg.dev'
@@ -58,7 +58,7 @@ jobs:
       id-token: 'write'
     steps:
       - uses: 'actions/checkout@755da8c3cf115ac066823e79a1e1788f8940201b' # ratchet:actions/checkout@v3
-      - name: Set up JDK 11
+      - name: 'Set up JDK 11'
         uses: actions/setup-java@1df8dbefe2a8cbc99770194893dd902763bee34b # ratchet:actions/setup-java@v3
         with:
           java-version: '11'
@@ -74,7 +74,7 @@ jobs:
           service_account: '${{ env.WIF_SERVICE_ACCOUNT }}'
           # The Artifact Registry maven wagon looks for Google Application Default Credentials.
           # https://github.com/GoogleCloudPlatform/artifact-registry-maven-tools
-      - name: Run tests with Maven
+      - name: 'Run tests with Maven'
         run: |-
           mvn clean test --no-transfer-progress -f clients/java-logger
 
@@ -299,7 +299,7 @@ jobs:
         shell: 'bash'
         run: |-
           echo "GOOGLE_OAUTH_ACCESS_TOKEN=${{ steps.auth.outputs.access_token }}" >> $GITHUB_ENV
-      - uses: hashicorp/setup-terraform@633666f66e0061ca3b725c73b2ec20cd13a8fdd1 # ratchet:hashicorp/setup-terraform@v2
+      - uses: 'hashicorp/setup-terraform@633666f66e0061ca3b725c73b2ec20cd13a8fdd1' # ratchet:hashicorp/setup-terraform@v2
         with:
           terraform_wrapper: false
       - name: 'Write tfvars file'
