@@ -12,7 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+output "dataset_full_id" {
+  description = "The BigQuery dataset full id of the log storage."
+  value       = google_bigquery_dataset.log_storage.id
+}
+
 output "dataset_id" {
   description = "The BigQuery dataset id of the log storage."
-  value       = google_bigquery_dataset.log_storage.id
+  value       = google_bigquery_dataset.log_storage.dataset_id
 }
