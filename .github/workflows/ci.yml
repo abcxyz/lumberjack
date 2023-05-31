@@ -20,6 +20,8 @@ env:
   WIF_SERVICE_ACCOUNT: 'gh-automation-i-sa@gh-lumberjack-ci-i-bbdb31.iam.gserviceaccount.com'
   SERVER_PROJECT_ID: 'lumberjack-server-i-8eb3ef'
   CLIENT_PROJECT_ID: 'lumberjack-app-i-84af7b'
+  SERVER_RUN_SA: 'server-run-22ad10@lumberjack-server-i-8eb3ef.iam.gserviceaccount.com'
+  CLIENT_RUN_SA: 'client-run-22ad10@lumberjack-app-i-84af7b.iam.gserviceaccount.com'
   BIGQUERY_DATASET_ID: 'audit_logs.audit_abcxyz_data_access'
 
 concurrency:
@@ -313,8 +315,10 @@ jobs:
           echo commit_sha=\"${{ env.DOCKER_TAG }}\" >> ${var_file};
           echo server_project_id=\"${{ env.SERVER_PROJECT_ID }}\" >> ${var_file};
           echo server_image=\"${{ env.server_image }}\" >> ${var_file};
+          echo server_run_sa=\"${{ env.SERVER_RUN_SA }}\" >> ${var_file};
           echo server_service_name=\"lumberjack-server\" >> ${var_file};
           echo client_project_id=\"${{ env.CLIENT_PROJECT_ID }}\" >> ${var_file};
+          echo client_run_sa=\"${{ env.CLIENT_RUN_SA }}\" >> ${var_file};
           echo client_images=${{ env.client_images }} >> ${var_file};
           echo >> ${var_file};
 
