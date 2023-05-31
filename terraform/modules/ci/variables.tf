@@ -30,6 +30,11 @@ variable "server_service_name" {
   description = "Cloud Run service name for the server"
 }
 
+variable "server_run_sa" {
+  type        = string
+  description = "Service account to run the server."
+}
+
 variable "server_project_id" {
   type        = string
   description = "Project ID for the Cloud project where the audit logging backend service is deployed."
@@ -38,6 +43,11 @@ variable "server_project_id" {
 variable "client_project_id" {
   type        = string
   description = "Project ID for the Cloud project where the client services are deployed."
+}
+
+variable "client_run_sa" {
+  type        = string
+  description = "Service account to run the clients."
 }
 
 variable "client_images" {
