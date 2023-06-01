@@ -1,17 +1,19 @@
 name: 'cleanup'
 
 on:
-  # pull_request:
-  #   paths:
-  #     - '.github/workflows/cleanup.yml'
-  # schedule:
-  #   - cron: '0 0 */1 * *'
+  pull_request:
+    paths:
+      - '.github/workflows/cleanup.yml'
+  schedule:
+    - cron: '0 0 */1 * *'
   workflow_dispatch:
 
 env:
-  PROJECT_ID: 'github-ci-app-0'
-  PROJECT_NUMBER: '638387980668'
+  WIF_PROVIDER: 'projects/201020025366/locations/global/workloadIdentityPools/gh-automation-i-c38297/providers/gh-automation-i-c38297'
+  WIF_SERVICE_ACCOUNT: 'gh-automation-i-sa@gh-lumberjack-ci-i-bbdb31.iam.gserviceaccount.com'
+  PROJECT_ID: 'gh-lumberjack-ci-i-bbdb31'
   REGION: 'us-central1'
+  DOCKER_REPO: 'us-docker.pkg.dev/gh-lumberjack-ci-i-bbdb31/ci-images'
 
 permissions:
   contents: 'read'
@@ -28,8 +30,8 @@ jobs:
 
       - uses: 'google-github-actions/auth@c4799db9111fba4461e9f9da8732e5057b394f72' # ratchet:google-github-actions/auth@v0
         with:
-          workload_identity_provider: 'projects/${{ env.PROJECT_NUMBER }}/locations/global/workloadIdentityPools/github-pool/providers/github-provider'
-          service_account: 'gh-access-sa@lumberjack-dev-infra.iam.gserviceaccount.com'
+          workload_identity_provider: '${{ env.WIF_PROVIDER }}'
+          service_account: '${{ env.WIF_SERVICE_ACCOUNT }}'
 
       - uses: 'google-github-actions/setup-gcloud@ee9693ff89cdf73862b8a13988f6a71070e8fc58' # ratchet:google-github-actions/setup-gcloud@v0
 
@@ -37,7 +39,7 @@ jobs:
         shell: 'bash'
         run: |-
           gcloud config set core/project "${{ env.PROJECT_ID }}"
-          gcloud config set run/region "{{ env.REGION }}"
+          gcloud config set run/region "${{ env.REGION }}"
 
           # List and delete all services that were deployed 5 days ago or later.
           (IFS=$'\n'; for NAME in $(gcloud run services list --format="value(name)" --filter="metadata.creationTimestamp < '-p5d'"); do
@@ -54,17 +56,17 @@ jobs:
 
       - uses: 'google-github-actions/auth@c4799db9111fba4461e9f9da8732e5057b394f72' # ratchet:google-github-actions/auth@v0
         with:
-          workload_identity_provider: 'projects/${{ env.PROJECT_NUMBER }}/locations/global/workloadIdentityPools/github-pool/providers/github-provider'
-          service_account: 'gh-access-sa@lumberjack-dev-infra.iam.gserviceaccount.com'
+          workload_identity_provider: '${{ env.WIF_PROVIDER }}'
+          service_account: '${{ env.WIF_SERVICE_ACCOUNT }}'
 
       - name: 'Remove old container images'
         uses: 'docker://us-docker.pkg.dev/gcr-cleaner/gcr-cleaner/gcr-cleaner-cli' # ratchet:exclude old image versions are removed
         with:
           args: >-
-            -repo=us-docker.pkg.dev/lumberjack-dev-infra/images/lumberjack-server
-            -repo=us-docker.pkg.dev/lumberjack-dev-infra/images/ljc-go-grpc
-            -repo=us-docker.pkg.dev/lumberjack-dev-infra/images/ljc-go-http
-            -repo=us-docker.pkg.dev/lumberjack-dev-infra/images/ljc-java-grpc
-            -repo=us-docker.pkg.dev/lumberjack-dev-infra/images/ljc-java-http
+            -repo=${{ env.DOCKER_REPO }}/lumberjack-server
+            -repo=${{ env.DOCKER_REPO }}/ljc-go-grpc
+            -repo=${{ env.DOCKER_REPO }}/ljc-go-http
+            -repo=${{ env.DOCKER_REPO }}/ljc-java-grpc
+            -repo=${{ env.DOCKER_REPO }}/ljc-java-http
             -grace=336h
             -tag-filter-any=(?i)[0-9a-f]{40}(-amd64|-arm64)?
