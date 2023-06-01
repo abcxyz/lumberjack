@@ -5,10 +5,10 @@ on:
     tags:
       - 'v*'
 env:
-  SOURCE_DOCKER_IMAGE: 'us-docker.pkg.dev/lumberjack-dev-infra/images/lumberjack-server:${{ github.sha }}'
+  SOURCE_DOCKER_IMAGE: 'us-docker.pkg.dev/gh-lumberjack-ci-i-bbdb31/ci-images/lumberjack-server:${{ github.sha }}'
   TARGET_DOCKER_IMAGE: 'us-docker.pkg.dev/abcxyz-artifacts/docker-images/lumberjack-server:${{ github.ref_name }}'
-  WIF_PROVIDER: 'projects/638387980668/locations/global/workloadIdentityPools/github-pool/providers/github-provider'
-  WIF_SERVICE_ACCOUNT: 'gh-access-sa@lumberjack-dev-infra.iam.gserviceaccount.com'
+  WIF_PROVIDER: 'projects/85251969489/locations/global/workloadIdentityPools/gh-automation-p-3e87cd/providers/gh-automation-p-3e87cd'
+  WIF_SERVICE_ACCOUNT: 'gh-automation-p-sa@gh-lumberjack-ci-p-339f57.iam.gserviceaccount.com'
 
 # Don't cancel in progress since we don't want to have half-baked release.
 concurrency: '${{ github.workflow }}-${{ github.head_ref || github.ref }}-release'
