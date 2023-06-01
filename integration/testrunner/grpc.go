@@ -226,12 +226,12 @@ func createConnection(ctx context.Context, t *testing.T, addr, idToken string) *
 // We specifically look up the log using the UUID specified in the request as we know the server will add that
 // as the resource name, and provides us a unique key to find logs with.
 func makeQueryForGRPC(tcfg *TestCaseConfig) *bigquery.Query {
-	queryString := fmt.Sprintf(` WITH temptable AS (
+	queryString := fmt.Sprintf(`WITH temptable AS (
 		SELECT *
-		FROM %s.%s
-		WHERE jsonPayload.resource_name=?
+		FROM `+"`%s.%s`"+`
+		WHERE jsonPayload.resource_name = ?
  	)
- 	SELECT TO_JSON(t) as result FROM temptable as t
+ 	SELECT TO_JSON(t) AS result FROM temptable AS t
  	`, tcfg.ProjectID, tcfg.BigQueryDataset)
 	return makeQuery(tcfg.BigQueryClient, tcfg.TraceID, queryString)
 }

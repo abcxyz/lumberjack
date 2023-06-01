@@ -69,12 +69,12 @@ func testHTTPEndpoint(ctx context.Context, tb testing.TB, tcfg *TestCaseConfig) 
 }
 
 func makeQueryForHTTP(tc *TestCaseConfig) *bigquery.Query {
-	queryString := fmt.Sprintf(` WITH temptable AS (
+	queryString := fmt.Sprintf(`WITH temptable AS (
 		SELECT *
-		FROM %s.%s
-		WHERE labels.trace_id=?
+		FROM `+"`%s.%s`"+`
+		WHERE labels.trace_id = ?
  	)
- 	SELECT TO_JSON(t) as result FROM temptable as t
+ 	SELECT TO_JSON(t) AS result FROM temptable AS t
 	`, tc.ProjectID, tc.BigQueryDataset)
 	return makeQuery(tc.BigQueryClient, tc.TraceID, queryString)
 }
