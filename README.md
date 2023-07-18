@@ -38,11 +38,10 @@ For **application-level audit logs**, Lumberjack reuses the Google Cloud's
 format in
 [LogEntry's JSON payload](https://github.com/googleapis/googleapis/blob/04d2494feb6f549c8dc5c37be753e76ef32b4e07/google/logging/v2/log_entry.proto#L97).
 
-Both application-level and platform-level audit logs should be routed via
-[log sinks](https://cloud.google.com/logging/docs/export/configure_export_v2) to
-a central audit log storage. We recommend using BigQuery as the central audit
-log storage. See an
-[example about how to set up such a log sink with Terraform](./terraform/modules/al-source-folder/).
+Both application-level and platform-level audit logs should be routed via [log
+sinks](https://cloud.google.com/logging/docs/export/configure_export_v2) to a
+central audit log storage. We recommend using BigQuery as the central audit log
+storage. See [the log sink filters](./terraform/static/).
 
 ## Audit Logging in gRPC
 

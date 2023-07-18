@@ -4,9 +4,8 @@
 
 ## Prerequisites
 
--   Set up an environment with the [e2e module](../../terraform/modules/e2e/)
--   Set up the test apps with the
-    [CI run module](../../terraform/modules/ci-run-with-server/)
+-   Set up an environment with the [e2e module](../../terraform/e2e/)
+-   Set up the test apps with the [CI run module](../../terraform/modules/ci)
 
 ### About
 

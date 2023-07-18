@@ -33,6 +33,7 @@ public class FilteringProcessor implements LogValidator {
    * matches one the regular expressions, the audit log request is allowed for further processing
    */
   private final List<Pattern> includePatterns;
+
   /**
    * excludePatterns is list of regex pattern, When an audit log request has a principal email that
    * matches one the regular expressions, the audit log request is dropped for further processing
