@@ -11,7 +11,6 @@ on:
 env:
   WIF_PROVIDER: 'projects/201020025366/locations/global/workloadIdentityPools/gh-automation-i-c38297/providers/gh-automation-i-c38297'
   WIF_SERVICE_ACCOUNT: 'gh-automation-i-sa@gh-lumberjack-ci-i-bbdb31.iam.gserviceaccount.com'
-  PROJECT_ID: 'gh-lumberjack-ci-i-bbdb31'
   REGION: 'us-central1'
   DOCKER_REPO: 'us-docker.pkg.dev/gh-lumberjack-ci-i-bbdb31/ci-images'
 
@@ -24,6 +23,10 @@ jobs:
   # 5 days old, since sometimes services are not deleted during integration
   # tests.
   cleanup_cloudrun_services:
+    strategy:
+      matrix:
+        # Lumberjack CI deploys cloud run services in these projects.
+        project: ['lumberjack-app-i-84af7b', 'lumberjack-server-i-8eb3ef']
     runs-on: 'ubuntu-latest'
     steps:
       - uses: 'actions/checkout@755da8c3cf115ac066823e79a1e1788f8940201b' # ratchet:actions/checkout@v3
@@ -38,7 +41,7 @@ jobs:
       - name: 'Remove old Cloud Run services'
         shell: 'bash'
         run: |-
-          gcloud config set core/project "${{ env.PROJECT_ID }}"
+          gcloud config set core/project "${{ matrix.project }}"
           gcloud config set run/region "${{ env.REGION }}"
 
           # List and delete all services that were deployed 5 days ago or later.
