@@ -9,7 +9,7 @@ require (
 	github.com/GoogleCloudPlatform/opentelemetry-operations-go/exporter/trace v1.11.2
 	github.com/GoogleCloudPlatform/opentelemetry-operations-go/propagator v0.35.2
 	github.com/abcxyz/jvs v0.0.3
-	github.com/abcxyz/pkg v0.3.1-0.20230404002641-d3ec7e491b02
+	github.com/abcxyz/pkg v0.5.1-0.20230721184008-3bacc31f6871
 	github.com/google/go-cmp v0.5.9
 	github.com/google/uuid v1.3.0
 	github.com/hashicorp/go-multierror v1.1.1
@@ -20,10 +20,10 @@ require (
 	go.opentelemetry.io/otel v1.14.0
 	go.opentelemetry.io/otel/sdk v1.13.0
 	go.uber.org/zap v1.24.0
-	golang.org/x/oauth2 v0.5.0
+	golang.org/x/oauth2 v0.8.0
 	google.golang.org/api v0.111.0
 	google.golang.org/genproto v0.0.0-20230306155012-7f2fa6fef1f4
-	google.golang.org/grpc v1.53.0
+	google.golang.org/grpc v1.54.0
 	google.golang.org/protobuf v1.30.0
 	gopkg.in/yaml.v2 v2.4.0
 )
@@ -74,7 +74,7 @@ require (
 	golang.org/x/mod v0.9.0 // indirect
 	golang.org/x/net v0.10.0 // indirect
 	golang.org/x/sync v0.1.0 // indirect
-	golang.org/x/sys v0.8.0 // indirect
+	golang.org/x/sys v0.10.0 // indirect
 	golang.org/x/text v0.9.0 // indirect
 	golang.org/x/tools v0.7.0 // indirect
 	golang.org/x/xerrors v0.0.0-20220907171357-04be3eba64a2 // indirect
