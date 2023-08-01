@@ -12,8 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package ljlog provides untils for lumberjack/data access logs.
-package ljlog
+// Package validation provides untils for lumberjack/data access logs
+// validation.
+package validation
 
 import (
 	"fmt"
