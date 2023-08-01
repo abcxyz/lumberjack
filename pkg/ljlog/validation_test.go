@@ -1,0 +1,156 @@
+// Copyright 2021 Lumberjack authors (see AUTHORS file)
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+package ljlog
+
+import (
+	"os"
+	"path/filepath"
+	"testing"
+
+	pkgtestutil "github.com/abcxyz/pkg/testutil"
+)
+
+const validLog = `
+{
+	"insertId": "foo",
+	"jsonPayload": {
+		"metadata": {
+			"originating_resource": {
+				"labels": {
+					"service_name": "foo_service",
+					"project_id": "foo_project",
+					"revision_name": "foo_revision",
+					"configuration_name": "foo_configuration",
+					"location": "us-central1"
+				},
+				"type": "foo_type"
+			}
+		},
+		"request": {
+			"foo": "bar",
+			"trace_id": "foo_trace_id"
+		},
+		"service_name": "foo_service",
+		"method_name": "foo_method",
+		"resource_name": "foo_resource",
+		"authentication_info": {
+			"principal_email": "foo@bet.com"
+		}
+	},
+	"resource": {
+		"type": "foo_type",
+		"labels": {
+			"project_id": "foo_project",
+			"configuration_name": "foo_configuration_name",
+			"service_name": "foo_service",
+			"location": "us-central1",
+			"revision_name": "foo_revision"
+		}
+	},
+	"timestamp": "2022-01-19T22:05:15.687616341Z",
+	"labels": {
+		"trace_id": "foo_trace_id",
+		"accessing_process_family": "foo-process-family",
+		"accessing_process_name": "foo-process",
+		"accessed_data_type": "foo-customer-info"
+	},
+	"logName": "projects/foo_project/logs/auditlog.gcloudsolutions.dev%2Fdata_access",
+	"receiveTimestamp": "2022-01-19T22:05:15.706507037Z"
+}`
+
+func TestValidateLogFromFile(t *testing.T) {
+	t.Parallel()
+
+	// Set up log files.
+	fileContentByName := map[string]string{
+		"valid.json":   validLog,
+		"invalid.json": `invalid`,
+	}
+	dir := t.TempDir()
+	for name, content := range fileContentByName {
+		path := filepath.Join(dir, name)
+		if err := os.WriteFile(path, []byte(content), 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	tests := []struct {
+		name          string
+		path          string
+		wantErrSubstr string
+	}{
+		{
+			name: "success",
+			path: filepath.Join(dir, "valid.json"),
+		},
+		{
+			name:          "invalid_log",
+			path:          filepath.Join(dir, "invalid.json"),
+			wantErrSubstr: "failed to parse log entry as JSON",
+		},
+	}
+	for _, tc := range tests {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			err := ValidateLogFromFile(tc.path)
+			if diff := pkgtestutil.DiffErrString(err, tc.wantErrSubstr); diff != "" {
+				t.Errorf("Process(%+v) got unexpected error substring: %v", tc.name, diff)
+			}
+		})
+	}
+}
+
+func TestValidate(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name          string
+		log           string
+		wantErrSubstr string
+	}{
+		{
+			name: "success",
+			log:  validLog,
+		},
+		{
+			name:          "invalid_log",
+			log:           `invalid`,
+			wantErrSubstr: "failed to parse log entry as JSON",
+		},
+		{
+			name: "invalid_log_payload",
+			log: `
+{
+	"jsonPayload": {
+		"invalidKey": "foo"
+	}
+}`,
+			wantErrSubstr: "failed to parse JSON payload",
+		},
+	}
+	for _, tc := range tests {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			err := Validate(tc.log)
+			if diff := pkgtestutil.DiffErrString(err, tc.wantErrSubstr); diff != "" {
+				t.Errorf("Process(%+v) got unexpected error substring: %v", tc.name, diff)
+			}
+		})
+	}
+}
