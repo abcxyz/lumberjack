@@ -18,8 +18,6 @@ package validation
 
 import (
 	"fmt"
-	"io"
-	"os"
 
 	"google.golang.org/protobuf/encoding/protojson"
 
