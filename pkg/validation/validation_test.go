@@ -15,8 +15,6 @@
 package validation
 
 import (
-	"os"
-	"path/filepath"
 	"testing"
 
 	pkgtestutil "github.com/abcxyz/pkg/testutil"
@@ -69,50 +67,6 @@ const validLog = `
 	"logName": "projects/foo_project/logs/auditlog.gcloudsolutions.dev%2Fdata_access",
 	"receiveTimestamp": "2022-01-19T22:05:15.706507037Z"
 }`
-
-func TestValidateLogFromFile(t *testing.T) {
-	t.Parallel()
-
-	// Set up log files.
-	fileContentByName := map[string]string{
-		"valid.json":   validLog,
-		"invalid.json": `invalid`,
-	}
-	dir := t.TempDir()
-	for name, content := range fileContentByName {
-		path := filepath.Join(dir, name)
-		if err := os.WriteFile(path, []byte(content), 0o600); err != nil {
-			t.Fatal(err)
-		}
-	}
-
-	tests := []struct {
-		name          string
-		path          string
-		wantErrSubstr string
-	}{
-		{
-			name: "success",
-			path: filepath.Join(dir, "valid.json"),
-		},
-		{
-			name:          "invalid_log",
-			path:          filepath.Join(dir, "invalid.json"),
-			wantErrSubstr: "failed to parse log entry as JSON",
-		},
-	}
-	for _, tc := range tests {
-		tc := tc
-		t.Run(tc.name, func(t *testing.T) {
-			t.Parallel()
-
-			err := ValidateLogFromFile(tc.path)
-			if diff := pkgtestutil.DiffErrString(err, tc.wantErrSubstr); diff != "" {
-				t.Errorf("Process(%+v) got unexpected error substring: %v", tc.name, diff)
-			}
-		})
-	}
-}
 
 func TestValidate(t *testing.T) {
 	t.Parallel()

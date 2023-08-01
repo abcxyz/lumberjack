@@ -27,16 +27,6 @@ import (
 	cal "google.golang.org/genproto/googleapis/cloud/audit"
 )
 
-// ValidateLogFromFile validates a lumberjack log in the given file.
-func ValidateLogFromFile(path string) error {
-	log, err := readFromPath(path)
-	if err != nil {
-		return fmt.Errorf("failed to read from path: %w", err)
-	}
-
-	return Validate(log)
-}
-
 // Validate validates a json string representation of a lumberjack log.
 func Validate(log string) error {
 	logEntry := &lepb.LogEntry{}
@@ -53,44 +43,18 @@ func Validate(log string) error {
 }
 
 func validatePayload(logEntry *lepb.LogEntry) error {
-	al := &cal.AuditLog{}
-	switch logEntry.Payload.(type) {
-	case *lepb.LogEntry_ProtoPayload:
-		{
-			if err := logEntry.GetProtoPayload().UnmarshalTo(al); err != nil {
-				return fmt.Errorf("failed to extract audit log from proto payload: %w", err)
-			}
-			return nil
-		}
-	case *lepb.LogEntry_JsonPayload:
-		{
-			val, err := logEntry.GetJsonPayload().MarshalJSON()
-			if err != nil {
-				return fmt.Errorf("failed to extract audit log from JSON payload: %w", err)
-			}
-			if err := protojson.Unmarshal(val, al); err != nil {
-				return fmt.Errorf("failed to parse JSON payload: %w", err)
-			}
-			return nil
-		}
-	case nil:
+	payload := logEntry.GetJsonPayload()
+	if payload == nil {
 		return fmt.Errorf("missing audit log payload")
-	default:
-		return nil
 	}
-}
 
-func readFromPath(path string) (string, error) {
-	f, err := os.Open(path)
+	al := &cal.AuditLog{}
+	val, err := payload.MarshalJSON()
 	if err != nil {
-		return "", fmt.Errorf("failed to read file at %q, %w", path, err)
+		return fmt.Errorf("failed to extract audit log from JSON payload: %w", err)
 	}
-	defer f.Close()
-
-	data, err := io.ReadAll(io.LimitReader(f, 64*1_000))
-	if err != nil {
-		return "", fmt.Errorf("failed to read file content at %q, %w", path, err)
+	if err := protojson.Unmarshal(val, al); err != nil {
+		return fmt.Errorf("failed to parse JSON payload: %w", err)
 	}
-
-	return string(data), nil
+	return nil
 }
