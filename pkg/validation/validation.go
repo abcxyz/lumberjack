@@ -27,12 +27,12 @@ import (
 
 // Validate validates a json string representation of a lumberjack log.
 func Validate(log string) error {
-	logEntry := &lepb.LogEntry{}
-	if err := protojson.Unmarshal([]byte(log), logEntry); err != nil {
+	var logEntry lepb.LogEntry
+	if err := protojson.Unmarshal([]byte(log), &logEntry); err != nil {
 		return fmt.Errorf("failed to parse log entry as JSON: %w", err)
 	}
 
-	if err := validatePayload(logEntry); err != nil {
+	if err := validatePayload(&logEntry); err != nil {
 		return fmt.Errorf("failed to validate payload: %w", err)
 	}
 
@@ -46,12 +46,12 @@ func validatePayload(logEntry *lepb.LogEntry) error {
 		return fmt.Errorf("missing audit log payload")
 	}
 
-	al := &cal.AuditLog{}
+	var al cal.AuditLog
 	val, err := payload.MarshalJSON()
 	if err != nil {
 		return fmt.Errorf("failed to extract audit log from JSON payload: %w", err)
 	}
-	if err := protojson.Unmarshal(val, al); err != nil {
+	if err := protojson.Unmarshal(val, &al); err != nil {
 		return fmt.Errorf("failed to parse JSON payload: %w", err)
 	}
 	return nil

@@ -1,4 +1,4 @@
-// Copyright 2021 Lumberjack authors (see AUTHORS file)
+// Copyright 2023 The Authors (see AUTHORS file)
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -98,6 +98,7 @@ func TestValidate(t *testing.T) {
 	}
 	for _, tc := range tests {
 		tc := tc
+
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
