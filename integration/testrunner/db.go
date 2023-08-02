@@ -17,64 +17,24 @@ package testrunner
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"net/mail"
 	"testing"
 
 	"cloud.google.com/go/bigquery"
 	"cloud.google.com/go/logging/apiv2/loggingpb"
+	"github.com/abcxyz/pkg/bqutil"
+	"github.com/abcxyz/pkg/logging"
 	"github.com/sethvargo/go-retry"
-	"google.golang.org/api/iterator"
+	"go.uber.org/zap/zapcore"
+	"go.uber.org/zap/zaptest"
 	"google.golang.org/genproto/googleapis/cloud/audit"
 	"google.golang.org/protobuf/encoding/protojson"
 )
 
-// queryAuditLogs queries the DB and checks if audit log contained in the query exists or not and return the results.
-// Since validateAuditLogsWithRetries is the only caller now, to make code clean, we won't return error here.
-// For retryable error, log the error. For non-retryable errors, fail now.
-func queryAuditLogs(ctx context.Context, tb testing.TB, query *bigquery.Query) []*loggingpb.LogEntry {
-	tb.Helper()
-	job, err := query.Run(ctx)
-	if err != nil {
-		tb.Logf("failed to run query: %v", err)
-		return nil
-	}
-
-	if status, err := job.Wait(ctx); err != nil {
-		tb.Logf("failed to wait for query: %v", err)
-		return nil
-	} else if err = status.Err(); err != nil {
-		tb.Logf("query failed: %v", err)
-		return nil
-	}
-	it, err := job.Read(ctx)
-	if err != nil {
-		tb.Logf("failed to read job: %v", err)
-		return nil
-	}
-	var logEntries []*loggingpb.LogEntry
-	for {
-		var row []bigquery.Value
-		err := it.Next(&row)
-		if errors.Is(err, iterator.Done) {
-			break
-		}
-		if err != nil {
-			tb.Fatalf("failed to get next row: %v", err)
-		}
-		value, ok := row[0].(string)
-		if !ok {
-			tb.Fatalf("error converting query (%T) to string: %v", value[0], err)
-		}
-		tb.Logf("bq row is %s", value)
-		logEntry := &loggingpb.LogEntry{}
-		if err := protojson.Unmarshal([]byte(value), logEntry); err != nil {
-			tb.Fatalf("error when unmarshal bq row to logEntry: %v", err)
-		}
-		logEntries = append(logEntries, logEntry)
-	}
-	return logEntries
+type bqResult struct {
+	// We expect a single JSON column named "result" from all queries.
+	Result string
 }
 
 func makeQuery(bqClient *bigquery.Client, id, queryString string) *bigquery.Query {
@@ -107,27 +67,24 @@ func makeBigQueryClient(ctx context.Context, tb testing.TB, projectID string) *b
 // It uses the retries that are specified in the Config file.
 func validateAuditLogsWithRetries(ctx context.Context, tb testing.TB, tcfg *TestCaseConfig, bqQuery *bigquery.Query, wantNum int) {
 	tb.Helper()
-	tb.Logf("querying BigQuery:\n%s", bqQuery.Q)
-	var logEntries []*loggingpb.LogEntry
-	b := retry.NewConstant(tcfg.LogRoutingWait)
-	if err := retry.Do(ctx, retry.WithMaxRetries(tcfg.MaxDBQueryTries, b), func(ctx context.Context) error {
-		results := queryAuditLogs(ctx, tb, bqQuery)
-		// Early exit retry if queried log already found.
-		if len(results) == wantNum {
-			logEntries = results
-			return nil
-		}
-		if len(results) > wantNum {
-			tb.Fatalf("log number doesn't match (-want +got):\n - %d\n + %d\n", wantNum, len(results))
-		}
-		tb.Log("Matching entry not found, retrying...")
-		return retry.RetryableError(fmt.Errorf("no matching audit log found in bigquery after timeout"))
-	}); err != nil {
-		tb.Fatalf("retry failed: %v.", err)
+	ctx = logging.WithLogger(ctx, logging.TestLogger(tb, zaptest.Level(zapcore.DebugLevel)))
+
+	backoff := retry.WithMaxRetries(tcfg.MaxDBQueryTries, retry.NewConstant(tcfg.LogRoutingWait))
+	q := bqutil.NewQuery[*bqResult](bqQuery)
+
+	results, err := bqutil.RetryQueryEntries(ctx, q, wantNum, backoff)
+	if err != nil {
+		tb.Fatalf("query BigQuery failed: %v", err)
 	}
-	for i, logEntry := range logEntries {
-		tb.Logf("diffing LogEntry for index %v", i)
-		diffLogEntry(tb, logEntry)
+
+	for i, r := range results {
+		var logEntry loggingpb.LogEntry
+		if err := protojson.Unmarshal([]byte(r.Result), &logEntry); err != nil {
+			tb.Fatalf("unmarshal BigQuery row[%d] to LogEntry failed: %v", i, err)
+		}
+
+		tb.Logf("diffing LogEntry from row[%d]", i)
+		diffLogEntry(tb, &logEntry)
 	}
 }
 
