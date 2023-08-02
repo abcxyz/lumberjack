@@ -70,7 +70,7 @@ func validateAuditLogsWithRetries(ctx context.Context, tb testing.TB, tcfg *Test
 	ctx = logging.WithLogger(ctx, logging.TestLogger(tb, zaptest.Level(zapcore.DebugLevel)))
 
 	backoff := retry.WithMaxRetries(tcfg.MaxDBQueryTries, retry.NewConstant(tcfg.LogRoutingWait))
-	q := bqutil.NewQuery[*bqResult](bqQuery)
+	q := bqutil.NewQuery[bqResult](bqQuery)
 
 	results, err := bqutil.RetryQueryEntries(ctx, q, wantNum, backoff)
 	if err != nil {
