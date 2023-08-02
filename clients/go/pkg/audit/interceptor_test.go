@@ -1070,6 +1070,8 @@ func TestStreamInterceptor(t *testing.T) {
 				},
 			},
 			handler: func(srv interface{}, ss grpc.ServerStream) error {
+				logReq, _ := LogReqFromCtx(ss.Context())
+				logReq.Payload.ResourceName = "ExampleResourceName"
 				return grpcstatus.Error(codes.Internal, "something is wrong")
 			},
 			wantErrSubstr: "something is wrong",
@@ -1077,8 +1079,9 @@ func TestStreamInterceptor(t *testing.T) {
 				{
 					Type: api.AuditLogRequest_DATA_ACCESS,
 					Payload: &capi.AuditLog{
-						ServiceName: "ExampleService",
-						MethodName:  "/ExampleService/ExampleMethod",
+						ServiceName:  "ExampleService",
+						MethodName:   "/ExampleService/ExampleMethod",
+						ResourceName: "ExampleResourceName",
 						AuthenticationInfo: &capi.AuthenticationInfo{
 							PrincipalEmail: "user@example.com",
 						},

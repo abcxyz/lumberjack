@@ -62,7 +62,8 @@ const validLog = `
 		"trace_id": "foo_trace_id",
 		"accessing_process_family": "foo-process-family",
 		"accessing_process_name": "foo-process",
-		"accessed_data_type": "foo-customer-info"
+		"accessed_data_type": "foo-customer-info",
+		"environment": "dev"
 	},
 	"logName": "projects/foo_project/logs/auditlog.gcloudsolutions.dev%2Fdata_access",
 	"receiveTimestamp": "2022-01-19T22:05:15.706507037Z"
@@ -86,7 +87,13 @@ func TestValidate(t *testing.T) {
 			wantErrSubstr: "failed to parse log entry as JSON",
 		},
 		{
-			name: "invalid_log_payload",
+			name: "missing_log_payload",
+			log: `
+{}`,
+			wantErrSubstr: "missing audit log payload",
+		},
+		{
+			name: "invalid_log_payload_json",
 			log: `
 {
 	"jsonPayload": {
@@ -94,6 +101,28 @@ func TestValidate(t *testing.T) {
 	}
 }`,
 			wantErrSubstr: "failed to parse JSON payload",
+		},
+		{
+			name: "invalid_log_payload",
+			log: `
+{
+	"jsonPayload": {
+		"service_name": "foo"
+	}
+}`,
+			wantErrSubstr: "invalid payload",
+		},
+		{
+			name:          "labels_is_empty",
+			log:           `{}`,
+			wantErrSubstr: "labels is empty",
+		},
+		{
+			name: "missing_labels",
+			log: `{
+				"labels": {}
+			}`,
+			wantErrSubstr: `missing label: "environment"`,
 		},
 	}
 	for _, tc := range tests {

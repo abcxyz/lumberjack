@@ -17,13 +17,20 @@
 package validation
 
 import (
+	"errors"
 	"fmt"
 
+	"github.com/abcxyz/lumberjack/pkg/util"
 	"google.golang.org/protobuf/encoding/protojson"
 
 	lepb "cloud.google.com/go/logging/apiv2/loggingpb"
 	cal "google.golang.org/genproto/googleapis/cloud/audit"
 )
+
+var requiredLabels = map[string]struct{}{
+	"environment":            {},
+	"accessing_process_name": {},
+}
 
 // Validate validates a json string representation of a lumberjack log.
 func Validate(log string) error {
@@ -32,12 +39,15 @@ func Validate(log string) error {
 		return fmt.Errorf("failed to parse log entry as JSON: %w", err)
 	}
 
+	var retErr error
 	if err := validatePayload(&logEntry); err != nil {
-		return fmt.Errorf("failed to validate payload: %w", err)
+		retErr = errors.Join(retErr, fmt.Errorf("failed to validate payload: %w", err))
 	}
 
-	// TODO (#427): add required fields check.
-	return nil
+	if err := checkRequiredLabels(logEntry.Labels); err != nil {
+		retErr = errors.Join(retErr, fmt.Errorf("missing required labels: %w", err))
+	}
+	return retErr
 }
 
 func validatePayload(logEntry *lepb.LogEntry) error {
@@ -54,5 +64,22 @@ func validatePayload(logEntry *lepb.LogEntry) error {
 	if err := protojson.Unmarshal(val, &al); err != nil {
 		return fmt.Errorf("failed to parse JSON payload: %w", err)
 	}
+	if err := util.Validate(&al); err != nil {
+		return fmt.Errorf("invalid payload: %w", err)
+	}
 	return nil
+}
+
+func checkRequiredLabels(ls map[string]string) error {
+	if ls == nil {
+		return fmt.Errorf("labels is empty")
+	}
+
+	var retErr error
+	for k := range requiredLabels {
+		if _, ok := ls[k]; !ok {
+			retErr = errors.Join(retErr, fmt.Errorf("missing label: %q", k))
+		}
+	}
+	return retErr
 }

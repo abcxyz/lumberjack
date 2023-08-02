@@ -29,6 +29,7 @@ func NewRequest(opts ...RequestOptions) *api.AuditLogRequest {
 	request := &api.AuditLogRequest{
 		Type: api.AuditLogRequest_DATA_ACCESS,
 		Payload: &audit.AuditLog{
+			MethodName:   "test-method",
 			ServiceName:  "test-service",
 			ResourceName: "test-resource",
 			AuthenticationInfo: &audit.AuthenticationInfo{
