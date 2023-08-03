@@ -48,8 +48,8 @@ func Validate(log string, extra ...Validator) error {
 	return retErr
 }
 
-// ValidateLabel checks required lumberjack labels.
-func ValidateLabel(le *lepb.LogEntry) error {
+// ValidateLabels checks required lumberjack labels.
+func ValidateLabels(le *lepb.LogEntry) error {
 	if le.Labels == nil {
 		return fmt.Errorf("missing labels")
 	}
