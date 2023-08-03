@@ -17,10 +17,10 @@ package audit
 import (
 	"context"
 	"fmt"
-	"strings"
 
 	api "github.com/abcxyz/lumberjack/clients/go/apis/v1alpha1"
 	"github.com/abcxyz/lumberjack/clients/go/pkg/auditerrors"
+	"github.com/abcxyz/lumberjack/pkg/validation"
 )
 
 // RequestValidator validates log request fields.
@@ -46,36 +46,8 @@ func (p *RequestValidator) process(ctx context.Context, logReq *api.AuditLogRequ
 		return fmt.Errorf("AuditLogRequest cannot be nil")
 	}
 
-	if logReq.Payload == nil {
-		return fmt.Errorf("AuditLogRequest.Payload cannot be nil")
-	}
-
-	if logReq.Payload.ServiceName == "" {
-		return fmt.Errorf("ServiceName cannot be empty")
-	}
-
-	if logReq.Payload.AuthenticationInfo == nil {
-		return fmt.Errorf("AuthenticationInfo cannot be nil")
-	}
-
-	email := logReq.Payload.AuthenticationInfo.PrincipalEmail
-	if err := p.validateEmail(email); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-// This method is intended to validate that the email associated with the
-// authentication request has the correct format and in a valid domain.
-func (p *RequestValidator) validateEmail(email string) error {
-	if email == "" {
-		return fmt.Errorf("PrincipalEmail cannot be empty")
-	}
-
-	parts := strings.Split(email, "@")
-	if len(parts) != 2 || parts[1] == "" {
-		return fmt.Errorf("PrincipalEmail %q is malformed", email)
+	if err := validation.ValidateAuditLog(logReq.Payload); err != nil {
+		return fmt.Errorf("AuditLogRequest does not have a valid payload: %w", err)
 	}
 	return nil
 }

@@ -109,7 +109,8 @@ func (h *handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	auditLogRequest := &v1alpha1.AuditLogRequest{
 		Type: v1alpha1.AuditLogRequest_DATA_ACCESS,
 		Payload: &cal.AuditLog{
-			ServiceName: serviceName,
+			ServiceName:  serviceName,
+			ResourceName: traceID,
 			AuthenticationInfo: &cal.AuthenticationInfo{
 				PrincipalEmail: email,
 			},

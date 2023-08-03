@@ -20,7 +20,6 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
-	"google.golang.org/genproto/googleapis/cloud/audit"
 	"google.golang.org/protobuf/testing/protocmp"
 
 	api "github.com/abcxyz/lumberjack/clients/go/apis/v1alpha1"
@@ -51,76 +50,6 @@ func TestRequestValidation_Process(t *testing.T) {
 		},
 		{
 			name:    "should_error_when_logReq_is_nil",
-			wantErr: auditerrors.ErrInvalidRequest,
-		},
-		{
-			name: "should_error_when_authInfo_is_nil",
-			logReq: &api.AuditLogRequest{
-				Payload: &audit.AuditLog{
-					ServiceName: "test-service",
-				},
-			},
-			wantLogReq: &api.AuditLogRequest{
-				Payload: &audit.AuditLog{
-					ServiceName: "test-service",
-				},
-			},
-			wantErr: auditerrors.ErrInvalidRequest,
-		},
-		{
-			name: "should_error_when_auth_email_is_nil",
-			logReq: &api.AuditLogRequest{
-				Payload: &audit.AuditLog{
-					ServiceName:        "test-service",
-					AuthenticationInfo: &audit.AuthenticationInfo{},
-				},
-			},
-			wantLogReq: &api.AuditLogRequest{
-				Payload: &audit.AuditLog{
-					ServiceName:        "test-service",
-					AuthenticationInfo: &audit.AuthenticationInfo{},
-				},
-			},
-			wantErr: auditerrors.ErrInvalidRequest,
-		},
-		{
-			name: "should_error_when_auth_email_has_no_domain",
-			logReq: &api.AuditLogRequest{
-				Payload: &audit.AuditLog{
-					ServiceName: "test-service",
-					AuthenticationInfo: &audit.AuthenticationInfo{
-						PrincipalEmail: "user",
-					},
-				},
-			},
-			wantLogReq: &api.AuditLogRequest{
-				Payload: &audit.AuditLog{
-					ServiceName: "test-service",
-					AuthenticationInfo: &audit.AuthenticationInfo{
-						PrincipalEmail: "user",
-					},
-				},
-			},
-			wantErr: auditerrors.ErrInvalidRequest,
-		},
-		{
-			name: "should_error_when_serviceName_is_empty",
-			logReq: &api.AuditLogRequest{
-				Payload: &audit.AuditLog{
-					ServiceName: "",
-					AuthenticationInfo: &audit.AuthenticationInfo{
-						PrincipalEmail: "user@test.com",
-					},
-				},
-			},
-			wantLogReq: &api.AuditLogRequest{
-				Payload: &audit.AuditLog{
-					ServiceName: "",
-					AuthenticationInfo: &audit.AuthenticationInfo{
-						PrincipalEmail: "user@test.com",
-					},
-				},
-			},
 			wantErr: auditerrors.ErrInvalidRequest,
 		},
 	}
