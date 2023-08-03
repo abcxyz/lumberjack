@@ -30,8 +30,10 @@ var requiredLabels = map[string]struct{}{
 	"accessing_process_name": {},
 }
 
+// Validator validates a lumberjack log entry.
 type Validator func(le *lepb.LogEntry) error
 
+// Validate validates a json string representation of a lumberjack log.
 func Validate(log string, vs ...Validator) error {
 	var logEntry lepb.LogEntry
 	if err := protojson.Unmarshal([]byte(log), &logEntry); err != nil {
@@ -50,6 +52,7 @@ func Validate(log string, vs ...Validator) error {
 	return retErr
 }
 
+// WithLabelCheck checks required lumberjack labels.
 func WithLabelCheck(le *lepb.LogEntry) error {
 	if le.Labels == nil {
 		return fmt.Errorf("missing labels")
