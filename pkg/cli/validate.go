@@ -16,9 +16,9 @@ package cli
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"os"
-	"fmt"
 
 	"github.com/abcxyz/lumberjack/pkg/validation"
 	"github.com/abcxyz/pkg/cli"
