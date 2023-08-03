@@ -75,6 +75,7 @@ func TestValidate(t *testing.T) {
 	tests := []struct {
 		name          string
 		log           string
+		vs            []Validator
 		wantErrSubstr string
 	}{
 		{
@@ -87,9 +88,8 @@ func TestValidate(t *testing.T) {
 			wantErrSubstr: "failed to parse log entry as JSON",
 		},
 		{
-			name: "missing_log_payload",
-			log: `
-{}`,
+			name:          "missing_log_payload",
+			log:           `{}`,
 			wantErrSubstr: "missing audit log payload",
 		},
 		{
@@ -113,16 +113,30 @@ func TestValidate(t *testing.T) {
 			wantErrSubstr: "invalid payload",
 		},
 		{
-			name:          "labels_is_empty",
+			name:          "missing_labels",
 			log:           `{}`,
-			wantErrSubstr: "labels is empty",
+			vs:            []Validator{WithLabelCheck},
+			wantErrSubstr: "missing labels",
 		},
 		{
-			name: "missing_labels",
+			name: "missing_environment_label",
 			log: `{
-				"labels": {}
-			}`,
-			wantErrSubstr: `missing label: "environment"`,
+	"labels": {
+		"accessing_process_name": "foo-process"
+	}
+}`,
+			vs:            []Validator{WithLabelCheck},
+			wantErrSubstr: `missing required label: "environment"`,
+		},
+		{
+			name: "missing_process_name_label",
+			log: `{
+	"labels": {
+		"environment": "dev"
+	}
+}`,
+			vs:            []Validator{WithLabelCheck},
+			wantErrSubstr: `missing required label: "accessing_process_name"`,
 		},
 	}
 	for _, tc := range tests {
@@ -131,7 +145,7 @@ func TestValidate(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
-			err := Validate(tc.log)
+			err := Validate(tc.log, tc.vs...)
 			if diff := pkgtestutil.DiffErrString(err, tc.wantErrSubstr); diff != "" {
 				t.Errorf("Process(%+v) got unexpected error substring: %v", tc.name, diff)
 			}

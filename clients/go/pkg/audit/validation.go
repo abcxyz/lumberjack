@@ -20,7 +20,7 @@ import (
 
 	api "github.com/abcxyz/lumberjack/clients/go/apis/v1alpha1"
 	"github.com/abcxyz/lumberjack/clients/go/pkg/auditerrors"
-	"github.com/abcxyz/lumberjack/pkg/util"
+	"github.com/abcxyz/lumberjack/pkg/validation"
 )
 
 // RequestValidator validates log request fields.
@@ -46,7 +46,7 @@ func (p *RequestValidator) process(ctx context.Context, logReq *api.AuditLogRequ
 		return fmt.Errorf("AuditLogRequest cannot be nil")
 	}
 
-	if err := util.Validate(logReq.Payload); err != nil {
+	if err := validation.ValidateAuditLog(logReq.Payload); err != nil {
 		return fmt.Errorf("AuditLogRequest does not have a valid payload: %w", err)
 	}
 	return nil

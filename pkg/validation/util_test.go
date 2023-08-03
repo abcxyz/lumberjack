@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package util
+package validation
 
 import (
 	"testing"
@@ -22,7 +22,7 @@ import (
 	pkgtestutil "github.com/abcxyz/pkg/testutil"
 )
 
-func TestValidate(t *testing.T) {
+func TestValidateAuditLog(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
@@ -117,7 +117,7 @@ func TestValidate(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
-			err := Validate(tc.payload)
+			err := ValidateAuditLog(tc.payload)
 			if diff := pkgtestutil.DiffErrString(err, tc.wantErrSubstr); diff != "" {
 				t.Errorf("Process(%+v) got unexpected error substring: %v", tc.name, diff)
 			}

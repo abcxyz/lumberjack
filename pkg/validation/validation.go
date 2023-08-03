@@ -12,15 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package validation provides untils for lumberjack/data access logs
-// validation.
+// Package validation provides utils for lumberjack/data access logs validation.
 package validation
 
 import (
 	"errors"
 	"fmt"
 
-	"github.com/abcxyz/lumberjack/pkg/util"
 	"google.golang.org/protobuf/encoding/protojson"
 
 	lepb "cloud.google.com/go/logging/apiv2/loggingpb"
@@ -32,8 +30,9 @@ var requiredLabels = map[string]struct{}{
 	"accessing_process_name": {},
 }
 
-// Validate validates a json string representation of a lumberjack log.
-func Validate(log string) error {
+type Validator func(le *lepb.LogEntry) error
+
+func Validate(log string, vs ...Validator) error {
 	var logEntry lepb.LogEntry
 	if err := protojson.Unmarshal([]byte(log), &logEntry); err != nil {
 		return fmt.Errorf("failed to parse log entry as JSON: %w", err)
@@ -44,8 +43,23 @@ func Validate(log string) error {
 		retErr = errors.Join(retErr, fmt.Errorf("failed to validate payload: %w", err))
 	}
 
-	if err := checkRequiredLabels(logEntry.Labels); err != nil {
-		retErr = errors.Join(retErr, fmt.Errorf("missing required labels: %w", err))
+	for _, v := range vs {
+		retErr = errors.Join(retErr, v(&logEntry))
+	}
+
+	return retErr
+}
+
+func WithLabelCheck(le *lepb.LogEntry) error {
+	if le.Labels == nil {
+		return fmt.Errorf("missing labels")
+	}
+
+	var retErr error
+	for k := range requiredLabels {
+		if _, ok := le.Labels[k]; !ok {
+			retErr = errors.Join(retErr, fmt.Errorf("missing required label: %q", k))
+		}
 	}
 	return retErr
 }
@@ -64,22 +78,8 @@ func validatePayload(logEntry *lepb.LogEntry) error {
 	if err := protojson.Unmarshal(val, &al); err != nil {
 		return fmt.Errorf("failed to parse JSON payload: %w", err)
 	}
-	if err := util.Validate(&al); err != nil {
+	if err := ValidateAuditLog(&al); err != nil {
 		return fmt.Errorf("invalid payload: %w", err)
 	}
 	return nil
-}
-
-func checkRequiredLabels(ls map[string]string) error {
-	if ls == nil {
-		return fmt.Errorf("labels is empty")
-	}
-
-	var retErr error
-	for k := range requiredLabels {
-		if _, ok := ls[k]; !ok {
-			retErr = errors.Join(retErr, fmt.Errorf("missing label: %q", k))
-		}
-	}
-	return retErr
 }

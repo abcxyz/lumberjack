@@ -12,8 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package util provides untils for audit log payload validation.
-package util
+package validation
 
 import (
 	"fmt"
@@ -22,8 +21,8 @@ import (
 	"google.golang.org/genproto/googleapis/cloud/audit"
 )
 
-// Validate validates the audit log payload for lumberjack.
-func Validate(payload *audit.AuditLog) error {
+// ValidateAuditLog validates the audit log payload for lumberjack.
+func ValidateAuditLog(payload *audit.AuditLog) error {
 	if payload == nil {
 		return fmt.Errorf("audit log payload cannot be nil")
 	}
