@@ -20,7 +20,6 @@ import (
 	"fmt"
 	"strings"
 
-	"google.golang.org/genproto/googleapis/cloud/audit"
 	"google.golang.org/protobuf/encoding/protojson"
 
 	lepb "cloud.google.com/go/logging/apiv2/loggingpb"
@@ -43,16 +42,14 @@ func Validate(log string, extra ...Validator) error {
 	}
 
 	var retErr error
-
-	for _, v := range append([]Validator{payloadCheck}, extra...) {
+	for _, v := range append([]Validator{validatePayload}, extra...) {
 		retErr = errors.Join(retErr, v(&logEntry))
 	}
-
 	return retErr
 }
 
-// LabelCheck checks required lumberjack labels.
-func LabelCheck(le *lepb.LogEntry) error {
+// ValidateLabel checks required lumberjack labels.
+func ValidateLabel(le *lepb.LogEntry) error {
 	if le.Labels == nil {
 		return fmt.Errorf("missing labels")
 	}
@@ -67,7 +64,7 @@ func LabelCheck(le *lepb.LogEntry) error {
 }
 
 // Required audit log payload check for lumberjack logs.
-func payloadCheck(logEntry *lepb.LogEntry) error {
+func validatePayload(logEntry *lepb.LogEntry) error {
 	payload := logEntry.GetJsonPayload()
 	if payload == nil {
 		return fmt.Errorf("missing audit log payload")
@@ -88,7 +85,7 @@ func payloadCheck(logEntry *lepb.LogEntry) error {
 }
 
 // ValidateAuditLog validates the audit log payload for lumberjack.
-func ValidateAuditLog(payload *audit.AuditLog) error {
+func ValidateAuditLog(payload *cal.AuditLog) error {
 	if payload == nil {
 		return fmt.Errorf("audit log payload cannot be nil")
 	}

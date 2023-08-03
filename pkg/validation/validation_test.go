@@ -117,7 +117,7 @@ func TestValidate(t *testing.T) {
 		{
 			name:          "missing_labels",
 			log:           `{}`,
-			extraVs:       []Validator{LabelCheck},
+			extraVs:       []Validator{ValidateLabel},
 			wantErrSubstr: "missing labels",
 		},
 		{
@@ -127,7 +127,7 @@ func TestValidate(t *testing.T) {
 		"accessing_process_name": "foo-process"
 	}
 }`,
-			extraVs:       []Validator{LabelCheck},
+			extraVs:       []Validator{ValidateLabel},
 			wantErrSubstr: `missing required label: "environment"`,
 		},
 		{
@@ -137,7 +137,7 @@ func TestValidate(t *testing.T) {
 		"environment": "dev"
 	}
 }`,
-			extraVs:       []Validator{LabelCheck},
+			extraVs:       []Validator{ValidateLabel},
 			wantErrSubstr: `missing required label: "accessing_process_name"`,
 		},
 	}
