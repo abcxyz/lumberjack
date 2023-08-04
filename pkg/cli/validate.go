@@ -71,7 +71,6 @@ func (c *ValidateCommand) Flags() *cli.FlagSet {
 
 	f.BoolVar(&cli.BoolVar{
 		Name:    "additional-check",
-		Aliases: []string{"ac"},
 		Target:  &c.flagAdditionalCheck,
 		Default: false,
 		Usage:   `Turn on for additional lumberjack specific checks on log labels.`,

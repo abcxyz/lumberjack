@@ -110,7 +110,7 @@ func TestValidateCommand(t *testing.T) {
 		},
 		{
 			name:   "additional_check",
-			args:   []string{"-log", validLog, "-ac"},
+			args:   []string{"-log", validLog, "-additional-check"},
 			expOut: `Successfully validated log`,
 		},
 		{
@@ -130,7 +130,7 @@ func TestValidateCommand(t *testing.T) {
 		},
 		{
 			name:   "additional_check_fail",
-			args:   []string{"-log", missingLabel, "-ac"},
+			args:   []string{"-log", missingLabel, "-additional-check"},
 			expErr: `missing required label`,
 		},
 	}

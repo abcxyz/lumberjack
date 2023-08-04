@@ -23,7 +23,7 @@ func TestRootCommand_Help(t *testing.T) {
 	t.Parallel()
 
 	exp := `
-Usage: ljctl COMMAND
+Usage: lumberctl COMMAND
 
   validate    Validate lumberjack log
 `
