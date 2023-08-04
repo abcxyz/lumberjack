@@ -27,7 +27,10 @@ Data access could happen on two routes:
     accesses **application-level audit logs**. Lumberjack provides
     [Go](./clients/go) and [Java](./clients/java-logger) SDK to help write
     application-level audit logs via cloud logging. Find out
-    [more about how to use the SDK](./docs/clients.md).
+    [more about how to use the SDK](./docs/clients.md). It also provides a
+    [CLI](./docs/cli.md) tool for log validation, which can be used as a
+    debugging tool or if you write logs through other means but want to use the
+    same logging standards.
 *   Directly via data storage API. Google Cloud provides
     [Cloud Audit Logs](https://cloud.google.com/logging/docs/audit) to capture
     such accesses. We also call these logs **platform-level audit logs** to
