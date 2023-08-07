@@ -31,6 +31,9 @@ var rootCmd = func() cli.Command {
 			"validate": func() cli.Command {
 				return &ValidateCommand{}
 			},
+			"pull": func() cli.Command {
+				return &ValidatePullCommand{}
+			},
 		},
 	}
 }
