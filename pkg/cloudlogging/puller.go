@@ -20,19 +20,41 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"time"
 
 	"cloud.google.com/go/logging/apiv2/loggingpb"
+	"github.com/googleapis/gax-go"
 	"github.com/sethvargo/go-retry"
 	"google.golang.org/api/iterator"
 
 	logging "cloud.google.com/go/logging/apiv2"
 )
 
-// Puller pulls log entries of GCP organizations, folders, projects, or
+// LoggingClient interface for streaming read of log entries as they are ingested.
+type LoggingClient interface {
+	// TailLogEntries(context.Context, ...gax.CallOption) (loggingpb.LoggingServiceV2_TailLogEntriesClient, error)
+	ListLogEntries(context.Context, *loggingpb.ListLogEntriesRequest) *logging.LogEntryIterator
+}
+
+// Puller pulls log entries of GCP organizations, folders, projects, and
 // billingAccounts.
 type Puller struct {
-	client *logging.Client
+	client LoggingClient
+	// Required. Name of a parent resource from which to retrieve log entries:
+	//
+	// *  `projects/[PROJECT_ID]`
+	// *  `organizations/[ORGANIZATION_ID]`
+	// *  `billingAccounts/[BILLING_ACCOUNT_ID]`
+	// *  `folders/[FOLDER_ID]`
+	//
+	// May alternatively be one or more views:
+	//
+	//   - `projects/[PROJECT_ID]/locations/[LOCATION_ID]/buckets/[BUCKET_ID]/views/[VIEW_ID]`
+	//   - `organizations/[ORGANIZATION_ID]/locations/[LOCATION_ID]/buckets/[BUCKET_ID]/views/[VIEW_ID]`
+	//   - `billingAccounts/[BILLING_ACCOUNT_ID]/locations/[LOCATION_ID]/buckets/[BUCKET_ID]/views/[VIEW_ID]`
+	//   - `folders/[FOLDER_ID]/locations/[LOCATION_ID]/buckets/[BUCKET_ID]/views/[VIEW_ID]`
+	resource string
 	// Optional retry backoff strategy, default is 5 attempts with fibonacci
 	// backoff that starts at 500ms.
 	retry retry.Backoff
@@ -50,8 +72,8 @@ func WithRetry(b retry.Backoff) Option {
 }
 
 // NewPuller creates a new Puller with provided clients and options.
-func NewPuller(ctx context.Context, c *logging.Client, opts ...Option) *Puller {
-	p := &Puller{client: c}
+func NewPuller(ctx context.Context, c LoggingClient, resource string, opts ...Option) *Puller {
+	p := &Puller{client: c, resource: resource}
 	for _, opt := range opts {
 		p = opt(p)
 	}
@@ -62,9 +84,18 @@ func NewPuller(ctx context.Context, c *logging.Client, opts ...Option) *Puller {
 	return p
 }
 
-// Pull pulls a list of log entries given request.
-func (p *Puller) Pull(ctx context.Context, req *loggingpb.ListLogEntriesRequest) ([]*loggingpb.LogEntry, error) {
+// Pull pulls logNum of log entries given log filter.
+func (p *Puller) Pull(ctx context.Context, filter string, logNum int) ([]*loggingpb.LogEntry, error) {
 	var ls []*loggingpb.LogEntry
+	req := &loggingpb.ListLogEntriesRequest{
+		ResourceNames: []string{p.resource},
+		Filter:        filter,
+		// Set descending time order so that newest logs will be returned.
+		OrderBy: "timestamp desc",
+		// Set a large pagesize to optimize read efficiency, see ref
+		// https://cloud.google.com/logging/docs/reference/api-overview#entries-list.
+		PageSize: 1000,
+	}
 	if err := retry.Do(ctx, p.retry, func(ctx context.Context) error {
 		it := p.client.ListLogEntries(ctx, req)
 		for {
@@ -75,6 +106,9 @@ func (p *Puller) Pull(ctx context.Context, req *loggingpb.ListLogEntriesRequest)
 			if err != nil {
 				return retry.RetryableError(fmt.Errorf("failed to get next log entry: %w, retrying", err))
 			}
+			if len(ls) == logNum {
+				break;
+			}
 			ls = append(ls, l)
 		}
 		return nil
@@ -83,3 +117,40 @@ func (p *Puller) Pull(ctx context.Context, req *loggingpb.ListLogEntriesRequest)
 	}
 	return ls, nil
 }
+
+// SteamPull pulls live log entries, it stops pulling after logNum of log entries.
+// func (p *Puller) SteamPull(ctx context.Context, filter string, logNum int) ([]*loggingpb.LogEntry, error) {
+// 	var ls []*loggingpb.LogEntry
+// 	if err := retry.Do(ctx, p.retry, func(ctx context.Context) error {
+// 		stream, err := p.client.TailLogEntries(ctx)
+// 		if err != nil {
+// 			return retry.RetryableError(fmt.Errorf("failed to create stream: %w", err))
+// 		}
+// 		defer stream.CloseSend()
+// 		req := &loggingpb.TailLogEntriesRequest{
+// 			ResourceNames: []string{p.resource},
+// 			Filter:        filter,
+// 		}
+// 		if err := stream.Send(req); err != nil {
+// 			return retry.RetryableError(fmt.Errorf("failed to send request: %w", err))
+// 		}
+
+// 		for counter := 0; counter < logNum; {
+// 			resp, err := stream.Recv()
+// 			if err == io.EOF {
+// 				break
+// 			}
+// 			if err != nil {
+// 				return retry.RetryableError(fmt.Errorf("failed to receive response: %w", err))
+// 			}
+// 			if resp.Entries != nil {
+// 				counter += len(resp.Entries)
+// 				ls = append(ls, resp.GetEntries()...)
+// 			}
+// 		}
+// 		return nil
+// 	}); err != nil {
+// 		return nil, fmt.Errorf("failed to pull log entries: %w", err)
+// 	}
+// 	return ls, nil
+// }
