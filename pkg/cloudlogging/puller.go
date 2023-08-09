@@ -98,7 +98,6 @@ func (p *Puller) Pull(ctx context.Context, filter string, result chan<- *logging
 		for {
 			l, err := it.Next()
 			if errors.Is(err, iterator.Done) {
-				ctx.Done()
 				break
 			}
 			if err != nil {
@@ -108,7 +107,7 @@ func (p *Puller) Pull(ctx context.Context, filter string, result chan<- *logging
 		}
 		return nil
 	}); err != nil {
-		return err
+		return fmt.Errorf("failed to list log entries: %w", err)
 	}
 	return nil
 }
