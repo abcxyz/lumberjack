@@ -126,7 +126,7 @@ func TestValidatePullCommand(t *testing.T) {
 
 			ctx := context.Background()
 
-			var cmd ValidatePullCommand
+			var cmd PullCommand
 			cmd.testPuller = tc.puller
 			_, stdout, _ := cmd.Pipe()
 

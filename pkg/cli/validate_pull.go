@@ -41,10 +41,10 @@ type logPuller interface {
 	Pull(context.Context, string, int) ([]*loggingpb.LogEntry, error)
 }
 
-var _ cli.Command = (*ValidatePullCommand)(nil)
+var _ cli.Command = (*PullCommand)(nil)
 
-// ValidatePullCommand validates lumberjack logs pulled.
-type ValidatePullCommand struct {
+// PullCommand pulls and validates lumberjack logs.
+type PullCommand struct {
 	cli.BaseCommand
 
 	flagResource string
@@ -63,11 +63,11 @@ type ValidatePullCommand struct {
 	testPuller logPuller
 }
 
-func (c *ValidatePullCommand) Desc() string {
+func (c *PullCommand) Desc() string {
 	return `Pulls and Validates lumberjack logs from Cloud logging`
 }
 
-func (c *ValidatePullCommand) Help() string {
+func (c *PullCommand) Help() string {
 	return `
 Usage: {{ COMMAND }} [options]
 
@@ -89,7 +89,7 @@ Pulls and validates the latest non-lumberjack log type log:
 `
 }
 
-func (c *ValidatePullCommand) Flags() *cli.FlagSet {
+func (c *PullCommand) Flags() *cli.FlagSet {
 	set := cli.NewFlagSet()
 
 	// Command options
@@ -145,7 +145,7 @@ func (c *ValidatePullCommand) Flags() *cli.FlagSet {
 	return set
 }
 
-func (c *ValidatePullCommand) Run(ctx context.Context, args []string) error {
+func (c *PullCommand) Run(ctx context.Context, args []string) error {
 	f := c.Flags()
 	if err := f.Parse(args); err != nil {
 		return fmt.Errorf("failed to parse flags: %w", err)
@@ -196,7 +196,7 @@ func (c *ValidatePullCommand) Run(ctx context.Context, args []string) error {
 	return retErr
 }
 
-func (c *ValidatePullCommand) pull(ctx context.Context) ([]*loggingpb.LogEntry, error) {
+func (c *PullCommand) pull(ctx context.Context) ([]*loggingpb.LogEntry, error) {
 	var p logPuller
 	if c.testPuller != nil {
 		p = c.testPuller
@@ -216,7 +216,7 @@ func (c *ValidatePullCommand) pull(ctx context.Context) ([]*loggingpb.LogEntry, 
 	return ls, nil
 }
 
-func (c *ValidatePullCommand) getFilter() string {
+func (c *PullCommand) getFilter() string {
 	cutoff := fmt.Sprintf("timestamp >= %q", time.Now().UTC().Add(-c.flagDuration).Format(time.RFC3339))
 
 	var f string
