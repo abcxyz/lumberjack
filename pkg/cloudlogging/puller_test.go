@@ -51,11 +51,11 @@ func TestPull(t *testing.T) {
 					Entries: []*loggingpb.LogEntry{{LogName: "test"}},
 				},
 			},
-			wantReq: &loggingpb.ListLogEntriesRequest{
+			wantReq:    &loggingpb.ListLogEntriesRequest{
 				ResourceNames: []string{resource},
-				Filter:        filter,
-				OrderBy:       "timestamp desc",
-				PageSize:      1000,
+				Filter: filter,
+				OrderBy: "timestamp desc",
+				PageSize: 1000,
 			},
 			wantResult: &loggingpb.LogEntry{LogName: "test"},
 		},
@@ -64,11 +64,11 @@ func TestPull(t *testing.T) {
 			server: &fakeServer{
 				injectedErr: fmt.Errorf("injected error"),
 			},
-			wantReq: &loggingpb.ListLogEntriesRequest{
+			wantReq:    &loggingpb.ListLogEntriesRequest{
 				ResourceNames: []string{resource},
-				Filter:        filter,
-				OrderBy:       "timestamp desc",
-				PageSize:      1000,
+				Filter: filter,
+				OrderBy: "timestamp desc",
+				PageSize: 1000,
 			},
 			wantErrSubstr: "injected error",
 		},
@@ -88,10 +88,8 @@ func TestPull(t *testing.T) {
 				resource,
 				WithRetry(retry.WithMaxRetries(0, retry.NewFibonacci(500*time.Millisecond))),
 			)
-
-			gotResult := make(chan *loggingpb.LogEntry, 1)
+			gotResult := make(chan *loggingpb.LogEntry)
 			gotErr := p.Pull(ctx, filter, gotResult)
-			close(gotResult)
 			if diff := testutil.DiffErrString(gotErr, tc.wantErrSubstr); diff != "" {
 				t.Errorf("Process(%+v) got unexpected error substring: %v", tc.name, diff)
 			}
@@ -117,6 +115,7 @@ func setupFakeClient(t *testing.T, ctx context.Context, s *fakeServer) *logging.
 	t.Cleanup(func() {
 		conn.Close()
 	})
+	// fakeClient := loggingpb.NewLoggingServiceV2Client(conn)
 	fakeClient, err := logging.NewClient(ctx, option.WithGRPCConn(conn))
 	if err != nil {
 		t.Fatalf("creating client for fake at %q: %v", addr, err)
