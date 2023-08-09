@@ -20,6 +20,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"time"
 
 	"cloud.google.com/go/logging/apiv2/loggingpb"
@@ -32,7 +33,8 @@ import (
 
 // LoggingClient interface for streaming read of log entries as they are ingested.
 type LoggingClient interface {
-	ListLogEntries(context.Context, *loggingpb.ListLogEntriesRequest, ...gax.CallOption) *logging.LogEntryIterator
+	// TailLogEntries(context.Context, ...gax.CallOption) (loggingpb.LoggingServiceV2_TailLogEntriesClient, error)
+	ListLogEntries(context.Context, *loggingpb.ListLogEntriesRequest) *logging.LogEntryIterator
 }
 
 // Puller pulls log entries of GCP organizations, folders, projects, and
@@ -69,7 +71,7 @@ func WithRetry(b retry.Backoff) Option {
 	}
 }
 
-// NewPuller creates a new Puller with provided clients, resource, and options.
+// NewPuller creates a new Puller with provided clients and options.
 func NewPuller(ctx context.Context, c LoggingClient, resource string, opts ...Option) *Puller {
 	p := &Puller{client: c, resource: resource}
 	for _, opt := range opts {
@@ -82,8 +84,9 @@ func NewPuller(ctx context.Context, c LoggingClient, resource string, opts ...Op
 	return p
 }
 
-// Pull pulls log entries and send them to the result channel.
-func (p *Puller) Pull(ctx context.Context, filter string, result chan<- *loggingpb.LogEntry) error {
+// Pull pulls logNum of log entries given log filter.
+func (p *Puller) Pull(ctx context.Context, filter string, logNum int) ([]*loggingpb.LogEntry, error) {
+	var ls []*loggingpb.LogEntry
 	req := &loggingpb.ListLogEntriesRequest{
 		ResourceNames: []string{p.resource},
 		Filter:        filter,
@@ -98,17 +101,56 @@ func (p *Puller) Pull(ctx context.Context, filter string, result chan<- *logging
 		for {
 			l, err := it.Next()
 			if errors.Is(err, iterator.Done) {
-				ctx.Done()
 				break
 			}
 			if err != nil {
 				return retry.RetryableError(fmt.Errorf("failed to get next log entry: %w, retrying", err))
 			}
-			result <- l
+			if len(ls) == logNum {
+				break;
+			}
+			ls = append(ls, l)
 		}
 		return nil
 	}); err != nil {
-		return err
+		return nil, fmt.Errorf("failed to list log entries: %w", err)
 	}
-	return nil
+	return ls, nil
 }
+
+// SteamPull pulls live log entries, it stops pulling after logNum of log entries.
+// func (p *Puller) SteamPull(ctx context.Context, filter string, logNum int) ([]*loggingpb.LogEntry, error) {
+// 	var ls []*loggingpb.LogEntry
+// 	if err := retry.Do(ctx, p.retry, func(ctx context.Context) error {
+// 		stream, err := p.client.TailLogEntries(ctx)
+// 		if err != nil {
+// 			return retry.RetryableError(fmt.Errorf("failed to create stream: %w", err))
+// 		}
+// 		defer stream.CloseSend()
+// 		req := &loggingpb.TailLogEntriesRequest{
+// 			ResourceNames: []string{p.resource},
+// 			Filter:        filter,
+// 		}
+// 		if err := stream.Send(req); err != nil {
+// 			return retry.RetryableError(fmt.Errorf("failed to send request: %w", err))
+// 		}
+
+// 		for counter := 0; counter < logNum; {
+// 			resp, err := stream.Recv()
+// 			if err == io.EOF {
+// 				break
+// 			}
+// 			if err != nil {
+// 				return retry.RetryableError(fmt.Errorf("failed to receive response: %w", err))
+// 			}
+// 			if resp.Entries != nil {
+// 				counter += len(resp.Entries)
+// 				ls = append(ls, resp.GetEntries()...)
+// 			}
+// 		}
+// 		return nil
+// 	}); err != nil {
+// 		return nil, fmt.Errorf("failed to pull log entries: %w", err)
+// 	}
+// 	return ls, nil
+// }

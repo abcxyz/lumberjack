@@ -34,42 +34,32 @@ import (
 func TestPull(t *testing.T) {
 	t.Parallel()
 
-	filter := "test-filter"
-	resource := "test-resource"
-
 	cases := []struct {
 		name          string
 		server        *fakeServer
+		req           *loggingpb.ListLogEntriesRequest
 		wantReq       *loggingpb.ListLogEntriesRequest
-		wantResult    *loggingpb.LogEntry
+		wantResult    []*loggingpb.LogEntry
 		wantErrSubstr string
 	}{
 		{
 			name: "success",
+			req:  &loggingpb.ListLogEntriesRequest{},
 			server: &fakeServer{
 				resp: &loggingpb.ListLogEntriesResponse{
 					Entries: []*loggingpb.LogEntry{{LogName: "test"}},
 				},
 			},
-			wantReq:    &loggingpb.ListLogEntriesRequest{
-				ResourceNames: []string{resource},
-				Filter: filter,
-				OrderBy: "timestamp desc",
-				PageSize: 1000,
-			},
-			wantResult: &loggingpb.LogEntry{LogName: "test"},
+			wantReq:    &loggingpb.ListLogEntriesRequest{},
+			wantResult: []*loggingpb.LogEntry{{LogName: "test"}},
 		},
 		{
 			name: "failed_to_pull",
+			req:  &loggingpb.ListLogEntriesRequest{},
 			server: &fakeServer{
 				injectedErr: fmt.Errorf("injected error"),
 			},
-			wantReq:    &loggingpb.ListLogEntriesRequest{
-				ResourceNames: []string{resource},
-				Filter: filter,
-				OrderBy: "timestamp desc",
-				PageSize: 1000,
-			},
+			wantReq:       &loggingpb.ListLogEntriesRequest{},
 			wantErrSubstr: "injected error",
 		},
 	}
@@ -85,16 +75,14 @@ func TestPull(t *testing.T) {
 			p := NewPuller(
 				ctx,
 				fakeClient,
-				resource,
 				WithRetry(retry.WithMaxRetries(0, retry.NewFibonacci(500*time.Millisecond))),
 			)
-			gotResult := make(chan *loggingpb.LogEntry)
-			gotErr := p.Pull(ctx, filter, gotResult)
+			gotResult, gotErr := p.Pull(ctx, tc.req)
 			if diff := testutil.DiffErrString(gotErr, tc.wantErrSubstr); diff != "" {
 				t.Errorf("Process(%+v) got unexpected error substring: %v", tc.name, diff)
 			}
 
-			if diff := cmp.Diff(tc.wantResult, <-gotResult, protocmp.Transform()); diff != "" {
+			if diff := cmp.Diff(tc.wantResult, gotResult, protocmp.Transform()); diff != "" {
 				t.Errorf("Process(%+v) got result diff (-want, +got): %v", tc.name, diff)
 			}
 
