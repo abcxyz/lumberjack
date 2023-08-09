@@ -31,35 +31,46 @@ import (
 	logging "cloud.google.com/go/logging/apiv2"
 )
 
+const testResource = "test-resource"
+
 func TestPull(t *testing.T) {
 	t.Parallel()
 
 	cases := []struct {
 		name          string
 		server        *fakeServer
-		req           *loggingpb.ListLogEntriesRequest
+		filter        string
 		wantReq       *loggingpb.ListLogEntriesRequest
 		wantResult    []*loggingpb.LogEntry
 		wantErrSubstr string
 	}{
 		{
-			name: "success",
-			req:  &loggingpb.ListLogEntriesRequest{},
+			name:   "success",
+			filter: "test-filter",
 			server: &fakeServer{
 				resp: &loggingpb.ListLogEntriesResponse{
 					Entries: []*loggingpb.LogEntry{{LogName: "test"}},
 				},
 			},
-			wantReq:    &loggingpb.ListLogEntriesRequest{},
+			wantReq: &loggingpb.ListLogEntriesRequest{
+				ResourceNames: []string{testResource},
+				Filter:        "test-filter",
+				OrderBy:       "timestamp desc",
+				PageSize:      1000,
+			},
 			wantResult: []*loggingpb.LogEntry{{LogName: "test"}},
 		},
 		{
-			name: "failed_to_pull",
-			req:  &loggingpb.ListLogEntriesRequest{},
+			name:   "failed_to_pull",
+			filter: "",
 			server: &fakeServer{
 				injectedErr: fmt.Errorf("injected error"),
 			},
-			wantReq:       &loggingpb.ListLogEntriesRequest{},
+			wantReq: &loggingpb.ListLogEntriesRequest{
+				ResourceNames: []string{testResource},
+				OrderBy:       "timestamp desc",
+				PageSize:      1000,
+			},
 			wantErrSubstr: "injected error",
 		},
 	}
@@ -75,9 +86,10 @@ func TestPull(t *testing.T) {
 			p := NewPuller(
 				ctx,
 				fakeClient,
+				testResource,
 				WithRetry(retry.WithMaxRetries(0, retry.NewFibonacci(500*time.Millisecond))),
 			)
-			gotResult, gotErr := p.Pull(ctx, tc.req)
+			gotResult, gotErr := p.Pull(ctx, tc.filter, 1)
 			if diff := testutil.DiffErrString(gotErr, tc.wantErrSubstr); diff != "" {
 				t.Errorf("Process(%+v) got unexpected error substring: %v", tc.name, diff)
 			}
