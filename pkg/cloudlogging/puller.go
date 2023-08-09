@@ -23,22 +23,16 @@ import (
 	"time"
 
 	"cloud.google.com/go/logging/apiv2/loggingpb"
-	"github.com/googleapis/gax-go"
 	"github.com/sethvargo/go-retry"
 	"google.golang.org/api/iterator"
 
 	logging "cloud.google.com/go/logging/apiv2"
 )
 
-// LoggingClient interface for pulling log entries.
-type LoggingClient interface {
-	ListLogEntries(context.Context, *loggingpb.ListLogEntriesRequest, ...gax.CallOption) *logging.LogEntryIterator
-}
-
 // Puller pulls log entries of GCP organizations, folders, projects, and
 // billingAccounts.
 type Puller struct {
-	client LoggingClient
+	client *logging.Client
 	// Required. Name of a parent resource from which to retrieve log entries:
 	//
 	// *  `projects/[PROJECT_ID]`
@@ -70,7 +64,7 @@ func WithRetry(b retry.Backoff) Option {
 }
 
 // NewPuller creates a new Puller with provided clients and options.
-func NewPuller(ctx context.Context, c LoggingClient, resource string, opts ...Option) *Puller {
+func NewPuller(ctx context.Context, c *logging.Client, resource string, opts ...Option) *Puller {
 	p := &Puller{client: c, resource: resource}
 	for _, opt := range opts {
 		p = opt(p)
@@ -82,7 +76,7 @@ func NewPuller(ctx context.Context, c LoggingClient, resource string, opts ...Op
 	return p
 }
 
-// Pull pulls up to maxCount of log entries given log filter.
+// Pull pulls up to maxCount of log entries for the given log filter.
 func (p *Puller) Pull(ctx context.Context, filter string, maxCount int) ([]*loggingpb.LogEntry, error) {
 	var ls []*loggingpb.LogEntry
 	req := &loggingpb.ListLogEntriesRequest{
