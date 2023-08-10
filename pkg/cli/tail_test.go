@@ -27,7 +27,7 @@ import (
 	"google.golang.org/protobuf/types/known/structpb"
 )
 
-func TestValidatePullCommand(t *testing.T) {
+func TestTailCommand(t *testing.T) {
 	t.Parallel()
 
 	ct := time.Now().UTC()
@@ -37,18 +37,76 @@ func TestValidatePullCommand(t *testing.T) {
 		args         []string
 		puller       *fakePuller
 		expFilter    string
-		expMaxCount  int
+		expMaxNum    int
 		expOut       string
 		expErrSubstr string
 	}{
 		{
-			name: "success",
+			name: "success_tail",
+			args: []string{"-resource", "projects/foo"},
+			puller: &fakePuller{
+				logEntries: []*loggingpb.LogEntry{{}},
+			},
+			expFilter: fmt.Sprintf(
+				`LOG_ID("audit.abcxyz/unspecified") OR `+
+					`LOG_ID("audit.abcxyz/activity") OR `+
+					`LOG_ID("audit.abcxyz/data_access") OR `+
+					`LOG_ID("audit.abcxyz/consent") OR `+
+					`LOG_ID("audit.abcxyz/system_event") `+
+					`AND timestamp >= %q`,
+				ct.Add(-24*time.Hour).Format(time.RFC3339),
+			),
+			expMaxNum: 1,
+			expOut:    `{}`,
+		},
+		{
+			name: "success_validate",
 			args: []string{
 				"-resource", "projects/foo",
 				"-duration", "2h",
 				"-query", `resource.type = "gae_app" AND severity = ERROR`,
-				"-additional-check",
-				"-max-count", "2",
+				"-validate",
+				"-max-num", "2",
+			},
+			puller: &fakePuller{
+				logEntries: []*loggingpb.LogEntry{
+					{
+						InsertId: "test-log",
+						Payload: &loggingpb.LogEntry_JsonPayload{
+							JsonPayload: &structpb.Struct{
+								Fields: map[string]*structpb.Value{
+									"service_name":  structpb.NewStringValue("foo_service"),
+									"method_name":   structpb.NewStringValue("foo_method"),
+									"resource_name": structpb.NewStringValue("foo_resource"),
+									"authentication_info": structpb.NewStructValue(&structpb.Struct{
+										Fields: map[string]*structpb.Value{
+											"principal_email": structpb.NewStringValue("foo@bet.com"),
+										},
+									}),
+								},
+							},
+						},
+					},
+				},
+			},
+			expFilter: fmt.Sprintf(
+				`LOG_ID("audit.abcxyz/unspecified") OR `+
+					`LOG_ID("audit.abcxyz/activity") OR `+
+					`LOG_ID("audit.abcxyz/data_access") OR `+
+					`LOG_ID("audit.abcxyz/consent") OR `+
+					`LOG_ID("audit.abcxyz/system_event") `+
+					`AND timestamp >= %q AND resource.type = "gae_app" `+
+					`AND severity = ERROR`,
+				ct.Add(-2*time.Hour).Format(time.RFC3339),
+			),
+			expMaxNum: 2,
+			expOut:    `Successfully validated log (InsertId: "test-log")`,
+		},
+		{
+			name: "success_validate_with_additional_check",
+			args: []string{
+				"-resource", "projects/foo",
+				"-validate-with-additional-check",
 			},
 			puller: &fakePuller{
 				logEntries: []*loggingpb.LogEntry{
@@ -78,18 +136,18 @@ func TestValidatePullCommand(t *testing.T) {
 					`LOG_ID("audit.abcxyz/data_access") OR `+
 					`LOG_ID("audit.abcxyz/consent") OR `+
 					`LOG_ID("audit.abcxyz/system_event") `+
-					`AND timestamp >= %q AND resource.type = "gae_app" `+
-					`AND severity = ERROR`,
-				ct.Add(-2*time.Hour).Format(time.RFC3339),
+					`AND timestamp >= %q`,
+				ct.Add(-24*time.Hour).Format(time.RFC3339),
 			),
-			expMaxCount: 2,
-			expOut:      `Successfully validated log (InsertId: "test-log")`,
+			expMaxNum: 1,
+			expOut:    `Successfully validated log (InsertId: "test-log")`,
 		},
 		{
 			name: "validate_fail",
 			args: []string{
 				"-resource", "projects/foo",
 				"-remove-lumberjack-log-type",
+				"-v",
 			},
 			puller: &fakePuller{
 				logEntries: []*loggingpb.LogEntry{{InsertId: "test"}},
@@ -97,11 +155,11 @@ func TestValidatePullCommand(t *testing.T) {
 			expFilter: fmt.Sprintf(
 				`timestamp >= %q`, ct.Add(-24*time.Hour).Format(time.RFC3339),
 			),
-			expMaxCount:  1,
+			expMaxNum:    1,
 			expErrSubstr: "failed to validate log",
 		},
 		{
-			name: "pull_fail",
+			name: "tail_fail",
 			args: []string{
 				"-resource", "projects/foo",
 				"-remove-lumberjack-log-type",
@@ -113,7 +171,7 @@ func TestValidatePullCommand(t *testing.T) {
 			expFilter: fmt.Sprintf(
 				`timestamp >= %q`, ct.Add(-24*time.Hour).Format(time.RFC3339),
 			),
-			expMaxCount:  1,
+			expMaxNum:    1,
 			expErrSubstr: "injected error",
 		},
 	}
@@ -126,7 +184,7 @@ func TestValidatePullCommand(t *testing.T) {
 
 			ctx := context.Background()
 
-			var cmd PullCommand
+			var cmd TailCommand
 			cmd.testPuller = tc.puller
 			_, stdout, _ := cmd.Pipe()
 
@@ -138,24 +196,24 @@ func TestValidatePullCommand(t *testing.T) {
 				t.Errorf("Process(%+v) got output diff (-want, +got):\n%s", tc.name, diff)
 			}
 			if diff := cmp.Diff(tc.expFilter, tc.puller.gotFilter); diff != "" {
-				t.Errorf("Process(%+v) got request diff (-want, +got):\n%s", tc.name, diff)
+				t.Errorf("Process(%+v) got filter diff (-want, +got):\n%s", tc.name, diff)
 			}
-			if tc.expMaxCount != tc.puller.gotMaxCount {
-				t.Errorf("Process(%+v) want max count %q but got %q", tc.name, tc.expMaxCount, tc.puller.gotMaxCount)
+			if tc.expMaxNum != tc.puller.gotMaxNum {
+				t.Errorf("Process(%+v) want max number %q but got %q", tc.name, tc.expMaxNum, tc.puller.gotMaxNum)
 			}
 		})
 	}
 }
 
 type fakePuller struct {
-	injectErr   error
-	gotFilter   string
-	gotMaxCount int
-	logEntries  []*loggingpb.LogEntry
+	injectErr  error
+	gotFilter  string
+	gotMaxNum  int
+	logEntries []*loggingpb.LogEntry
 }
 
-func (p *fakePuller) Pull(ctx context.Context, filter string, maxCount int) ([]*loggingpb.LogEntry, error) {
+func (p *fakePuller) Pull(ctx context.Context, filter string, maxNum int) ([]*loggingpb.LogEntry, error) {
 	p.gotFilter = filter
-	p.gotMaxCount = maxCount
+	p.gotMaxNum = maxNum
 	return p.logEntries, p.injectErr
 }

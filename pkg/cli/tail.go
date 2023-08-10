@@ -41,15 +41,17 @@ type logPuller interface {
 	Pull(context.Context, string, int) ([]*loggingpb.LogEntry, error)
 }
 
-var _ cli.Command = (*PullCommand)(nil)
+var _ cli.Command = (*TailCommand)(nil)
 
-// PullCommand pulls and validates lumberjack logs.
-type PullCommand struct {
+// TailCommand tails and validates(optional) lumberjack logs.
+type TailCommand struct {
 	cli.BaseCommand
 
 	flagResource string
 
-	flagMaxCount int
+	flagValidate bool
+
+	flagMaxNum int
 
 	flagDuration time.Duration
 
@@ -57,31 +59,31 @@ type PullCommand struct {
 
 	flagRemoveLumberjackLogType bool
 
-	flagAdditionalCheck bool
+	flagValidateWithAdditionalCheck bool
 
 	// For testing only.
 	testPuller logPuller
 }
 
-func (c *PullCommand) Desc() string {
-	return `Pulls and Validates lumberjack logs from Cloud logging`
+func (c *TailCommand) Desc() string {
+	return `Tail lumberjack logs from Cloud logging and validate them when validation enabled`
 }
 
-func (c *PullCommand) Help() string {
+func (c *TailCommand) Help() string {
 	return `
 Usage: {{ COMMAND }} [options]
 
-Pulls and validates the latest lumberjack log in the last 24 hours from resource:
+Tails and validates the latest lumberjack log in the last 24 hours from resource:
 
-      {{ COMMAND }} -resource "project/foo"
+      {{ COMMAND }} -resource "project/foo" -validate
 
-Pulls and validates the latest lumberjack log filtered by additional custom query:
+Tails the latest lumberjack log filtered by additional custom query:
 
-      {{ COMMAND }} -resource "project/foo" -query "severity = ERROR"
+      {{ COMMAND }} -resource "project/foo" -query "resource.type = \"foo\""
 
-Pulls and validates (with additional check) the latest 10 lumberjack log in the last 2 hours from resource:
+Tails and validates (with additional check) the latest 10 lumberjack log in the last 2 hours from resource:
 
-      {{ COMMAND }} -resource "project/foo" -max-count 10 -duration 2h -additional-check
+      {{ COMMAND }} -resource "project/foo" -max-num 10 -duration 2h -validate-with-additional-check
 
 Pulls and validates the latest non-lumberjack log type log:
 
@@ -89,7 +91,7 @@ Pulls and validates the latest non-lumberjack log type log:
 `
 }
 
-func (c *PullCommand) Flags() *cli.FlagSet {
+func (c *TailCommand) Flags() *cli.FlagSet {
 	set := cli.NewFlagSet()
 
 	// Command options
@@ -105,11 +107,20 @@ func (c *PullCommand) Flags() *cli.FlagSet {
 			`organizations/[ORGANIZATION_ID], billingAccounts/[BILLING_ACCOUNT_ID]`,
 	})
 
+	f.BoolVar(&cli.BoolVar{
+		Name:    "validate",
+		Aliases: []string{"v"},
+		Target:  &c.flagValidate,
+		Default: false,
+		Usage:   `Turn on for lumberjack log validation`,
+	})
+
 	f.IntVar(&cli.IntVar{
-		Name:    "max-count",
-		Target:  &c.flagMaxCount,
+		Name:    "max-num",
+		Aliases: []string{"n"},
+		Target:  &c.flagMaxNum,
 		Default: 1,
-		Usage:   `Number of most recent logs to validate, default is 1`,
+		Usage:   `Maximum number of most recent logs to validate, default is 1`,
 	})
 
 	f.DurationVar(&cli.DurationVar{
@@ -125,7 +136,8 @@ func (c *PullCommand) Flags() *cli.FlagSet {
 		Name:    "query",
 		Target:  &c.flagCustomQuery,
 		Example: `resource.type = "gae_app" AND severity = ERROR`,
-		Usage:   `Custom log queries, see more on https://cloud.google.com/logging/docs/view/logging-query-language`,
+		Usage: `Optional custom log queries, see more on ` +
+			`https://cloud.google.com/logging/docs/view/logging-query-language`,
 	})
 
 	f.BoolVar(&cli.BoolVar{
@@ -136,16 +148,17 @@ func (c *PullCommand) Flags() *cli.FlagSet {
 	})
 
 	f.BoolVar(&cli.BoolVar{
-		Name:    "additional-check",
-		Target:  &c.flagAdditionalCheck,
+		Name:    "validate-with-additional-check",
+		Target:  &c.flagValidateWithAdditionalCheck,
 		Default: false,
-		Usage:   `Turn on for additional lumberjack specific checks on log labels.`,
+		Usage: `Turn on for lumberjack log validation with additional ` +
+			`lumberjack specific checks on log labels.`,
 	})
 
 	return set
 }
 
-func (c *PullCommand) Run(ctx context.Context, args []string) error {
+func (c *TailCommand) Run(ctx context.Context, args []string) error {
 	f := c.Flags()
 	if err := f.Parse(args); err != nil {
 		return fmt.Errorf("failed to parse flags: %w", err)
@@ -160,12 +173,12 @@ func (c *PullCommand) Run(ctx context.Context, args []string) error {
 	}
 
 	// Request with negative and greater than 1000 (log count limit) is rejected.
-	if c.flagMaxCount <= 0 || c.flagMaxCount > 1000 {
-		return fmt.Errorf("max count must be greater than 0 and less than 1000")
+	if c.flagMaxNum <= 0 || c.flagMaxNum > 1000 {
+		return fmt.Errorf("max number must be greater than 0 and less than 1000")
 	}
 
-	// Pull logs.
-	ls, err := c.pull(ctx)
+	// Tail logs.
+	ls, err := c.tail(ctx)
 	if err != nil {
 		return err
 	}
@@ -174,9 +187,9 @@ func (c *PullCommand) Run(ctx context.Context, args []string) error {
 		return nil
 	}
 
-	// Validate logs.
+	// Output results.
 	var extra []validation.Validator
-	if c.flagAdditionalCheck {
+	if c.flagValidateWithAdditionalCheck {
 		extra = append(extra, validation.ValidateLabels)
 	}
 	var retErr error
@@ -184,19 +197,27 @@ func (c *PullCommand) Run(ctx context.Context, args []string) error {
 		js, err := protojson.Marshal(l)
 		if err != nil {
 			retErr = errors.Join(retErr, fmt.Errorf("failed to marshal log to json (InsertId: %q): %w", l.InsertId, err))
+			continue
+		}
+
+		// Output log entry in JSON format if validation is not enabled.
+		if !c.flagValidate && !c.flagValidateWithAdditionalCheck {
+			c.Outf(string(js))
+			continue
+		}
+
+		// Output validation result if validation is enabled.
+		if err := validation.Validate(string(js), extra...); err != nil {
+			retErr = errors.Join(retErr, fmt.Errorf("failed to validate log (InsertId: %q): %w", l.InsertId, err))
 		} else {
-			if err := validation.Validate(string(js), extra...); err != nil {
-				retErr = errors.Join(retErr, fmt.Errorf("failed to validate log (InsertId: %q): %w", l.InsertId, err))
-			} else {
-				c.Outf("Successfully validated log (InsertId: %q)", l.InsertId)
-			}
+			c.Outf("Successfully validated log (InsertId: %q)", l.InsertId)
 		}
 	}
 
 	return retErr
 }
 
-func (c *PullCommand) pull(ctx context.Context) ([]*loggingpb.LogEntry, error) {
+func (c *TailCommand) tail(ctx context.Context) ([]*loggingpb.LogEntry, error) {
 	var p logPuller
 	if c.testPuller != nil {
 		p = c.testPuller
@@ -208,7 +229,7 @@ func (c *PullCommand) pull(ctx context.Context) ([]*loggingpb.LogEntry, error) {
 		p = cloudlogging.NewPuller(ctx, logClient, c.flagResource)
 	}
 
-	ls, err := p.Pull(ctx, c.getFilter(), c.flagMaxCount)
+	ls, err := p.Pull(ctx, c.getFilter(), c.flagMaxNum)
 	if err != nil {
 		return nil, fmt.Errorf("failed to pull logs: %w", err)
 	}
@@ -216,7 +237,7 @@ func (c *PullCommand) pull(ctx context.Context) ([]*loggingpb.LogEntry, error) {
 	return ls, nil
 }
 
-func (c *PullCommand) getFilter() string {
+func (c *TailCommand) getFilter() string {
 	cutoff := fmt.Sprintf("timestamp >= %q", time.Now().UTC().Add(-c.flagDuration).Format(time.RFC3339))
 
 	var f string

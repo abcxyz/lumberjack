@@ -31,7 +31,7 @@ var _ cli.Command = (*ValidateCommand)(nil)
 type ValidateCommand struct {
 	cli.BaseCommand
 
-	flagLog string
+	flagLogEntry string
 
 	flagAdditionalCheck bool
 }
@@ -46,11 +46,11 @@ Usage: {{ COMMAND }} [options]
 
 Validate lumberjack log:
 
-      {{ COMMAND }} -log "{\"foo\": \"bar\"}"
+      {{ COMMAND }} -log-entry "{\"foo\": \"bar\"}"
 
 Validate the lumberjack log read from pipe:
 
-      cat log.text | {{ COMMAND }} -log -
+      cat log.text | {{ COMMAND }} -log-entry -
 `
 }
 
@@ -61,9 +61,9 @@ func (c *ValidateCommand) Flags() *cli.FlagSet {
 	f := set.NewSection("COMMAND OPTIONS")
 
 	f.StringVar(&cli.StringVar{
-		Name:    "log",
+		Name:    "log-entry",
 		Aliases: []string{"l"},
-		Target:  &c.flagLog,
+		Target:  &c.flagLogEntry,
 		Example: `{"foo":"bar"}`,
 		Usage: `The lumberjack/data access log, in JSON format. Set the value to` +
 			` "-" to read from stdin, it stops reading when it reaches end of file`,
@@ -89,24 +89,24 @@ func (c *ValidateCommand) Run(ctx context.Context, args []string) error {
 		return fmt.Errorf("unexpected arguments: %q", args)
 	}
 
-	if c.flagLog == "" {
+	if c.flagLogEntry == "" {
 		return fmt.Errorf("log is required")
 	}
 
-	if c.flagLog == "-" {
+	if c.flagLogEntry == "-" {
 		// Read log from stdin
 		log, err := c.readFromStdin(ctx, "Enter log: ")
 		if err != nil {
 			return fmt.Errorf("failed to get log from prompt: %w", err)
 		}
-		c.flagLog = log
+		c.flagLogEntry = log
 	}
 
 	var extra []validation.Validator
 	if c.flagAdditionalCheck {
 		extra = append(extra, validation.ValidateLabels)
 	}
-	if err := validation.Validate(c.flagLog, extra...); err != nil {
+	if err := validation.Validate(c.flagLogEntry, extra...); err != nil {
 		return fmt.Errorf("failed to validate log: %w", err)
 	}
 	c.Outf("Successfully validated log")

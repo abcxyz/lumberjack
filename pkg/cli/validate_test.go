@@ -99,18 +99,18 @@ func TestValidateCommand(t *testing.T) {
 	}{
 		{
 			name:   "success",
-			args:   []string{"-log", validLog},
+			args:   []string{"-log-entry", validLog},
 			expOut: `Successfully validated log`,
 		},
 		{
 			name:   "from_stdin",
-			args:   []string{"-log", "-"},
+			args:   []string{"-log-entry", "-"},
 			stdin:  strings.NewReader(validLog),
 			expOut: `Successfully validated log`,
 		},
 		{
 			name:   "additional_check",
-			args:   []string{"-log", validLog, "-additional-check"},
+			args:   []string{"-log-entry", validLog, "-additional-check"},
 			expOut: `Successfully validated log`,
 		},
 		{
@@ -125,12 +125,12 @@ func TestValidateCommand(t *testing.T) {
 		},
 		{
 			name:   "invalid_json",
-			args:   []string{"-log", "invalid"},
+			args:   []string{"-log-entry", "invalid"},
 			expErr: "failed to validate log",
 		},
 		{
 			name:   "additional_check_fail",
-			args:   []string{"-log", missingLabel, "-additional-check"},
+			args:   []string{"-log-entry", missingLabel, "-additional-check"},
 			expErr: `missing required label`,
 		},
 	}

@@ -25,7 +25,7 @@ func TestRootCommand_Help(t *testing.T) {
 	exp := `
 Usage: lumberctl COMMAND
 
-  pull        Pulls and Validates lumberjack logs from Cloud logging
+  tail        Tail lumberjack logs from Cloud logging and validate them when validation enabled
   validate    Validate lumberjack log
 `
 
