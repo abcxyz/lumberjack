@@ -66,7 +66,7 @@ type TailCommand struct {
 }
 
 func (c *TailCommand) Desc() string {
-	return `Tail lumberjack logs from Cloud logging and validate them when validation enabled`
+	return `Tail lumberjack logs from GCP Cloud logging`
 }
 
 func (c *TailCommand) Help() string {
