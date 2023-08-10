@@ -43,7 +43,7 @@ func TestTailCommand(t *testing.T) {
 	}{
 		{
 			name: "success_tail",
-			args: []string{"-resource", "projects/foo"},
+			args: []string{"-scope", "projects/foo"},
 			puller: &fakePuller{
 				logEntries: []*loggingpb.LogEntry{{}},
 			},
@@ -54,7 +54,7 @@ func TestTailCommand(t *testing.T) {
 					`LOG_ID("audit.abcxyz/consent") OR `+
 					`LOG_ID("audit.abcxyz/system_event") `+
 					`AND timestamp >= %q`,
-				ct.Add(-24*time.Hour).Format(time.RFC3339),
+				ct.Add(-2*time.Hour).Format(time.RFC3339),
 			),
 			expMaxNum: 1,
 			expOut:    `{}`,
@@ -62,9 +62,9 @@ func TestTailCommand(t *testing.T) {
 		{
 			name: "success_validate",
 			args: []string{
-				"-resource", "projects/foo",
-				"-duration", "2h",
-				"-query", `resource.type = "gae_app" AND severity = ERROR`,
+				"-scope", "projects/foo",
+				"-duration", "4h",
+				"-additional-filter", `resource.type = "gae_app" AND severity = ERROR`,
 				"-validate",
 				"-max-num", "2",
 			},
@@ -97,16 +97,23 @@ func TestTailCommand(t *testing.T) {
 					`LOG_ID("audit.abcxyz/system_event") `+
 					`AND timestamp >= %q AND resource.type = "gae_app" `+
 					`AND severity = ERROR`,
-				ct.Add(-2*time.Hour).Format(time.RFC3339),
+				ct.Add(-4*time.Hour).Format(time.RFC3339),
 			),
 			expMaxNum: 2,
-			expOut:    `Successfully validated log (InsertId: "test-log")`,
+			expOut: `{"jsonPayload":{"authentication_info":{"principal_email":"foo@bet.com"}, ` +
+				`"method_name":"foo_method", ` +
+				`"resource_name":"foo_resource", ` +
+				`"service_name":"foo_service"}, ` +
+				`"insertId":"test-log"}
+Successfully validated log (InsertId: "test-log")
+
+`,
 		},
 		{
 			name: "success_validate_with_additional_check",
 			args: []string{
-				"-resource", "projects/foo",
-				"-validate-with-additional-check",
+				"-scope", "projects/foo",
+				"-validate", "-additional-check",
 			},
 			puller: &fakePuller{
 				logEntries: []*loggingpb.LogEntry{
@@ -137,40 +144,45 @@ func TestTailCommand(t *testing.T) {
 					`LOG_ID("audit.abcxyz/consent") OR `+
 					`LOG_ID("audit.abcxyz/system_event") `+
 					`AND timestamp >= %q`,
-				ct.Add(-24*time.Hour).Format(time.RFC3339),
+				ct.Add(-2*time.Hour).Format(time.RFC3339),
 			),
 			expMaxNum: 1,
-			expOut:    `Successfully validated log (InsertId: "test-log")`,
+			expOut: `{"jsonPayload":{"authentication_info":{"principal_email":"foo@bet.com"}, ` +
+				`"method_name":"foo_method", ` +
+				`"resource_name":"foo_resource", ` +
+				`"service_name":"foo_service"}, ` +
+				`"insertId":"test-log", ` +
+				`"labels":{"accessing_process_name":"foo_apn", "environment":"dev"}}
+Successfully validated log (InsertId: "test-log")
+
+`,
 		},
 		{
 			name: "validate_fail",
 			args: []string{
-				"-resource", "projects/foo",
-				"-remove-lumberjack-log-type",
+				"-scope", "projects/foo",
+				"-override-filter", "test-filter",
 				"-v",
 			},
 			puller: &fakePuller{
 				logEntries: []*loggingpb.LogEntry{{InsertId: "test"}},
 			},
-			expFilter: fmt.Sprintf(
-				`timestamp >= %q`, ct.Add(-24*time.Hour).Format(time.RFC3339),
-			),
+			expFilter:    "test-filter",
 			expMaxNum:    1,
+			expOut:       `{"insertId":"test"}`,
 			expErrSubstr: "failed to validate log",
 		},
 		{
 			name: "tail_fail",
 			args: []string{
-				"-resource", "projects/foo",
-				"-remove-lumberjack-log-type",
+				"-scope", "projects/foo",
+				"-override-filter", "test-filter",
 			},
 			puller: &fakePuller{
 				logEntries: []*loggingpb.LogEntry{{InsertId: "test"}},
 				injectErr:  fmt.Errorf("injected error"),
 			},
-			expFilter: fmt.Sprintf(
-				`timestamp >= %q`, ct.Add(-24*time.Hour).Format(time.RFC3339),
-			),
+			expFilter:    "test-filter",
 			expMaxNum:    1,
 			expErrSubstr: "injected error",
 		},

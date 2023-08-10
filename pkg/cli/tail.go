@@ -47,7 +47,7 @@ var _ cli.Command = (*TailCommand)(nil)
 type TailCommand struct {
 	cli.BaseCommand
 
-	flagResource string
+	flagScope string
 
 	flagValidate bool
 
@@ -55,11 +55,11 @@ type TailCommand struct {
 
 	flagDuration time.Duration
 
-	flagCustomQuery string
+	flagAdditionalFilter string
 
-	flagRemoveLumberjackLogType bool
+	flagOverrideFilter string
 
-	flagValidateWithAdditionalCheck bool
+	flagAdditionalCheck bool
 
 	// For testing only.
 	testPuller logPuller
@@ -73,21 +73,21 @@ func (c *TailCommand) Help() string {
 	return `
 Usage: {{ COMMAND }} [options]
 
-Tails and validates the latest lumberjack log in the last 24 hours from resource:
+Tails and validates the latest lumberjack log in the last 2 hours in the scope:
 
-      {{ COMMAND }} -resource "project/foo" -validate
+      {{ COMMAND }} -scope "project/foo" -validate
 
-Tails the latest lumberjack log filtered by additional custom query:
+Tails the latest lumberjack log filtered by additional custom log filter:
 
-      {{ COMMAND }} -resource "project/foo" -query "resource.type = \"foo\""
+      {{ COMMAND }} -scope "project/foo" -additional-filter "resource.type = \"foo\""
 
-Tails and validates (with additional check) the latest 10 lumberjack log in the last 2 hours from resource:
+Tails and validates (with additional check) the latest 10 lumberjack log in the last 4 hours in the scope:
 
-      {{ COMMAND }} -resource "project/foo" -max-num 10 -duration 2h -validate-with-additional-check
+      {{ COMMAND }} -scope "project/foo" -max-num 10 -duration 4h -validate -additional-check
 
-Pulls and validates the latest non-lumberjack log type log:
+Tails and validates the latest log using override log filter only:
 
-      {{ COMMAND }} -resource "project/foo" -remove-lumberjack-log-type
+      {{ COMMAND }} -scope "project/foo" -override-filter "YOUR_FILTER"
 `
 }
 
@@ -98,12 +98,12 @@ func (c *TailCommand) Flags() *cli.FlagSet {
 	f := set.NewSection("COMMAND OPTIONS")
 
 	f.StringVar(&cli.StringVar{
-		Name:    "resource",
-		Aliases: []string{"r"},
-		Target:  &c.flagResource,
+		Name:    "scope",
+		Aliases: []string{"s"},
+		Target:  &c.flagScope,
 		Example: `projects/foo`,
-		Usage: `Name of the parent resource from which to retrieve log entries,` +
-			`examples are: projects/[PROJECT_ID], folders/[FOLDER_ID],` +
+		Usage: `Name of the scope/parent resource from which to retrieve log ` +
+			`entries, examples are: projects/[PROJECT_ID], folders/[FOLDER_ID],` +
 			`organizations/[ORGANIZATION_ID], billingAccounts/[BILLING_ACCOUNT_ID]`,
 	})
 
@@ -127,32 +127,35 @@ func (c *TailCommand) Flags() *cli.FlagSet {
 		Name:    "duration",
 		Aliases: []string{"d"},
 		Target:  &c.flagDuration,
-		Example: "2h",
-		Default: 24 * time.Hour,
-		Usage:   `How far back to search for log entries, default is 24 hours`,
+		Example: "4h",
+		Default: 2 * time.Hour,
+		Usage: `Log filter that determines how far back to search for log ` +
+			`entries, default is 2 hours`,
 	})
 
 	f.StringVar(&cli.StringVar{
-		Name:    "query",
-		Target:  &c.flagCustomQuery,
+		Name:    "additional-filter",
+		Target:  &c.flagAdditionalFilter,
 		Example: `resource.type = "gae_app" AND severity = ERROR`,
-		Usage: `Optional custom log queries, see more on ` +
+		Usage: `Log filter in addition to lumberjack log filter used to tail ` +
+			`log entries, see more on ` +
 			`https://cloud.google.com/logging/docs/view/logging-query-language`,
 	})
 
-	f.BoolVar(&cli.BoolVar{
-		Name:    "remove-lumberjack-log-type",
-		Target:  &c.flagRemoveLumberjackLogType,
-		Default: false,
-		Usage:   `Turn on to remove lumberjack log type log filter`,
+	f.StringVar(&cli.StringVar{
+		Name:   "override-filter",
+		Target: &c.flagOverrideFilter,
+		Hidden: true,
+		Usage: `Override lumberjack log filter, when it is used, it will be ` +
+			`the only filter used to tail logs`,
 	})
 
 	f.BoolVar(&cli.BoolVar{
-		Name:    "validate-with-additional-check",
-		Target:  &c.flagValidateWithAdditionalCheck,
+		Name:    "additional-check",
+		Target:  &c.flagAdditionalCheck,
 		Default: false,
-		Usage: `Turn on for lumberjack log validation with additional ` +
-			`lumberjack specific checks on log labels.`,
+		Usage: `Use it with -validate flag to validate logs tailed with ` +
+			`additional lumberjack specific checks on log labels.`,
 	})
 
 	return set
@@ -168,13 +171,13 @@ func (c *TailCommand) Run(ctx context.Context, args []string) error {
 		return fmt.Errorf("unexpected arguments: %q", args)
 	}
 
-	if c.flagResource == "" {
-		return fmt.Errorf("resource is required")
+	if c.flagScope == "" {
+		return fmt.Errorf("scope is required")
 	}
 
 	// Request with negative and greater than 1000 (log count limit) is rejected.
 	if c.flagMaxNum <= 0 || c.flagMaxNum > 1000 {
-		return fmt.Errorf("max number must be greater than 0 and less than 1000")
+		return fmt.Errorf("--max-num must be greater than 0 and less than 1000")
 	}
 
 	// Tail logs.
@@ -183,15 +186,16 @@ func (c *TailCommand) Run(ctx context.Context, args []string) error {
 		return err
 	}
 	if len(ls) == 0 {
-		c.Outf("Log not found")
+		c.Outf("No logs found.")
 		return nil
 	}
 
-	// Output results.
 	var extra []validation.Validator
-	if c.flagValidateWithAdditionalCheck {
+	if c.flagAdditionalCheck {
 		extra = append(extra, validation.ValidateLabels)
 	}
+
+	// Output results.
 	var retErr error
 	for _, l := range ls {
 		js, err := protojson.Marshal(l)
@@ -200,18 +204,18 @@ func (c *TailCommand) Run(ctx context.Context, args []string) error {
 			continue
 		}
 
-		// Output log entry in JSON format if validation is not enabled.
-		if !c.flagValidate && !c.flagValidateWithAdditionalCheck {
-			c.Outf(string(js))
-			continue
-		}
+		// Output tailed log.
+		c.Outf(string(js))
 
 		// Output validation result if validation is enabled.
-		if err := validation.Validate(string(js), extra...); err != nil {
-			retErr = errors.Join(retErr, fmt.Errorf("failed to validate log (InsertId: %q): %w", l.InsertId, err))
-		} else {
-			c.Outf("Successfully validated log (InsertId: %q)", l.InsertId)
+		if c.flagValidate {
+			if err := validation.Validate(string(js), extra...); err != nil {
+				retErr = errors.Join(retErr, fmt.Errorf("failed to validate log (InsertId: %q): %w", l.InsertId, err))
+			} else {
+				c.Outf("Successfully validated log (InsertId: %q)", l.InsertId)
+			}
 		}
+		c.Outf("\n")
 	}
 
 	return retErr
@@ -226,10 +230,10 @@ func (c *TailCommand) tail(ctx context.Context) ([]*loggingpb.LogEntry, error) {
 		if err != nil {
 			return nil, fmt.Errorf("failed to create logging client: %w", err)
 		}
-		p = cloudlogging.NewPuller(ctx, logClient, c.flagResource)
+		p = cloudlogging.NewPuller(ctx, logClient, c.flagScope)
 	}
 
-	ls, err := p.Pull(ctx, c.getFilter(), c.flagMaxNum)
+	ls, err := p.Pull(ctx, c.queryFilter(), c.flagMaxNum)
 	if err != nil {
 		return nil, fmt.Errorf("failed to pull logs: %w", err)
 	}
@@ -237,18 +241,17 @@ func (c *TailCommand) tail(ctx context.Context) ([]*loggingpb.LogEntry, error) {
 	return ls, nil
 }
 
-func (c *TailCommand) getFilter() string {
-	cutoff := fmt.Sprintf("timestamp >= %q", time.Now().UTC().Add(-c.flagDuration).Format(time.RFC3339))
-
-	var f string
-	if c.flagRemoveLumberjackLogType {
-		f = cutoff
-	} else {
-		f = fmt.Sprintf("%s AND %s", logType, cutoff)
+func (c *TailCommand) queryFilter() string {
+	// When override filter is set, use it only to query logs.
+	if c.flagOverrideFilter != "" {
+		return c.flagOverrideFilter
 	}
 
-	if c.flagCustomQuery == "" {
+	cutoff := fmt.Sprintf("timestamp >= %q", time.Now().UTC().Add(-c.flagDuration).Format(time.RFC3339))
+	f := fmt.Sprintf("%s AND %s", logType, cutoff)
+
+	if c.flagAdditionalFilter == "" {
 		return f
 	}
-	return fmt.Sprintf("%s AND %s", f, c.flagCustomQuery)
+	return fmt.Sprintf("%s AND %s", f, c.flagAdditionalFilter)
 }
