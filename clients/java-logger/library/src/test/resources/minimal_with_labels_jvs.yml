@@ -12,16 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-version: v1alpha1
+version: 'v1alpha1'
 security_context:
   from_raw_jwt:
 rules:
-- selector: "*"
-  directive: AUDIT_REQUEST_AND_RESPONSE
+  - selector: "*"
+    directive: 'AUDIT_REQUEST_AND_RESPONSE'
 labels:
-  mylabel1: myvalue1
-  mylabel2: myvalue2
+  mylabel1: 'myvalue1'
+  mylabel2: 'myvalue2'
 justification:
-  public_keys_endpoint: example.com:123
+  public_keys_endpoint: 'example.com:123'
   enabled: true
   allow_breakglass: true
