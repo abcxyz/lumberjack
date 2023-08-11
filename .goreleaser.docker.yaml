@@ -54,7 +54,7 @@ builds:
 dockers:
   -
     ids:
-    - 'server'
+      - 'server'
     use: 'buildx'
     goos: 'linux'
     goarch: 'amd64'
@@ -73,7 +73,7 @@ dockers:
       - '--label=org.opencontainers.image.version={{ .Version }}'
   -
     ids:
-    - 'server'
+      - 'server'
     use: 'buildx'
     goos: 'linux'
     goarch: 'arm64'
