@@ -16,7 +16,7 @@ version: 'v1alpha1'
 security_context:
   from_raw_jwt:
 rules:
-  - selector: "*"
+  - selector: '*'
     directive: 'AUDIT_REQUEST_AND_RESPONSE'
 labels:
   mylabel1: 'myvalue1'

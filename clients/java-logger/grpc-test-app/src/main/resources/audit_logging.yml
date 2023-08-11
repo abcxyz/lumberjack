@@ -1,14 +1,14 @@
-version: "v1alpha1"
+version: 'v1alpha1'
 security_context:
   from_raw_jwt:
-    - key: "Authorization"
-      prefix: "Bearer "
+    - key: 'Authorization'
+      prefix: 'Bearer '
       jwks:
 rules:
-  - selector: "*"
-    directive: "AUDIT_REQUEST_AND_RESPONSE"
-  - selector: "abcxyz.test.Talker/Whisper"
-    directive: "AUDIT"
+  - selector: '*'
+    directive: 'AUDIT_REQUEST_AND_RESPONSE'
+  - selector: 'abcxyz.test.Talker/Whisper'
+    directive: 'AUDIT'
 justification:
-  public_keys_endpoint: "http://127.0.0.1:8080/.well-known/jwks"
+  public_keys_endpoint: 'http://127.0.0.1:8080/.well-known/jwks'
   enabled: true

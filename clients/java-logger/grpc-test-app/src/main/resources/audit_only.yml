@@ -1,4 +1,4 @@
-version: v1alpha1
+version: 'v1alpha1'
 condition:
   regex:
     principal_include:
@@ -10,10 +10,10 @@ backend:
     impersonate_account:
 security_context:
   from_raw_jwt:
-    - key: "Authorization"
-      prefix: "Bearer "
+    - key: 'Authorization'
+      prefix: 'Bearer '
       jwks:
 
 rules:
-  - selector: "*"
-    directive: "AUDIT"
+  - selector: '*'
+    directive: 'AUDIT'
