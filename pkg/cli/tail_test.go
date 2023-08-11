@@ -23,7 +23,6 @@ import (
 
 	"cloud.google.com/go/logging/apiv2/loggingpb"
 	"github.com/abcxyz/pkg/testutil"
-	"github.com/google/go-cmp/cmp"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/types/known/structpb"
 )
@@ -56,7 +55,7 @@ func TestTailCommand(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to mashal log to JSON: %v", err)
 	}
-	validLogJSON := strings.Replace(string(bs), " ", "", -1)
+	validLogJSON := stripSpaces(string(bs))
 
 	cases := []struct {
 		name            string
@@ -197,13 +196,13 @@ Validation failed for 1 logs (out of 2)
 				t.Errorf("Process(%+v) got error diff (-want, +got):\n%s", tc.name, diff)
 			}
 			if !errContainSubstring(stderr.String(), tc.expStderrSubstr) {
-				t.Errorf("Process(%+v) got stderr: %s, but want substring: %s", tc.name, stderr.String(), tc.expStderrSubstr)
+				t.Errorf("Process(%+v) got stderr: %q, but want substring: %q", tc.name, stderr.String(), tc.expStderrSubstr)
 			}
-			if diff := cmp.Diff(strings.TrimSpace(tc.expOut), strings.TrimSpace(stdout.String())); diff != "" {
-				t.Errorf("Process(%+v) got output diff (-want, +got):\n%s", tc.name, diff)
+			if strings.TrimSpace(tc.expOut) != strings.TrimSpace(stdout.String()) {
+				t.Errorf("Process(%+v) got output: %q, but want output: %q", tc.name, stdout.String(), tc.expOut)
 			}
-			if diff := cmp.Diff(tc.expFilter, tc.puller.gotFilter); diff != "" {
-				t.Errorf("Process(%+v) got filter diff (-want, +got):\n%s", tc.name, diff)
+			if strings.TrimSpace(tc.expFilter) != strings.TrimSpace(tc.puller.gotFilter) {
+				t.Errorf("Process(%+v) got filter: %q, but want output: %q", tc.name, tc.puller.gotFilter, tc.expFilter)
 			}
 			if tc.expMaxNum != tc.puller.gotMaxNum {
 				t.Errorf("Process(%+v) want max number %q but got %q", tc.name, tc.expMaxNum, tc.puller.gotMaxNum)

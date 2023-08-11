@@ -204,7 +204,7 @@ func (c *TailCommand) Run(ctx context.Context, args []string) error {
 		// Output tailed log, all spaces are stripped to reduce unit test flakiness
 		// as protojson.Marshal can produce inconsistent output. See issue
 		// https://github.com/golang/protobuf/issues/1121.
-		c.Outf(strings.Replace(string(js), " ", "", -1))
+		c.Outf(stripSpaces(string(js)))
 
 		// Output validation result if validation is enabled.
 		if c.flagValidate {
@@ -255,4 +255,8 @@ func (c *TailCommand) queryFilter() string {
 		return f
 	}
 	return fmt.Sprintf("%s AND %s", f, c.flagAdditionalFilter)
+}
+
+func stripSpaces(s string) string {
+	return strings.Replace(s, " ", "", -1)
 }
