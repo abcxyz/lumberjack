@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-version: v1alpha1
+version: 'v1alpha1'
 condition:
   regex:
     principal_include: "*.include.example.com"
@@ -20,5 +20,5 @@ condition:
 security_context:
   from_raw_jwt:
 rules:
-- selector: "*"
-  directive: AUDIT_REQUEST_AND_RESPONSE
+  - selector: "*"
+    directive: 'AUDIT_REQUEST_AND_RESPONSE'

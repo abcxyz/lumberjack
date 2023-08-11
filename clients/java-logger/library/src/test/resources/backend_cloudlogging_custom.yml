@@ -14,4 +14,4 @@
 
 backend:
   cloudlogging:
-    project: my-other-project
+    project: 'my-other-project'

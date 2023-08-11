@@ -14,4 +14,4 @@
 
 backend:
   remote:
-    address: example.com
+    address: 'example.com'
