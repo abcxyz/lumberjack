@@ -36,6 +36,9 @@ jobs:
       directory: 'terraform'
       terraform_version: '1.2'
 
+  yaml_lint:
+    uses: 'abcxyz/pkg/.github/workflows/yaml-lint.yml@main' # ratchet:exclude
+
   go_lint:
     uses: 'abcxyz/pkg/.github/workflows/go-lint.yml@main' # ratchet:exclude
     with:
@@ -85,6 +88,7 @@ jobs:
     runs-on: 'ubuntu-latest'
     needs:
       - 'terraform_lint'
+      - 'yaml_lint'
       - 'go_lint'
       - 'java_lint'
       - 'go_test'
