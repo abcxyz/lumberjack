@@ -52,10 +52,11 @@ func TestTailCommand(t *testing.T) {
 		Labels: map[string]string{"environment": "dev", "accessing_process_name": "foo_apn"},
 	}
 
-	validLogJSON, err := protojson.Marshal(validLog)
+	bs, err := protojson.Marshal(validLog)
 	if err != nil {
 		t.Fatalf("failed to mashal log to JSON: %v", err)
 	}
+	validLogJSON := strings.Replace(string(bs), " ", "", -1)
 
 	cases := []struct {
 		name            string

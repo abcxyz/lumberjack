@@ -17,6 +17,7 @@ package cli
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"cloud.google.com/go/logging/apiv2/loggingpb"
@@ -200,8 +201,10 @@ func (c *TailCommand) Run(ctx context.Context, args []string) error {
 			continue
 		}
 
-		// Output tailed log.
-		c.Outf(string(js))
+		// Output tailed log, all spaces are stripped to reduce unit test flakiness
+		// as protojson.Marshal can produce inconsistent output. See issue
+		// https://github.com/golang/protobuf/issues/1121.
+		c.Outf(strings.Replace(string(js), " ", "", -1))
 
 		// Output validation result if validation is enabled.
 		if c.flagValidate {
