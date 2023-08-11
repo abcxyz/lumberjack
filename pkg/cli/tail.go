@@ -16,7 +16,6 @@ package cli
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"time"
 
@@ -75,19 +74,15 @@ Usage: {{ COMMAND }} [options]
 
 Tails and validates the latest lumberjack log in the last 2 hours in the scope:
 
-      {{ COMMAND }} -scope "project/foo" -validate
+      {{ COMMAND }} -scope "projects/foo" -validate
 
 Tails the latest lumberjack log filtered by additional custom log filter:
 
-      {{ COMMAND }} -scope "project/foo" -additional-filter "resource.type = \"foo\""
+      {{ COMMAND }} -scope "projects/foo" -additional-filter "resource.type = \"foo\""
 
 Tails and validates (with additional check) the latest 10 lumberjack log in the last 4 hours in the scope:
 
-      {{ COMMAND }} -scope "project/foo" -max-num 10 -duration 4h -validate -additional-check
-
-Tails and validates the latest log using override log filter only:
-
-      {{ COMMAND }} -scope "project/foo" -override-filter "YOUR_FILTER"
+      {{ COMMAND }} -scope "projects/foo" -max-num 10 -duration 4h -validate -additional-check
 `
 }
 
@@ -120,7 +115,7 @@ func (c *TailCommand) Flags() *cli.FlagSet {
 		Aliases: []string{"n"},
 		Target:  &c.flagMaxNum,
 		Default: 1,
-		Usage:   `Maximum number of most recent logs to validate, default is 1`,
+		Usage:   `Maximum number of most recent logs to validate`,
 	})
 
 	f.DurationVar(&cli.DurationVar{
@@ -130,7 +125,7 @@ func (c *TailCommand) Flags() *cli.FlagSet {
 		Example: "4h",
 		Default: 2 * time.Hour,
 		Usage: `Log filter that determines how far back to search for log ` +
-			`entries, default is 2 hours`,
+			`entries`,
 	})
 
 	f.StringVar(&cli.StringVar{
@@ -177,7 +172,7 @@ func (c *TailCommand) Run(ctx context.Context, args []string) error {
 
 	// Request with negative and greater than 1000 (log count limit) is rejected.
 	if c.flagMaxNum <= 0 || c.flagMaxNum > 1000 {
-		return fmt.Errorf("--max-num must be greater than 0 and less than 1000")
+		return fmt.Errorf("-max-num must be greater than 0 and less than 1000")
 	}
 
 	// Tail logs.
@@ -196,11 +191,12 @@ func (c *TailCommand) Run(ctx context.Context, args []string) error {
 	}
 
 	// Output results.
-	var retErr error
+	var failCount int
 	for _, l := range ls {
 		js, err := protojson.Marshal(l)
 		if err != nil {
-			retErr = errors.Join(retErr, fmt.Errorf("failed to marshal log to json (InsertId: %q): %w", l.InsertId, err))
+			failCount++
+			c.Errf("failed to marshal log to json (InsertId: %q): %w", l.InsertId, err)
 			continue
 		}
 
@@ -210,15 +206,17 @@ func (c *TailCommand) Run(ctx context.Context, args []string) error {
 		// Output validation result if validation is enabled.
 		if c.flagValidate {
 			if err := validation.Validate(string(js), extra...); err != nil {
-				retErr = errors.Join(retErr, fmt.Errorf("failed to validate log (InsertId: %q): %w", l.InsertId, err))
+				failCount++
+				c.Errf("failed to validate log (InsertId: %q): %w\n", l.InsertId, err)
 			} else {
-				c.Outf("Successfully validated log (InsertId: %q)", l.InsertId)
+				c.Outf("Successfully validated log (InsertId: %q)\n", l.InsertId)
 			}
 		}
-		c.Outf("\n")
 	}
-
-	return retErr
+	if c.flagValidate {
+		c.Outf("Validation failed for %d logs (out of %d)", failCount, len(ls))
+	}
+	return nil
 }
 
 func (c *TailCommand) tail(ctx context.Context) ([]*loggingpb.LogEntry, error) {

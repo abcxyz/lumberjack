@@ -24,6 +24,7 @@ import (
 	"cloud.google.com/go/logging/apiv2/loggingpb"
 	"github.com/abcxyz/pkg/testutil"
 	"github.com/google/go-cmp/cmp"
+	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/types/known/structpb"
 )
 
@@ -32,14 +33,39 @@ func TestTailCommand(t *testing.T) {
 
 	ct := time.Now().UTC()
 
+	validLog := &loggingpb.LogEntry{
+		InsertId: "test-log",
+		Payload: &loggingpb.LogEntry_JsonPayload{
+			JsonPayload: &structpb.Struct{
+				Fields: map[string]*structpb.Value{
+					"service_name":  structpb.NewStringValue("foo_service"),
+					"method_name":   structpb.NewStringValue("foo_method"),
+					"resource_name": structpb.NewStringValue("foo_resource"),
+					"authentication_info": structpb.NewStructValue(&structpb.Struct{
+						Fields: map[string]*structpb.Value{
+							"principal_email": structpb.NewStringValue("foo@bet.com"),
+						},
+					}),
+				},
+			},
+		},
+		Labels: map[string]string{"environment": "dev", "accessing_process_name": "foo_apn"},
+	}
+
+	validLogJSON, err := protojson.Marshal(validLog)
+	if err != nil {
+		t.Fatalf("failed to mashal log to JSON: %v", err)
+	}
+
 	cases := []struct {
-		name         string
-		args         []string
-		puller       *fakePuller
-		expFilter    string
-		expMaxNum    int
-		expOut       string
-		expErrSubstr string
+		name            string
+		args            []string
+		puller          *fakePuller
+		expFilter       string
+		expMaxNum       int
+		expOut          string
+		expErrSubstr    string
+		expStderrSubstr string
 	}{
 		{
 			name: "success_tail",
@@ -69,25 +95,7 @@ func TestTailCommand(t *testing.T) {
 				"-max-num", "2",
 			},
 			puller: &fakePuller{
-				logEntries: []*loggingpb.LogEntry{
-					{
-						InsertId: "test-log",
-						Payload: &loggingpb.LogEntry_JsonPayload{
-							JsonPayload: &structpb.Struct{
-								Fields: map[string]*structpb.Value{
-									"service_name":  structpb.NewStringValue("foo_service"),
-									"method_name":   structpb.NewStringValue("foo_method"),
-									"resource_name": structpb.NewStringValue("foo_resource"),
-									"authentication_info": structpb.NewStructValue(&structpb.Struct{
-										Fields: map[string]*structpb.Value{
-											"principal_email": structpb.NewStringValue("foo@bet.com"),
-										},
-									}),
-								},
-							},
-						},
-					},
-				},
+				logEntries: []*loggingpb.LogEntry{validLog},
 			},
 			expFilter: fmt.Sprintf(
 				`LOG_ID("audit.abcxyz/unspecified") OR `+
@@ -100,14 +108,11 @@ func TestTailCommand(t *testing.T) {
 				ct.Add(-4*time.Hour).Format(time.RFC3339),
 			),
 			expMaxNum: 2,
-			expOut: `{"jsonPayload":{"authentication_info":{"principal_email":"foo@bet.com"}, ` +
-				`"method_name":"foo_method", ` +
-				`"resource_name":"foo_resource", ` +
-				`"service_name":"foo_service"}, ` +
-				`"insertId":"test-log"}
+			expOut: fmt.Sprintf(`%s
 Successfully validated log (InsertId: "test-log")
 
-`,
+Validation failed for 0 logs (out of 1)
+`, validLogJSON),
 		},
 		{
 			name: "success_validate_with_additional_check",
@@ -116,26 +121,7 @@ Successfully validated log (InsertId: "test-log")
 				"-validate", "-additional-check",
 			},
 			puller: &fakePuller{
-				logEntries: []*loggingpb.LogEntry{
-					{
-						InsertId: "test-log",
-						Payload: &loggingpb.LogEntry_JsonPayload{
-							JsonPayload: &structpb.Struct{
-								Fields: map[string]*structpb.Value{
-									"service_name":  structpb.NewStringValue("foo_service"),
-									"method_name":   structpb.NewStringValue("foo_method"),
-									"resource_name": structpb.NewStringValue("foo_resource"),
-									"authentication_info": structpb.NewStructValue(&structpb.Struct{
-										Fields: map[string]*structpb.Value{
-											"principal_email": structpb.NewStringValue("foo@bet.com"),
-										},
-									}),
-								},
-							},
-						},
-						Labels: map[string]string{"environment": "dev", "accessing_process_name": "foo_apn"},
-					},
-				},
+				logEntries: []*loggingpb.LogEntry{validLog},
 			},
 			expFilter: fmt.Sprintf(
 				`LOG_ID("audit.abcxyz/unspecified") OR `+
@@ -147,15 +133,11 @@ Successfully validated log (InsertId: "test-log")
 				ct.Add(-2*time.Hour).Format(time.RFC3339),
 			),
 			expMaxNum: 1,
-			expOut: `{"jsonPayload":{"authentication_info":{"principal_email":"foo@bet.com"}, ` +
-				`"method_name":"foo_method", ` +
-				`"resource_name":"foo_resource", ` +
-				`"service_name":"foo_service"}, ` +
-				`"insertId":"test-log", ` +
-				`"labels":{"accessing_process_name":"foo_apn", "environment":"dev"}}
+			expOut: fmt.Sprintf(`%s
 Successfully validated log (InsertId: "test-log")
 
-`,
+Validation failed for 0 logs (out of 1)
+`, validLogJSON),
 		},
 		{
 			name: "validate_fail",
@@ -165,12 +147,21 @@ Successfully validated log (InsertId: "test-log")
 				"-v",
 			},
 			puller: &fakePuller{
-				logEntries: []*loggingpb.LogEntry{{InsertId: "test"}},
+				logEntries: []*loggingpb.LogEntry{
+					{InsertId: "test"},
+					validLog,
+				},
 			},
-			expFilter:    "test-filter",
-			expMaxNum:    1,
-			expOut:       `{"insertId":"test"}`,
-			expErrSubstr: "failed to validate log",
+			expFilter: "test-filter",
+			expMaxNum: 1,
+			expOut: fmt.Sprintf(`
+{"insertId":"test"}
+%s
+Successfully validated log (InsertId: "test-log")
+
+Validation failed for 1 logs (out of 2)
+`, validLogJSON),
+			expStderrSubstr: `failed to validate log (InsertId: "test")`,
 		},
 		{
 			name: "tail_fail",
@@ -198,11 +189,14 @@ Successfully validated log (InsertId: "test-log")
 
 			var cmd TailCommand
 			cmd.testPuller = tc.puller
-			_, stdout, _ := cmd.Pipe()
+			_, stdout, stderr := cmd.Pipe()
 
 			err := cmd.Run(ctx, tc.args)
 			if diff := testutil.DiffErrString(err, tc.expErrSubstr); diff != "" {
 				t.Errorf("Process(%+v) got error diff (-want, +got):\n%s", tc.name, diff)
+			}
+			if !errContainSubstring(stderr.String(), tc.expStderrSubstr) {
+				t.Errorf("Process(%+v) got stderr: %s, but want substring: %s", tc.name, stderr.String(), tc.expStderrSubstr)
 			}
 			if diff := cmp.Diff(strings.TrimSpace(tc.expOut), strings.TrimSpace(stdout.String())); diff != "" {
 				t.Errorf("Process(%+v) got output diff (-want, +got):\n%s", tc.name, diff)
@@ -215,6 +209,13 @@ Successfully validated log (InsertId: "test-log")
 			}
 		})
 	}
+}
+
+func errContainSubstring(gotErr, wantErr string) bool {
+	if wantErr == "" {
+		return gotErr == ""
+	}
+	return strings.Contains(gotErr, wantErr)
 }
 
 type fakePuller struct {
