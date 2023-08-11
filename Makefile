@@ -20,8 +20,13 @@ update_third_party: update_third_party_googleapis
 # protos from googleapis.
 update_third_party_googleapis:
 	@rm -rf third_party/googleapis
-	@mkdir -p third_party/googleapis
+	@mkdir -p third_party/googleapis/google/cloud third_party/tmp
 	@curl -sfLo third_party/googleapis.tgz https://github.com/googleapis/googleapis/archive/refs/heads/master.tar.gz
-	@tar -xkf third_party/googleapis.tgz -C third_party/googleapis --strip-components 1
+	@tar -xkf third_party/googleapis.tgz -C third_party/tmp --strip-components 1
+	@cp -rf third_party/tmp/google/cloud/audit third_party/googleapis/google/cloud
+	@cp -rf third_party/tmp/google/logging third_party/googleapis/google
+	@cp -rf third_party/tmp/google/api third_party/googleapis/google
+	@cp -rf third_party/tmp/google/rpc third_party/googleapis/google
+	@rm -rf third_party/tmp
 	@rm -rf third_party/googleapis.tgz
 .PHONY: update_third_party_googleapis
