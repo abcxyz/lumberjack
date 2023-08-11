@@ -19,18 +19,18 @@ env:
   - 'GOPROXY=https://proxy.golang.org,direct'
   # Allow override the container registry.
   # Default to the JVS CI container registry.
-  - REGISTRY={{ if index .Env "DOCKER_REPO"  }}{{ .Env.DOCKER_REPO }}{{ else }}us-docker.pkg.dev/lumberjack-dev-infra/images{{ end }}
+  - 'REGISTRY={{ if index .Env "DOCKER_REPO"  }}{{ .Env.DOCKER_REPO }}{{ else }}us-docker.pkg.dev/lumberjack-dev-infra/images{{ end }}'
 
 before:
   hooks:
-    - go mod tidy
+    - 'go mod tidy'
 
 # Duplicate the build from .goreleaser.yaml.
 builds:
   -
-    id: server
-    main: ./cmd/server
-    binary: server
+    id: 'server'
+    main: './cmd/server'
+    binary: 'server'
     mod_timestamp: '{{ .CommitTimestamp }}'
     flags:
       - '-a'
@@ -54,7 +54,7 @@ builds:
 dockers:
   -
     ids:
-    - server
+    - 'server'
     use: 'buildx'
     goos: 'linux'
     goarch: 'amd64'
@@ -73,7 +73,7 @@ dockers:
       - '--label=org.opencontainers.image.version={{ .Version }}'
   -
     ids:
-    - server
+    - 'server'
     use: 'buildx'
     goos: 'linux'
     goarch: 'arm64'
