@@ -25,6 +25,7 @@ func TestRootCommand_Help(t *testing.T) {
 	exp := `
 Usage: lumberctl COMMAND
 
+  tail        Tail lumberjack logs from GCP Cloud logging
   validate    Validate lumberjack log
 `
 

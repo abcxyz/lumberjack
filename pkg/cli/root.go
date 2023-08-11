@@ -31,6 +31,9 @@ var rootCmd = func() cli.Command {
 			"validate": func() cli.Command {
 				return &ValidateCommand{}
 			},
+			"tail": func() cli.Command {
+				return &TailCommand{}
+			},
 		},
 	}
 }
