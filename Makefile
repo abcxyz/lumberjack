@@ -27,6 +27,7 @@ update_third_party_googleapis:
 	@cp -rf third_party/tmp/google/logging third_party/googleapis/google
 	@cp -rf third_party/tmp/google/api third_party/googleapis/google
 	@cp -rf third_party/tmp/google/rpc third_party/googleapis/google
+	@find third_party/googleapis -type f ! -name '*.proto' -delete
 	@rm -rf third_party/tmp
 	@rm -rf third_party/googleapis.tgz
 .PHONY: update_third_party_googleapis
