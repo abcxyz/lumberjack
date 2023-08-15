@@ -20,14 +20,14 @@ env:
 
 before:
   hooks:
-    - go mod tidy
+    - 'go mod tidy'
 
 # Duplicate the builds to .goreleaser.docker.yaml
 builds:
   -
-    id: server
-    main: ./cmd/server
-    binary: server
+    id: 'server'
+    main: './cmd/server'
+    binary: 'server'
     mod_timestamp: '{{ .CommitTimestamp }}'
     flags:
       - '-a'
@@ -48,9 +48,9 @@ builds:
       - 'arm64'
 
   -
-    id: lumberctl
-    main: ./cmd/lumberctl
-    binary: lumberctl
+    id: 'lumberctl'
+    main: './cmd/lumberctl'
+    binary: 'lumberctl'
     mod_timestamp: '{{ .CommitTimestamp }}'
     flags:
       - '-a'
@@ -84,12 +84,12 @@ checksum:
 
 
 changelog:
-  use: github
-  sort: asc
+  use: 'github'
+  sort: 'asc'
 
 # TODO(#144): Follow up on sign.
 
 # Release to github.
 release:
   draft: false
-  mode: replace
+  mode: 'replace'

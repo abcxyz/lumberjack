@@ -14,7 +14,7 @@
 
 backend:
   remote:
-    address: example.com
+    address: 'example.com'
   local:
     log_out_enabled: true
   cloudlogging:

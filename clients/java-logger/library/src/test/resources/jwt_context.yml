@@ -14,8 +14,8 @@
 
 security_context:
   from_raw_jwt:
-  - key: x-jwt-assertion
-    prefix: "Prefix "
-    jwks:
-      endpoint: "https://example.com"
-      object: "object"
+    - key: 'x-jwt-assertion'
+      prefix: 'Prefix '
+      jwks:
+        endpoint: 'https://example.com'
+        object: 'object'
