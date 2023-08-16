@@ -29,6 +29,7 @@ import (
 	"time"
 
 	"github.com/lestrrat-go/jwx/v2/jwt"
+	"github.com/microcosm-cc/bluemonday"
 	"go.uber.org/zap"
 	cal "google.golang.org/genproto/googleapis/cloud/audit"
 
@@ -66,6 +67,7 @@ func (h *handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "missing trace_id in the request, add one by appending the URL with ?trace_id=$TRACE_ID.", http.StatusBadRequest)
 		return
 	}
+	bluemonday.StrictPolicy().Sanitize(traceID) // sanitize user-supplied trace
 
 	logger = logger.With("trace_id", traceID)
 	logger.Debugw("found trace id")
