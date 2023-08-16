@@ -17,12 +17,9 @@ package cli
 import (
 	"context"
 	"fmt"
-	"io"
-	"os"
 
 	"github.com/abcxyz/lumberjack/pkg/validation"
 	"github.com/abcxyz/pkg/cli"
-	"github.com/mattn/go-isatty"
 )
 
 var _ cli.Command = (*ValidateCommand)(nil)
@@ -94,8 +91,8 @@ func (c *ValidateCommand) Run(ctx context.Context, args []string) error {
 	}
 
 	if c.flagLogEntry == "-" {
-		// Read log from stdin
-		log, err := c.readFromStdin(ctx, "Enter log: ")
+		// Read log from stdin until it encounters an EOF.
+		log, err := c.PromptAll(ctx, "Enter log: ")
 		if err != nil {
 			return fmt.Errorf("failed to get log from prompt: %w", err)
 		}
@@ -112,18 +109,4 @@ func (c *ValidateCommand) Run(ctx context.Context, args []string) error {
 	c.Outf("Successfully validated log")
 
 	return nil
-}
-
-// readFromStdin allows reading the input from Stdin, up to 256KB based on GCP
-// log entry quota, see ref: https://cloud.google.com/logging/quotas
-func (c *ValidateCommand) readFromStdin(ctx context.Context, msg string, args ...any) (string, error) {
-	if c.Stdin() == os.Stdin && isatty.IsTerminal(os.Stdin.Fd()) {
-		fmt.Fprintf(c.Stdout(), msg, args...)
-	}
-	data, err := io.ReadAll(io.LimitReader(c.Stdin(), 256*1_000))
-	if err != nil {
-		return "", fmt.Errorf("failed to get log from stdin: %w", err)
-	}
-
-	return string(data), nil
 }

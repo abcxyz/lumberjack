@@ -9,7 +9,7 @@ require (
 	github.com/GoogleCloudPlatform/opentelemetry-operations-go/exporter/trace v1.11.2
 	github.com/GoogleCloudPlatform/opentelemetry-operations-go/propagator v0.35.2
 	github.com/abcxyz/jvs v0.0.3
-	github.com/abcxyz/pkg v0.6.1-0.20230728201454-7f743fdd1f2f
+	github.com/abcxyz/pkg v0.6.1-0.20230816030342-4fa9e5955bc1
 	github.com/google/go-cmp v0.5.9
 	github.com/google/uuid v1.3.0
 	github.com/hashicorp/go-multierror v1.1.1
