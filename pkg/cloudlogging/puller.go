@@ -28,6 +28,7 @@ import (
 	"google.golang.org/api/iterator"
 
 	logging "cloud.google.com/go/logging/apiv2"
+	logger "github.com/abcxyz/pkg/logging"
 )
 
 // Puller pulls log entries of GCP organizations, folders, projects, and
@@ -115,13 +116,18 @@ func (p *Puller) Pull(ctx context.Context, filter string, maxCount int) ([]*logg
 
 // SteamPull pulls live log entries, it stops pulling after logNum of log entries.
 func (p *Puller) SteamPull(ctx context.Context, filter string, logNum int) ([]*loggingpb.LogEntry, error) {
+	logger := logger.FromContext(ctx)
 	var ls []*loggingpb.LogEntry
 	if err := retry.Do(ctx, p.retry, func(ctx context.Context) error {
 		stream, err := p.client.TailLogEntries(ctx)
 		if err != nil {
 			return retry.RetryableError(fmt.Errorf("failed to create stream: %w", err))
 		}
-		defer stream.CloseSend()
+		defer func() {
+			if err := stream.CloseSend(); err != nil {
+				logger.Infof("failed to close stream: %w", err)
+			}
+		}()
 		req := &loggingpb.TailLogEntriesRequest{
 			ResourceNames: []string{p.resource},
 			Filter:        filter,

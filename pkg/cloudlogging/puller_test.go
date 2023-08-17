@@ -201,7 +201,9 @@ func (s *fakeServer) ListLogEntries(ctx context.Context, req *loggingpb.ListLogE
 
 func (s *fakeServer) TailLogEntries(server loggingpb.LoggingServiceV2_TailLogEntriesServer) error {
 	if s.tailResp != nil {
-		server.Send(s.tailResp)
+		if err := server.Send(s.tailResp); err != nil {
+			return fmt.Errorf("server failed to send: %w", err)
+		}
 	}
 	return s.injectedErr
 }
