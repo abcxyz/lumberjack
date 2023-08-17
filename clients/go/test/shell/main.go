@@ -21,6 +21,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"log/slog"
 	"net/http"
 	"os"
 	"os/signal"
@@ -30,7 +31,6 @@ import (
 
 	"github.com/lestrrat-go/jwx/v2/jwt"
 	"github.com/microcosm-cc/bluemonday"
-	"go.uber.org/zap"
 	cal "google.golang.org/genproto/googleapis/cloud/audit"
 
 	"github.com/abcxyz/lumberjack/clients/go/apis/v1alpha1"
@@ -47,7 +47,7 @@ const (
 
 // handler implements ServeHTTP by using the audit client.
 type handler struct {
-	logger *zap.SugaredLogger
+	logger *slog.Logger
 	client *audit.Client
 }
 
@@ -59,7 +59,7 @@ func (h *handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	logger := h.logger
 
-	logger.Debugw("received request", "url", r.URL)
+	logger.DebugContext(ctx, "received request", "url", r.URL)
 
 	// Get the traceID from URL.
 	traceID := r.URL.Query().Get(traceIDKey)
@@ -70,7 +70,7 @@ func (h *handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	bluemonday.StrictPolicy().Sanitize(traceID) // sanitize user-supplied trace
 
 	logger = logger.With("trace_id", traceID)
-	logger.Debugw("found trace id")
+	logger.DebugContext(ctx, "found trace id")
 
 	// Parse the JWT. We do not verify the JWT because:
 	//
@@ -130,7 +130,7 @@ func (h *handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	success := fmt.Sprintf("Successfully emitted application audit log with trace ID %v.", traceID)
 
-	logger.Debugw("finished request", "success", success)
+	logger.DebugContext(ctx, "finished request", "success", success)
 
 	fmt.Fprint(w, success) // automatically calls `w.WriteHeader(http.StatusOK)`
 }
@@ -170,7 +170,7 @@ func realMain(ctx context.Context) error {
 
 	mux := http.NewServeMux()
 	mux.Handle("/", &handler{
-		logger: logging.NewFromEnv("SHELL_"),
+		logger: logging.New(os.Stdout, logging.LevelDebug, logging.FormatJSON, true),
 		client: client,
 	})
 

@@ -25,7 +25,6 @@ import (
 
 	"cloud.google.com/go/logging/apiv2/loggingpb"
 	"github.com/google/uuid"
-	"go.uber.org/zap"
 	capi "google.golang.org/genproto/googleapis/cloud/audit"
 	rpccode "google.golang.org/genproto/googleapis/rpc/code"
 	rpcstatus "google.golang.org/genproto/googleapis/rpc/status"
@@ -40,7 +39,7 @@ import (
 	api "github.com/abcxyz/lumberjack/clients/go/apis/v1alpha1"
 	"github.com/abcxyz/lumberjack/clients/go/pkg/justification"
 	"github.com/abcxyz/lumberjack/clients/go/pkg/security"
-	zlogger "github.com/abcxyz/pkg/logging"
+	"github.com/abcxyz/pkg/logging"
 )
 
 type auditLogReqKey struct{}
@@ -105,11 +104,13 @@ func NewInterceptor(ctx context.Context, opts ...InterceptorOption) (*Intercepto
 
 // UnaryInterceptor is a gRPC unary interceptor that automatically emits application audit logs.
 // The interceptor is currently implemented in fail-close mode.
-func (i *Interceptor) UnaryInterceptor(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error) {
-	logger := zlogger.FromContext(ctx)
+func (i *Interceptor) UnaryInterceptor(ctx context.Context, req any, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error) {
+	logger := logging.FromContext(ctx)
 	r := mostRelevantRule(info.FullMethod, i.rules)
 	if r == nil {
-		logger.Debug("no audit rule matching the method name", zap.String("method_name", info.FullMethod), zap.Any("audit_rules", i.rules))
+		logger.DebugContext(ctx, "no audit rule matching the method name",
+			"method_name", info.FullMethod,
+			"audit_rules", i.rules)
 		// Interceptor not applied to this method, continue
 		return handler(ctx, req)
 	}
@@ -140,9 +141,11 @@ func (i *Interceptor) UnaryInterceptor(ctx context.Context, req interface{}, inf
 	// Autofill `Payload.AuthenticationInfo.PrincipalEmail`.
 	principal, err := i.sc.RequestPrincipal(ctx)
 	if err != nil {
-		return i.handleReturnUnary(ctx, req, handler, status.Errorf(codes.FailedPrecondition,
-			"audit interceptor failed to get request principal; this is likely a result of misconfiguration of audit client (security_context): %v %v",
-			zap.Any("security_context", i.sc), zap.Error(err)))
+		logger.ErrorContext(ctx, "audit interceptor failed to get request principal",
+			"security_context", i.sc,
+			"error", err)
+		serr := status.Errorf(codes.FailedPrecondition, "audit interceptor failed to get request principal")
+		return i.handleReturnUnary(ctx, req, handler, serr)
 	}
 	logReq.Payload.AuthenticationInfo = &capi.AuthenticationInfo{PrincipalEmail: principal}
 
@@ -168,7 +171,7 @@ func (i *Interceptor) UnaryInterceptor(ctx context.Context, req interface{}, inf
 
 		// Best effort log the error.
 		if err := i.Log(ctx, logReq); err != nil {
-			logger.Error("unable to audit log error", zap.Error(err))
+			logger.ErrorContext(ctx, "unable to audit log error", "error", err)
 		}
 		return resp, handlerErr
 	}
@@ -191,11 +194,13 @@ func (i *Interceptor) UnaryInterceptor(ctx context.Context, req interface{}, inf
 // StreamInterceptor intercepts gRPC stream calls to inject audit logging capability.
 func (i *Interceptor) StreamInterceptor(srv interface{}, ss grpc.ServerStream, info *grpc.StreamServerInfo, handler grpc.StreamHandler) error {
 	ctx := ss.Context()
-	logger := zlogger.FromContext(ctx)
+	logger := logging.FromContext(ctx)
 
 	r := mostRelevantRule(info.FullMethod, i.rules)
 	if r == nil {
-		logger.Debug("no audit rule matching the method name", zap.String("method_name", info.FullMethod), zap.Any("audit_rules", i.rules))
+		logger.DebugContext(ctx, "no audit rule matching the method name",
+			"method_name", info.FullMethod,
+			"audit_rules", i.rules)
 		return handler(srv, ss)
 	}
 
@@ -230,9 +235,11 @@ func (i *Interceptor) StreamInterceptor(srv interface{}, ss grpc.ServerStream, i
 	// Autofill `Payload.AuthenticationInfo.PrincipalEmail`.
 	principal, err := i.sc.RequestPrincipal(ctx)
 	if err != nil {
-		return i.handleReturnStream(ctx, ss, handler, status.Errorf(codes.FailedPrecondition,
-			"audit interceptor failed to get request principal; this is likely a result of misconfiguration of audit client (security_context): %v %v",
-			zap.Any("security_context", i.sc), zap.Error(err)))
+		logger.ErrorContext(ctx, "audit interceptor failed to get request principal",
+			"security_context", i.sc,
+			"error", err)
+		serr := status.Errorf(codes.FailedPrecondition, "audit interceptor failed to get request principal")
+		return i.handleReturnStream(ctx, ss, handler, serr)
 	}
 	logReq.Payload.AuthenticationInfo = &capi.AuthenticationInfo{PrincipalEmail: principal}
 
@@ -247,7 +254,8 @@ func (i *Interceptor) StreamInterceptor(srv interface{}, ss grpc.ServerStream, i
 
 		// Best effort log the error.
 		if err := i.Log(ctx, logReq); err != nil {
-			logger.Error("unable to audit log error", zap.Error(err))
+			logger.ErrorContext(ctx, "unable to audit log error",
+				"error", err)
 		}
 	}
 	return handlerErr
@@ -405,9 +413,9 @@ func (i *Interceptor) handleReturnUnary(ctx context.Context, req interface{}, ha
 	}
 	if err != nil {
 		// There was an error, but we are failing open.
-		logger := zlogger.FromContext(ctx)
-		logger.Error("failed to audit log; continuing without audit logging",
-			zap.Error(err))
+		logger := logging.FromContext(ctx)
+		logger.ErrorContext(ctx, "failed to audit log; continuing without audit logging",
+			"error", err)
 	}
 	return handler(ctx, req)
 }
@@ -418,9 +426,9 @@ func (i *Interceptor) handleReturnStream(ctx context.Context, ss grpc.ServerStre
 	}
 	if err != nil {
 		// There was an error, but we are failing open.
-		logger := zlogger.FromContext(ctx)
-		logger.Error("failed to audit log; continuing without audit logging",
-			zap.Error(err))
+		logger := logging.FromContext(ctx)
+		logger.ErrorContext(ctx, "failed to audit log; continuing without audit logging",
+			"error", err)
 	}
 	return handler(ctx, ss)
 }
@@ -434,9 +442,9 @@ func (i *Interceptor) handleReturnWithResponse(ctx context.Context, handlerResp 
 	}
 	if err != nil {
 		// There was an error, but we are failing open.
-		logger := zlogger.FromContext(ctx)
-		logger.Error("failed to audit log; continuing without audit logging",
-			zap.Error(err))
+		logger := logging.FromContext(ctx)
+		logger.ErrorContext(ctx, "failed to audit log; continuing without audit logging",
+			"error", err)
 	}
 	return handlerResp, nil
 }

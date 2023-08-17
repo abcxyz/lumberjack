@@ -26,8 +26,6 @@ import (
 	"github.com/abcxyz/pkg/bqutil"
 	"github.com/abcxyz/pkg/logging"
 	"github.com/sethvargo/go-retry"
-	"go.uber.org/zap/zapcore"
-	"go.uber.org/zap/zaptest"
 	"google.golang.org/genproto/googleapis/cloud/audit"
 	"google.golang.org/protobuf/encoding/protojson"
 )
@@ -67,7 +65,8 @@ func makeBigQueryClient(ctx context.Context, tb testing.TB, projectID string) *b
 // It uses the retries that are specified in the Config file.
 func validateAuditLogsWithRetries(ctx context.Context, tb testing.TB, tcfg *TestCaseConfig, bqQuery *bigquery.Query, wantNum int) {
 	tb.Helper()
-	ctx = logging.WithLogger(ctx, logging.TestLogger(tb, zaptest.Level(zapcore.DebugLevel)))
+
+	ctx = logging.WithLogger(ctx, logging.TestLogger(tb))
 
 	backoff := retry.WithMaxRetries(tcfg.MaxDBQueryTries, retry.NewConstant(tcfg.LogRoutingWait))
 	q := bqutil.NewQuery[bqResult](bqQuery)

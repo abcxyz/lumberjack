@@ -20,11 +20,9 @@ import (
 	"errors"
 	"fmt"
 
-	"go.uber.org/zap"
-
 	api "github.com/abcxyz/lumberjack/clients/go/apis/v1alpha1"
 	"github.com/abcxyz/lumberjack/clients/go/pkg/auditerrors"
-	zlogger "github.com/abcxyz/pkg/logging"
+	"github.com/abcxyz/pkg/logging"
 	"github.com/hashicorp/go-multierror"
 )
 
@@ -140,7 +138,7 @@ func (c *Client) Stop() error {
 
 // Log runs the client processors sequentially on the given AuditLogRequest.
 func (c *Client) Log(ctx context.Context, logReq *api.AuditLogRequest) error {
-	logger := zlogger.FromContext(ctx)
+	logger := logging.FromContext(ctx)
 
 	if logReq.Mode == api.AuditLogRequest_LOG_MODE_UNSPECIFIED {
 		logReq.Mode = c.logMode
@@ -149,7 +147,9 @@ func (c *Client) Log(ctx context.Context, logReq *api.AuditLogRequest) error {
 	for _, p := range c.validators {
 		if err := p.Process(ctx, logReq); err != nil {
 			if errors.Is(err, auditerrors.ErrPreconditionFailed) {
-				logger.Warnf("stopped log request processing as validator %T precondition failed: %v", p, err)
+				logger.WarnContext(ctx, "stopped log request processing as validator precondition failed",
+					"validator", p,
+					"error", err)
 				return nil
 			}
 			return c.handleReturn(ctx, fmt.Errorf("failed to execute validator %T: %w", p, err), logReq.Mode)
@@ -159,7 +159,9 @@ func (c *Client) Log(ctx context.Context, logReq *api.AuditLogRequest) error {
 	for _, p := range c.mutators {
 		if err := p.Process(ctx, logReq); err != nil {
 			if errors.Is(err, auditerrors.ErrPreconditionFailed) {
-				logger.Warnf("stopped log request processing as mutator %T precondition failed: %v", p, err)
+				logger.WarnContext(ctx, "stopped log request processing as mutator precondition failed",
+					"validator", p,
+					"error", err)
 				return nil
 			}
 			return c.handleReturn(ctx, fmt.Errorf("failed to execute mutator %T: %w", p, err), logReq.Mode)
@@ -169,7 +171,9 @@ func (c *Client) Log(ctx context.Context, logReq *api.AuditLogRequest) error {
 	for _, p := range c.backends {
 		if err := p.Process(ctx, logReq); err != nil {
 			if errors.Is(err, auditerrors.ErrPreconditionFailed) {
-				logger.Warnf("stopped log request processing as backend %T precondition failed: %v", p, err)
+				logger.WarnContext(ctx, "stopped log request processing as backend precondition failed",
+					"validator", p,
+					"error", err)
 				return nil
 			}
 			return c.handleReturn(ctx, fmt.Errorf("failed to execute backend %T: %w", p, err), logReq.Mode)
@@ -186,12 +190,15 @@ func (c *Client) handleReturn(ctx context.Context, err error, requestedLogMode a
 	if err == nil {
 		return nil
 	}
+
 	// If there is an error, and we should fail close, return that error.
 	if api.ShouldFailClose(requestedLogMode) {
 		return err
 	}
+
 	// If there is an error, and we shouldn't fail close, log and return nil.
-	logger := zlogger.FromContext(ctx)
-	logger.Error("failed to audit log; continuing without audit logging", zap.Error(err))
+	logger := logging.FromContext(ctx)
+	logger.ErrorContext(ctx, "failed to audit log; continuing without audit logging",
+		"error", err)
 	return nil
 }

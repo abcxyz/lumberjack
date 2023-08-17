@@ -42,7 +42,7 @@ func main() {
 		syscall.SIGINT, syscall.SIGTERM)
 	defer done()
 
-	logger := logging.NewFromEnv("")
+	logger := logging.New(os.Stdout, logging.LevelDebug, logging.FormatJSON, true)
 	ctx = logging.WithLogger(ctx, logger)
 
 	if err := realMain(ctx); err != nil {
@@ -69,7 +69,7 @@ func realMain(ctx context.Context) (retErr error) {
 	if err := os.Setenv("AUDIT_CLIENT_JUSTIFICATION_PUBLIC_KEYS_ENDPOINT", pubKeyEndpoint); err != nil {
 		return fmt.Errorf("failed to set env: %w", err)
 	}
-	logger.Debugw("using public key endpoint", "endpoint", pubKeyEndpoint)
+	logger.DebugContext(ctx, "using public key endpoint", "endpoint", pubKeyEndpoint)
 
 	interceptor, err := audit.NewInterceptor(ctx, auditopt.InterceptorFromConfigFile(auditopt.DefaultConfigFilePath))
 	if err != nil {

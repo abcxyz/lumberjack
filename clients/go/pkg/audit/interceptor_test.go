@@ -422,7 +422,7 @@ func TestUnaryInterceptor(t *testing.T) {
 				return nil, nil
 			},
 			jvs:           &fakeJVS{},
-			wantErrSubstr: `audit interceptor failed to get request principal;`,
+			wantErrSubstr: `audit interceptor failed to get request principal`,
 		},
 		{
 			name: "unable_to_extract_principal_fail_close",
@@ -441,7 +441,7 @@ func TestUnaryInterceptor(t *testing.T) {
 				return nil, nil
 			},
 			jvs:           &fakeJVS{},
-			wantErrSubstr: `audit interceptor failed to get request principal;`,
+			wantErrSubstr: `audit interceptor failed to get request principal`,
 		},
 		{
 			name: "unable_to_convert_req_to_proto_struct_fail_close",
