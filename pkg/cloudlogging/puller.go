@@ -20,6 +20,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"time"
 
 	"cloud.google.com/go/logging/apiv2/loggingpb"
@@ -108,6 +109,43 @@ func (p *Puller) Pull(ctx context.Context, filter string, maxCount int) ([]*logg
 		return nil
 	}); err != nil {
 		return nil, fmt.Errorf("failed to list log entries: %w", err)
+	}
+	return ls, nil
+}
+
+// SteamPull pulls live log entries, it stops pulling after logNum of log entries.
+func (p *Puller) SteamPull(ctx context.Context, filter string, logNum int) ([]*loggingpb.LogEntry, error) {
+	var ls []*loggingpb.LogEntry
+	if err := retry.Do(ctx, p.retry, func(ctx context.Context) error {
+		stream, err := p.client.TailLogEntries(ctx)
+		if err != nil {
+			return retry.RetryableError(fmt.Errorf("failed to create stream: %w", err))
+		}
+		defer stream.CloseSend()
+		req := &loggingpb.TailLogEntriesRequest{
+			ResourceNames: []string{p.resource},
+			Filter:        filter,
+		}
+		if err := stream.Send(req); err != nil {
+			return retry.RetryableError(fmt.Errorf("failed to send request: %w", err))
+		}
+
+		for counter := 0; counter < logNum; {
+			resp, err := stream.Recv()
+			if err == io.EOF {
+				break
+			}
+			if err != nil {
+				return retry.RetryableError(fmt.Errorf("failed to receive response: %w", err))
+			}
+			if resp.Entries != nil {
+				counter += len(resp.Entries)
+				ls = append(ls, resp.GetEntries()...)
+			}
+		}
+		return nil
+	}); err != nil {
+		return nil, fmt.Errorf("failed to pull log entries: %w", err)
 	}
 	return ls, nil
 }

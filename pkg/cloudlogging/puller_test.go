@@ -48,7 +48,7 @@ func TestPull(t *testing.T) {
 			name:   "success",
 			filter: "test-filter",
 			server: &fakeServer{
-				resp: &loggingpb.ListLogEntriesResponse{
+				listResp: &loggingpb.ListLogEntriesResponse{
 					Entries: []*loggingpb.LogEntry{{LogName: "test"}},
 				},
 			},
@@ -98,7 +98,68 @@ func TestPull(t *testing.T) {
 				t.Errorf("Process(%+v) got result diff (-want, +got): %v", tc.name, diff)
 			}
 
-			if diff := cmp.Diff(tc.wantReq, tc.server.req, protocmp.Transform()); diff != "" {
+			if diff := cmp.Diff(tc.wantReq, tc.server.listReq, protocmp.Transform()); diff != "" {
+				t.Errorf("Process(%+v) got request diff (-want, +got): %v", tc.name, diff)
+			}
+		})
+	}
+}
+
+func TestSteamPull(t *testing.T) {
+	t.Parallel()
+
+	cases := []struct {
+		name          string
+		server        *fakeServer
+		filter        string
+		wantReq       *loggingpb.TailLogEntriesRequest
+		wantResult    []*loggingpb.LogEntry
+		wantErrSubstr string
+	}{
+		{
+			name:   "success",
+			filter: "test-filter",
+			server: &fakeServer{
+				tailResp: &loggingpb.TailLogEntriesResponse{
+					Entries: []*loggingpb.LogEntry{{LogName: "test"}},
+				},
+			},
+			wantResult: []*loggingpb.LogEntry{{LogName: "test"}},
+		},
+		{
+			name:   "failed_to_pull",
+			filter: "test-filter",
+			server: &fakeServer{
+				injectedErr: fmt.Errorf("injected error"),
+			},
+			wantErrSubstr: "injected error",
+		},
+	}
+
+	for _, tc := range cases {
+		tc := tc
+
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			ctx := context.Background()
+			fakeClient := setupFakeClient(t, ctx, tc.server)
+			p := NewPuller(
+				ctx,
+				fakeClient,
+				testResource,
+				WithRetry(retry.WithMaxRetries(0, retry.NewFibonacci(500*time.Millisecond))),
+			)
+			gotResult, gotErr := p.SteamPull(ctx, tc.filter, 1)
+			if diff := testutil.DiffErrString(gotErr, tc.wantErrSubstr); diff != "" {
+				t.Errorf("Process(%+v) got unexpected error substring: %v", tc.name, diff)
+			}
+
+			if diff := cmp.Diff(tc.wantResult, gotResult, protocmp.Transform()); diff != "" {
+				t.Errorf("Process(%+v) got result diff (-want, +got): %v", tc.name, diff)
+			}
+
+			if diff := cmp.Diff(tc.wantReq, tc.server.tailReq, protocmp.Transform()); diff != "" {
 				t.Errorf("Process(%+v) got request diff (-want, +got): %v", tc.name, diff)
 			}
 		})
@@ -126,12 +187,21 @@ func setupFakeClient(t *testing.T, ctx context.Context, s *fakeServer) *logging.
 type fakeServer struct {
 	loggingpb.UnimplementedLoggingServiceV2Server
 
-	req         *loggingpb.ListLogEntriesRequest
-	resp        *loggingpb.ListLogEntriesResponse
+	listReq     *loggingpb.ListLogEntriesRequest
+	listResp    *loggingpb.ListLogEntriesResponse
+	tailReq     *loggingpb.TailLogEntriesRequest
+	tailResp    *loggingpb.TailLogEntriesResponse
 	injectedErr error
 }
 
 func (s *fakeServer) ListLogEntries(ctx context.Context, req *loggingpb.ListLogEntriesRequest) (*loggingpb.ListLogEntriesResponse, error) {
-	s.req = req
-	return s.resp, s.injectedErr
+	s.listReq = req
+	return s.listResp, s.injectedErr
+}
+
+func (s *fakeServer) TailLogEntries(server loggingpb.LoggingServiceV2_TailLogEntriesServer) error {
+	if s.tailResp != nil {
+		server.Send(s.tailResp)
+	}
+	return s.injectedErr
 }
