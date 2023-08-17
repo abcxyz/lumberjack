@@ -67,7 +67,7 @@ func (h *handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "missing trace_id in the request, add one by appending the URL with ?trace_id=$TRACE_ID.", http.StatusBadRequest)
 		return
 	}
-	bluemonday.StrictPolicy().Sanitize(traceID) // sanitize user-supplied trace
+	traceID = bluemonday.StrictPolicy().Sanitize(traceID) // sanitize user-supplied trace
 
 	logger = logger.With("trace_id", traceID)
 	logger.DebugContext(ctx, "found trace id")
@@ -130,7 +130,7 @@ func (h *handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	success := fmt.Sprintf("Successfully emitted application audit log with trace ID %v.", traceID)
 
-	logger.DebugContext(ctx, "finished request", "success", success)
+	logger.DebugContext(ctx, "finished request", "trace_id", traceID)
 
 	fmt.Fprint(w, success) // automatically calls `w.WriteHeader(http.StatusOK)`
 }

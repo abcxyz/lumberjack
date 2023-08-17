@@ -18,6 +18,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
 	"os/signal"
 	"syscall"
 
@@ -48,6 +49,7 @@ func main() {
 	if err := realMain(ctx); err != nil {
 		done()
 		logger.ErrorContext(ctx, err.Error())
+		os.Exit(1)
 	}
 	logger.InfoContext(ctx, "successful shutdown")
 }

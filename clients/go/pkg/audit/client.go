@@ -23,7 +23,6 @@ import (
 	api "github.com/abcxyz/lumberjack/clients/go/apis/v1alpha1"
 	"github.com/abcxyz/lumberjack/clients/go/pkg/auditerrors"
 	"github.com/abcxyz/pkg/logging"
-	"github.com/hashicorp/go-multierror"
 )
 
 // Client is the Lumberjack audit logging Client.
@@ -122,18 +121,18 @@ func NewClient(ctx context.Context, opts ...Option) (*Client, error) {
 
 // Stop stops the client.
 func (c *Client) Stop() error {
-	var merr *multierror.Error
+	var merr error
 	for _, ps := range [][]LogProcessor{c.validators, c.backends} {
 		for _, p := range ps {
 			if stoppable, ok := p.(StoppableProcessor); ok {
 				if err := stoppable.Stop(); err != nil {
-					merr = multierror.Append(merr, err)
+					merr = errors.Join(merr, err)
 				}
 			}
 		}
 	}
 
-	return merr.ErrorOrNil()
+	return merr
 }
 
 // Log runs the client processors sequentially on the given AuditLogRequest.

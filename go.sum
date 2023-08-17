@@ -35,8 +35,8 @@ github.com/JohnCGriffin/overflow v0.0.0-20211019200055-46fa312c352c h1:RGWPOewvK
 github.com/JohnCGriffin/overflow v0.0.0-20211019200055-46fa312c352c/go.mod h1:X0CRv0ky0k6m906ixxpzmDRLvX58TFUKS2eePweuyxk=
 github.com/abcxyz/jvs v0.0.5 h1:DaImh0K4DONZKzpLrLgLGipkWhIQ2++F8kTgOUodR4I=
 github.com/abcxyz/jvs v0.0.5/go.mod h1:60VxQhY/4V12l+2VGVTYqTFikUQjnZdxMP+ZuGlVnUg=
-github.com/abcxyz/pkg v0.7.0 h1:F04KIJSCC7hH9bRpMauuOFriHBX0JFO8puEbNRLIjLw=
-github.com/abcxyz/pkg v0.7.0/go.mod h1:ckJAhXvWQOFUIz85SGZvJa3REkfQviPKnqUNxZZ3qX0=
+github.com/abcxyz/pkg v0.7.1 h1:cH9VzzSLqjLI2OzxSaIutboq6Df8PB4N7zDvX9SOZfU=
+github.com/abcxyz/pkg v0.7.1/go.mod h1:ckJAhXvWQOFUIz85SGZvJa3REkfQviPKnqUNxZZ3qX0=
 github.com/andybalholm/brotli v1.0.5 h1:8uQZIdzKmjc/iuPu7O2ioW48L81FgatrcpfFmiq/cCs=
 github.com/andybalholm/brotli v1.0.5/go.mod h1:fO7iG3H7G2nSZ7m0zPUDn85XEX2GTukHGRSepvi9Eig=
 github.com/antihax/optional v1.0.0/go.mod h1:uupD/76wgC+ih3iEmQUL+0Ugr19nfwCT1kdvxnR2qWY=

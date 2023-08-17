@@ -16,6 +16,7 @@ package cloudlogging
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"cloud.google.com/go/logging"
@@ -23,7 +24,6 @@ import (
 
 	api "github.com/abcxyz/lumberjack/clients/go/apis/v1alpha1"
 	"github.com/abcxyz/pkg/gcputil"
-	"github.com/hashicorp/go-multierror"
 )
 
 // Processor is the remote Cloud Logging processor.
@@ -150,12 +150,12 @@ func (p *Processor) Process(ctx context.Context, logReq *api.AuditLogRequest) er
 // Stop stops the processor by flushing the logs from all loggers.
 // Stop is only meaningful when the client emitted logs as best-effort.
 func (p *Processor) Stop() error {
-	var merr *multierror.Error
+	var merr error
 	for logtype, logger := range p.loggerByLogType {
 		if err := logger.Flush(); err != nil {
-			merr = multierror.Append(merr, fmt.Errorf("failed to flush %s logs: %w", logtype, err))
+			merr = errors.Join(merr, fmt.Errorf("failed to flush %s logs: %w", logtype, err))
 		}
 	}
 
-	return merr.ErrorOrNil()
+	return merr
 }
