@@ -138,7 +138,7 @@ func (p *Puller) SteamPull(ctx context.Context, filter string, logNum int) ([]*l
 
 		for counter := 0; counter < logNum; {
 			resp, err := stream.Recv()
-			if err == io.EOF {
+			if errors.Is(err, io.EOF) {
 				break
 			}
 			if err != nil {
