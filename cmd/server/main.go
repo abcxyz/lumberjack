@@ -43,7 +43,7 @@ func main() {
 		syscall.SIGINT, syscall.SIGTERM)
 	defer done()
 
-	logger := logging.NewFromEnv("")
+	logger := logging.NewFromEnv("LUMBERJACK_")
 	ctx = logging.WithLogger(ctx, logger)
 
 	if err := realMain(ctx); err != nil {
