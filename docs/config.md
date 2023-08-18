@@ -103,10 +103,12 @@ justification:
   allow_breakglass: false
 ```
 
-## Supported env vars
+## Supported environment variables
 
 ENV VAR name                                      | Description
 ------------------------------------------------- | -----------
+LUMBERJACK_LOG_LEVEL                              | Verbosity of the lumberjack server logs; valid values are "debug", "warn", "info" (default), "error".
+LUMBERJACK_LOG_FORMAT                             | Output format for lumberjack server logs; valid values are "text" or "json" (default).
 AUDIT_CLIENT_BACKEND_CLOUDLOGGING_DEFAULT_PROJECT | Audit logging directly to cloud logging in the default project
 AUDIT_CLIENT_BACKEND_CLOUDLOGGING_PROJECT         | Audit logging directly to cloud logging in the given project
 AUDIT_CLIENT_BACKEND_REMOTE_ADDRESS               | Audit logging to an ingestion gRPC service in the given address
