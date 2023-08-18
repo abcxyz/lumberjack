@@ -15,10 +15,9 @@
 package v1alpha1
 
 import (
+	"errors"
 	"fmt"
 	"strings"
-
-	"github.com/hashicorp/go-multierror"
 )
 
 const (
@@ -75,42 +74,42 @@ func (cfg *Config) Validate() error {
 	cfg.SetDefault()
 
 	// TODO: do validations for each field if necessary.
-	var merr *multierror.Error
+	var merr error
 	if cfg.Version != Version {
-		merr = multierror.Append(merr, fmt.Errorf("unexpected Version %q want %q", cfg.Version, Version))
+		merr = errors.Join(merr, fmt.Errorf("unexpected Version %q want %q", cfg.Version, Version))
 	}
 
 	if cfg.Backend == nil {
-		merr = multierror.Append(merr, fmt.Errorf("backend is nil"))
+		merr = errors.Join(merr, fmt.Errorf("backend is nil"))
 	} else if serr := cfg.Backend.Validate(); serr != nil {
-		merr = multierror.Append(merr, serr)
+		merr = errors.Join(merr, serr)
 	}
 
 	if cfg.SecurityContext != nil {
 		if err := cfg.SecurityContext.Validate(); err != nil {
-			merr = multierror.Append(merr, err)
+			merr = errors.Join(merr, err)
 		}
 	}
 
 	for _, r := range cfg.Rules {
 		if err := r.Validate(); err != nil {
-			merr = multierror.Append(merr, err)
+			merr = errors.Join(merr, err)
 		}
 	}
 
 	if cfg.LogMode != "" {
 		if _, ok := AuditLogRequest_LogMode_value[strings.ToUpper(cfg.LogMode)]; !ok {
-			merr = multierror.Append(merr, fmt.Errorf("invalid LogMode %q", cfg.LogMode))
+			merr = errors.Join(merr, fmt.Errorf("invalid LogMode %q", cfg.LogMode))
 		}
 	}
 
 	if cfg.Justification != nil {
 		if err := cfg.Justification.Validate(); err != nil {
-			merr = multierror.Append(merr, err)
+			merr = errors.Join(merr, err)
 		}
 	}
 
-	return merr.ErrorOrNil()
+	return merr
 }
 
 // SetDefault sets default for the config.
@@ -158,26 +157,26 @@ func (b *Backend) SetDefault() {
 func (b *Backend) Validate() error {
 	backendSet := false
 
-	var merr *multierror.Error
+	var merr error
 	if b.Remote != nil {
 		backendSet = true
 		if err := b.Remote.Validate(); err != nil {
-			merr = multierror.Append(merr, err)
+			merr = errors.Join(merr, err)
 		}
 	}
 
 	if b.CloudLogging != nil {
 		backendSet = true
 		if err := b.CloudLogging.Validate(); err != nil {
-			merr = multierror.Append(merr, err)
+			merr = errors.Join(merr, err)
 		}
 	}
 
 	if !backendSet {
-		merr = multierror.Append(merr, fmt.Errorf("no backend is set"))
+		merr = errors.Join(merr, fmt.Errorf("no backend is set"))
 	}
 
-	return merr.ErrorOrNil()
+	return merr
 }
 
 // Remote is the remote backend service to send audit logs to.
@@ -265,13 +264,13 @@ func (sc *SecurityContext) Validate() error {
 		return fmt.Errorf("one and only one SecurityContext option must be specified")
 	}
 
-	var merr *multierror.Error
+	var merr error
 	for i, j := range sc.FromRawJWT {
 		if err := j.Validate(); err != nil {
-			merr = multierror.Append(merr, fmt.Errorf("FromRawJWT[%d]: %w", i, err))
+			merr = errors.Join(merr, fmt.Errorf("FromRawJWT[%d]: %w", i, err))
 		}
 	}
-	return merr.ErrorOrNil()
+	return merr
 }
 
 // FromRawJWT provides info for how to retrieve security context from

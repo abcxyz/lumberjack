@@ -259,9 +259,8 @@ func TestValidate(t *testing.T) {
 				},
 				Rules: []*AuditRule{{}},
 			},
-			wantErr: `
-	* unexpected Version "random" want "v1alpha1"
-	* audit rule selector is empty`,
+			wantErr: `unexpected Version "random" want "v1alpha1"
+audit rule selector is empty`,
 		},
 		{
 			name: "invalid_security_context",

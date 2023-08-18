@@ -18,10 +18,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
 	"os/signal"
 	"syscall"
 
-	"cloud.google.com/go/logging"
+	cloudloggingsdk "cloud.google.com/go/logging"
 	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
@@ -33,27 +34,29 @@ import (
 	"github.com/abcxyz/lumberjack/internal/version"
 	"github.com/abcxyz/lumberjack/pkg/server"
 	"github.com/abcxyz/pkg/gcputil"
-	zlogger "github.com/abcxyz/pkg/logging"
+	"github.com/abcxyz/pkg/logging"
 	"github.com/abcxyz/pkg/serving"
 )
 
 func main() {
-	ctx, done := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	ctx, done := signal.NotifyContext(context.Background(),
+		syscall.SIGINT, syscall.SIGTERM)
 	defer done()
 
-	logger := zlogger.NewFromEnv("")
-	ctx = zlogger.WithLogger(ctx, logger)
+	logger := logging.NewFromEnv("")
+	ctx = logging.WithLogger(ctx, logger)
 
 	if err := realMain(ctx); err != nil {
 		done()
-		logger.Fatal(err)
+		logger.ErrorContext(ctx, err.Error())
+		os.Exit(1)
 	}
-	logger.Info("successful shutdown")
+	logger.InfoContext(ctx, "successful shutdown")
 }
 
 func realMain(ctx context.Context) (retErr error) {
-	logger := zlogger.FromContext(ctx)
-	logger.Debugw("server starting",
+	logger := logging.FromContext(ctx)
+	logger.DebugContext(ctx, "server starting",
 		"commit", version.Commit,
 		"version", version.Version)
 
@@ -64,7 +67,7 @@ func realMain(ctx context.Context) (retErr error) {
 		return fmt.Errorf("failed to process config: %w", err)
 	}
 
-	logger.Debugw("loaded configuration", "config", cfg)
+	logger.DebugContext(ctx, "loaded configuration", "config", cfg)
 
 	if err := trace.Init(cfg.TraceRatio); err != nil {
 		return fmt.Errorf("failed to init tracing: %w", err)
@@ -100,7 +103,7 @@ func realMain(ctx context.Context) (retErr error) {
 	// TODO(b/202320320): Build interceptors for observability, logger, etc.
 	grpcServer := grpc.NewServer(grpc.ChainUnaryInterceptor(
 		otelgrpc.UnaryServerInterceptor(),
-		zlogger.GRPCUnaryInterceptor(logger, projectID),
+		logging.GRPCUnaryInterceptor(logger, projectID),
 	))
 	api.RegisterAuditLogAgentServer(grpcServer, logAgent)
 	reflection.Register(grpcServer)
@@ -113,7 +116,7 @@ func realMain(ctx context.Context) (retErr error) {
 }
 
 func newCloudLoggingProcessor(ctx context.Context, projectID string) (*cloudlogging.Processor, error) {
-	client, err := logging.NewClient(ctx, projectID)
+	client, err := cloudloggingsdk.NewClient(ctx, projectID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create cloud logging client: %w", err)
 	}
