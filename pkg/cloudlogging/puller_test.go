@@ -150,12 +150,13 @@ func TestSteamPull(t *testing.T) {
 				testResource,
 				WithRetry(retry.WithMaxRetries(0, retry.NewFibonacci(500*time.Millisecond))),
 			)
-			gotResult, gotErr := p.SteamPull(ctx, tc.filter, 1)
+			ch := make(chan []*loggingpb.LogEntry, 1)
+			gotErr := p.SteamPull(ctx, tc.filter, 1, ch)
 			if diff := testutil.DiffErrString(gotErr, tc.wantErrSubstr); diff != "" {
 				t.Errorf("Process(%+v) got unexpected error substring: %v", tc.name, diff)
 			}
 
-			if diff := cmp.Diff(tc.wantResult, gotResult, protocmp.Transform()); diff != "" {
+			if diff := cmp.Diff(tc.wantResult, <-ch, protocmp.Transform()); diff != "" {
 				t.Errorf("Process(%+v) got result diff (-want, +got): %v", tc.name, diff)
 			}
 

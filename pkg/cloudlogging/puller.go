@@ -115,9 +115,8 @@ func (p *Puller) Pull(ctx context.Context, filter string, maxCount int) ([]*logg
 }
 
 // SteamPull pulls live log entries, it stops pulling after logNum of log entries.
-func (p *Puller) SteamPull(ctx context.Context, filter string, logNum int) ([]*loggingpb.LogEntry, error) {
+func (p *Puller) SteamPull(ctx context.Context, filter string, logNum int, result chan<- []*loggingpb.LogEntry) error {
 	logger := logger.FromContext(ctx)
-	var ls []*loggingpb.LogEntry
 	if err := retry.Do(ctx, p.retry, func(ctx context.Context) error {
 		stream, err := p.client.TailLogEntries(ctx)
 		if err != nil {
@@ -146,12 +145,15 @@ func (p *Puller) SteamPull(ctx context.Context, filter string, logNum int) ([]*l
 			}
 			if resp.Entries != nil {
 				counter += len(resp.Entries)
-				ls = append(ls, resp.GetEntries()...)
+				result <- resp.GetEntries()
 			}
 		}
+		close(result)
 		return nil
 	}); err != nil {
-		return nil, fmt.Errorf("failed to pull log entries: %w", err)
+		close(result)
+		return fmt.Errorf("failed to pull log entries: %w", err)
 	}
-	return ls, nil
+
+	return nil
 }
