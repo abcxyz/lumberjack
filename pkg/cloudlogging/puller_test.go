@@ -118,14 +118,10 @@ func TestStreamPull(t *testing.T) {
 		wantErrSubstr string
 	}{
 		{
-			name:   "success",
-			filter: "test-filter",
-			server: &fakeServer{
-				tailResp: &loggingpb.TailLogEntriesResponse{
-					Entries: []*loggingpb.LogEntry{{LogName: "test1"}, {LogName: "test2"}},
-				},
-			},
-			wantResult: []*loggingpb.LogEntry{{LogName: "test1"}, {LogName: "test2"}},
+			name:       "success",
+			filter:     "test-filter",
+			server:     &fakeServer{logNumCap: 10000},
+			wantResult: []*loggingpb.LogEntry{{LogName: "test-0"}, {LogName: "test-1"}},
 			wantReq: &loggingpb.TailLogEntriesRequest{
 				ResourceNames: []string{testResource},
 				Filter:        "test-filter",
@@ -161,6 +157,8 @@ func TestStreamPull(t *testing.T) {
 			})
 
 			ctx, cancel := context.WithCancel(context.Background())
+			// create a go routine to receive logs sent from
+			// streamPull,  break after receive enough logs.
 			go func() {
 				for l := range ch {
 					gotLogs = append(gotLogs, l)
@@ -180,6 +178,8 @@ func TestStreamPull(t *testing.T) {
 			)
 
 			var gotPullErr error
+			// use a different goroutine to steamPull so it won't
+			// block rest of the code.
 			go func() {
 				defer close(ch) // If StreamPull returns, we can safely close the channel
 				gotPullErr = p.StreamPull(ctx, tc.filter, ch)
@@ -191,6 +191,7 @@ func TestStreamPull(t *testing.T) {
 			case <-time.After(5 * time.Second):
 				t.Logf("No enough logEntries recevied after time out")
 			}
+			// call cancel to stop StreamPull
 			cancel()
 
 			if diff := cmp.Diff(tc.wantResult, gotLogs, protocmp.Transform()); diff != "" {
@@ -203,9 +204,6 @@ func TestStreamPull(t *testing.T) {
 
 			if diff := testutil.DiffErrString(gotPullErr, tc.wantErrSubstr); diff != "" {
 				t.Errorf("Process(%+v) got unexpected error substring: %v", tc.name, diff)
-			}
-			if tc.wantNum != int(tc.server.logCounter) {
-				t.Errorf("Process(%v) got different logEntry number want: %d, got: %d", tc.name, tc.wantNum, tc.server.logCounter)
 			}
 		})
 	}
@@ -235,8 +233,8 @@ type fakeServer struct {
 	listReq     *loggingpb.ListLogEntriesRequest
 	listResp    *loggingpb.ListLogEntriesResponse
 	tailReq     *loggingpb.TailLogEntriesRequest
-	tailResp    *loggingpb.TailLogEntriesResponse
 	logCounter  int64
+	logNumCap   int64
 	injectedErr error
 }
 
@@ -251,15 +249,18 @@ func (s *fakeServer) TailLogEntries(server loggingpb.LoggingServiceV2_TailLogEnt
 	if err != nil {
 		return fmt.Errorf("failed to receive tailLogEntry request")
 	}
-	if s.tailResp != nil {
-		// send one log entry at a time to make sure tail StreamPull can receive
-		// multiple response for server.Send()
-		for _, v := range s.tailResp.Entries {
-			s.logCounter += 1
-			if err := server.Send(&loggingpb.TailLogEntriesResponse{Entries: []*loggingpb.LogEntry{v}}); err != nil {
+	if s.injectedErr == nil {
+		// at each time only send one TailLogEntriesResponse with only one LogEntry
+		// this help make sure streamPull can receiveresponse from different server send.
+		for s.logCounter < s.logNumCap {
+			if err := server.Send(&loggingpb.TailLogEntriesResponse{
+				Entries: []*loggingpb.LogEntry{{LogName: fmt.Sprintf("test-%d", s.logCounter)}},
+			}); err != nil {
 				return fmt.Errorf("server failed to send: %w", err)
 			}
+			s.logCounter += 1
 		}
+		return fmt.Errorf("server reached max number for send: %w", err)
 	}
 	return s.injectedErr
 }
