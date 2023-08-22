@@ -143,7 +143,7 @@ func TestStreamPull(t *testing.T) {
 				Filter:        "test-filter",
 			},
 			wantErrSubstr: "injected error",
-			wantNum:       1,
+			wantNum:       0,
 		},
 	}
 
@@ -205,6 +205,9 @@ func TestStreamPull(t *testing.T) {
 			if diff := testutil.DiffErrString(gotPullErr, tc.wantErrSubstr); diff != "" {
 				t.Errorf("Process(%+v) got unexpected error substring: %v", tc.name, diff)
 			}
+			if tc.wantNum != int(tc.server.logCounter) {
+				t.Errorf("Process(%v) got different logEntry number want: %d, got: %d", tc.name, tc.wantNum, tc.server.logCounter)
+			}
 		})
 	}
 }
@@ -253,6 +256,7 @@ type fakeServer struct {
 	listResp    *loggingpb.ListLogEntriesResponse
 	tailReq     *loggingpb.TailLogEntriesRequest
 	tailResp    *loggingpb.TailLogEntriesResponse
+	logCounter  int64
 	injectedErr error
 }
 
@@ -271,6 +275,7 @@ func (s *fakeServer) TailLogEntries(server loggingpb.LoggingServiceV2_TailLogEnt
 		// send one log entry at a time to make sure tail StreamPull can receive
 		// multiple response for server.Send()
 		for _, v := range s.tailResp.Entries {
+			s.logCounter += 1
 			if err := server.Send(&loggingpb.TailLogEntriesResponse{Entries: []*loggingpb.LogEntry{v}}); err != nil {
 				return fmt.Errorf("server failed to send: %w", err)
 			}
