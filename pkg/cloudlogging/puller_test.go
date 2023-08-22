@@ -154,14 +154,14 @@ func TestStreamPull(t *testing.T) {
 			t.Parallel()
 
 			ch := make(chan *loggingpb.LogEntry)
+			var logCh chan<- *loggingpb.LogEntry
 			var gotLogs []*loggingpb.LogEntry
-			errCh := make(chan error)
 			done := make(chan struct{}, 1)
 			t.Cleanup(func() {
 				close(done)
 			})
 
-			ctx := context.Background()
+			ctx, cancel := context.WithCancel(context.Background())
 			go func() {
 				for l := range ch {
 					gotLogs = append(gotLogs, l)
@@ -180,21 +180,21 @@ func TestStreamPull(t *testing.T) {
 				WithRetry(retry.WithMaxRetries(0, retry.NewFibonacci(500*time.Millisecond))),
 			)
 
-			go p.StreamPull(ctx, tc.filter, ch, errCh, streamClient)
+			var gotPullErr error
+			go func() {
+				logCh, gotPullErr = p.StreamPull(ctx, tc.filter, ch, streamClient)
+				defer close(logCh)
+			}()
 
 			select {
 			case <-done:
-				err := streamClient.CloseSend()
-				if err != nil {
-					t.Fatalf("failed to close streamClient %v", err)
-				}
-			case l := <-errCh:
-				if diff := testutil.DiffErrString(l, tc.wantErrSubstr); diff != "" {
-					t.Errorf("Process(%+v) got unexpected error substring: %v", tc.name, diff)
-				}
+				t.Logf("Recevied enough logEntries")
+				break
 			case <-time.After(5 * time.Second):
-				t.Fatalf("Not enough logs are recevied after time out")
+				t.Logf("No enough logEntries recevied after time out")
+				break
 			}
+			cancel()
 
 			if diff := cmp.Diff(tc.wantResult, gotLogs, protocmp.Transform()); diff != "" {
 				t.Errorf("Process(%+v) got result diff (-want, +got): %v", tc.name, diff)
@@ -202,6 +202,10 @@ func TestStreamPull(t *testing.T) {
 
 			if diff := cmp.Diff(tc.wantReq, tc.server.tailReq, protocmp.Transform()); diff != "" {
 				t.Errorf("Process(%+v) got request diff (-want, +got): %v", tc.name, diff)
+			}
+
+			if diff := testutil.DiffErrString(gotPullErr, tc.wantErrSubstr); diff != "" {
+				t.Errorf("Process(%+v) got unexpected error substring: %v", tc.name, diff)
 			}
 		})
 	}

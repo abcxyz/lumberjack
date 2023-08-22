@@ -115,7 +115,7 @@ func (p *Puller) Pull(ctx context.Context, filter string, maxCount int) ([]*logg
 }
 
 // SteamPull pulls live log entries, it won't stop until a cancel signal happens.
-func (p *Puller) StreamPull(ctx context.Context, filter string, logCh chan<- *loggingpb.LogEntry, errCh chan<- error, tailLogEntriesClient loggingpb.LoggingServiceV2_TailLogEntriesClient) {
+func (p *Puller) StreamPull(ctx context.Context, filter string, logCh chan<- *loggingpb.LogEntry, tailLogEntriesClient loggingpb.LoggingServiceV2_TailLogEntriesClient) (chan<- *loggingpb.LogEntry, error) {
 	if err := retry.Do(ctx, p.retry, func(ctx context.Context) error {
 		req := &loggingpb.TailLogEntriesRequest{
 			ResourceNames: []string{p.resource},
@@ -131,7 +131,6 @@ func (p *Puller) StreamPull(ctx context.Context, filter string, logCh chan<- *lo
 				continue
 			}
 			if err != nil {
-				errCh <- err
 				return retry.RetryableError(fmt.Errorf("failed to receive response: %w", err))
 			}
 			if resp.GetEntries() != nil {
@@ -141,10 +140,7 @@ func (p *Puller) StreamPull(ctx context.Context, filter string, logCh chan<- *lo
 			}
 		}
 	}); err != nil {
-		errCh <- err
-		// Sender should close the channel. If the caller close the channel, it
-		// could lead to sending on a closed channel and cause a panic
-		close(errCh)
-		close(logCh)
+		return logCh, fmt.Errorf("failed to pull log entries: %w", err)
 	}
+	return logCh, nil
 }
