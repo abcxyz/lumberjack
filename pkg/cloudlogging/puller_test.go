@@ -154,7 +154,6 @@ func TestStreamPull(t *testing.T) {
 			t.Parallel()
 
 			ch := make(chan *loggingpb.LogEntry)
-			var logCh chan<- *loggingpb.LogEntry
 			var gotLogs []*loggingpb.LogEntry
 			done := make(chan struct{}, 1)
 			t.Cleanup(func() {
@@ -182,8 +181,7 @@ func TestStreamPull(t *testing.T) {
 
 			var gotPullErr error
 			go func() {
-				logCh, gotPullErr = p.StreamPull(ctx, tc.filter, ch, streamClient)
-				defer close(logCh)
+				gotPullErr = p.StreamPull(ctx, tc.filter, ch, streamClient)
 			}()
 
 			select {

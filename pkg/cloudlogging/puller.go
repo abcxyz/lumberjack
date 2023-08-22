@@ -115,7 +115,7 @@ func (p *Puller) Pull(ctx context.Context, filter string, maxCount int) ([]*logg
 }
 
 // SteamPull pulls live log entries, it won't stop until a cancel signal happens.
-func (p *Puller) StreamPull(ctx context.Context, filter string, logCh chan<- *loggingpb.LogEntry, tailLogEntriesClient loggingpb.LoggingServiceV2_TailLogEntriesClient) (chan<- *loggingpb.LogEntry, error) {
+func (p *Puller) StreamPull(ctx context.Context, filter string, logCh chan<- *loggingpb.LogEntry, tailLogEntriesClient loggingpb.LoggingServiceV2_TailLogEntriesClient) error {
 	if err := retry.Do(ctx, p.retry, func(ctx context.Context) error {
 		req := &loggingpb.TailLogEntriesRequest{
 			ResourceNames: []string{p.resource},
@@ -140,7 +140,7 @@ func (p *Puller) StreamPull(ctx context.Context, filter string, logCh chan<- *lo
 			}
 		}
 	}); err != nil {
-		return logCh, fmt.Errorf("failed to pull log entries: %w", err)
+		return fmt.Errorf("failed to pull log entries: %w", err)
 	}
-	return logCh, nil
+	return nil
 }
