@@ -128,7 +128,7 @@ func (p *Puller) StreamPull(ctx context.Context, filter string, logCh chan<- *lo
 		for {
 			resp, err := tailLogEntriesClient.Recv()
 			if errors.Is(err, io.EOF) {
-				return retry.RetryableError(fmt.Errorf("failed to send request: %w", err))
+				continue
 			}
 			if err != nil {
 				errCh <- err
