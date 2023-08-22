@@ -184,7 +184,10 @@ func TestStreamPull(t *testing.T) {
 
 			select {
 			case <-done:
-				streamClient.CloseSend()
+				err := streamClient.CloseSend()
+				if err != nil {
+					t.Fatalf("failed to close streamClient %v", err)
+				}
 			case l := <-errCh:
 				if diff := testutil.DiffErrString(l, tc.wantErrSubstr); diff != "" {
 					t.Errorf("Process(%+v) got unexpected error substring: %v", tc.name, diff)
