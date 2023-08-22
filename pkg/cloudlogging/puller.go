@@ -28,13 +28,13 @@ import (
 	"google.golang.org/api/iterator"
 
 	logging "cloud.google.com/go/logging/apiv2"
-	logger "github.com/abcxyz/pkg/logging"
 )
 
 // Puller pulls log entries of GCP organizations, folders, projects, and
 // billingAccounts.
 type Puller struct {
 	client *logging.Client
+	// streamClient loggingpb.LoggingServiceV2_TailLogEntriesClient
 	// Required. Name of a parent resource from which to retrieve log entries:
 	//
 	// *  `projects/[PROJECT_ID]`
@@ -114,46 +114,37 @@ func (p *Puller) Pull(ctx context.Context, filter string, maxCount int) ([]*logg
 	return ls, nil
 }
 
-// SteamPull pulls live log entries, it stops pulling after logNum of log entries.
-func (p *Puller) SteamPull(ctx context.Context, filter string, logNum int, result chan<- []*loggingpb.LogEntry) error {
-	logger := logger.FromContext(ctx)
+// SteamPull pulls live log entries, it won't stop until a cancel signal happens
+func (p *Puller) StreamPull(ctx context.Context, filter string, logCh chan<- *loggingpb.LogEntry, errCh chan<- error, tailLogEntriesClient loggingpb.LoggingServiceV2_TailLogEntriesClient) {
 	if err := retry.Do(ctx, p.retry, func(ctx context.Context) error {
-		stream, err := p.client.TailLogEntries(ctx)
-		if err != nil {
-			return retry.RetryableError(fmt.Errorf("failed to create stream: %w", err))
-		}
-		defer func() {
-			if err := stream.CloseSend(); err != nil {
-				logger.Infof("failed to close stream: %w", err)
-			}
-		}()
 		req := &loggingpb.TailLogEntriesRequest{
 			ResourceNames: []string{p.resource},
 			Filter:        filter,
 		}
-		if err := stream.Send(req); err != nil {
+		if err := tailLogEntriesClient.Send(req); err != nil {
 			return retry.RetryableError(fmt.Errorf("failed to send request: %w", err))
 		}
 
-		for counter := 0; counter < logNum; {
-			resp, err := stream.Recv()
+		for {
+			resp, err := tailLogEntriesClient.Recv()
 			if errors.Is(err, io.EOF) {
-				break
+				return retry.RetryableError(fmt.Errorf("failed to send request: %w", err))
 			}
 			if err != nil {
+				errCh <- err
 				return retry.RetryableError(fmt.Errorf("failed to receive response: %w", err))
 			}
-			if resp.Entries != nil {
-				counter += len(resp.Entries)
-				result <- resp.GetEntries()
+			if resp.GetEntries() != nil {
+				for _, v := range resp.GetEntries() {
+					logCh <- v
+				}
 			}
 		}
-		close(result)
-		return nil
 	}); err != nil {
-		close(result)
-		return fmt.Errorf("failed to pull log entries: %w", err)
+		errCh <- err
+		// Sender should close the channel. If the caller close the channel, it
+		// could lead to sending on a closed channel and cause a panic
+		close(errCh)
+		close(logCh)
 	}
-
-	return nil
 }

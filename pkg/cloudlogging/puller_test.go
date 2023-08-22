@@ -105,7 +105,7 @@ func TestPull(t *testing.T) {
 	}
 }
 
-func TestSteamPull(t *testing.T) {
+func TestStreamPull(t *testing.T) {
 	t.Parallel()
 
 	cases := []struct {
@@ -114,6 +114,7 @@ func TestSteamPull(t *testing.T) {
 		filter        string
 		wantReq       *loggingpb.TailLogEntriesRequest
 		wantResult    []*loggingpb.LogEntry
+		wantNum       int
 		wantErrSubstr string
 	}{
 		{
@@ -121,10 +122,15 @@ func TestSteamPull(t *testing.T) {
 			filter: "test-filter",
 			server: &fakeServer{
 				tailResp: &loggingpb.TailLogEntriesResponse{
-					Entries: []*loggingpb.LogEntry{{LogName: "test"}},
+					Entries: []*loggingpb.LogEntry{{LogName: "test1"}, {LogName: "test2"}},
 				},
 			},
-			wantResult: []*loggingpb.LogEntry{{LogName: "test"}},
+			wantResult: []*loggingpb.LogEntry{{LogName: "test1"}, {LogName: "test2"}},
+			wantReq: &loggingpb.TailLogEntriesRequest{
+				ResourceNames: []string{testResource},
+				Filter:        "test-filter",
+			},
+			wantNum: 2,
 		},
 		{
 			name:   "failed_to_pull",
@@ -132,7 +138,12 @@ func TestSteamPull(t *testing.T) {
 			server: &fakeServer{
 				injectedErr: fmt.Errorf("injected error"),
 			},
+			wantReq: &loggingpb.TailLogEntriesRequest{
+				ResourceNames: []string{testResource},
+				Filter:        "test-filter",
+			},
 			wantErrSubstr: "injected error",
+			wantNum:       1,
 		},
 	}
 
@@ -142,21 +153,47 @@ func TestSteamPull(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
+			ch := make(chan *loggingpb.LogEntry)
+			var gotLogs []*loggingpb.LogEntry
+			errCh := make(chan error)
+			done := make(chan struct{}, 1)
+			t.Cleanup(func() {
+				close(done)
+			})
+
 			ctx := context.Background()
-			fakeClient := setupFakeClient(t, ctx, tc.server)
+			go func() {
+				for l := range ch {
+					gotLogs = append(gotLogs, l)
+					if len(gotLogs) == tc.wantNum {
+						done <- struct{}{}
+						break
+					}
+				}
+			}()
+
+			fakeClient, streamClient := setupFakeStreamClient(t, ctx, tc.server)
 			p := NewPuller(
 				ctx,
 				fakeClient,
 				testResource,
 				WithRetry(retry.WithMaxRetries(0, retry.NewFibonacci(500*time.Millisecond))),
 			)
-			ch := make(chan []*loggingpb.LogEntry, 1)
-			gotErr := p.SteamPull(ctx, tc.filter, 1, ch)
-			if diff := testutil.DiffErrString(gotErr, tc.wantErrSubstr); diff != "" {
-				t.Errorf("Process(%+v) got unexpected error substring: %v", tc.name, diff)
+
+			go p.StreamPull(ctx, tc.filter, ch, errCh, streamClient)
+
+			select {
+			case <-done:
+				streamClient.CloseSend()
+			case l := <-errCh:
+				if diff := testutil.DiffErrString(l, tc.wantErrSubstr); diff != "" {
+					t.Errorf("Process(%+v) got unexpected error substring: %v", tc.name, diff)
+				}
+			case <-time.After(5 * time.Second):
+				t.Fatalf("Not enough logs are recevied after time out")
 			}
 
-			if diff := cmp.Diff(tc.wantResult, <-ch, protocmp.Transform()); diff != "" {
+			if diff := cmp.Diff(tc.wantResult, gotLogs, protocmp.Transform()); diff != "" {
 				t.Errorf("Process(%+v) got result diff (-want, +got): %v", tc.name, diff)
 			}
 
@@ -177,12 +214,31 @@ func setupFakeClient(t *testing.T, ctx context.Context, s *fakeServer) *logging.
 	t.Cleanup(func() {
 		conn.Close()
 	})
-	// fakeClient := loggingpb.NewLoggingServiceV2Client(conn)
+
 	fakeClient, err := logging.NewClient(ctx, option.WithGRPCConn(conn))
 	if err != nil {
 		t.Fatalf("creating client for fake at %q: %v", addr, err)
 	}
 	return fakeClient
+}
+
+func setupFakeStreamClient(t *testing.T, ctx context.Context, s *fakeServer) (*logging.Client, loggingpb.LoggingServiceV2_TailLogEntriesClient) {
+	t.Helper()
+
+	// Setup fake server.
+	addr, conn := testutil.FakeGRPCServer(t, func(grpcS *grpc.Server) {
+		loggingpb.RegisterLoggingServiceV2Server(grpcS, s)
+	})
+	t.Cleanup(func() {
+		conn.Close()
+	})
+
+	fakeClient, err := logging.NewClient(ctx, option.WithGRPCConn(conn))
+	if err != nil {
+		t.Fatalf("creating client for fake at %q: %v", addr, err)
+	}
+	tailLogEntriesClient, _ := fakeClient.TailLogEntries(ctx)
+	return fakeClient, tailLogEntriesClient
 }
 
 type fakeServer struct {
@@ -201,9 +257,18 @@ func (s *fakeServer) ListLogEntries(ctx context.Context, req *loggingpb.ListLogE
 }
 
 func (s *fakeServer) TailLogEntries(server loggingpb.LoggingServiceV2_TailLogEntriesServer) error {
+	var err error
+	s.tailReq, err = server.Recv()
+	if err != nil {
+		return fmt.Errorf("failed to receive tailLogEntry request")
+	}
 	if s.tailResp != nil {
-		if err := server.Send(s.tailResp); err != nil {
-			return fmt.Errorf("server failed to send: %w", err)
+		// send one log entry at a time to make sure tail StreamPull can receive
+		// multiple response for server.Send()
+		for _, v := range s.tailResp.Entries {
+			if err := server.Send(&loggingpb.TailLogEntriesResponse{Entries: []*loggingpb.LogEntry{v}}); err != nil {
+				return fmt.Errorf("server failed to send: %w", err)
+			}
 		}
 	}
 	return s.injectedErr
