@@ -153,7 +153,7 @@ func TestStreamPull(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
-			ch := make(chan *loggingpb.LogEntry)
+			ch := make(chan *loggingpb.LogEntry, 2)
 			var gotLogs []*loggingpb.LogEntry
 			done := make(chan struct{}, 1)
 			t.Cleanup(func() {
@@ -171,7 +171,7 @@ func TestStreamPull(t *testing.T) {
 				}
 			}()
 
-			fakeClient, streamClient := setupFakeStreamClient(t, ctx, tc.server)
+			fakeClient := setupFakeClient(t, ctx, tc.server)
 			p := NewPuller(
 				ctx,
 				fakeClient,
@@ -181,16 +181,15 @@ func TestStreamPull(t *testing.T) {
 
 			var gotPullErr error
 			go func() {
-				gotPullErr = p.StreamPull(ctx, tc.filter, ch, streamClient)
+				defer close(ch) // If StreamPull returns, we can safely close the channel
+				gotPullErr = p.StreamPull(ctx, tc.filter, ch)
 			}()
 
 			select {
 			case <-done:
 				t.Logf("Recevied enough logEntries")
-				break
 			case <-time.After(5 * time.Second):
 				t.Logf("No enough logEntries recevied after time out")
-				break
 			}
 			cancel()
 
@@ -228,25 +227,6 @@ func setupFakeClient(t *testing.T, ctx context.Context, s *fakeServer) *logging.
 		t.Fatalf("creating client for fake at %q: %v", addr, err)
 	}
 	return fakeClient
-}
-
-func setupFakeStreamClient(t *testing.T, ctx context.Context, s *fakeServer) (*logging.Client, loggingpb.LoggingServiceV2_TailLogEntriesClient) {
-	t.Helper()
-
-	// Setup fake server.
-	addr, conn := testutil.FakeGRPCServer(t, func(grpcS *grpc.Server) {
-		loggingpb.RegisterLoggingServiceV2Server(grpcS, s)
-	})
-	t.Cleanup(func() {
-		conn.Close()
-	})
-
-	fakeClient, err := logging.NewClient(ctx, option.WithGRPCConn(conn))
-	if err != nil {
-		t.Fatalf("creating client for fake at %q: %v", addr, err)
-	}
-	tailLogEntriesClient, _ := fakeClient.TailLogEntries(ctx)
-	return fakeClient, tailLogEntriesClient
 }
 
 type fakeServer struct {
