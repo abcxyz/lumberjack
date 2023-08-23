@@ -159,7 +159,7 @@ func TestStreamPull(t *testing.T) {
 				close(done)
 			})
 
-			ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+			ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 
 			go func() {
 				for l := range ch {
@@ -180,19 +180,17 @@ func TestStreamPull(t *testing.T) {
 				WithRetry(retry.WithMaxRetries(0, retry.NewFibonacci(500*time.Millisecond))),
 			)
 			var gotPullErr error
-			var gotCloseClientErr error
 
 			go func() {
 				defer close(ch)
 				gotPullErr = p.StreamPull(ctx, tc.filter, ch)
+				// when pull fails, StreamPull will end (since maxRetry is 0)
+				// we should call cancel as soon as the operation ended, as guided
+				// in: https://pkg.go.dev/context#WithTimeout.
 				cancel()
 			}()
 
 			<-ctx.Done() // Either we timed out or we got enough logs and explicitly cancelled it
-
-			if gotCloseClientErr != nil {
-				t.Fatalf("failed to close StreamPull tailClient: %v", gotCloseClientErr)
-			}
 
 			if diff := cmp.Diff(tc.wantResult, gotLogs, protocmp.Transform()); diff != "" {
 				t.Errorf("Process(%+v) got result diff (-want, +got): %v", tc.name, diff)
@@ -259,7 +257,7 @@ func (s *fakeServer) TailLogEntries(server loggingpb.LoggingServiceV2_TailLogEnt
 			}
 			s.tailCounter += 1
 		}
-		return fmt.Errorf("server reached max number for send: %w", err)
+		return fmt.Errorf("reached max number of test logs to return")
 	}
 	return s.injectedErr
 }

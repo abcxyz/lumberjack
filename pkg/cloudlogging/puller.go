@@ -115,16 +115,16 @@ func (p *Puller) Pull(ctx context.Context, filter string, maxCount int) ([]*logg
 }
 
 // SteamPull pulls live log entries, it won't stop until a cancel signal happens.
-func (p *Puller) StreamPull(ctx context.Context, filter string, logCh chan<- *loggingpb.LogEntry) (err error) {
+func (p *Puller) StreamPull(ctx context.Context, filter string, logCh chan<- *loggingpb.LogEntry) error {
+	var rErr error
 	tailClient, err := p.client.TailLogEntries(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to create tailLogEntriesClient: %w", err)
 	}
 
 	defer func() {
-		closeClientErr := tailClient.CloseSend()
-		if err != nil {
-			err = errors.Join(err, fmt.Errorf("failed to close tailClient %w", closeClientErr))
+		if closeClientErr := tailClient.CloseSend(); closeClientErr != nil {
+			rErr = errors.Join(rErr, fmt.Errorf("failed to close tailClient %w", closeClientErr))
 		}
 	}()
 
