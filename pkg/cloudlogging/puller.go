@@ -115,19 +115,17 @@ func (p *Puller) Pull(ctx context.Context, filter string, maxCount int) ([]*logg
 }
 
 // SteamPull pulls live log entries, it won't stop until a cancel signal happens.
-func (p *Puller) StreamPull(ctx context.Context, filter string, logCh chan<- *loggingpb.LogEntry) (err, closeTailClientErr error) {
+func (p *Puller) StreamPull(ctx context.Context, filter string, logCh chan<- *loggingpb.LogEntry) (err error) {
 	tailClient, err := p.client.TailLogEntries(ctx)
 	if err != nil {
-		return fmt.Errorf("failed to create tailLogEntriesClient: %w", err), nil
+		return fmt.Errorf("failed to create tailLogEntriesClient: %w", err)
 	}
 
-	// we don't want to ignore errors from defer but if we use
-	// err = tailClient.CloseSend()
-	// this will override errors from pulling log entries,
-	// so we use a closeTailClientErr to track errors
-	// from tailClient.CloseSend().
 	defer func() {
-		closeTailClientErr = tailClient.CloseSend()
+		closeClientErr := tailClient.CloseSend()
+		if err != nil {
+			err = errors.Join(err, fmt.Errorf("failed to close tailClient %w", closeClientErr))
+		}
 	}()
 
 	if err := retry.Do(ctx, p.retry, func(ctx context.Context) error {
@@ -155,7 +153,7 @@ func (p *Puller) StreamPull(ctx context.Context, filter string, logCh chan<- *lo
 			}
 		}
 	}); err != nil {
-		return fmt.Errorf("failed to pull log entries: %w", err), nil
+		return fmt.Errorf("failed to pull log entries: %w", err)
 	}
-	return nil, nil
+	return nil
 }

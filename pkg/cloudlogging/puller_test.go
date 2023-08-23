@@ -184,7 +184,7 @@ func TestStreamPull(t *testing.T) {
 
 			go func() {
 				defer close(ch)
-				gotPullErr, gotCloseClientErr = p.StreamPull(ctx, tc.filter, ch)
+				gotPullErr = p.StreamPull(ctx, tc.filter, ch)
 				cancel()
 			}()
 
