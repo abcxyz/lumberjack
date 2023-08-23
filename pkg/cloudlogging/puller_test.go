@@ -31,9 +31,10 @@ import (
 	logging "cloud.google.com/go/logging/apiv2"
 )
 
-const testResource = "test-resource"
-
-const fakeServerTailLogCap = 10
+const (
+	testResource         = "test-resource"
+	fakeServerTailLogCap = 10
+)
 
 func TestPull(t *testing.T) {
 	t.Parallel()
@@ -158,7 +159,7 @@ func TestStreamPull(t *testing.T) {
 				close(done)
 			})
 
-			ctx, cancel := context.WithCancel(context.Background())
+			ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 
 			go func() {
 				for l := range ch {
@@ -184,7 +185,6 @@ func TestStreamPull(t *testing.T) {
 			go func() {
 				defer close(ch)
 				gotPullErr, gotCloseClientErr = p.StreamPull(ctx, tc.filter, ch)
-				cancel()
 			}()
 
 			<-ctx.Done() // Either we timed out or we got enough logs and explicitly cancelled it
