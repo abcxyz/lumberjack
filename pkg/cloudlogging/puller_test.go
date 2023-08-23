@@ -185,6 +185,7 @@ func TestStreamPull(t *testing.T) {
 			go func() {
 				defer close(ch)
 				gotPullErr, gotCloseClientErr = p.StreamPull(ctx, tc.filter, ch)
+				cancel()
 			}()
 
 			<-ctx.Done() // Either we timed out or we got enough logs and explicitly cancelled it
