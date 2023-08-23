@@ -154,7 +154,7 @@ func TestStreamPull(t *testing.T) {
 
 			ch := make(chan *loggingpb.LogEntry)
 			var gotLogs []*loggingpb.LogEntry
-			done := make(chan struct{}, 1)
+			done := make(chan struct{})
 			t.Cleanup(func() {
 				close(done)
 			})

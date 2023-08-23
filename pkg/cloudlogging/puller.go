@@ -153,7 +153,6 @@ func (p *Puller) StreamPull(ctx context.Context, filter string, logCh chan<- *lo
 		}
 	}); err != nil {
 		rErr = errors.Join(rErr, fmt.Errorf("failed to pull log entries: %w", err))
-		return rErr
 	}
-	return nil
+	return
 }
