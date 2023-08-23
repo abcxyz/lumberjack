@@ -33,6 +33,8 @@ import (
 
 const testResource = "test-resource"
 
+const fakeServerTailLogCap = 10
+
 func TestPull(t *testing.T) {
 	t.Parallel()
 
@@ -120,7 +122,7 @@ func TestStreamPull(t *testing.T) {
 		{
 			name:       "success",
 			filter:     "test-filter",
-			server:     &fakeServer{logNumCap: 10000},
+			server:     &fakeServer{},
 			wantResult: []*loggingpb.LogEntry{{LogName: "test-0"}, {LogName: "test-1"}},
 			wantReq: &loggingpb.TailLogEntriesRequest{
 				ResourceNames: []string{testResource},
@@ -149,7 +151,7 @@ func TestStreamPull(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
-			ch := make(chan *loggingpb.LogEntry, 2)
+			ch := make(chan *loggingpb.LogEntry)
 			var gotLogs []*loggingpb.LogEntry
 			done := make(chan struct{}, 1)
 			t.Cleanup(func() {
@@ -157,18 +159,18 @@ func TestStreamPull(t *testing.T) {
 			})
 
 			ctx, cancel := context.WithCancel(context.Background())
-			// create a go routine to receive logs sent from
-			// streamPull,  break after receive enough logs.
+
 			go func() {
 				for l := range ch {
 					gotLogs = append(gotLogs, l)
 					if len(gotLogs) == tc.wantNum {
-						done <- struct{}{}
+						cancel() // got enough logs, we can stop now
 						break
 					}
 				}
 			}()
 
+			// set up fake client
 			fakeClient := setupFakeClient(t, ctx, tc.server)
 			p := NewPuller(
 				ctx,
@@ -176,23 +178,20 @@ func TestStreamPull(t *testing.T) {
 				testResource,
 				WithRetry(retry.WithMaxRetries(0, retry.NewFibonacci(500*time.Millisecond))),
 			)
-
 			var gotPullErr error
-			// use a different goroutine to steamPull so it won't
-			// block rest of the code.
+			var gotCloseClientErr error
+
 			go func() {
-				defer close(ch) // If StreamPull returns, we can safely close the channel
-				gotPullErr = p.StreamPull(ctx, tc.filter, ch)
+				defer close(ch)
+				gotPullErr, gotCloseClientErr = p.StreamPull(ctx, tc.filter, ch)
+				cancel()
 			}()
 
-			select {
-			case <-done:
-				t.Logf("Recevied enough logEntries")
-			case <-time.After(5 * time.Second):
-				t.Logf("No enough logEntries recevied after time out")
+			<-ctx.Done() // Either we timed out or we got enough logs and explicitly cancelled it
+
+			if gotCloseClientErr != nil {
+				t.Fatalf("failed to close StreamPull tailClient: %v", gotCloseClientErr)
 			}
-			// call cancel to stop StreamPull
-			cancel()
 
 			if diff := cmp.Diff(tc.wantResult, gotLogs, protocmp.Transform()); diff != "" {
 				t.Errorf("Process(%+v) got result diff (-want, +got): %v", tc.name, diff)
@@ -233,8 +232,7 @@ type fakeServer struct {
 	listReq     *loggingpb.ListLogEntriesRequest
 	listResp    *loggingpb.ListLogEntriesResponse
 	tailReq     *loggingpb.TailLogEntriesRequest
-	logCounter  int64
-	logNumCap   int64
+	tailCounter int64
 	injectedErr error
 }
 
@@ -252,13 +250,13 @@ func (s *fakeServer) TailLogEntries(server loggingpb.LoggingServiceV2_TailLogEnt
 	if s.injectedErr == nil {
 		// at each time only send one TailLogEntriesResponse with only one LogEntry
 		// this help make sure streamPull can receiveresponse from different server send.
-		for s.logCounter < s.logNumCap {
+		for s.tailCounter < fakeServerTailLogCap {
 			if err := server.Send(&loggingpb.TailLogEntriesResponse{
-				Entries: []*loggingpb.LogEntry{{LogName: fmt.Sprintf("test-%d", s.logCounter)}},
+				Entries: []*loggingpb.LogEntry{{LogName: fmt.Sprintf("test-%d", s.tailCounter)}},
 			}); err != nil {
 				return fmt.Errorf("server failed to send: %w", err)
 			}
-			s.logCounter += 1
+			s.tailCounter += 1
 		}
 		return fmt.Errorf("server reached max number for send: %w", err)
 	}

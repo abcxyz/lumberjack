@@ -34,7 +34,7 @@ import (
 // billingAccounts.
 type Puller struct {
 	client *logging.Client
-	// streamClient loggingpb.LoggingServiceV2_TailLogEntriesClient
+
 	// Required. Name of a parent resource from which to retrieve log entries:
 	//
 	// *  `projects/[PROJECT_ID]`
@@ -115,14 +115,19 @@ func (p *Puller) Pull(ctx context.Context, filter string, maxCount int) ([]*logg
 }
 
 // SteamPull pulls live log entries, it won't stop until a cancel signal happens.
-func (p *Puller) StreamPull(ctx context.Context, filter string, logCh chan<- *loggingpb.LogEntry) error {
-	var tailLogEntriesClient loggingpb.LoggingServiceV2_TailLogEntriesClient
-	var createClientErr error
-	if tailLogEntriesClient, createClientErr = p.client.TailLogEntries(ctx); createClientErr != nil {
-		return fmt.Errorf("failed to create tailLogEntriesClient: %w", createClientErr)
+func (p *Puller) StreamPull(ctx context.Context, filter string, logCh chan<- *loggingpb.LogEntry) (err, closeTailClientErr error) {
+	tailClient, err := p.client.TailLogEntries(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to create tailLogEntriesClient: %w", err), nil
 	}
+
+	// we don't want to ignore errors from defer but if we use
+	// err = tailClient.CloseSend()
+	// this will override errors from pulling log entries,
+	// so we use a closeTailClientErr to track errors
+	// from tailClient.CloseSend().
 	defer func() {
-		_ = tailLogEntriesClient.CloseSend()
+		closeTailClientErr = tailClient.CloseSend()
 	}()
 
 	if err := retry.Do(ctx, p.retry, func(ctx context.Context) error {
@@ -131,12 +136,12 @@ func (p *Puller) StreamPull(ctx context.Context, filter string, logCh chan<- *lo
 			Filter:        filter,
 		}
 
-		if err := tailLogEntriesClient.Send(req); err != nil {
+		if err := tailClient.Send(req); err != nil {
 			return retry.RetryableError(fmt.Errorf("failed to send request: %w", err))
 		}
 
 		for {
-			resp, err := tailLogEntriesClient.Recv()
+			resp, err := tailClient.Recv()
 			if errors.Is(err, io.EOF) {
 				continue
 			}
@@ -150,7 +155,7 @@ func (p *Puller) StreamPull(ctx context.Context, filter string, logCh chan<- *lo
 			}
 		}
 	}); err != nil {
-		return fmt.Errorf("failed to pull log entries: %w", err)
+		return fmt.Errorf("failed to pull log entries: %w", err), nil
 	}
-	return nil
+	return nil, nil
 }
