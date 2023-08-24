@@ -122,8 +122,8 @@ func (p *Puller) StreamPull(ctx context.Context, filter string, logCh chan<- *lo
 	}
 
 	defer func() {
-		if closeClientErr := tailClient.CloseSend(); closeClientErr != nil {
-			rErr = errors.Join(rErr, fmt.Errorf("failed to close tailClient %w", closeClientErr))
+		if err := tailClient.CloseSend(); err != nil {
+			rErr = errors.Join(rErr, fmt.Errorf("failed to close tailClient %w", err))
 		}
 	}()
 
