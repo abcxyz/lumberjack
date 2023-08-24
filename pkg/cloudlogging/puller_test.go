@@ -31,7 +31,10 @@ import (
 	logging "cloud.google.com/go/logging/apiv2"
 )
 
-const testResource = "test-resource"
+const (
+	testResource         = "test-resource"
+	fakeServerTailLogCap = 10
+)
 
 func TestPull(t *testing.T) {
 	t.Parallel()
@@ -48,7 +51,7 @@ func TestPull(t *testing.T) {
 			name:   "success",
 			filter: "test-filter",
 			server: &fakeServer{
-				resp: &loggingpb.ListLogEntriesResponse{
+				listResp: &loggingpb.ListLogEntriesResponse{
 					Entries: []*loggingpb.LogEntry{{LogName: "test"}},
 				},
 			},
@@ -98,8 +101,103 @@ func TestPull(t *testing.T) {
 				t.Errorf("Process(%+v) got result diff (-want, +got): %v", tc.name, diff)
 			}
 
-			if diff := cmp.Diff(tc.wantReq, tc.server.req, protocmp.Transform()); diff != "" {
+			if diff := cmp.Diff(tc.wantReq, tc.server.listReq, protocmp.Transform()); diff != "" {
 				t.Errorf("Process(%+v) got request diff (-want, +got): %v", tc.name, diff)
+			}
+		})
+	}
+}
+
+func TestStreamPull(t *testing.T) {
+	t.Parallel()
+
+	cases := []struct {
+		name          string
+		server        *fakeServer
+		filter        string
+		wantReq       *loggingpb.TailLogEntriesRequest
+		wantResult    []*loggingpb.LogEntry
+		wantNum       int
+		wantErrSubstr string
+	}{
+		{
+			name:       "success",
+			filter:     "test-filter",
+			server:     &fakeServer{},
+			wantResult: []*loggingpb.LogEntry{{LogName: "test-0"}, {LogName: "test-1"}},
+			wantReq: &loggingpb.TailLogEntriesRequest{
+				ResourceNames: []string{testResource},
+				Filter:        "test-filter",
+			},
+			wantNum: 2,
+		},
+		{
+			name:   "failed_to_pull",
+			filter: "test-filter",
+			server: &fakeServer{
+				injectedErr: fmt.Errorf("injected error"),
+			},
+			wantReq: &loggingpb.TailLogEntriesRequest{
+				ResourceNames: []string{testResource},
+				Filter:        "test-filter",
+			},
+			wantErrSubstr: "injected error",
+			wantNum:       0,
+		},
+	}
+
+	for _, tc := range cases {
+		tc := tc
+
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			ch := make(chan *loggingpb.LogEntry)
+			var gotLogs []*loggingpb.LogEntry
+
+			ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+
+			go func() {
+				for l := range ch {
+					gotLogs = append(gotLogs, l)
+					if len(gotLogs) == tc.wantNum {
+						cancel() // got enough logs, we can stop now
+						break
+					}
+				}
+			}()
+
+			// set up fake client
+			fakeClient := setupFakeClient(t, ctx, tc.server)
+			p := NewPuller(
+				ctx,
+				fakeClient,
+				testResource,
+				WithRetry(retry.WithMaxRetries(0, retry.NewFibonacci(500*time.Millisecond))),
+			)
+			var gotPullErr error
+
+			go func() {
+				defer close(ch)
+				gotPullErr = p.StreamPull(ctx, tc.filter, ch)
+				// when pull fails, StreamPull will end (since maxRetry is 0)
+				// we should call cancel as soon as the operation ended, as guided
+				// in: https://pkg.go.dev/context#WithTimeout.
+				cancel()
+			}()
+
+			<-ctx.Done() // Either we timed out or we got enough logs and explicitly cancelled it
+
+			if diff := cmp.Diff(tc.wantResult, gotLogs, protocmp.Transform()); diff != "" {
+				t.Errorf("Process(%+v) got result diff (-want, +got): %v", tc.name, diff)
+			}
+
+			if diff := cmp.Diff(tc.wantReq, tc.server.tailReq, protocmp.Transform()); diff != "" {
+				t.Errorf("Process(%+v) got request diff (-want, +got): %v", tc.name, diff)
+			}
+
+			if diff := testutil.DiffErrString(gotPullErr, tc.wantErrSubstr); diff != "" {
+				t.Errorf("Process(%+v) got unexpected error substring: %v", tc.name, diff)
 			}
 		})
 	}
@@ -115,7 +213,7 @@ func setupFakeClient(t *testing.T, ctx context.Context, s *fakeServer) *logging.
 	t.Cleanup(func() {
 		conn.Close()
 	})
-	// fakeClient := loggingpb.NewLoggingServiceV2Client(conn)
+
 	fakeClient, err := logging.NewClient(ctx, option.WithGRPCConn(conn))
 	if err != nil {
 		t.Fatalf("creating client for fake at %q: %v", addr, err)
@@ -126,12 +224,36 @@ func setupFakeClient(t *testing.T, ctx context.Context, s *fakeServer) *logging.
 type fakeServer struct {
 	loggingpb.UnimplementedLoggingServiceV2Server
 
-	req         *loggingpb.ListLogEntriesRequest
-	resp        *loggingpb.ListLogEntriesResponse
+	listReq     *loggingpb.ListLogEntriesRequest
+	listResp    *loggingpb.ListLogEntriesResponse
+	tailReq     *loggingpb.TailLogEntriesRequest
+	tailCounter int64
 	injectedErr error
 }
 
 func (s *fakeServer) ListLogEntries(ctx context.Context, req *loggingpb.ListLogEntriesRequest) (*loggingpb.ListLogEntriesResponse, error) {
-	s.req = req
-	return s.resp, s.injectedErr
+	s.listReq = req
+	return s.listResp, s.injectedErr
+}
+
+func (s *fakeServer) TailLogEntries(server loggingpb.LoggingServiceV2_TailLogEntriesServer) error {
+	var err error
+	s.tailReq, err = server.Recv()
+	if err != nil {
+		return fmt.Errorf("failed to receive tailLogEntry request")
+	}
+	if s.injectedErr == nil {
+		// at each time only send one TailLogEntriesResponse with only one LogEntry
+		// this help make sure streamPull can receiveresponse from different server send.
+		for s.tailCounter < fakeServerTailLogCap {
+			if err := server.Send(&loggingpb.TailLogEntriesResponse{
+				Entries: []*loggingpb.LogEntry{{LogName: fmt.Sprintf("test-%d", s.tailCounter)}},
+			}); err != nil {
+				return fmt.Errorf("server failed to send: %w", err)
+			}
+			s.tailCounter += 1
+		}
+		return fmt.Errorf("reached max number of test logs to return")
+	}
+	return s.injectedErr
 }

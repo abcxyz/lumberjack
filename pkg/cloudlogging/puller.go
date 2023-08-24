@@ -20,6 +20,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"time"
 
 	"cloud.google.com/go/logging/apiv2/loggingpb"
@@ -33,6 +34,7 @@ import (
 // billingAccounts.
 type Puller struct {
 	client *logging.Client
+
 	// Required. Name of a parent resource from which to retrieve log entries:
 	//
 	// *  `projects/[PROJECT_ID]`
@@ -110,4 +112,47 @@ func (p *Puller) Pull(ctx context.Context, filter string, maxCount int) ([]*logg
 		return nil, fmt.Errorf("failed to list log entries: %w", err)
 	}
 	return ls, nil
+}
+
+// SteamPull pulls live log entries, it won't stop until a cancel signal happens.
+func (p *Puller) StreamPull(ctx context.Context, filter string, logCh chan<- *loggingpb.LogEntry) (rErr error) {
+	tailClient, err := p.client.TailLogEntries(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to create tailLogEntriesClient: %w", err)
+	}
+
+	defer func() {
+		if err := tailClient.CloseSend(); err != nil {
+			rErr = errors.Join(rErr, fmt.Errorf("failed to close tailClient %w", err))
+		}
+	}()
+
+	if err := retry.Do(ctx, p.retry, func(ctx context.Context) error {
+		req := &loggingpb.TailLogEntriesRequest{
+			ResourceNames: []string{p.resource},
+			Filter:        filter,
+		}
+
+		if err := tailClient.Send(req); err != nil {
+			return retry.RetryableError(fmt.Errorf("failed to send request: %w", err))
+		}
+
+		for {
+			resp, err := tailClient.Recv()
+			if errors.Is(err, io.EOF) {
+				continue
+			}
+			if err != nil {
+				return retry.RetryableError(fmt.Errorf("failed to receive response: %w", err))
+			}
+			if resp.GetEntries() != nil {
+				for _, v := range resp.GetEntries() {
+					logCh <- v
+				}
+			}
+		}
+	}); err != nil {
+		rErr = errors.Join(rErr, fmt.Errorf("failed to pull log entries: %w", err))
+	}
+	return
 }
