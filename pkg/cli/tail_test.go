@@ -12,6 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+//go:build !race
+// +build !race
+
 package cli
 
 import (
@@ -211,6 +214,170 @@ Validation failed for 1 logs (out of 2)
 	}
 }
 
+func TestStreamTailCommand(t *testing.T) {
+	t.Parallel()
+
+	ct := time.Now().UTC()
+
+	validLog := &loggingpb.LogEntry{
+		InsertId: "test-log",
+		Payload: &loggingpb.LogEntry_JsonPayload{
+			JsonPayload: &structpb.Struct{
+				Fields: map[string]*structpb.Value{
+					"service_name":  structpb.NewStringValue("foo_service"),
+					"method_name":   structpb.NewStringValue("foo_method"),
+					"resource_name": structpb.NewStringValue("foo_resource"),
+					"authentication_info": structpb.NewStructValue(&structpb.Struct{
+						Fields: map[string]*structpb.Value{
+							"principal_email": structpb.NewStringValue("foo@bet.com"),
+						},
+					}),
+				},
+			},
+		},
+		Labels: map[string]string{"environment": "dev", "accessing_process_name": "foo_apn"},
+	}
+
+	bs, err := protojson.Marshal(validLog)
+	if err != nil {
+		t.Fatalf("failed to mashal log to JSON: %v", err)
+	}
+	validLogJSON := stripSpaces(string(bs))
+
+	cases := []struct {
+		name            string
+		args            []string
+		puller          *fakePuller
+		expFilter       string
+		expOut          string
+		expErrSubstr    string
+		expStderrSubstr string
+	}{
+		{
+			name: "success_stream_tail",
+			args: []string{"-scope", "projects/foo", "-is-stream"},
+			puller: &fakePuller{
+				logEntries: []*loggingpb.LogEntry{{}},
+			},
+			expFilter: fmt.Sprintf(
+				`LOG_ID("audit.abcxyz/unspecified") OR `+
+					`LOG_ID("audit.abcxyz/activity") OR `+
+					`LOG_ID("audit.abcxyz/data_access") OR `+
+					`LOG_ID("audit.abcxyz/consent") OR `+
+					`LOG_ID("audit.abcxyz/system_event") `+
+					`AND timestamp >= %q`,
+				ct.Add(-2*time.Hour).Format(time.RFC3339),
+			),
+			expOut: `{}`,
+		},
+		{
+			name: "success_stream_tail_validate",
+			args: []string{
+				"-scope", "projects/foo",
+				"-duration", "4h",
+				"-additional-filter", `resource.type = "gae_app" AND severity = ERROR`,
+				"-validate",
+				"-is-stream",
+			},
+			puller: &fakePuller{
+				logEntries: []*loggingpb.LogEntry{validLog},
+			},
+			expFilter: fmt.Sprintf(
+				`LOG_ID("audit.abcxyz/unspecified") OR `+
+					`LOG_ID("audit.abcxyz/activity") OR `+
+					`LOG_ID("audit.abcxyz/data_access") OR `+
+					`LOG_ID("audit.abcxyz/consent") OR `+
+					`LOG_ID("audit.abcxyz/system_event") `+
+					`AND timestamp >= %q AND resource.type = "gae_app" `+
+					`AND severity = ERROR`,
+				ct.Add(-4*time.Hour).Format(time.RFC3339),
+			),
+			expOut: fmt.Sprintf(`%s
+Successfully validated log (InsertId: "test-log")
+
+Validation failed for 0 logs (out of 1)
+`, validLogJSON),
+		},
+		{
+			name: "stream_tail_fail",
+			args: []string{
+				"-scope", "projects/foo",
+				"-override-filter", "test-filter",
+				"-is-stream",
+			},
+			puller: &fakePuller{
+				logEntries: []*loggingpb.LogEntry{{InsertId: "test"}},
+				injectErr:  fmt.Errorf("injected error"),
+			},
+			expFilter:    "test-filter",
+			expErrSubstr: "injected error",
+		},
+		{
+			name: "stream_tail_validate_fail",
+			args: []string{
+				"-scope", "projects/foo",
+				"-override-filter", "test-filter",
+				"-v",
+				"-is-stream",
+			},
+			puller: &fakePuller{
+				logEntries: []*loggingpb.LogEntry{
+					{InsertId: "test"},
+					validLog,
+				},
+			},
+			expFilter: "test-filter",
+			expOut: fmt.Sprintf(`
+{"insertId":"test"}
+Validation failed for 1 logs (out of 1)
+%s
+Successfully validated log (InsertId: "test-log")
+
+Validation failed for 1 logs (out of 2)
+`, validLogJSON),
+			expStderrSubstr: `failed to validate log (InsertId: "test")`,
+		},
+	}
+
+	for _, tc := range cases {
+		tc := tc
+
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			ctx := context.Background()
+
+			ctx, cancel := context.WithCancel(ctx)
+
+			var cmd TailCommand
+			cmd.testPuller = tc.puller
+			_, stdout, stderr := cmd.Pipe()
+			var gotErr error
+
+			go func() {
+				gotErr = cmd.Run(ctx, tc.args)
+				cancel()
+			}()
+
+			<-time.After(2 * time.Second)
+			cancel()
+
+			if diff := testutil.DiffErrString(gotErr, tc.expErrSubstr); diff != "" {
+				t.Errorf("Process(%+v) got error diff (-want, +got):\n%s", tc.name, diff)
+			}
+			if !errContainSubstring(stderr.String(), tc.expStderrSubstr) {
+				t.Errorf("Process(%+v) got stderr: %q, but want substring: %q", tc.name, stderr.String(), tc.expStderrSubstr)
+			}
+			if strings.TrimSpace(tc.expOut) != strings.TrimSpace(stdout.String()) {
+				t.Errorf("Process(%+v) got output: %q, but want output: %q", tc.name, stdout.String(), tc.expOut)
+			}
+			if strings.TrimSpace(tc.expFilter) != strings.TrimSpace(tc.puller.gotFilter) {
+				t.Errorf("Process(%+v) got filter: %q, but want output: %q", tc.name, tc.puller.gotFilter, tc.expFilter)
+			}
+		})
+	}
+}
+
 func errContainSubstring(gotErr, wantErr string) bool {
 	if wantErr == "" {
 		return gotErr == ""
@@ -229,4 +396,20 @@ func (p *fakePuller) Pull(ctx context.Context, filter string, maxNum int) ([]*lo
 	p.gotFilter = filter
 	p.gotMaxNum = maxNum
 	return p.logEntries, p.injectErr
+}
+
+func (p *fakePuller) StreamPull(ctx context.Context, filter string, logCh chan<- *loggingpb.LogEntry) error {
+	p.gotFilter = filter
+	if p.injectErr != nil {
+		return p.injectErr
+	}
+	for _, v := range p.logEntries {
+		logCh <- v
+	}
+
+	// mock real streamPull's behavior, looping until canceled
+	// instead of using a for{} that loops forever, this is
+	// more efficient in test
+	time.Sleep(3 * time.Second)
+	return nil
 }

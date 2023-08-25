@@ -39,6 +39,7 @@ const logType = `LOG_ID("audit.abcxyz/unspecified") OR ` +
 // logPuller interface that pulls log entries from cloud logging.
 type logPuller interface {
 	Pull(context.Context, string, int) ([]*loggingpb.LogEntry, error)
+	StreamPull(context.Context, string, chan<- *loggingpb.LogEntry) error
 }
 
 var _ cli.Command = (*TailCommand)(nil)
@@ -60,6 +61,8 @@ type TailCommand struct {
 	flagOverrideFilter string
 
 	flagAdditionalCheck bool
+
+	flagIsStream bool
 
 	// For testing only.
 	testPuller logPuller
@@ -154,6 +157,13 @@ func (c *TailCommand) Flags() *cli.FlagSet {
 			`additional lumberjack specific checks on log labels.`,
 	})
 
+	f.BoolVar(&cli.BoolVar{
+		Name:    "is-stream",
+		Target:  &c.flagIsStream,
+		Default: false,
+		Usage:   `Set to true if you want to stream validating logs`,
+	})
+
 	return set
 }
 
@@ -176,7 +186,13 @@ func (c *TailCommand) Run(ctx context.Context, args []string) error {
 		return fmt.Errorf("-max-num must be greater than 0 and less than 1000")
 	}
 
-	// Tail logs.
+	if c.flagIsStream {
+		return c.streamTail(ctx)
+	}
+	return c.listTail(ctx)
+}
+
+func (c *TailCommand) listTail(ctx context.Context) error {
 	ls, err := c.tail(ctx)
 	if err != nil {
 		return err
@@ -222,16 +238,46 @@ func (c *TailCommand) Run(ctx context.Context, args []string) error {
 	return nil
 }
 
-func (c *TailCommand) tail(ctx context.Context) ([]*loggingpb.LogEntry, error) {
-	var p logPuller
-	if c.testPuller != nil {
-		p = c.testPuller
-	} else {
-		logClient, err := logging.NewClient(ctx)
-		if err != nil {
-			return nil, fmt.Errorf("failed to create logging client: %w", err)
+func (c *TailCommand) streamTail(ctx context.Context) error {
+	var extra []validation.Validator
+	if c.flagAdditionalCheck {
+		extra = append(extra, validation.ValidateLabels)
+	}
+
+	logCh := make(chan *loggingpb.LogEntry)
+
+	var failCount int
+	var totalCount int
+
+	go func() {
+		for l := range logCh {
+			totalCount++
+			js, err := protojson.Marshal(l)
+			if err != nil {
+				c.Errf("failed to marshal log to json (InsertId: %q): %w", l.InsertId, err)
+				continue
+			}
+			c.Outf(stripSpaces(string(js)))
+			if c.flagValidate {
+				if err := validation.Validate(string(js), extra...); err != nil {
+					failCount++
+					c.Errf("failed to validate log (InsertId: %q): %w\n", l.InsertId, err)
+				} else {
+					c.Outf("Successfully validated log (InsertId: %q)\n", l.InsertId)
+				}
+				c.Outf("Validation failed for %d logs (out of %d)", failCount, totalCount)
+			}
 		}
-		p = cloudlogging.NewPuller(ctx, logClient, c.flagScope)
+	}()
+
+	return c.StreamTail(ctx, logCh)
+	// return err
+}
+
+func (c *TailCommand) tail(ctx context.Context) ([]*loggingpb.LogEntry, error) {
+	p, err := c.createPuller(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create logging client: %w", err)
 	}
 
 	ls, err := p.Pull(ctx, c.queryFilter(), c.flagMaxNum)
@@ -240,6 +286,30 @@ func (c *TailCommand) tail(ctx context.Context) ([]*loggingpb.LogEntry, error) {
 	}
 
 	return ls, nil
+}
+
+func (c *TailCommand) StreamTail(ctx context.Context, logCh chan<- *loggingpb.LogEntry) error {
+	p, err := c.createPuller(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to create logging client: %w", err)
+	}
+
+	if err := p.StreamPull(ctx, c.queryFilter(), logCh); err != nil {
+		return fmt.Errorf("StreamPull failed: %w", err)
+	}
+	return nil
+}
+
+func (c *TailCommand) createPuller(ctx context.Context) (logPuller, error) {
+	if c.testPuller != nil {
+		return c.testPuller, nil
+	}
+	logClient, err := logging.NewClient(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create logging client: %w", err)
+	}
+	p := cloudlogging.NewPuller(ctx, logClient, c.flagScope)
+	return p, nil
 }
 
 func (c *TailCommand) queryFilter() string {
