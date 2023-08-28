@@ -16,6 +16,7 @@ package cli
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -24,6 +25,7 @@ import (
 	"github.com/abcxyz/lumberjack/pkg/cloudlogging"
 	"github.com/abcxyz/lumberjack/pkg/validation"
 	"github.com/abcxyz/pkg/cli"
+	"github.com/sethvargo/go-retry"
 	"google.golang.org/protobuf/encoding/protojson"
 
 	logging "cloud.google.com/go/logging/apiv2"
@@ -168,7 +170,7 @@ func (c *TailCommand) Flags() *cli.FlagSet {
 	return set
 }
 
-func (c *TailCommand) Run(ctx context.Context, args []string) error {
+func (c *TailCommand) Run(ctx context.Context, args []string) (rErr error) {
 	f := c.Flags()
 	if err := f.Parse(args); err != nil {
 		return fmt.Errorf("failed to parse flags: %w", err)
@@ -197,16 +199,27 @@ func (c *TailCommand) Run(ctx context.Context, args []string) error {
 		puller = c.testPuller
 	} else {
 		logClient, err := logging.NewClient(ctx)
+		defer func() {
+			if err := logClient.Close(); err != nil {
+				rErr = errors.Join(rErr, fmt.Errorf("failed to close log client: %w", err))
+			}
+		}()
 		if err != nil {
-			return fmt.Errorf("failed to create logging client: %w", err)
+			return errors.Join(rErr, fmt.Errorf("failed to create logging client: %w", err))
 		}
-		puller = cloudlogging.NewPuller(ctx, logClient, c.flagScope)
+		puller = cloudlogging.NewPuller(ctx, logClient, c.flagScope, cloudlogging.WithRetry(retry.WithMaxRetries(1000000, retry.NewFibonacci(500*time.Millisecond))))
 	}
 
 	if c.flagFollow {
-		return c.streamTail(ctx, extra, puller)
+		if err := c.streamTail(ctx, extra, puller); err != nil {
+			rErr = errors.Join(rErr, err)
+		}
+	} else {
+		if err := c.listTail(ctx, extra, puller); err != nil {
+			rErr = errors.Join(rErr, err)
+		}
 	}
-	return c.listTail(ctx, extra, puller)
+	return
 }
 
 func (c *TailCommand) listTail(ctx context.Context, extra []validation.Validator, puller logPuller) error {
@@ -255,13 +268,22 @@ func (c *TailCommand) listTail(ctx context.Context, extra []validation.Validator
 }
 
 func (c *TailCommand) streamTail(ctx context.Context, extra []validation.Validator, puller logPuller) error {
+	// logCh is used to receive logEntriesfrom StreamPull
 	logCh := make(chan *loggingpb.LogEntry)
+	// errCh is used to receive error from StreamPull
 	errCh := make(chan error)
+	// doneCh is used to notifiy the main goroutinue when
+	// StreamPull is finished or canceled.
+	doneCh := make(chan struct{})
 
 	var failCount int
 	var totalCount int
 
 	go func() {
+		// close doneCh to notify main go rountine
+		// that receving from StreamPull has finished.
+		defer close(doneCh)
+
 		for l := range logCh {
 			totalCount++
 			js, err := protojson.Marshal(l)
@@ -291,11 +313,17 @@ func (c *TailCommand) streamTail(ctx context.Context, extra []validation.Validat
 
 	select {
 	case <-ctx.Done():
+		// main channel will block here until doneCh receives
+		// this way we can prevent the possible race condition
+		// that main channel reads from totalCount and failCount
+		// before logCh receives the new logEntry.
+		<-doneCh
 		if c.flagValidate {
 			c.Outf("Validation failed for %d logs (out of %d)", failCount, totalCount)
 		}
 		return fmt.Errorf("stream tail validate cancelled: %w", ctx.Err())
 	case e := <-errCh:
+		<-doneCh
 		if c.flagValidate {
 			c.Outf("Validation failed for %d logs (out of %d)", failCount, totalCount)
 		}
