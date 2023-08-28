@@ -62,7 +62,7 @@ type TailCommand struct {
 
 	flagAdditionalCheck bool
 
-	flagIsStream bool
+	flagFollow bool
 
 	// For testing only.
 	testPuller logPuller
@@ -158,8 +158,9 @@ func (c *TailCommand) Flags() *cli.FlagSet {
 	})
 
 	f.BoolVar(&cli.BoolVar{
-		Name:    "is-stream",
-		Target:  &c.flagIsStream,
+		Name:    "follow",
+		Aliases: []string{"f"},
+		Target:  &c.flagFollow,
 		Default: false,
 		Usage:   `Set to true if you want to stream validating logs`,
 	})
@@ -186,25 +187,40 @@ func (c *TailCommand) Run(ctx context.Context, args []string) error {
 		return fmt.Errorf("-max-num must be greater than 0 and less than 1000")
 	}
 
-	if c.flagIsStream {
-		return c.streamTail(ctx)
+	var extra []validation.Validator
+	if c.flagAdditionalCheck {
+		extra = append(extra, validation.ValidateLabels)
 	}
-	return c.listTail(ctx)
+
+	var puller logPuller
+	if c.testPuller != nil {
+		puller = c.testPuller
+	} else {
+		logClient, err := logging.NewClient(ctx)
+		if err != nil {
+			return fmt.Errorf("failed to create logging client: %w", err)
+		}
+		puller = cloudlogging.NewPuller(ctx, logClient, c.flagScope)
+	}
+
+	if c.flagFollow {
+		return c.streamTail(ctx, extra, puller)
+	}
+	return c.listTail(ctx, extra, puller)
 }
 
-func (c *TailCommand) listTail(ctx context.Context) error {
-	ls, err := c.tail(ctx)
+func (c *TailCommand) listTail(ctx context.Context, extra []validation.Validator, puller logPuller) error {
+	ls, err := puller.Pull(ctx, c.queryFilter(), c.flagMaxNum)
+	if err != nil {
+		return fmt.Errorf("failed to pull logs: %w", err)
+	}
+
 	if err != nil {
 		return err
 	}
 	if len(ls) == 0 {
 		c.Outf("No logs found.")
 		return nil
-	}
-
-	var extra []validation.Validator
-	if c.flagAdditionalCheck {
-		extra = append(extra, validation.ValidateLabels)
 	}
 
 	// Output results.
@@ -238,13 +254,9 @@ func (c *TailCommand) listTail(ctx context.Context) error {
 	return nil
 }
 
-func (c *TailCommand) streamTail(ctx context.Context) error {
-	var extra []validation.Validator
-	if c.flagAdditionalCheck {
-		extra = append(extra, validation.ValidateLabels)
-	}
-
+func (c *TailCommand) streamTail(ctx context.Context, extra []validation.Validator, puller logPuller) error {
 	logCh := make(chan *loggingpb.LogEntry)
+	errCh := make(chan error)
 
 	var failCount int
 	var totalCount int
@@ -265,51 +277,30 @@ func (c *TailCommand) streamTail(ctx context.Context) error {
 				} else {
 					c.Outf("Successfully validated log (InsertId: %q)\n", l.InsertId)
 				}
-				c.Outf("Validation failed for %d logs (out of %d)", failCount, totalCount)
 			}
 		}
 	}()
 
-	return c.StreamTail(ctx, logCh)
-	// return err
-}
+	go func() {
+		if err := puller.StreamPull(ctx, c.queryFilter(), logCh); err != nil {
+			errCh <- fmt.Errorf("StreamPull failed: %w", err)
+		}
+		close(logCh)
+		close(errCh)
+	}()
 
-func (c *TailCommand) tail(ctx context.Context) ([]*loggingpb.LogEntry, error) {
-	p, err := c.createPuller(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create logging client: %w", err)
+	select {
+	case <-ctx.Done():
+		if c.flagValidate {
+			c.Outf("Validation failed for %d logs (out of %d)", failCount, totalCount)
+		}
+		return fmt.Errorf("stream tail validate cancelled: %w", ctx.Err())
+	case e := <-errCh:
+		if c.flagValidate {
+			c.Outf("Validation failed for %d logs (out of %d)", failCount, totalCount)
+		}
+		return e
 	}
-
-	ls, err := p.Pull(ctx, c.queryFilter(), c.flagMaxNum)
-	if err != nil {
-		return nil, fmt.Errorf("failed to pull logs: %w", err)
-	}
-
-	return ls, nil
-}
-
-func (c *TailCommand) StreamTail(ctx context.Context, logCh chan<- *loggingpb.LogEntry) error {
-	p, err := c.createPuller(ctx)
-	if err != nil {
-		return fmt.Errorf("failed to create logging client: %w", err)
-	}
-
-	if err := p.StreamPull(ctx, c.queryFilter(), logCh); err != nil {
-		return fmt.Errorf("StreamPull failed: %w", err)
-	}
-	return nil
-}
-
-func (c *TailCommand) createPuller(ctx context.Context) (logPuller, error) {
-	if c.testPuller != nil {
-		return c.testPuller, nil
-	}
-	logClient, err := logging.NewClient(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create logging client: %w", err)
-	}
-	p := cloudlogging.NewPuller(ctx, logClient, c.flagScope)
-	return p, nil
 }
 
 func (c *TailCommand) queryFilter() string {

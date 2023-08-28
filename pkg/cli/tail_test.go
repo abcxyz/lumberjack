@@ -12,9 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//go:build !race
-// +build !race
-
 package cli
 
 import (
@@ -255,7 +252,7 @@ func TestStreamTailCommand(t *testing.T) {
 	}{
 		{
 			name: "success_stream_tail",
-			args: []string{"-scope", "projects/foo", "-is-stream"},
+			args: []string{"-scope", "projects/foo", "-f"},
 			puller: &fakePuller{
 				logEntries: []*loggingpb.LogEntry{{}},
 			},
@@ -268,7 +265,8 @@ func TestStreamTailCommand(t *testing.T) {
 					`AND timestamp >= %q`,
 				ct.Add(-2*time.Hour).Format(time.RFC3339),
 			),
-			expOut: `{}`,
+			expOut:       `{}`,
+			expErrSubstr: "stream tail validate cancelled",
 		},
 		{
 			name: "success_stream_tail_validate",
@@ -277,7 +275,7 @@ func TestStreamTailCommand(t *testing.T) {
 				"-duration", "4h",
 				"-additional-filter", `resource.type = "gae_app" AND severity = ERROR`,
 				"-validate",
-				"-is-stream",
+				"-f",
 			},
 			puller: &fakePuller{
 				logEntries: []*loggingpb.LogEntry{validLog},
@@ -297,13 +295,14 @@ Successfully validated log (InsertId: "test-log")
 
 Validation failed for 0 logs (out of 1)
 `, validLogJSON),
+			expErrSubstr: "stream tail validate cancelled",
 		},
 		{
 			name: "stream_tail_fail",
 			args: []string{
 				"-scope", "projects/foo",
 				"-override-filter", "test-filter",
-				"-is-stream",
+				"-f",
 			},
 			puller: &fakePuller{
 				logEntries: []*loggingpb.LogEntry{{InsertId: "test"}},
@@ -318,24 +317,23 @@ Validation failed for 0 logs (out of 1)
 				"-scope", "projects/foo",
 				"-override-filter", "test-filter",
 				"-v",
-				"-is-stream",
+				"-f",
 			},
-			puller: &fakePuller{
-				logEntries: []*loggingpb.LogEntry{
-					{InsertId: "test"},
-					validLog,
-				},
+			puller: &fakePuller{logEntries: []*loggingpb.LogEntry{
+				{InsertId: "test"},
+				validLog,
+			},
 			},
 			expFilter: "test-filter",
 			expOut: fmt.Sprintf(`
 {"insertId":"test"}
-Validation failed for 1 logs (out of 1)
 %s
 Successfully validated log (InsertId: "test-log")
 
 Validation failed for 1 logs (out of 2)
 `, validLogJSON),
-			expStderrSubstr: `failed to validate log (InsertId: "test")`,
+			expErrSubstr:    "stream tail validate cancelled",
+			expStderrSubstr: `failed to validate log`,
 		},
 	}
 
@@ -347,19 +345,14 @@ Validation failed for 1 logs (out of 2)
 
 			ctx := context.Background()
 
-			ctx, cancel := context.WithCancel(ctx)
+			ctx, cancel := context.WithTimeout(ctx, 2*time.Second)
 
 			var cmd TailCommand
 			cmd.testPuller = tc.puller
 			_, stdout, stderr := cmd.Pipe()
 			var gotErr error
 
-			go func() {
-				gotErr = cmd.Run(ctx, tc.args)
-				cancel()
-			}()
-
-			<-time.After(2 * time.Second)
+			gotErr = cmd.Run(ctx, tc.args)
 			cancel()
 
 			if diff := testutil.DiffErrString(gotErr, tc.expErrSubstr); diff != "" {
