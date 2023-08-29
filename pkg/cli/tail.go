@@ -278,9 +278,6 @@ func (c *TailCommand) list(ctx context.Context, extra []validation.Validator, pu
 func (c *TailCommand) stream(ctx context.Context, extra []validation.Validator, puller logPuller) error {
 	// logCh is used to receive logEntriesfrom StreamPull
 	logCh := make(chan *loggingpb.LogEntry)
-	// doneCh is used to notifiy the main goroutinue when
-	// StreamPull is finished or canceled.
-	doneCh := make(chan struct{})
 
 	var failCount, totalCount int
 
@@ -292,40 +289,28 @@ func (c *TailCommand) stream(ctx context.Context, extra []validation.Validator, 
 		close(logCh)
 	}()
 
-	go func() {
-		// close doneCh to notify main go rountine
-		// that receiving from StreamPull has finished.
-		defer func() {
-			if c.flagValidate {
-				c.Outf("Validation failed for %d logs (out of %d)", failCount, totalCount)
-			}
-			close(doneCh)
-		}()
-
-		for l := range logCh {
-			totalCount++
-			js, err := protojson.Marshal(l)
-			if err != nil {
-				c.Errf("failed to marshal log to json (InsertId: %q): %w", l.InsertId, err)
-				continue
-			}
-			c.Outf(stripSpaces(string(js)))
-			if c.flagValidate {
-				if err := validation.Validate(string(js), extra...); err != nil {
-					failCount++
-					c.Errf("failed to validate log (InsertId: %q): %w\n", l.InsertId, err)
-				} else {
-					c.Outf("Successfully validated log (InsertId: %q)\n", l.InsertId)
-				}
+	for l := range logCh {
+		totalCount++
+		js, err := protojson.Marshal(l)
+		if err != nil {
+			c.Errf("failed to marshal log to json (InsertId: %q): %w", l.InsertId, err)
+			continue
+		}
+		c.Outf(stripSpaces(string(js)))
+		if c.flagValidate {
+			if err := validation.Validate(string(js), extra...); err != nil {
+				failCount++
+				c.Errf("failed to validate log (InsertId: %q): %w\n", l.InsertId, err)
+			} else {
+				c.Outf("Successfully validated log (InsertId: %q)\n", l.InsertId)
 			}
 		}
-	}()
+	}
 
-	// main channel will block here until doneCh receives this way we can
-	// prevent the possible race condition including main channel reads from
-	// totalCount and failCount before logCh receives the new logEntry.
-	// This is also the same for c.Errf and c.Outf.
-	<-doneCh
+	if c.flagValidate {
+		c.Outf("Validation failed for %d logs (out of %d)", failCount, totalCount)
+	}
+
 	if perr != nil {
 		return perr
 	}
