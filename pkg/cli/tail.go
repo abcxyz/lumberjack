@@ -228,9 +228,6 @@ func (c *TailCommand) listTail(ctx context.Context, extra []validation.Validator
 		return fmt.Errorf("failed to pull logs: %w", err)
 	}
 
-	if err != nil {
-		return err
-	}
 	if len(ls) == 0 {
 		c.Outf("No logs found.")
 		return nil
