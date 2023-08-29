@@ -351,8 +351,8 @@ Validation failed for 1 logs (out of 2)
 			var cmd TailCommand
 			cmd.testPuller = tc.puller
 			_, stdout, stderr := cmd.Pipe()
-			var gotErr error
-			gotErr = cmd.Run(ctx, tc.args)
+
+			gotErr := cmd.Run(ctx, tc.args)
 			cancel()
 
 			if diff := testutil.DiffErrString(gotErr, tc.expErrSubstr); diff != "" {
@@ -364,11 +364,7 @@ Validation failed for 1 logs (out of 2)
 			if strings.TrimSpace(tc.expOut) != strings.TrimSpace(stdout.String()) {
 				t.Errorf("Process(%+v) got output: %q, but want output: %q", tc.name, stdout.String(), tc.expOut)
 			}
-			trimedExpFilter := strings.TrimSpace(tc.expFilter)
-			trimedGotFilter := strings.TrimSpace(tc.puller.gotFilter)
-			// During test StreamPull will have some delay that makes there is
-			// some different in the time stamp, so we don't compare that part.
-			if trimedExpFilter[0:len(trimedExpFilter)-7] != trimedGotFilter[0:len(trimedGotFilter)-7] {
+			if strings.TrimSpace(tc.expFilter) != strings.TrimSpace(tc.puller.gotFilter) {
 				t.Errorf("Process(%+v) got filter: %q, but want output: %q", tc.name, tc.puller.gotFilter, tc.expFilter)
 			}
 		})
