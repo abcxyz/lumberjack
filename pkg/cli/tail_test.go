@@ -27,6 +27,9 @@ import (
 	"google.golang.org/protobuf/types/known/structpb"
 )
 
+// length of `timestamp >= "2023-08-29T17:32:25Z"`.
+const TimestampFilterLength = 35
+
 func TestTailCommand(t *testing.T) {
 	t.Parallel()
 
@@ -209,10 +212,10 @@ Validation failed for 1 logs (out of 2)
 			trimedExpFilter := strings.TrimSpace(tc.expFilter)
 			trimedGotFilter := strings.TrimSpace(tc.puller.gotFilter)
 			if i := strings.Index(trimedExpFilter, "timestamp >="); i != -1 {
-				trimedExpFilter = trimedExpFilter[0:i] + trimedExpFilter[i+35:]
+				trimedExpFilter = trimedExpFilter[0:i] + trimedExpFilter[i+TimestampFilterLength:]
 			}
 			if i := strings.Index(trimedGotFilter, "timestamp >="); i != -1 {
-				trimedGotFilter = trimedGotFilter[0:i] + trimedGotFilter[i+35:]
+				trimedGotFilter = trimedGotFilter[0:i] + trimedGotFilter[i+TimestampFilterLength:]
 			}
 			if trimedExpFilter != trimedGotFilter {
 				t.Errorf("Process(%+v) got filter: %q, but want output: %q", tc.name, tc.puller.gotFilter, tc.expFilter)
@@ -386,10 +389,10 @@ Validation failed for 1 logs (out of 2)
 			trimedExpFilter := strings.TrimSpace(tc.expFilter)
 			trimedGotFilter := strings.TrimSpace(tc.puller.gotFilter)
 			if i := strings.Index(trimedExpFilter, "timestamp >="); i != -1 {
-				trimedExpFilter = trimedExpFilter[0:i] + trimedExpFilter[i+35:]
+				trimedExpFilter = trimedExpFilter[0:i] + trimedExpFilter[i+TimestampFilterLength:]
 			}
 			if i := strings.Index(trimedGotFilter, "timestamp >="); i != -1 {
-				trimedGotFilter = trimedGotFilter[0:i] + trimedGotFilter[i+35:]
+				trimedGotFilter = trimedGotFilter[0:i] + trimedGotFilter[i+TimestampFilterLength:]
 			}
 			if trimedExpFilter != trimedGotFilter {
 				t.Errorf("Process(%+v) got filter: %q, but want output: %q", tc.name, tc.puller.gotFilter, tc.expFilter)
