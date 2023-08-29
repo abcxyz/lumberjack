@@ -80,7 +80,7 @@ func TestTailCommand(t *testing.T) {
 					`LOG_ID("audit.abcxyz/consent") OR `+
 					`LOG_ID("audit.abcxyz/system_event") `+
 					`AND timestamp >= %q`,
-				ct.Add(-2*time.Hour).Format(time.RFC3339),
+				ct.Add(-2*time.Hour).Add(-31*time.Second).Round(60*time.Second).Format(time.RFC3339),
 			),
 			expMaxNum: 1,
 			expOut:    `{}`,
@@ -105,7 +105,7 @@ func TestTailCommand(t *testing.T) {
 					`LOG_ID("audit.abcxyz/system_event") `+
 					`AND timestamp >= %q AND resource.type = "gae_app" `+
 					`AND severity = ERROR`,
-				ct.Add(-4*time.Hour).Format(time.RFC3339),
+				ct.Add(-4*time.Hour).Add(-31*time.Second).Round(60*time.Second).Format(time.RFC3339),
 			),
 			expMaxNum: 2,
 			expOut: fmt.Sprintf(`%s
@@ -130,7 +130,7 @@ Validation failed for 0 logs (out of 1)
 					`LOG_ID("audit.abcxyz/consent") OR `+
 					`LOG_ID("audit.abcxyz/system_event") `+
 					`AND timestamp >= %q`,
-				ct.Add(-2*time.Hour).Format(time.RFC3339),
+				ct.Add(-2*time.Hour).Add(-31*time.Second).Round(60*time.Second).Format(time.RFC3339),
 			),
 			expMaxNum: 1,
 			expOut: fmt.Sprintf(`%s
@@ -263,7 +263,7 @@ func TestStreamTailCommand(t *testing.T) {
 					`LOG_ID("audit.abcxyz/consent") OR `+
 					`LOG_ID("audit.abcxyz/system_event") `+
 					`AND timestamp >= %q`,
-				ct.Add(-2*time.Hour).Format(time.RFC3339),
+				ct.Add(-2*time.Hour).Add(-31*time.Second).Round(60*time.Second).Format(time.RFC3339),
 			),
 			expOut:       `{}`,
 			expErrSubstr: "stream tail validate cancelled",
@@ -288,7 +288,7 @@ func TestStreamTailCommand(t *testing.T) {
 					`LOG_ID("audit.abcxyz/system_event") `+
 					`AND timestamp >= %q AND resource.type = "gae_app" `+
 					`AND severity = ERROR`,
-				ct.Add(-4*time.Hour).Format(time.RFC3339),
+				ct.Add(-4*time.Hour).Add(-31*time.Second).Round(60*time.Second).Format(time.RFC3339),
 			),
 			expOut: fmt.Sprintf(`%s
 Successfully validated log (InsertId: "test-log")

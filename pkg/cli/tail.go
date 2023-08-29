@@ -332,8 +332,12 @@ func (c *TailCommand) queryFilter() string {
 	if c.flagOverrideFilter != "" {
 		return c.flagOverrideFilter
 	}
-
-	cutoff := fmt.Sprintf("timestamp >= %q", time.Now().UTC().Add(-c.flagDuration).Format(time.RFC3339))
+	// .Add(-31*time.Second).Round(60*time.Second) cutoff the second in the
+	// timestamp this helps reduce the flakness in test to compare the timestamp
+	// when there's a delay in seconds.
+	//
+	// example: 2023-08-28T22:22:35Z -> 2023-08-28T22:22:00Z
+	cutoff := fmt.Sprintf("timestamp >= %q", time.Now().UTC().Add(-c.flagDuration).Add(-31*time.Second).Round(60*time.Second).Format(time.RFC3339))
 	f := fmt.Sprintf("%s AND %s", logType, cutoff)
 
 	if c.flagAdditionalFilter == "" {
