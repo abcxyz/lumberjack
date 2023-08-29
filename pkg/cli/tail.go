@@ -280,9 +280,22 @@ func (c *TailCommand) streamTail(ctx context.Context, extra []validation.Validat
 	var totalCount int
 
 	go func() {
+		if err := puller.StreamPull(ctx, c.queryFilter(), logCh); err != nil {
+			errCh <- fmt.Errorf("StreamPull failed: %w", err)
+		}
+		close(logCh)
+		close(errCh)
+	}()
+
+	go func() {
 		// close doneCh to notify main go rountine
-		// that receving from StreamPull has finished.
-		defer close(doneCh)
+		// that receiving from StreamPull has finished.
+		defer func() {
+			if c.flagValidate {
+				c.Outf("Validation failed for %d logs (out of %d)", failCount, totalCount)
+			}
+			close(doneCh)
+		}()
 
 		for l := range logCh {
 			totalCount++
@@ -303,30 +316,16 @@ func (c *TailCommand) streamTail(ctx context.Context, extra []validation.Validat
 		}
 	}()
 
-	go func() {
-		if err := puller.StreamPull(ctx, c.queryFilter(), logCh); err != nil {
-			errCh <- fmt.Errorf("StreamPull failed: %w", err)
-		}
-		close(logCh)
-		close(errCh)
-	}()
-
 	select {
 	case <-ctx.Done():
-		// main channel will block here until doneCh receives
-		// this way we can prevent the possible race condition
-		// that main channel reads from totalCount and failCount
-		// before logCh receives the new logEntry.
+		// main channel will block here until doneCh receives this way we can
+		// prevent the possible race condition including main channel reads from
+		// totalCount and failCount before logCh receives the new logEntry.
+		// This is also the same for c.Errf and c.Outf.
 		<-doneCh
-		if c.flagValidate {
-			c.Outf("Validation failed for %d logs (out of %d)", failCount, totalCount)
-		}
 		return fmt.Errorf("stream tail validate cancelled: %w", ctx.Err())
 	case e := <-errCh:
 		<-doneCh
-		if c.flagValidate {
-			c.Outf("Validation failed for %d logs (out of %d)", failCount, totalCount)
-		}
 		return e
 	}
 }

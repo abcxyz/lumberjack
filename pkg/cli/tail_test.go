@@ -319,10 +319,11 @@ Validation failed for 0 logs (out of 1)
 				"-v",
 				"-f",
 			},
-			puller: &fakePuller{logEntries: []*loggingpb.LogEntry{
-				{InsertId: "test"},
-				validLog,
-			},
+			puller: &fakePuller{
+				logEntries: []*loggingpb.LogEntry{
+					{InsertId: "test"},
+					validLog,
+				},
 			},
 			expFilter: "test-filter",
 			expOut: fmt.Sprintf(`
