@@ -263,7 +263,7 @@ func TestStreamTailCommand(t *testing.T) {
 					`LOG_ID("audit.abcxyz/consent") OR `+
 					`LOG_ID("audit.abcxyz/system_event") `+
 					`AND timestamp >= %q`,
-				ct.Add(-2*time.Hour).Add(-31*time.Second).Round(60*time.Second).Format(time.RFC3339),
+				ct.Add(-2*time.Hour).Add(-30*time.Second).Round(60*time.Second).Format(time.RFC3339),
 			),
 			expOut:       `{}`,
 			expErrSubstr: "stream tail validate cancelled",
@@ -288,7 +288,7 @@ func TestStreamTailCommand(t *testing.T) {
 					`LOG_ID("audit.abcxyz/system_event") `+
 					`AND timestamp >= %q AND resource.type = "gae_app" `+
 					`AND severity = ERROR`,
-				ct.Add(-4*time.Hour).Add(-31*time.Second).Round(60*time.Second).Format(time.RFC3339),
+				ct.Add(-4*time.Hour).Add(-30*time.Second).Round(60*time.Second).Format(time.RFC3339),
 			),
 			expOut: fmt.Sprintf(`%s
 Successfully validated log (InsertId: "test-log")
@@ -400,9 +400,10 @@ func (p *fakePuller) StreamPull(ctx context.Context, filter string, logCh chan<-
 		logCh <- v
 	}
 
-	// mock real streamPull's behavior, looping until canceled
-	// instead of using a for{} that loops forever, this is
-	// more efficient in test
+	// mock real streamPull's behavior, looping until canceled instead of using
+	// a for{} that loops forever, this is more efficient in test in
+	// TestStreamTailCommand, the contex time out is set to 2 seconds sleep 3
+	// seconds here make sure the server is still running before the time out.
 	time.Sleep(3 * time.Second)
 	return nil
 }

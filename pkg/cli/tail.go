@@ -66,6 +66,8 @@ type TailCommand struct {
 
 	flagFollow bool
 
+	flagFollowDuration int
+
 	// For testing only.
 	testPuller logPuller
 }
@@ -164,7 +166,15 @@ func (c *TailCommand) Flags() *cli.FlagSet {
 		Aliases: []string{"f"},
 		Target:  &c.flagFollow,
 		Default: false,
-		Usage:   `Set to true if you want to stream validating logs`,
+		Usage:   "Whether to stream the logs as they show up.",
+	})
+
+	f.IntVar(&cli.IntVar{
+		Name:    "follow-duration",
+		Aliases: []string{"fd"},
+		Default: 3600,
+		Target:  &c.flagFollowDuration,
+		Usage:   "the max time for running -f.",
 	})
 
 	return set
@@ -207,22 +217,22 @@ func (c *TailCommand) Run(ctx context.Context, args []string) (rErr error) {
 		if err != nil {
 			return errors.Join(rErr, fmt.Errorf("failed to create logging client: %w", err))
 		}
-		puller = cloudlogging.NewPuller(ctx, logClient, c.flagScope, cloudlogging.WithRetry(retry.WithMaxRetries(1000000, retry.NewFibonacci(500*time.Millisecond))))
+		puller = cloudlogging.NewPuller(ctx, logClient, c.flagScope, cloudlogging.WithRetry(retry.WithMaxRetries(uint64(c.flagFollowDuration), retry.NewConstant(1000*time.Millisecond))))
 	}
 
 	if c.flagFollow {
-		if err := c.streamTail(ctx, extra, puller); err != nil {
+		if err := c.stream(ctx, extra, puller); err != nil {
 			rErr = errors.Join(rErr, err)
 		}
 	} else {
-		if err := c.listTail(ctx, extra, puller); err != nil {
+		if err := c.list(ctx, extra, puller); err != nil {
 			rErr = errors.Join(rErr, err)
 		}
 	}
 	return
 }
 
-func (c *TailCommand) listTail(ctx context.Context, extra []validation.Validator, puller logPuller) error {
+func (c *TailCommand) list(ctx context.Context, extra []validation.Validator, puller logPuller) error {
 	ls, err := puller.Pull(ctx, c.queryFilter(), c.flagMaxNum)
 	if err != nil {
 		return fmt.Errorf("failed to pull logs: %w", err)
@@ -264,24 +274,21 @@ func (c *TailCommand) listTail(ctx context.Context, extra []validation.Validator
 	return nil
 }
 
-func (c *TailCommand) streamTail(ctx context.Context, extra []validation.Validator, puller logPuller) error {
+func (c *TailCommand) stream(ctx context.Context, extra []validation.Validator, puller logPuller) error {
 	// logCh is used to receive logEntriesfrom StreamPull
 	logCh := make(chan *loggingpb.LogEntry)
-	// errCh is used to receive error from StreamPull
-	errCh := make(chan error)
 	// doneCh is used to notifiy the main goroutinue when
 	// StreamPull is finished or canceled.
 	doneCh := make(chan struct{})
 
-	var failCount int
-	var totalCount int
+	var failCount, totalCount int
 
+	var perr error
 	go func() {
 		if err := puller.StreamPull(ctx, c.queryFilter(), logCh); err != nil {
-			errCh <- fmt.Errorf("StreamPull failed: %w", err)
+			perr = fmt.Errorf("StreamPull failed: %w", err)
 		}
 		close(logCh)
-		close(errCh)
 	}()
 
 	go func() {
@@ -313,18 +320,15 @@ func (c *TailCommand) streamTail(ctx context.Context, extra []validation.Validat
 		}
 	}()
 
-	select {
-	case <-ctx.Done():
-		// main channel will block here until doneCh receives this way we can
-		// prevent the possible race condition including main channel reads from
-		// totalCount and failCount before logCh receives the new logEntry.
-		// This is also the same for c.Errf and c.Outf.
-		<-doneCh
-		return fmt.Errorf("stream tail validate cancelled: %w", ctx.Err())
-	case e := <-errCh:
-		<-doneCh
-		return e
+	// main channel will block here until doneCh receives this way we can
+	// prevent the possible race condition including main channel reads from
+	// totalCount and failCount before logCh receives the new logEntry.
+	// This is also the same for c.Errf and c.Outf.
+	<-doneCh
+	if perr != nil {
+		return perr
 	}
+	return fmt.Errorf("stream tail validate cancelled: %w", ctx.Err())
 }
 
 func (c *TailCommand) queryFilter() string {
@@ -332,7 +336,7 @@ func (c *TailCommand) queryFilter() string {
 	if c.flagOverrideFilter != "" {
 		return c.flagOverrideFilter
 	}
-	// .Add(-31*time.Second).Round(60*time.Second) cutoff the second in the
+	// .Add(-30*time.Second).Round(60*time.Second) cutoff the second in the
 	// timestamp this helps reduce the flakness in test to compare the timestamp
 	// when there's a delay in seconds.
 	//
