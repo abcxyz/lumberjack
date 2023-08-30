@@ -28,7 +28,7 @@ import (
 )
 
 // length of `timestamp >= "2023-08-29T17:32:25Z"`.
-const TimestampFilterLength = 35
+const timestampFilterLength = 35
 
 func TestTailCommand(t *testing.T) {
 	t.Parallel()
@@ -85,7 +85,7 @@ func TestTailCommand(t *testing.T) {
 					`AND timestamp >= %q`,
 				ct.Add(-2*time.Hour).Format(time.RFC3339),
 			),
-			expMaxNum: 1,
+			expMaxNum: 10,
 			expOut:    `{}`,
 		},
 		{
@@ -135,7 +135,7 @@ Validation failed for 0 logs (out of 1)
 					`AND timestamp >= %q`,
 				ct.Add(-2*time.Hour).Format(time.RFC3339),
 			),
-			expMaxNum: 1,
+			expMaxNum: 10,
 			expOut: fmt.Sprintf(`%s
 Successfully validated log (InsertId: "test-log")
 
@@ -156,7 +156,7 @@ Validation failed for 0 logs (out of 1)
 				},
 			},
 			expFilter: "test-filter",
-			expMaxNum: 1,
+			expMaxNum: 10,
 			expOut: fmt.Sprintf(`
 {"insertId":"test"}
 %s
@@ -177,7 +177,7 @@ Validation failed for 1 logs (out of 2)
 				injectErr:  fmt.Errorf("injected error"),
 			},
 			expFilter:    "test-filter",
-			expMaxNum:    1,
+			expMaxNum:    10,
 			expErrSubstr: "injected error",
 		},
 	}
@@ -204,19 +204,15 @@ Validation failed for 1 logs (out of 2)
 			if strings.TrimSpace(tc.expOut) != strings.TrimSpace(stdout.String()) {
 				t.Errorf("Process(%+v) got output: %q, but want output: %q", tc.name, stdout.String(), tc.expOut)
 			}
+			trimedExpFilter := strings.TrimSpace(tc.expFilter)
+			trimedGotFilter := strings.TrimSpace(tc.puller.gotFilter)
 			// Tests can be flaky since there could be a delay between
 			// calculating timestamp in test and calculating timestamp in
 			// queryFilter. So we remove the timestamp part to reduce this
 			// flakiness. If rest of the filter string is the same, it can prove
 			// the Puller got the right filter.
-			trimedExpFilter := strings.TrimSpace(tc.expFilter)
-			trimedGotFilter := strings.TrimSpace(tc.puller.gotFilter)
-			if i := strings.Index(trimedExpFilter, "timestamp >="); i != -1 {
-				trimedExpFilter = trimedExpFilter[0:i] + trimedExpFilter[i+TimestampFilterLength:]
-			}
-			if i := strings.Index(trimedGotFilter, "timestamp >="); i != -1 {
-				trimedGotFilter = trimedGotFilter[0:i] + trimedGotFilter[i+TimestampFilterLength:]
-			}
+			trimedExpFilter = testTrimFilterTS(t, trimedExpFilter)
+			trimedGotFilter = testTrimFilterTS(t, trimedGotFilter)
 			if trimedExpFilter != trimedGotFilter {
 				t.Errorf("Process(%+v) got filter: %q, but want output: %q", tc.name, tc.puller.gotFilter, tc.expFilter)
 			}
@@ -281,8 +277,7 @@ func TestStreamTailCommand(t *testing.T) {
 					`AND timestamp >= %q`,
 				ct.Add(-2*time.Hour).Format(time.RFC3339),
 			),
-			expOut:       `{}`,
-			expErrSubstr: "stream tail validate cancelled",
+			expOut: `{}`,
 		},
 		{
 			name: "success_stream_tail_validate",
@@ -311,7 +306,31 @@ Successfully validated log (InsertId: "test-log")
 
 Validation failed for 0 logs (out of 1)
 `, validLogJSON),
-			expErrSubstr: "stream tail validate cancelled",
+		},
+		{
+			name: "success_validate_with_additional_check",
+			args: []string{
+				"-scope", "projects/foo",
+				"-validate", "-additional-check",
+				"-f",
+			},
+			puller: &fakePuller{
+				logEntries: []*loggingpb.LogEntry{validLog},
+			},
+			expFilter: fmt.Sprintf(
+				`LOG_ID("audit.abcxyz/unspecified") OR `+
+					`LOG_ID("audit.abcxyz/activity") OR `+
+					`LOG_ID("audit.abcxyz/data_access") OR `+
+					`LOG_ID("audit.abcxyz/consent") OR `+
+					`LOG_ID("audit.abcxyz/system_event") `+
+					`AND timestamp >= %q`,
+				ct.Add(-2*time.Hour).Format(time.RFC3339),
+			),
+			expOut: fmt.Sprintf(`%s
+Successfully validated log (InsertId: "test-log")
+
+Validation failed for 0 logs (out of 1)
+`, validLogJSON),
 		},
 		{
 			name: "stream_tail_fail",
@@ -349,7 +368,6 @@ Successfully validated log (InsertId: "test-log")
 
 Validation failed for 1 logs (out of 2)
 `, validLogJSON),
-			expErrSubstr:    "stream tail validate cancelled",
 			expStderrSubstr: `failed to validate log`,
 		},
 	}
@@ -381,19 +399,16 @@ Validation failed for 1 logs (out of 2)
 				t.Errorf("Process(%+v) got output: %q, but want output: %q", tc.name, stdout.String(), tc.expOut)
 			}
 
+			trimedExpFilter := strings.TrimSpace(tc.expFilter)
+			trimedGotFilter := strings.TrimSpace(tc.puller.gotFilter)
 			// Tests can be flaky since there might be a delay between
 			// calculating timestamp in test and calculating timestamp in
 			// queryFilter. So we remove the timestamp part to reduce this
 			// flakiness. If rest of the filter string is the same, it can prove
 			// the Puller got the right filter.
-			trimedExpFilter := strings.TrimSpace(tc.expFilter)
-			trimedGotFilter := strings.TrimSpace(tc.puller.gotFilter)
-			if i := strings.Index(trimedExpFilter, "timestamp >="); i != -1 {
-				trimedExpFilter = trimedExpFilter[0:i] + trimedExpFilter[i+TimestampFilterLength:]
-			}
-			if i := strings.Index(trimedGotFilter, "timestamp >="); i != -1 {
-				trimedGotFilter = trimedGotFilter[0:i] + trimedGotFilter[i+TimestampFilterLength:]
-			}
+			trimedExpFilter = testTrimFilterTS(t, trimedExpFilter)
+			trimedGotFilter = testTrimFilterTS(t, trimedGotFilter)
+
 			if trimedExpFilter != trimedGotFilter {
 				t.Errorf("Process(%+v) got filter: %q, but want output: %q", tc.name, tc.puller.gotFilter, tc.expFilter)
 			}
@@ -429,11 +444,15 @@ func (p *fakePuller) StreamPull(ctx context.Context, filter string, logCh chan<-
 	for _, v := range p.logEntries {
 		logCh <- v
 	}
-
-	// mock real streamPull's behavior, looping until canceled instead of using
-	// a for{} that loops forever, this is more efficient in test in
-	// TestStreamTailCommand, the contex time out is set to 2 seconds sleep 3
-	// seconds here make sure the server is still running before the time out.
-	time.Sleep(3 * time.Second)
+	<-ctx.Done()
 	return nil
+}
+
+// testRemoveFilterTS trims the timestamp from the filter.
+func testTrimFilterTS(tb testing.TB, s string) string {
+	tb.Helper()
+	if i := strings.Index(s, "timestamp >="); i != -1 {
+		s = s[0:i] + s[i+timestampFilterLength:]
+	}
+	return s
 }

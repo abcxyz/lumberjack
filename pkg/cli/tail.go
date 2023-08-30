@@ -29,6 +29,7 @@ import (
 	"google.golang.org/protobuf/encoding/protojson"
 
 	logging "cloud.google.com/go/logging/apiv2"
+	logger "github.com/abcxyz/pkg/logging"
 )
 
 // Lumberjack specific log types.
@@ -65,8 +66,6 @@ type TailCommand struct {
 	flagAdditionalCheck bool
 
 	flagFollow bool
-
-	flagFollowDuration int
 
 	// For testing only.
 	testPuller logPuller
@@ -122,8 +121,9 @@ func (c *TailCommand) Flags() *cli.FlagSet {
 		Name:    "max-num",
 		Aliases: []string{"n"},
 		Target:  &c.flagMaxNum,
-		Default: 1,
-		Usage:   `Maximum number of most recent logs to validate`,
+		Default: 10,
+		Usage: `Maximum number of most recent logs to validate ` +
+			`This flag is ignored if -follow is set`,
 	})
 
 	f.DurationVar(&cli.DurationVar{
@@ -133,7 +133,7 @@ func (c *TailCommand) Flags() *cli.FlagSet {
 		Example: "4h",
 		Default: 2 * time.Hour,
 		Usage: `Log filter that determines how far back to search for log ` +
-			`entries`,
+			`entries. This flag is ignored if -follow is set`,
 	})
 
 	f.StringVar(&cli.StringVar{
@@ -169,15 +169,6 @@ func (c *TailCommand) Flags() *cli.FlagSet {
 		Usage:   "Whether to stream the logs as they show up.",
 	})
 
-	f.IntVar(&cli.IntVar{
-		Name:    "follow-duration",
-		Aliases: []string{"fd"},
-		Default: 3600,
-		Target:  &c.flagFollowDuration,
-		Usage: `the max time in seconds for running -f if there is no new log ` +
-			`to validate. Only work with -f.`,
-	})
-
 	return set
 }
 
@@ -206,11 +197,15 @@ func (c *TailCommand) Run(ctx context.Context, args []string) (rErr error) {
 	}
 
 	var puller logPuller
+	var r retry.Backoff
 	if c.testPuller != nil {
 		puller = c.testPuller
 	} else {
 		logClient, err := logging.NewClient(ctx)
 		defer func() {
+			if logClient == nil {
+				return
+			}
 			if err := logClient.Close(); err != nil {
 				rErr = errors.Join(rErr, fmt.Errorf("failed to close log client: %w", err))
 			}
@@ -218,7 +213,16 @@ func (c *TailCommand) Run(ctx context.Context, args []string) (rErr error) {
 		if err != nil {
 			return errors.Join(rErr, fmt.Errorf("failed to create logging client: %w", err))
 		}
-		puller = cloudlogging.NewPuller(ctx, logClient, c.flagScope, cloudlogging.WithRetry(retry.WithMaxRetries(uint64(c.flagFollowDuration), retry.NewConstant(1000*time.Millisecond))))
+		// In stream, it makes more sense to use a Constant backup and the set
+		// the retry to a higher value as StreamPull starts a new retry if
+		// client failed to send request, using default retry will cause retry
+		// ends early.
+		// Set the default retry backoff for Follow to 600 retry times with constant 1
+		// second back off.
+		if c.flagFollow {
+			r = retry.WithMaxRetries(600, retry.NewConstant(1*time.Second))
+		}
+		puller = cloudlogging.NewPuller(ctx, logClient, c.flagScope, cloudlogging.WithRetry(r))
 	}
 
 	if c.flagFollow {
@@ -314,7 +318,9 @@ func (c *TailCommand) stream(ctx context.Context, extra []validation.Validator, 
 	if perr != nil {
 		return perr
 	}
-	return fmt.Errorf("stream tail validate cancelled: %w", ctx.Err())
+	log := logger.FromContext(ctx)
+	log.DebugContext(ctx, fmt.Sprintf("stream tail validate cancelled: %v", ctx.Err()))
+	return nil
 }
 
 func (c *TailCommand) queryFilter() string {
