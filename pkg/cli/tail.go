@@ -25,7 +25,6 @@ import (
 	"github.com/abcxyz/lumberjack/pkg/cloudlogging"
 	"github.com/abcxyz/lumberjack/pkg/validation"
 	"github.com/abcxyz/pkg/cli"
-	"github.com/sethvargo/go-retry"
 	"google.golang.org/protobuf/encoding/protojson"
 
 	logging "cloud.google.com/go/logging/apiv2"
@@ -90,6 +89,14 @@ Tails the latest lumberjack log filtered by additional custom log filter:
 Tails and validates (with additional check) the latest 10 lumberjack log in the last 4 hours in the scope:
 
       {{ COMMAND }} -scope "projects/foo" -max-num 10 -duration 4h -validate -additional-check
+
+Follow and validates the latest lumberjack log :
+
+      {{ COMMAND }} -scope "projects/foo" -follow -validate
+
+Follow the latest lumberjack log filtered by additional custom log filter:
+
+      {{ COMMAND }} -scope "projects/foo" -additional-filter "resource.type = \"foo\"" -follow
 `
 }
 
@@ -132,8 +139,7 @@ func (c *TailCommand) Flags() *cli.FlagSet {
 		Target:  &c.flagDuration,
 		Example: "4h",
 		Default: 2 * time.Hour,
-		Usage: `Log filter that determines how far back to search for log ` +
-			`entries. This flag is ignored if -follow is set`,
+		Usage:   `Log filter that determines how far back to search for log entries`,
 	})
 
 	f.StringVar(&cli.StringVar{
@@ -197,32 +203,20 @@ func (c *TailCommand) Run(ctx context.Context, args []string) (rErr error) {
 	}
 
 	var puller logPuller
-	var r retry.Backoff
 	if c.testPuller != nil {
 		puller = c.testPuller
 	} else {
 		logClient, err := logging.NewClient(ctx)
+		if err != nil {
+			return errors.Join(rErr, fmt.Errorf("failed to create logging client: %w", err))
+		}
+
 		defer func() {
-			if logClient == nil {
-				return
-			}
 			if err := logClient.Close(); err != nil {
 				rErr = errors.Join(rErr, fmt.Errorf("failed to close log client: %w", err))
 			}
 		}()
-		if err != nil {
-			return errors.Join(rErr, fmt.Errorf("failed to create logging client: %w", err))
-		}
-		// In stream, it makes more sense to use a Constant backup and the set
-		// the retry to a higher value as StreamPull starts a new retry if
-		// client failed to send request, using default retry will cause retry
-		// ends early.
-		// Set the default retry backoff for Follow to 600 retry times with constant 1
-		// second back off.
-		if c.flagFollow {
-			r = retry.WithMaxRetries(600, retry.NewConstant(1*time.Second))
-		}
-		puller = cloudlogging.NewPuller(ctx, logClient, c.flagScope, cloudlogging.WithRetry(r))
+		puller = cloudlogging.NewPuller(ctx, logClient, c.flagScope)
 	}
 
 	if c.flagFollow {
@@ -286,6 +280,7 @@ func (c *TailCommand) stream(ctx context.Context, extra []validation.Validator, 
 	var failCount, totalCount int
 
 	var perr error
+
 	go func() {
 		if err := puller.StreamPull(ctx, c.queryFilter(), logCh); err != nil {
 			perr = fmt.Errorf("StreamPull failed: %w", err)
@@ -315,12 +310,16 @@ func (c *TailCommand) stream(ctx context.Context, extra []validation.Validator, 
 		c.Outf("Validation failed for %d logs (out of %d)", failCount, totalCount)
 	}
 
-	if perr != nil {
-		return perr
+	// perr will be context.Canceled if it's timed out or user pressed ctrl+c
+	// in this case, we don't want to return an error, so I write an debug level
+	// log instead.
+	if errors.Is(perr, context.Canceled) {
+		log := logger.FromContext(ctx)
+		log.DebugContext(ctx, fmt.Sprintf("stream follow cancelled: %v", ctx.Err()))
+		return nil
 	}
-	log := logger.FromContext(ctx)
-	log.DebugContext(ctx, fmt.Sprintf("stream tail validate cancelled: %v", ctx.Err()))
-	return nil
+
+	return perr
 }
 
 func (c *TailCommand) queryFilter() string {

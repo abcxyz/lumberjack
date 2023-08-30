@@ -27,8 +27,10 @@ import (
 	"google.golang.org/protobuf/types/known/structpb"
 )
 
-// length of `timestamp >= "2023-08-29T17:32:25Z"`.
-const timestampFilterLength = 35
+var (
+	cutoff                = "timestamp >= %q"
+	timestampFilterLength = len(fmt.Sprintf(cutoff, time.Now().UTC().Format(time.RFC3339)))
+)
 
 func TestTailCommand(t *testing.T) {
 	t.Parallel()
@@ -204,15 +206,13 @@ Validation failed for 1 logs (out of 2)
 			if strings.TrimSpace(tc.expOut) != strings.TrimSpace(stdout.String()) {
 				t.Errorf("Process(%+v) got output: %q, but want output: %q", tc.name, stdout.String(), tc.expOut)
 			}
-			trimedExpFilter := strings.TrimSpace(tc.expFilter)
-			trimedGotFilter := strings.TrimSpace(tc.puller.gotFilter)
 			// Tests can be flaky since there could be a delay between
 			// calculating timestamp in test and calculating timestamp in
 			// queryFilter. So we remove the timestamp part to reduce this
 			// flakiness. If rest of the filter string is the same, it can prove
 			// the Puller got the right filter.
-			trimedExpFilter = testTrimFilterTS(t, trimedExpFilter)
-			trimedGotFilter = testTrimFilterTS(t, trimedGotFilter)
+			trimedExpFilter := testTrimFilterTS(t, strings.TrimSpace(tc.expFilter))
+			trimedGotFilter := testTrimFilterTS(t, strings.TrimSpace(tc.puller.gotFilter))
 			if trimedExpFilter != trimedGotFilter {
 				t.Errorf("Process(%+v) got filter: %q, but want output: %q", tc.name, tc.puller.gotFilter, tc.expFilter)
 			}
@@ -399,15 +399,13 @@ Validation failed for 1 logs (out of 2)
 				t.Errorf("Process(%+v) got output: %q, but want output: %q", tc.name, stdout.String(), tc.expOut)
 			}
 
-			trimedExpFilter := strings.TrimSpace(tc.expFilter)
-			trimedGotFilter := strings.TrimSpace(tc.puller.gotFilter)
 			// Tests can be flaky since there might be a delay between
 			// calculating timestamp in test and calculating timestamp in
 			// queryFilter. So we remove the timestamp part to reduce this
 			// flakiness. If rest of the filter string is the same, it can prove
 			// the Puller got the right filter.
-			trimedExpFilter = testTrimFilterTS(t, trimedExpFilter)
-			trimedGotFilter = testTrimFilterTS(t, trimedGotFilter)
+			trimedExpFilter := testTrimFilterTS(t, strings.TrimSpace(tc.expFilter))
+			trimedGotFilter := testTrimFilterTS(t, strings.TrimSpace(tc.puller.gotFilter))
 
 			if trimedExpFilter != trimedGotFilter {
 				t.Errorf("Process(%+v) got filter: %q, but want output: %q", tc.name, tc.puller.gotFilter, tc.expFilter)
