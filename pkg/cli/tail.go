@@ -90,11 +90,11 @@ Tails and validates (with additional check) the latest 10 lumberjack log in the 
 
       {{ COMMAND }} -scope "projects/foo" -max-num 10 -duration 4h -validate -additional-check
 
-Follow and validates the latest lumberjack log :
+Streams and validates the latest lumberjack log :
 
       {{ COMMAND }} -scope "projects/foo" -follow -validate
 
-Follow the latest lumberjack log filtered by additional custom log filter:
+Streams the latest lumberjack log filtered by additional custom log filter:
 
       {{ COMMAND }} -scope "projects/foo" -additional-filter "resource.type = \"foo\"" -follow
 `
