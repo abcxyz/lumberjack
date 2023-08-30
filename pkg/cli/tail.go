@@ -82,7 +82,7 @@ Tails and validates the latest lumberjack log in the last 2 hours in the scope:
 
       {{ COMMAND }} -scope "projects/foo" -validate
 
-Tails the latest lumberjack log filtered by additional custom log filter:
+Tails the latest 10 lumberjack log filtered by additional custom log filter:
 
       {{ COMMAND }} -scope "projects/foo" -additional-filter "resource.type = \"foo\""
 
@@ -139,7 +139,8 @@ func (c *TailCommand) Flags() *cli.FlagSet {
 		Target:  &c.flagDuration,
 		Example: "4h",
 		Default: 2 * time.Hour,
-		Usage:   `Log filter that determines how far back to search for log entries`,
+		Usage: `Log filter that determines how far back to search for log entries` +
+			`This flag is ignored if -follow is set`,
 	})
 
 	f.StringVar(&cli.StringVar{
@@ -311,8 +312,7 @@ func (c *TailCommand) stream(ctx context.Context, extra []validation.Validator, 
 	}
 
 	// perr will be context.Canceled if it's timed out or user pressed ctrl+c
-	// in this case, we don't want to return an error, so I write an debug level
-	// log instead.
+	// in this case, the perr is logged instead of returned.
 	if errors.Is(perr, context.Canceled) {
 		log := logger.FromContext(ctx)
 		log.DebugContext(ctx, fmt.Sprintf("stream follow cancelled: %v", ctx.Err()))
