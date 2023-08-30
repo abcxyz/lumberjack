@@ -78,7 +78,7 @@ func (c *TailCommand) Help() string {
 	return `
 Usage: {{ COMMAND }} [options]
 
-Tails and validates the latest lumberjack log in the last 2 hours in the scope:
+Tails and validates the latest 10 lumberjack log in the last 2 hours in the scope:
 
       {{ COMMAND }} -scope "projects/foo" -validate
 
