@@ -28,7 +28,7 @@ import (
 	"google.golang.org/protobuf/encoding/protojson"
 
 	logging "cloud.google.com/go/logging/apiv2"
-	logger "github.com/abcxyz/pkg/logging"
+	pkglogging "github.com/abcxyz/pkg/logging"
 )
 
 // Lumberjack specific log types.
