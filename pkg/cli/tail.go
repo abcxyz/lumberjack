@@ -16,6 +16,7 @@ package cli
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -27,6 +28,7 @@ import (
 	"google.golang.org/protobuf/encoding/protojson"
 
 	logging "cloud.google.com/go/logging/apiv2"
+	pkglogging "github.com/abcxyz/pkg/logging"
 )
 
 // Lumberjack specific log types.
@@ -39,6 +41,7 @@ const logType = `LOG_ID("audit.abcxyz/unspecified") OR ` +
 // logPuller interface that pulls log entries from cloud logging.
 type logPuller interface {
 	Pull(context.Context, string, int) ([]*loggingpb.LogEntry, error)
+	StreamPull(context.Context, string, chan<- *loggingpb.LogEntry) error
 }
 
 var _ cli.Command = (*TailCommand)(nil)
@@ -61,6 +64,8 @@ type TailCommand struct {
 
 	flagAdditionalCheck bool
 
+	flagFollow bool
+
 	// For testing only.
 	testPuller logPuller
 }
@@ -73,17 +78,25 @@ func (c *TailCommand) Help() string {
 	return `
 Usage: {{ COMMAND }} [options]
 
-Tails and validates the latest lumberjack log in the last 2 hours in the scope:
+Tails and validates the latest 10 lumberjack log in the last 2 hours in the scope:
 
       {{ COMMAND }} -scope "projects/foo" -validate
 
-Tails the latest lumberjack log filtered by additional custom log filter:
+Tails the latest 10 lumberjack log filtered by additional custom log filter:
 
       {{ COMMAND }} -scope "projects/foo" -additional-filter "resource.type = \"foo\""
 
 Tails and validates (with additional check) the latest 10 lumberjack log in the last 4 hours in the scope:
 
       {{ COMMAND }} -scope "projects/foo" -max-num 10 -duration 4h -validate -additional-check
+
+Streams and validates the latest lumberjack log :
+
+      {{ COMMAND }} -scope "projects/foo" -follow -validate
+
+Streams the latest lumberjack log filtered by additional custom log filter:
+
+      {{ COMMAND }} -scope "projects/foo" -additional-filter "resource.type = \"foo\"" -follow
 `
 }
 
@@ -115,8 +128,9 @@ func (c *TailCommand) Flags() *cli.FlagSet {
 		Name:    "max-num",
 		Aliases: []string{"n"},
 		Target:  &c.flagMaxNum,
-		Default: 1,
-		Usage:   `Maximum number of most recent logs to validate`,
+		Default: 10,
+		Usage: `Maximum number of most recent logs to validate ` +
+			`This flag is ignored if -follow is set`,
 	})
 
 	f.DurationVar(&cli.DurationVar{
@@ -125,8 +139,8 @@ func (c *TailCommand) Flags() *cli.FlagSet {
 		Target:  &c.flagDuration,
 		Example: "4h",
 		Default: 2 * time.Hour,
-		Usage: `Log filter that determines how far back to search for log ` +
-			`entries`,
+		Usage: `Log filter that determines how far back to search for log entries` +
+			`This flag is ignored if -follow is set`,
 	})
 
 	f.StringVar(&cli.StringVar{
@@ -154,10 +168,18 @@ func (c *TailCommand) Flags() *cli.FlagSet {
 			`additional lumberjack specific checks on log labels.`,
 	})
 
+	f.BoolVar(&cli.BoolVar{
+		Name:    "follow",
+		Aliases: []string{"f"},
+		Target:  &c.flagFollow,
+		Default: false,
+		Usage:   "Whether to stream the logs as they show up.",
+	})
+
 	return set
 }
 
-func (c *TailCommand) Run(ctx context.Context, args []string) error {
+func (c *TailCommand) Run(ctx context.Context, args []string) (rErr error) {
 	f := c.Flags()
 	if err := f.Parse(args); err != nil {
 		return fmt.Errorf("failed to parse flags: %w", err)
@@ -176,19 +198,49 @@ func (c *TailCommand) Run(ctx context.Context, args []string) error {
 		return fmt.Errorf("-max-num must be greater than 0 and less than 1000")
 	}
 
-	// Tail logs.
-	ls, err := c.tail(ctx)
-	if err != nil {
-		return err
-	}
-	if len(ls) == 0 {
-		c.Outf("No logs found.")
-		return nil
-	}
-
 	var extra []validation.Validator
 	if c.flagAdditionalCheck {
 		extra = append(extra, validation.ValidateLabels)
+	}
+
+	var puller logPuller
+	if c.testPuller != nil {
+		puller = c.testPuller
+	} else {
+		logClient, err := logging.NewClient(ctx)
+		if err != nil {
+			return errors.Join(rErr, fmt.Errorf("failed to create logging client: %w", err))
+		}
+
+		defer func() {
+			if err := logClient.Close(); err != nil {
+				rErr = errors.Join(rErr, fmt.Errorf("failed to close log client: %w", err))
+			}
+		}()
+		puller = cloudlogging.NewPuller(ctx, logClient, c.flagScope)
+	}
+
+	if c.flagFollow {
+		if err := c.stream(ctx, extra, puller); err != nil {
+			rErr = errors.Join(rErr, err)
+		}
+	} else {
+		if err := c.list(ctx, extra, puller); err != nil {
+			rErr = errors.Join(rErr, err)
+		}
+	}
+	return
+}
+
+func (c *TailCommand) list(ctx context.Context, extra []validation.Validator, puller logPuller) error {
+	ls, err := puller.Pull(ctx, c.queryFilter(), c.flagMaxNum)
+	if err != nil {
+		return fmt.Errorf("failed to pull logs: %w", err)
+	}
+
+	if len(ls) == 0 {
+		c.Outf("No logs found.")
+		return nil
 	}
 
 	// Output results.
@@ -222,24 +274,51 @@ func (c *TailCommand) Run(ctx context.Context, args []string) error {
 	return nil
 }
 
-func (c *TailCommand) tail(ctx context.Context) ([]*loggingpb.LogEntry, error) {
-	var p logPuller
-	if c.testPuller != nil {
-		p = c.testPuller
-	} else {
-		logClient, err := logging.NewClient(ctx)
-		if err != nil {
-			return nil, fmt.Errorf("failed to create logging client: %w", err)
+func (c *TailCommand) stream(ctx context.Context, extra []validation.Validator, puller logPuller) error {
+	// logCh is used to receive logEntriesfrom StreamPull
+	logCh := make(chan *loggingpb.LogEntry)
+
+	var failCount, totalCount int
+
+	var perr error
+
+	go func() {
+		defer close(logCh)
+		if err := puller.StreamPull(ctx, c.queryFilter(), logCh); err != nil {
+			perr = fmt.Errorf("StreamPull failed: %w", err)
 		}
-		p = cloudlogging.NewPuller(ctx, logClient, c.flagScope)
+	}()
+
+	for l := range logCh {
+		totalCount++
+		js, err := protojson.Marshal(l)
+		if err != nil {
+			c.Errf("failed to marshal log to json (InsertId: %q): %w", l.InsertId, err)
+			continue
+		}
+		c.Outf(stripSpaces(string(js)))
+		if c.flagValidate {
+			if err := validation.Validate(string(js), extra...); err != nil {
+				failCount++
+				c.Errf("failed to validate log (InsertId: %q): %w\n", l.InsertId, err)
+			} else {
+				c.Outf("Successfully validated log (InsertId: %q)\n", l.InsertId)
+			}
+		}
 	}
 
-	ls, err := p.Pull(ctx, c.queryFilter(), c.flagMaxNum)
-	if err != nil {
-		return nil, fmt.Errorf("failed to pull logs: %w", err)
+	if c.flagValidate {
+		c.Outf("Validation failed for %d logs (out of %d)", failCount, totalCount)
 	}
 
-	return ls, nil
+	// perr will be context.Canceled if it's timed out or user pressed ctrl+c
+	// in this case, the perr is logged instead of returned.
+	if errors.Is(perr, context.Canceled) {
+		pkglogging.FromContext(ctx).DebugContext(ctx, "stream cancelled", "error", ctx.Err())
+		return nil
+	}
+
+	return perr
 }
 
 func (c *TailCommand) queryFilter() string {
