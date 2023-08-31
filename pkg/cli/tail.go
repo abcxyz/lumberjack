@@ -314,8 +314,7 @@ func (c *TailCommand) stream(ctx context.Context, extra []validation.Validator, 
 	// perr will be context.Canceled if it's timed out or user pressed ctrl+c
 	// in this case, the perr is logged instead of returned.
 	if errors.Is(perr, context.Canceled) {
-		log := logger.FromContext(ctx)
-		log.DebugContext(ctx, fmt.Sprintf("stream follow cancelled: %v", ctx.Err()))
+		pkglogging.FromContext(ctx).DebugContext(ctx, "stream cancelled", "error", ctx.Err())
 		return nil
 	}
 
