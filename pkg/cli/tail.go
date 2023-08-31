@@ -283,10 +283,10 @@ func (c *TailCommand) stream(ctx context.Context, extra []validation.Validator, 
 	var perr error
 
 	go func() {
+		defer close(logCh)
 		if err := puller.StreamPull(ctx, c.queryFilter(), logCh); err != nil {
 			perr = fmt.Errorf("StreamPull failed: %w", err)
 		}
-		close(logCh)
 	}()
 
 	for l := range logCh {
