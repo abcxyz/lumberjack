@@ -4,5 +4,5 @@ RUN mvn clean package --no-transfer-progress -f /src/clients/java-logger/pom.xml
 
 FROM gcr.io/distroless/java-debian11:11
 COPY integration/testrunner/test_jwks test_jwks
-COPY --from=builder /src/clients/java-logger/grpc-test-app/target/grpc-test-app-0.0.1.jar server.jar
+COPY --from=builder /src/clients/java-logger/grpc-test-app/target/grpc-test-app-0.0.5.jar server.jar
 CMD ["server.jar"]
