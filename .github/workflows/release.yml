@@ -67,7 +67,7 @@ jobs:
         # Even though Artifact Registry allows versions starts with "v",
         # Maven's convention is to have versions without "v".
         run: |-
-          mvn clean deploy -Drevision=$(echo '${{ github.ref_name }}' | cut -c 2-) -f clients/java-logger/library
+          mvn clean flatten:flatten deploy -Drevision=$(echo '${{ github.ref_name }}' | cut -c 2-) -f clients/java-logger/library
 
   github-release:
     needs: ['image-release', 'maven-release']

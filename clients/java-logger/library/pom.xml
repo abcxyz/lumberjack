@@ -142,7 +142,7 @@
     <dependency>
       <groupId>com.abcxyz.jvs</groupId>
       <artifactId>jvs-client</artifactId>
-      <version>0.0.3</version>
+      <version>0.1.4</version>
     </dependency>
   </dependencies>
 
