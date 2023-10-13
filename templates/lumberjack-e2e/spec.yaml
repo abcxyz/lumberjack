@@ -52,6 +52,10 @@ inputs:
     desc: 'File path to application audit logs filter.'
     default: ''
 
+  - name: 'cloud_audit_logs_filter_file'
+    desc: 'File path to cloud audit logs filter.'
+    default: ''
+
   - name: 'terraform_state_bucket'
     desc: 'The Google Cloud storage bucket for Terraform backend state'
 
@@ -63,7 +67,7 @@ steps:
     action: 'include'
     params:
       paths:
-        - 'jvs-e2e.tf'
+        - 'lumberjack-e2e.tf'
         - 'terraform.tf'
 
   - desc: 'Replace variables to define the Terraform block'
@@ -84,38 +88,29 @@ steps:
       paths:
         - 'lumberjack-e2e.tf'
       replacements:
+        - to_replace: 'REPLACE_LUMBERJACK_RELEASE_VERSION'
+          with: '{{.lumberjack_release_version}}'
+
         - to_replace: 'REPLACE_PROJECT_ID'
           with: '{{.project_id}}'
-
-        - to_replace: 'REPLACE_JVS_RELEASE_VERSION'
-          with: '{{.jvs_release_version}}'
 
         - to_replace: 'REPLACE_REGION'
           with: '{{.region}}'
 
-        - to_replace: 'REPLACE_KMS_KEY_LOCATION'
-          with: '{{.kms_key_location}}'
+        - to_replace: 'REPLACE_DATASET_ID'
+          with: '{{.dataset_id}}'
 
-        - to_replace: 'REPLACE_JVS_INVOKE_MEMBERS'
-          with: '{{.jvs_invoker_members}}'
+        - to_replace: 'REPLACE_LOG_SINK_PROJECT_IDS'
+          with: '{{.log_sink_project_ids}}'
 
-        - to_replace: 'REPLACE_JVS_API_DOMAIN'
-          with: '{{.jvs_api_domain}}'
+        - to_replace: 'REPLACE_LOG_SINK_FOLDER_IDS'
+          with: '{{.log_sink_folder_ids}}'
 
-        - to_replace: 'REPLACE_JVS_UI_DOMAIN'
-          with: '{{.jvs_ui_domain}}'
+        - to_replace: 'REPLACE_SINK_ORG_ID'
+          with: '{{.log_sink_org_id}}'
 
-        - to_replace: 'REPLACE_IAP_SUPPORT_EMAIL'
-          with: '{{.iap_support_email}}'
+        - to_replace: 'REPLACE_APPLICATION_AUDIT_LOGS_FILTER_FILE'
+          with: '{{.application_audit_logs_filter_file}}'
 
-        - to_replace: 'REPLACE_NOTIFICATION_CHANNEL_EMAIL'
-          with: '{{.notification_channel_email}}'
-
-        - to_replace: 'REPLACE_PROBER_AUDIENCE'
-          with: '{{.prober_audience}}'
-
-        - to_replace: 'REPLACE_PLUGIN_ENVVARS'
-          with: '{{.plugin_envvars}}'
-
-        - to_replace: 'REPLACE_ALERT_ENABLED'
-          with: '{{.alert_enabled}}'
+        - to_replace: 'REPLACE_AUDIT_LOGS_FILTER_FILE'
+          with: '{{.cloud_audit_logs_filter_file}}'

@@ -75,3 +75,29 @@ logging. Lumberjack could also help with other kinds of audit logging:
     principal in such logs should be the system identity making the request.
 
 See [supported log types here](./protos/v1alpha1/audit_log_request.proto).
+
+## Installation
+
+### Via abc CLI
+You can leverage [abc CLI](https://github.com/abcxyz/abc#abc) to set up the basic infrastructure
+needed for this service.
+You will need to install [abc CLI](https://github.com/abcxyz/abc#abc)
+by following docs [here](https://github.com/abcxyz/abc#installation).
+
+You can customize to create the [log
+sinks](https://cloud.google.com/logging/docs/export/configure_export_v2) 
+either in GCP projects, folders or organization. Below is the example of create the
+[log sinks](https://cloud.google.com/logging/docs/export/configure_export_v2)
+in GCP projects.
+
+```sh
+abc templates render \
+ -input='project_id=<YOUR_PROJECT_ID>' \
+ -input='lumberjack_release_version=<YOUR_LUMBERJACK_RELEASE_VERSION>' \
+ -input='log_sink_project_ids=[<YOUR_LOG_SINK_PROJECT_ID>,......]' \
+ -input='application_audit_logs_filter_file=<YOUR_APPLICATION_AUDIT_LOGS_FILTER_FILE>' \
+ -input='cloud_audit_logs_filter_file=<YOUR_CLOUD_AUDIT_LOGS_FILTER_FILE>' \
+ -input='terraform_state_bucket=<YOUR_TERRAFORM_STATE_BUCKET>' \
+ -input='terraform_state_prefix=<YOUR_TERRAFORM_STATE_PREFIX>' \
+ github.com/abcxyz/jvs.git//templates/lumberjack-e2e
+```
