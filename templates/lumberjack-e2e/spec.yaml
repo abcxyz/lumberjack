@@ -1,0 +1,116 @@
+# Copyright 2023 The Authors (see AUTHORS file)
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+apiVersion: 'cli.abcxyz.dev/v1alpha1'
+kind: 'Template'
+
+desc: 'Generate infrastructure needed for Lumberjack'
+
+inputs:
+  - name: 'repo_path'
+    desc: 'The path of the repo to store the generated files.'
+    default: ''
+
+  - name: 'lumberjack_release_version'
+    desc: 'The release version of the abcxyz/lumberjack. For example: 0.0.1'
+
+  - name: 'project_id'
+    desc: 'The GCP project to host the log storage.'
+
+  - name: 'region'
+    desc: 'The default log storage location.'
+    default: 'us-central1'
+
+  - name: 'dataset_id'
+    desc: 'The dataset id used to create the BigQuery dataset as the audit log storage.'
+    default: 'audit_logs'
+
+  - name: 'log_sink_project_ids'
+    desc: 'The GCP projects where to create the audit log sink. Omit to create no project log sink.'
+    default: '[]'
+
+  - name: 'log_sink_folder_ids'
+    desc: 'The GCP folders where to create the audit log sink. Omit to create no folder log sink.'
+    default: '[]'
+
+  - name: 'log_sink_org_id'
+    desc: 'The GCP org where to create the audit log sink. Omit to create no org log sink.'
+    default: ''
+
+  - name: 'application_audit_logs_filter_file'
+    desc: 'File path to application audit logs filter.'
+    default: ''
+
+  - name: 'cloud_audit_logs_filter_file'
+    desc: 'File path to cloud audit logs filter.'
+    default: ''
+
+  - name: 'terraform_state_bucket'
+    desc: 'The Google Cloud storage bucket for Terraform backend state'
+
+  - name: 'terraform_state_prefix'
+    desc: 'The Google Cloud storage bucket prefix for Terraform backend state'
+
+steps:
+  - desc: 'Include required files and directories'
+    action: 'include'
+    params:
+      paths:
+        - 'lumberjack-e2e.tf'
+        - 'terraform.tf'
+
+  - desc: 'Replace variables to define the Terraform block'
+    action: 'string_replace'
+    params:
+      paths:
+        - 'terraform.tf'
+      replacements:
+        - to_replace: 'REPLACE_TERRAFORM_STATE_BUCKET'
+          with: '{{.terraform_state_bucket}}'
+
+        - to_replace: 'REPLACE_TERRAFORM_STATE_PREFIX'
+          with: '{{.terraform_state_prefix}}'
+
+  - desc: 'Replace variables to define the resources'
+    action: 'string_replace'
+    params:
+      paths:
+        - 'lumberjack-e2e.tf'
+      replacements:
+        - to_replace: 'REPLACE_LUMBERJACK_RELEASE_VERSION'
+          with: '{{.lumberjack_release_version}}'
+
+        - to_replace: 'REPLACE_PROJECT_ID'
+          with: '{{.project_id}}'
+
+        - to_replace: 'REPLACE_REGION'
+          with: '{{.region}}'
+
+        - to_replace: 'REPLACE_DATASET_ID'
+          with: '{{.dataset_id}}'
+
+        - to_replace: 'REPLACE_LOG_SINK_PROJECT_IDS'
+          with: '{{.log_sink_project_ids}}'
+
+        - to_replace: 'REPLACE_LOG_SINK_FOLDER_IDS'
+          with: '{{.log_sink_folder_ids}}'
+
+        - to_replace: 'REPLACE_SINK_ORG_ID'
+          with: '{{.log_sink_org_id}}'
+
+        - to_replace: 'REPLACE_APPLICATION_AUDIT_LOGS_FILTER_FILE'
+          with: '{{.application_audit_logs_filter_file}}'
+
+        - to_replace: 'REPLACE_AUDIT_LOGS_FILTER_FILE'
+          with: '{{.cloud_audit_logs_filter_file}}'
