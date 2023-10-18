@@ -37,12 +37,7 @@ public class CloudLoggingModule extends AbstractModule {
       if (configuration.getBackend().getCloudlogging().useDefaultProject()) {
         throw new IllegalStateException("Cannot set cloud logging project if default is enabled.");
       }
-      loggingOptionsBuilder.setBatchingSettings(
-            BatchingSettings.newBuilder()
-                .setIsEnabled(true)
-                .setElementCountThreshold(100L)
-                .setRequestByteThreshold(1048576L)
-                .build()).setProjectId(configuration.getBackend().getCloudlogging().getProject());
+      loggingOptionsBuilder.setProjectId(configuration.getBackend().getCloudlogging().getProject());
     }
     Logging logging = loggingOptionsBuilder.build().getService();
     if (ConfigUtils.shouldFailClose(configuration.getLogMode())) {
