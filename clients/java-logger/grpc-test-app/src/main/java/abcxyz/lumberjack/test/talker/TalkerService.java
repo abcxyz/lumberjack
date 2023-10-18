@@ -48,6 +48,7 @@ import com.abcxyz.lumberjack.test.talker.TalkerGrpc;
 import com.abcxyz.lumberjack.test.talker.WhisperRequest;
 import com.abcxyz.lumberjack.test.talker.WhisperResponse;
 import com.google.cloud.audit.AuditLog;
+import com.google.cloud.logging.Logging;
 import com.google.inject.Guice;
 import com.google.inject.Injector;
 import com.sun.net.httpserver.HttpExchange;
@@ -143,10 +144,12 @@ public class TalkerService {
     Injector injector = Guice.createInjector(new AuditLoggingModule());
     AuditLoggingServerInterceptor interceptor =
         injector.getInstance(AuditLoggingServerInterceptor.class);
+    Logging logging = injector.getInstance(Logging.class);
 
     final TalkerService server = new TalkerService(Integer.parseInt(System.getenv("PORT")));
     server.start(interceptor);
     server.blockUntilShutdown();
+    logging.flush();
   }
 
   private static class TalkerImpl extends TalkerGrpc.TalkerImplBase {

@@ -75,7 +75,6 @@ public class CloudLoggingProcessorTests {
   void shouldInvokeCloudLoggerWithLumberjackLogName() throws LogProcessingException {
     cloudLoggingProcessor.process(AuditLogRequest.getDefaultInstance());
     verify(logging).write(logEntryCaptor.capture());
-    verify(logging).flush();
     LogEntry logEntry =
         logEntryCaptor.getValue().stream()
             .findFirst()
@@ -91,7 +90,6 @@ public class CloudLoggingProcessorTests {
             .setType(LogType.DATA_ACCESS)
             .build());
     verify(logging).write(logEntryCaptor.capture());
-    verify(logging).flush();
     LogEntry logEntry =
         logEntryCaptor.getValue().stream()
             .findFirst()
@@ -116,7 +114,6 @@ public class CloudLoggingProcessorTests {
             .setTimestamp(timestamp)
             .build());
     verify(logging).write(logEntryCaptor.capture());
-    verify(logging).flush();
     LogEntry logEntry =
         logEntryCaptor.getValue().stream()
             .findFirst()
@@ -141,7 +138,6 @@ public class CloudLoggingProcessorTests {
             .setOperation(logEntryOperation)
             .build());
     verify(logging).write(logEntryCaptor.capture());
-    verify(logging).flush();
     LogEntry logEntry =
         logEntryCaptor.getValue().stream()
             .findFirst()
@@ -161,6 +157,5 @@ public class CloudLoggingProcessorTests {
     assertThrows(
         LogProcessingException.class,
         () -> cloudLoggingProcessor.process(AuditLogRequest.getDefaultInstance()));
-    verify(logging).flush();
   }
 }
