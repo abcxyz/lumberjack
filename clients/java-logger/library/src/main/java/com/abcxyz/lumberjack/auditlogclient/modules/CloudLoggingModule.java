@@ -19,6 +19,9 @@ package com.abcxyz.lumberjack.auditlogclient.modules;
 import com.abcxyz.lumberjack.auditlogclient.config.AuditLoggingConfiguration;
 import com.abcxyz.lumberjack.auditlogclient.utils.ConfigUtils;
 import com.google.api.client.util.Strings;
+import com.google.api.gax.batching.BatchingSettings;
+import com.google.api.gax.batching.FlowControlSettings;
+import com.google.api.gax.batching.FlowController;
 import com.google.cloud.logging.Logging;
 import com.google.cloud.logging.LoggingOptions;
 import com.google.cloud.logging.Synchronicity;
@@ -34,7 +37,12 @@ public class CloudLoggingModule extends AbstractModule {
       if (configuration.getBackend().getCloudlogging().useDefaultProject()) {
         throw new IllegalStateException("Cannot set cloud logging project if default is enabled.");
       }
-      loggingOptionsBuilder.setProjectId(configuration.getBackend().getCloudlogging().getProject());
+      loggingOptionsBuilder.setBatchingSettings(
+            BatchingSettings.newBuilder()
+                .setIsEnabled(true)
+                .setElementCountThreshold(100L)
+                .setRequestByteThreshold(1048576L)
+                .build()).setProjectId(configuration.getBackend().getCloudlogging().getProject());
     }
     Logging logging = loggingOptionsBuilder.build().getService();
     if (ConfigUtils.shouldFailClose(configuration.getLogMode())) {
