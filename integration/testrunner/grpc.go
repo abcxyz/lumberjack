@@ -74,8 +74,8 @@ func testGRPCEndpoint(ctx context.Context, t *testing.T, tcfg *TestCaseConfig) {
 		if err != nil {
 			t.Errorf("could not greet: %v", err)
 		}
-		// query := makeQueryForGRPC(&tcfg)
-		// validateAuditLogsWithRetries(ctx, t, &tcfg, query, 1)
+		query := makeQueryForGRPC(&tcfg)
+		validateAuditLogsWithRetries(ctx, t, &tcfg, query, 1)
 	})
 
 	t.Run("fail_req_unary_failure", func(t *testing.T) {
@@ -97,8 +97,8 @@ func testGRPCEndpoint(ctx context.Context, t *testing.T, tcfg *TestCaseConfig) {
 		} else {
 			t.Errorf("Did not get err as expected. Instead got reply: %v", reply)
 		}
-		// query := makeQueryForGRPC(&tcfg)
-		// validateAuditLogsWithRetries(ctx, t, &tcfg, query, 1)
+		query := makeQueryForGRPC(&tcfg)
+		validateAuditLogsWithRetries(ctx, t, &tcfg, query, 1)
 	})
 
 	t.Run("fibonacci_req_server_streaming_success", func(t *testing.T) {
@@ -123,8 +123,8 @@ func testGRPCEndpoint(ctx context.Context, t *testing.T, tcfg *TestCaseConfig) {
 			}
 			t.Logf("Received value %v", place.Value)
 		}
-		// query := makeQueryForGRPC(&tcfg)
-		// validateAuditLogsWithRetries(ctx, t, &tcfg, query, places)
+		query := makeQueryForGRPC(&tcfg)
+		validateAuditLogsWithRetries(ctx, t, &tcfg, query, places)
 	})
 
 	t.Run("addition_req_client_streaming_success", func(t *testing.T) {
@@ -151,8 +151,8 @@ func testGRPCEndpoint(ctx context.Context, t *testing.T, tcfg *TestCaseConfig) {
 		}
 		t.Logf("Value returned: %d", reply.Sum)
 
-		// query := makeQueryForGRPC(&tcfg)
-		// validateAuditLogsWithRetries(ctx, t, &tcfg, query, totalNumbers)
+		query := makeQueryForGRPC(&tcfg)
+		validateAuditLogsWithRetries(ctx, t, &tcfg, query, totalNumbers)
 	})
 
 	t.Run("fail_on_four_req_client_stream_failure", func(t *testing.T) {
@@ -164,7 +164,7 @@ func testGRPCEndpoint(ctx context.Context, t *testing.T, tcfg *TestCaseConfig) {
 		if err != nil {
 			t.Errorf("addition call failed: %v", err)
 		}
-		totalNumbers := 100
+		totalNumbers := 5
 		for i := 1; i <= totalNumbers; i++ {
 			if err := stream.Send(&talkerpb.FailOnFourRequest{
 				Value:  uint32(i),
@@ -187,9 +187,9 @@ func testGRPCEndpoint(ctx context.Context, t *testing.T, tcfg *TestCaseConfig) {
 		} else {
 			t.Errorf("Did not get err as expected. Instead got reply: %v", reply)
 		}
-		// query := makeQueryForGRPC(&tcfg)
-		// // we expect to have 4 audit logs - the last sent number (5) will be after the err occurred.
-		// validateAuditLogsWithRetries(ctx, t, &tcfg, query, 4)
+		query := makeQueryForGRPC(&tcfg)
+		// we expect to have 4 audit logs - the last sent number (5) will be after the err occurred.
+		validateAuditLogsWithRetries(ctx, t, &tcfg, query, 4)
 	})
 }
 
