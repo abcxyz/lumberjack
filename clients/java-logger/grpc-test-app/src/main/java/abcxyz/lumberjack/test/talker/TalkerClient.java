@@ -159,7 +159,7 @@ public class TalkerClient {
     for (int i = 1; i <= max; i++) {
       log.info("Sending: " + i);
       FailOnFourRequest request =
-          FailOnFourRequest.newBuilder().setValue(i).setTarget(target.toString()).build();
+          FailOnFourRequest.newBuilder().setValue(1).setTarget(target.toString()).build();
       requestObserver.onNext(request);
     }
 
