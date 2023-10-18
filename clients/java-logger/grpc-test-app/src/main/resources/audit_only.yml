@@ -13,7 +13,7 @@ security_context:
     - key: 'Authorization'
       prefix: 'Bearer '
       jwks:
-log_mode: 'BEST_EFFORT'
+# log_mode: 'BEST_EFFORT'
 
 rules:
   - selector: '*'
