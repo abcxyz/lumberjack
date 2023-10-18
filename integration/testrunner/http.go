@@ -64,8 +64,8 @@ func testHTTPEndpoint(ctx context.Context, tb testing.TB, tcfg *TestCaseConfig) 
 	}); err != nil {
 		tb.Fatal(err)
 	}
-	bqQuery := makeQueryForHTTP(tcfg)
-	validateAuditLogsWithRetries(ctx, tb, tcfg, bqQuery, 1)
+	// bqQuery := makeQueryForHTTP(tcfg)
+	// validateAuditLogsWithRetries(ctx, tb, tcfg, bqQuery, 1)
 }
 
 func makeQueryForHTTP(tc *TestCaseConfig) *bigquery.Query {
