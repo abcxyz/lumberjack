@@ -16,7 +16,7 @@
 
 package com.abcxyz.lumberjack.loggingshell;
 
-import com.google.cloud.logging.v2.LoggingClient;
+import com.abcxyz.lumberjack.auditlogclient.LoggingClient;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpHandler;
 import com.sun.net.httpserver.HttpServer;
@@ -43,6 +43,7 @@ public class LoggingShellApplication {
     jwkServer.setExecutor(null); // creates a default executor
     jwkServer.start();
     ConfigurableApplicationContext ctx = SpringApplication.run(LoggingShellApplication.class, args);
+
     ctx.getBean(LoggingClient.class).close();
   }
 
