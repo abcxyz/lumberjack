@@ -19,7 +19,6 @@ package com.abcxyz.lumberjack.loggingshell;
 import com.abcxyz.lumberjack.auditlogclient.LoggingClient;
 // import com.abcxyz.lumberjack.auditlogclient.LoggingClientBuilder;
 import com.abcxyz.lumberjack.auditlogclient.modules.AuditLoggingModule;
-import com.google.cloud.logging.Logging;
 import com.google.inject.Guice;
 import com.google.inject.Injector;
 import java.time.Clock;
@@ -30,20 +29,11 @@ import org.springframework.context.annotation.Configuration;
 @Configuration
 public class LoggingConfiguration {
   @Bean
-  LoggingClient loggingClient(Injector injector) {
+  LoggingClient loggingClient() {
+    Injector injector = Guice.createInjector(new AuditLoggingModule());
     // LoggingClientBuilder builder = injector.getInstance(LoggingClientBuilder.class);
     // return builder.withDefaultProcessors().build();
     return injector.getInstance(LoggingClient.class);
-  }
-
-  @Bean
-  Logging logging(Injector injector) {
-    return injector.getInstance(Logging.class);
-  }
-
-  @Bean
-  Injector injector() {
-    return Guice.createInjector(new AuditLoggingModule());
   }
 
   @Bean

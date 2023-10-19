@@ -16,6 +16,7 @@
 
 package com.abcxyz.lumberjack.loggingshell;
 
+import com.google.cloud.logging.v2.LoggingClient;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpHandler;
 import com.sun.net.httpserver.HttpServer;
@@ -28,18 +29,21 @@ import java.nio.file.Paths;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.context.ConfigurableApplicationContext;
 
 /** Entry point for the Logging Shell/Test app. */
 @SpringBootApplication
 @Slf4j
 public class LoggingShellApplication {
+
   public static void main(String[] args) throws IOException {
     HttpServer jwkServer =
         HttpServer.create(new InetSocketAddress(InetAddress.getLocalHost(), 8080), 0);
     jwkServer.createContext("/.well-known/jwks", new JWKHandler());
     jwkServer.setExecutor(null); // creates a default executor
     jwkServer.start();
-    SpringApplication.run(LoggingShellApplication.class, args);
+    ConfigurableApplicationContext ctx = SpringApplication.run(LoggingShellApplication.class, args);
+    ctx.getBean(LoggingClient.class).close();
   }
 
   static class JWKHandler implements HttpHandler {

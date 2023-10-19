@@ -96,6 +96,16 @@ public class CloudLoggingProcessor implements LogBackend {
     }
   }
 
+  @Override
+  public void close() {
+    System.out.println("cloud logging process closed");
+    try {
+      logging.close();
+    } catch (Exception e) {
+      throw new RuntimeException(e);
+    }
+  }
+
   /**
    * Obtains the URL Encoded Cloud Logging LogName by reading the proto annotation of the {@link
    * AuditLogRequest.LogType}. If the proto annotation is missing, we default to {@code

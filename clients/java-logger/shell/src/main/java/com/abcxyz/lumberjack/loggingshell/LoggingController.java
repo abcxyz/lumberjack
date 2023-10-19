@@ -22,11 +22,12 @@ import com.abcxyz.lumberjack.v1alpha1.AuditLogRequest;
 import com.abcxyz.lumberjack.v1alpha1.AuditLogRequest.LogType;
 import com.google.cloud.audit.AuditLog;
 import com.google.cloud.audit.AuthenticationInfo;
-import com.google.cloud.logging.Logging;
 import com.google.protobuf.Timestamp;
 import java.time.Clock;
 import java.time.Instant;
-import javax.annotation.PreDestroy;
+
+// import jakarta.annotation.PreDestroy;
+
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
@@ -45,13 +46,6 @@ public class LoggingController {
   private final LoggingClient loggingClient;
 
   private final Clock clock;
-
-  private final Logging logging;
-
-  @PreDestroy
-  void destroy() {
-    logging.flush();
-  }
 
   @GetMapping
   @ResponseStatus(value = HttpStatus.OK)
