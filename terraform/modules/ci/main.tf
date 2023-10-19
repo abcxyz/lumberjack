@@ -53,34 +53,34 @@ resource "google_cloud_run_service_iam_member" "audit_log_writer" {
   member   = "serviceAccount:${var.client_run_sa}"
 }
 
-resource "google_cloud_run_service" "ingestion_backend_client_services" {
-  for_each = var.client_images
+# resource "google_cloud_run_service" "ingestion_backend_client_services" {
+#   for_each = var.client_images
 
-  project = var.client_project_id
+#   project = var.client_project_id
 
-  name     = "${each.key}-${local.short_sha}-ingestion"
-  location = var.region
+#   name     = "${each.key}-${local.short_sha}-ingestion"
+#   location = var.region
 
-  template {
-    spec {
+#   template {
+#     spec {
 
-      service_account_name = var.client_run_sa
+#       service_account_name = var.client_run_sa
 
-      containers {
-        image = each.value
+#       containers {
+#         image = each.value
 
-        dynamic "env" {
-          for_each = local.ingestion_backed_client_env_vars
+#         dynamic "env" {
+#           for_each = local.ingestion_backed_client_env_vars
 
-          content {
-            name  = env.key
-            value = env.value
-          }
-        }
-      }
-    }
-  }
-}
+#           content {
+#             name  = env.key
+#             value = env.value
+#           }
+#         }
+#       }
+#     }
+#   }
+# }
 
 resource "google_cloud_run_service" "cloudlogging_backend_client_services" {
   for_each = var.client_images

@@ -101,13 +101,8 @@ public class CloudLoggingProcessor implements LogBackend {
   @Override
   public void close() {
     System.out.println("cloud logging process closing");
-    try {
-      logging.close();
-      System.out.println("cloud logging process close succeed");
-
-    } catch (Exception e) {
-      throw new RuntimeException(e);
-    }
+    logging.flush();
+    System.out.println("cloud logging process close succeed");
   }
 
   /**

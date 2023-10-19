@@ -24,9 +24,11 @@ import com.google.cloud.logging.LoggingOptions;
 import com.google.cloud.logging.Synchronicity;
 import com.google.inject.AbstractModule;
 import com.google.inject.Provides;
+import com.google.inject.Singleton;
 
 public class CloudLoggingModule extends AbstractModule {
   @Provides
+  @Singleton
   Logging logging(AuditLoggingConfiguration configuration) {
     LoggingOptions.Builder loggingOptionsBuilder = LoggingOptions.newBuilder();
     if (configuration.getBackend().cloudLoggingEnabled()
