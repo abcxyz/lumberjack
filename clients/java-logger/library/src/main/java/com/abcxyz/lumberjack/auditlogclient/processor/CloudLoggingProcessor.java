@@ -93,6 +93,8 @@ public class CloudLoggingProcessor implements LogBackend {
         | UnsupportedEncodingException
         | LoggingException ex) {
       throw new LogProcessingException(ex);
+    } finally {
+      logging.flush();
     }
   }
 
