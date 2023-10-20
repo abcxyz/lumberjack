@@ -17,12 +17,10 @@ package testrunner
 import (
 	"context"
 	"crypto/x509"
-	"errors"
 	"fmt"
-	"io"
 	"strings"
 	"testing"
-	"time"
+	// "time"
 
 	"cloud.google.com/go/bigquery"
 	"github.com/abcxyz/lumberjack/internal/talkerpb"
@@ -32,9 +30,8 @@ import (
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/credentials/oauth"
 	"google.golang.org/grpc/metadata"
-	"google.golang.org/grpc/status"
 
-	rpccode "google.golang.org/genproto/googleapis/rpc/code"
+	// rpccode "google.golang.org/genproto/googleapis/rpc/code"
 )
 
 // testGRPCEndpoint runs tests against a GRPC endpoint. The given GRPC must
@@ -76,7 +73,7 @@ func testGRPCEndpoint(ctx context.Context, t *testing.T, tcfg *TestCaseConfig) {
 			t.Errorf("could not greet: %v", err)
 		}
 		query := makeQueryForGRPC(&tcfg)
-		time.Sleep(10 * time.Second)
+		// time.Sleep(10 * time.Second)
 		validateAuditLogsWithRetries(ctx, t, &tcfg, query, 1)
 	})
 
