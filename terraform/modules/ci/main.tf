@@ -15,10 +15,10 @@
  */
 
 locals {
-  ingestion_backed_client_env_vars = {
-    "AUDIT_CLIENT_BACKEND_REMOTE_ADDRESS" : "${trimprefix(google_cloud_run_service.server.status[0].url, "https://")}:443",
-    "AUDIT_CLIENT_CONDITION_REGEX_PRINCIPAL_INCLUDE" : ".*",
-  }
+  # ingestion_backed_client_env_vars = {
+  #   "AUDIT_CLIENT_BACKEND_REMOTE_ADDRESS" : "${trimprefix(google_cloud_run_service.server.status[0].url, "https://")}:443",
+  #   "AUDIT_CLIENT_CONDITION_REGEX_PRINCIPAL_INCLUDE" : ".*",
+  # }
   cloudlogging_backend_client_env_vars = {
     "AUDIT_CLIENT_BACKEND_CLOUDLOGGING_DEFAULT_PROJECT" : "true",
     "AUDIT_CLIENT_CONDITION_REGEX_PRINCIPAL_INCLUDE" : ".*",
@@ -26,32 +26,32 @@ locals {
   short_sha = substr(var.commit_sha, 0, 7)
 }
 
-resource "google_cloud_run_service" "server" {
-  project = var.server_project_id
+# resource "google_cloud_run_service" "server" {
+#   project = var.server_project_id
 
-  name     = "${var.server_service_name}-${local.short_sha}"
-  location = var.region
+#   name     = "${var.server_service_name}-${local.short_sha}"
+#   location = var.region
 
-  template {
-    spec {
+#   template {
+#     spec {
 
-      service_account_name = var.server_run_sa
+#       service_account_name = var.server_run_sa
 
-      containers {
-        image = var.server_image
-      }
-    }
-  }
-}
+#       containers {
+#         image = var.server_image
+#       }
+#     }
+#   }
+# }
 
-resource "google_cloud_run_service_iam_member" "audit_log_writer" {
-  project = var.server_project_id
+# resource "google_cloud_run_service_iam_member" "audit_log_writer" {
+#   project = var.server_project_id
 
-  location = google_cloud_run_service.server.location
-  service  = google_cloud_run_service.server.name
-  role     = "roles/run.invoker"
-  member   = "serviceAccount:${var.client_run_sa}"
-}
+#   location = google_cloud_run_service.server.location
+#   service  = google_cloud_run_service.server.name
+#   role     = "roles/run.invoker"
+#   member   = "serviceAccount:${var.client_run_sa}"
+# }
 
 # resource "google_cloud_run_service" "ingestion_backend_client_services" {
 #   for_each = var.client_images
