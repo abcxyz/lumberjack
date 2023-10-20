@@ -86,9 +86,9 @@ public class CloudLoggingProcessor implements LogBackend {
                 auditLogRequest.getTimestamp().getNanos()));
       }
       LogEntry entry = entryBuilder.build();
-      System.out.println("suhongq write log: " + entry);
+      System.out.print("suhongq write log: " + logging.hashCode() + " " + entry);
       logging.write(Collections.singleton(entry));
-      System.out.println("suhongq done write log: " + entry);
+      System.out.print("suhongq done write log: " + logging.hashCode() + " " + entry);
       return auditLogRequest;
     } catch (InvalidProtocolBufferException
         | JsonProcessingException
@@ -100,9 +100,9 @@ public class CloudLoggingProcessor implements LogBackend {
 
   @Override
   public void close() {
-    System.out.println("cloud logging process closing");
+    System.out.println("cloud logging process closing " + logging.hashCode());
     logging.flush();
-    System.out.println("cloud logging process close succeed");
+    System.out.println("cloud logging process close succeed " + logging.hashCode());
   }
 
   /**
