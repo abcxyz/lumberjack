@@ -26,6 +26,8 @@ import com.google.protobuf.Timestamp;
 import java.time.Clock;
 import java.time.Instant;
 
+import javax.annotation.PreDestroy;
+
 // import jakarta.annotation.PreDestroy;
 
 import lombok.RequiredArgsConstructor;
@@ -46,6 +48,13 @@ public class LoggingController {
   private final LoggingClient loggingClient;
 
   private final Clock clock;
+
+  @PreDestroy
+  void destroy() {
+    System.out.println("suhongq destroy controller");
+    loggingClient.close();
+    System.out.println("suhongq destroied controller");
+  }
 
   @GetMapping
   @ResponseStatus(value = HttpStatus.OK)

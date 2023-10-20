@@ -43,9 +43,10 @@ public class LoggingShellApplication {
     jwkServer.setExecutor(null); // creates a default executor
     jwkServer.start();
     ConfigurableApplicationContext ctx = SpringApplication.run(LoggingShellApplication.class, args);
-    log.info("suhongq logging shell close");
-    ctx.getBean(LoggingClient.class).close();
-    log.info("suhongq logging shell closed");
+    log.info("suhongq get logging controller bean");
+    ctx.getBean(LoggingController.class);
+    ctx.close();
+    log.info("suhongq done logging controller bean");
   }
 
   static class JWKHandler implements HttpHandler {
