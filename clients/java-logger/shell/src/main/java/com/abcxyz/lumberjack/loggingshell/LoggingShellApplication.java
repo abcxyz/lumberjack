@@ -45,7 +45,6 @@ public class LoggingShellApplication {
     ConfigurableApplicationContext ctx = SpringApplication.run(LoggingShellApplication.class, args);
     log.info("suhongq get logging controller bean");
     ctx.getBean(LoggingController.class);
-    ctx.close();
     log.info("suhongq done logging controller bean");
   }
 
