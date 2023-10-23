@@ -25,6 +25,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.abcxyz.lumberjack.auditlogclient.LoggingClient;
 import com.abcxyz.lumberjack.v1alpha1.AuditLogRequest;
+import com.google.cloud.logging.Logging;
 import com.google.protobuf.Timestamp;
 import java.time.Clock;
 import java.time.Instant;
@@ -63,6 +64,7 @@ public class LoggingControllerTest {
   @MockBean private LoggingClient loggingClient;
   @MockBean private Clock clock;
   @MockBean private TokenInterceptor interceptor;
+  @MockBean private Logging logging;
   @Captor private ArgumentCaptor<AuditLogRequest> auditLogRequestCaptor;
 
   @BeforeEach

@@ -82,4 +82,16 @@ public class LoggingClient {
       }
     }
   }
+
+  public void close() {
+    for (LogProcessor processor : validators) {
+      processor.close();
+    }
+    for (LogProcessor processor : mutators) {
+      processor.close();
+    }
+    for (LogProcessor processor : backends) {
+      processor.close();
+    }
+  }
 }

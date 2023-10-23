@@ -20,6 +20,7 @@ import (
 	"io"
 	"net/http"
 	"testing"
+	"time"
 
 	"cloud.google.com/go/bigquery"
 	"github.com/google/uuid"
@@ -65,6 +66,7 @@ func testHTTPEndpoint(ctx context.Context, tb testing.TB, tcfg *TestCaseConfig) 
 		tb.Fatal(err)
 	}
 	bqQuery := makeQueryForHTTP(tcfg)
+	time.Sleep(10 * time.Second)
 	validateAuditLogsWithRetries(ctx, tb, tcfg, bqQuery, 1)
 }
 

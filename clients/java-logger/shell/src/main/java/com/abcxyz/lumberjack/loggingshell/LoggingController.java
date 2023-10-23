@@ -25,6 +25,11 @@ import com.google.cloud.audit.AuthenticationInfo;
 import com.google.protobuf.Timestamp;
 import java.time.Clock;
 import java.time.Instant;
+
+import javax.annotation.PreDestroy;
+
+// import jakarta.annotation.PreDestroy;
+
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
@@ -43,6 +48,13 @@ public class LoggingController {
   private final LoggingClient loggingClient;
 
   private final Clock clock;
+
+  @PreDestroy
+  void destroy() {
+    System.out.println("suhongq destroy controller");
+    loggingClient.close();
+    System.out.println("suhongq destroied controller");
+  }
 
   @GetMapping
   @ResponseStatus(value = HttpStatus.OK)

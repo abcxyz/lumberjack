@@ -93,9 +93,14 @@ public class CloudLoggingProcessor implements LogBackend {
         | UnsupportedEncodingException
         | LoggingException ex) {
       throw new LogProcessingException(ex);
-    } finally {
-      logging.flush();
     }
+  }
+
+  @Override
+  public void close() {
+    System.out.println("cloud logging process closing " + logging.hashCode());
+    logging.flush();
+    System.out.println("cloud logging process close succeed " + logging.hashCode());
   }
 
   /**

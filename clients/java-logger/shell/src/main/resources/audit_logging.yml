@@ -25,3 +25,4 @@ backend:
 justification:
   public_keys_endpoint: 'http://127.0.0.1:8080/.well-known/jwks'
   enabled: true
+log_mode: 'BEST_EFFORT'

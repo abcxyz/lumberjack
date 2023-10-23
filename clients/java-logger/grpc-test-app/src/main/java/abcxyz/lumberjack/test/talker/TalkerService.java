@@ -94,6 +94,7 @@ public class TalkerService {
               public void run() {
                 // Use stderr here since the log may have been reset by its JVM shutdown hook.
                 System.err.println("*** shutting down gRPC server since JVM is shutting down");
+                interceptor.close();
                 TalkerService.this.stop();
                 System.err.println("*** server shut down");
               }

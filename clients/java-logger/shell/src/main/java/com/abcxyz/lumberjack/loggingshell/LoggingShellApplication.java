@@ -33,6 +33,7 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 @SpringBootApplication
 @Slf4j
 public class LoggingShellApplication {
+
   public static void main(String[] args) throws IOException {
     HttpServer jwkServer =
         HttpServer.create(new InetSocketAddress(InetAddress.getLocalHost(), 8080), 0);

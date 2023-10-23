@@ -35,6 +35,8 @@ public interface LogProcessor {
    */
   AuditLogRequest process(AuditLogRequest auditLogRequest) throws LogProcessingException;
 
+  default void close() {}
+
   interface LogValidator extends LogProcessor {}
 
   interface LogMutator extends LogProcessor {}
