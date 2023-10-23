@@ -7,7 +7,7 @@ For now, to use the module:
 1.  Get the module
 
     ```
-    go get -u github.com/abcxyz/lumberjack/clients/go
+    go get -u github.com/abcxyz/lumberjack
     ```
 
 1.  To use the package in code (with alias)
