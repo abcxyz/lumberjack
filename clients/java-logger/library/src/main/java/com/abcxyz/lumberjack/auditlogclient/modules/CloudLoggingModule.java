@@ -16,7 +16,7 @@
 
 package com.abcxyz.lumberjack.auditlogclient.modules;
 
-import java.util.Collections;
+// import java.util.Collections;
 
 import org.threeten.bp.Duration;
 
@@ -24,11 +24,12 @@ import com.abcxyz.lumberjack.auditlogclient.config.AuditLoggingConfiguration;
 import com.abcxyz.lumberjack.auditlogclient.utils.ConfigUtils;
 import com.google.api.client.util.Strings;
 import com.google.api.gax.batching.BatchingSettings;
-import com.google.cloud.logging.LogEntry;
+import com.google.api.gax.retrying.RetrySettings;
+// import com.google.cloud.logging.LogEntry;
 import com.google.cloud.logging.Logging;
 import com.google.cloud.logging.LoggingOptions;
-import com.google.cloud.logging.Severity;
-import com.google.cloud.logging.Payload.StringPayload;
+// import com.google.cloud.logging.Severity;
+// import com.google.cloud.logging.Payload.StringPayload;
 import com.google.cloud.logging.Synchronicity;
 import com.google.inject.AbstractModule;
 import com.google.inject.Provides;
@@ -52,6 +53,15 @@ public class CloudLoggingModule extends AbstractModule {
           .setElementCountThreshold(10L)
           .setDelayThreshold(Duration.ofSeconds(1L))
           .setRequestByteThreshold(2000L)
+          .build())
+        .setRetrySettings(RetrySettings.newBuilder()
+          .setMaxRetryDelay(Duration.ofMillis(30000L))
+          .setTotalTimeout(Duration.ofMillis(120000L))
+          .setInitialRetryDelay(Duration.ofMillis(250L))
+          .setRetryDelayMultiplier(1.0)
+          .setInitialRpcTimeout(Duration.ofMillis(120000L))
+          .setRpcTimeoutMultiplier(1.0)
+          .setMaxRpcTimeout(Duration.ofMillis(120000L))
           .build());
     }
     Logging logging = loggingOptionsBuilder.build().getService();
@@ -60,16 +70,16 @@ public class CloudLoggingModule extends AbstractModule {
     } else {
       logging.setWriteSynchronicity(Synchronicity.ASYNC);
       // warmup
-      try {
-        LogEntry entry =
-              LogEntry.newBuilder(StringPayload.of("warmup cloud logging"))
-                  .setSeverity(Severity.INFO)
-                  .setLogName(getClass().getSimpleName())
-                  .build();
-        logging.write(Collections.singleton(entry));
-      } catch (Exception e) {
-        log.warn("failed to warmup cloud logging", e);
-      }
+      // try {
+      //   LogEntry entry =
+      //         LogEntry.newBuilder(StringPayload.of("warmup cloud logging"))
+      //             .setSeverity(Severity.INFO)
+      //             .setLogName(getClass().getSimpleName())
+      //             .build();
+      //   logging.write(Collections.singleton(entry));
+      // } catch (Exception e) {
+      //   log.warn("failed to warmup cloud logging", e);
+      // }
     }
     return logging;
   }
