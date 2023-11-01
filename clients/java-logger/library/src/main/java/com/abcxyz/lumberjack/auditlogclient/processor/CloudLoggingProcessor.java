@@ -40,10 +40,10 @@ import java.util.Collections;
 import java.util.Map;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
-import lombok.extern.java.Log;
+import lombok.extern.slf4j.Slf4j;
 
 /** Cloud logging processor to write logs to google cloud */
-@Log
+@Slf4j
 @AllArgsConstructor(access = AccessLevel.PRIVATE, onConstructor = @__({@Inject}))
 public class CloudLoggingProcessor implements LogBackend {
   private final ObjectMapper mapper;
@@ -98,9 +98,11 @@ public class CloudLoggingProcessor implements LogBackend {
 
   @Override
   public void close() {
-    System.out.println("cloud logging process closing " + logging.hashCode());
-    logging.flush();
-    System.out.println("cloud logging process close succeed " + logging.hashCode());
+    try {
+      logging.close();
+    } catch (Exception e) {
+      log.warn("failed to close cloud logging", e);
+    }
   }
 
   /**

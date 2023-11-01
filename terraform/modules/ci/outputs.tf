@@ -14,16 +14,16 @@
  * limitations under the License.
  */
 
-# output "server_url" {
-#   value = google_cloud_run_service.server.status[0].url
-# }
+output "server_url" {
+  value = google_cloud_run_service.server.status[0].url
+}
 
-# output "ingestion_backend_client_endpoints" {
-#   value = {
-#     for key, value in var.client_images :
-#     key => lookup(google_cloud_run_service.ingestion_backend_client_services, key).status[0].url
-#   }
-# }
+output "ingestion_backend_client_endpoints" {
+  value = {
+    for key, value in var.client_images :
+    key => lookup(google_cloud_run_service.ingestion_backend_client_services, key).status[0].url
+  }
+}
 
 output "cloudlogging_backend_client_endpoints" {
   value = {

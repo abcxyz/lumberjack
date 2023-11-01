@@ -16,26 +16,22 @@
 
 package com.abcxyz.lumberjack.auditlogclient.modules;
 
-// import java.util.Collections;
-
-import org.threeten.bp.Duration;
-
 import com.abcxyz.lumberjack.auditlogclient.config.AuditLoggingConfiguration;
 import com.abcxyz.lumberjack.auditlogclient.utils.ConfigUtils;
 import com.google.api.client.util.Strings;
 import com.google.api.gax.batching.BatchingSettings;
-import com.google.api.gax.retrying.RetrySettings;
-// import com.google.cloud.logging.LogEntry;
+import com.google.cloud.logging.LogEntry;
 import com.google.cloud.logging.Logging;
 import com.google.cloud.logging.LoggingOptions;
-// import com.google.cloud.logging.Severity;
-// import com.google.cloud.logging.Payload.StringPayload;
+import com.google.cloud.logging.Payload.StringPayload;
+import com.google.cloud.logging.Severity;
 import com.google.cloud.logging.Synchronicity;
 import com.google.inject.AbstractModule;
 import com.google.inject.Provides;
 import com.google.inject.Singleton;
-
+import java.util.Collections;
 import lombok.extern.slf4j.Slf4j;
+import org.threeten.bp.Duration;
 
 @Slf4j
 public class CloudLoggingModule extends AbstractModule {
@@ -48,38 +44,33 @@ public class CloudLoggingModule extends AbstractModule {
       if (configuration.getBackend().getCloudlogging().useDefaultProject()) {
         throw new IllegalStateException("Cannot set cloud logging project if default is enabled.");
       }
-      loggingOptionsBuilder.setProjectId(configuration.getBackend().getCloudlogging().getProject())
-        .setBatchingSettings(BatchingSettings.newBuilder()
-          .setElementCountThreshold(10L)
-          .setDelayThreshold(Duration.ofSeconds(1L))
-          .setRequestByteThreshold(2000L)
-          .build())
-        .setRetrySettings(RetrySettings.newBuilder()
-          .setMaxRetryDelay(Duration.ofMillis(30000L))
-          .setTotalTimeout(Duration.ofMillis(120000L))
-          .setInitialRetryDelay(Duration.ofMillis(250L))
-          .setRetryDelayMultiplier(1.0)
-          .setInitialRpcTimeout(Duration.ofMillis(120000L))
-          .setRpcTimeoutMultiplier(1.0)
-          .setMaxRpcTimeout(Duration.ofMillis(120000L))
-          .build());
+      loggingOptionsBuilder
+          .setProjectId(configuration.getBackend().getCloudlogging().getProject())
+          .setBatchingSettings(
+              BatchingSettings.newBuilder()
+                  .setElementCountThreshold(10L)
+                  .setDelayThreshold(Duration.ofSeconds(1L))
+                  // LogEntry size limit ref: https://cloud.google.com/logging/quotas.
+                  .setRequestByteThreshold(2560000L)
+                  .build());
     }
     Logging logging = loggingOptionsBuilder.build().getService();
     if (ConfigUtils.shouldFailClose(configuration.getLogMode())) {
       logging.setWriteSynchronicity(Synchronicity.SYNC);
     } else {
       logging.setWriteSynchronicity(Synchronicity.ASYNC);
-      // warmup
-      // try {
-      //   LogEntry entry =
-      //         LogEntry.newBuilder(StringPayload.of("warmup cloud logging"))
-      //             .setSeverity(Severity.INFO)
-      //             .setLogName(getClass().getSimpleName())
-      //             .build();
-      //   logging.write(Collections.singleton(entry));
-      // } catch (Exception e) {
-      //   log.warn("failed to warmup cloud logging", e);
-      // }
+      // warmup request as a temporary workaround until this fixed:
+      // https://github.com/googleapis/java-logging/issues/1469.
+      try {
+        LogEntry entry =
+            LogEntry.newBuilder(StringPayload.of("warmup cloud logging"))
+                .setSeverity(Severity.INFO)
+                .setLogName(getClass().getSimpleName())
+                .build();
+        logging.write(Collections.singleton(entry));
+      } catch (Exception e) {
+        log.warn("failed to warmup cloud logging", e);
+      }
     }
     return logging;
   }

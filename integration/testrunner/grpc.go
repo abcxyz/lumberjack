@@ -17,10 +17,11 @@ package testrunner
 import (
 	"context"
 	"crypto/x509"
+	"errors"
 	"fmt"
+	"io"
 	"strings"
 	"testing"
-	// "time"
 
 	"cloud.google.com/go/bigquery"
 	"github.com/abcxyz/lumberjack/internal/talkerpb"
@@ -30,8 +31,9 @@ import (
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/credentials/oauth"
 	"google.golang.org/grpc/metadata"
+	"google.golang.org/grpc/status"
 
-	// rpccode "google.golang.org/genproto/googleapis/rpc/code"
+	rpccode "google.golang.org/genproto/googleapis/rpc/code"
 )
 
 // testGRPCEndpoint runs tests against a GRPC endpoint. The given GRPC must
@@ -73,123 +75,122 @@ func testGRPCEndpoint(ctx context.Context, t *testing.T, tcfg *TestCaseConfig) {
 			t.Errorf("could not greet: %v", err)
 		}
 		query := makeQueryForGRPC(&tcfg)
-		// time.Sleep(10 * time.Second)
 		validateAuditLogsWithRetries(ctx, t, &tcfg, query, 1)
 	})
 
-	// t.Run("fail_req_unary_failure", func(t *testing.T) {
-	// 	t.Parallel()
-	// 	tcfg := *tcfg // Make a shallow copy to avoid sharing trace ID.
-	// 	tcfg.TraceID = uuid.New().String()
-	// 	t.Logf("Using trace ID: %s", tcfg.TraceID)
-	// 	reply, err := tcfg.TalkerClient.Fail(ctx, &talkerpb.FailRequest{Message: "Some Message", Target: tcfg.TraceID})
-	// 	if err != nil {
-	// 		returnStatus, ok := status.FromError(err)
-	// 		if !ok {
-	// 			t.Errorf("Could not convert err to status %v", err)
-	// 		}
-	// 		if int32(returnStatus.Code()) != int32(rpccode.Code_RESOURCE_EXHAUSTED) {
-	// 			t.Errorf("Got unexpected Err. Got code %d but expected %d", int32(returnStatus.Code()),
-	// 				int32(rpccode.Code_RESOURCE_EXHAUSTED))
-	// 		}
-	// 		t.Logf("Got Error as expected: %v", err)
-	// 	} else {
-	// 		t.Errorf("Did not get err as expected. Instead got reply: %v", reply)
-	// 	}
-	// 	query := makeQueryForGRPC(&tcfg)
-	// 	validateAuditLogsWithRetries(ctx, t, &tcfg, query, 1)
-	// })
+	t.Run("fail_req_unary_failure", func(t *testing.T) {
+		t.Parallel()
+		tcfg := *tcfg // Make a shallow copy to avoid sharing trace ID.
+		tcfg.TraceID = uuid.New().String()
+		t.Logf("Using trace ID: %s", tcfg.TraceID)
+		reply, err := tcfg.TalkerClient.Fail(ctx, &talkerpb.FailRequest{Message: "Some Message", Target: tcfg.TraceID})
+		if err != nil {
+			returnStatus, ok := status.FromError(err)
+			if !ok {
+				t.Errorf("Could not convert err to status %v", err)
+			}
+			if int32(returnStatus.Code()) != int32(rpccode.Code_RESOURCE_EXHAUSTED) {
+				t.Errorf("Got unexpected Err. Got code %d but expected %d", int32(returnStatus.Code()),
+					int32(rpccode.Code_RESOURCE_EXHAUSTED))
+			}
+			t.Logf("Got Error as expected: %v", err)
+		} else {
+			t.Errorf("Did not get err as expected. Instead got reply: %v", reply)
+		}
+		query := makeQueryForGRPC(&tcfg)
+		validateAuditLogsWithRetries(ctx, t, &tcfg, query, 1)
+	})
 
-	// t.Run("fibonacci_req_server_streaming_success", func(t *testing.T) {
-	// 	t.Parallel()
-	// 	tcfg := *tcfg // Make a shallow copy to avoid sharing trace ID.
-	// 	tcfg.TraceID = uuid.New().String()
-	// 	t.Logf("Using trace ID: %s", tcfg.TraceID)
-	// 	places := 5
-	// 	stream, err := tcfg.TalkerClient.Fibonacci(ctx, &talkerpb.FibonacciRequest{Places: uint32(places), Target: tcfg.TraceID})
-	// 	if err != nil {
-	// 		t.Errorf("fibonacci call failed: %v", err)
-	// 	}
-	// 	for {
-	// 		place, err := stream.Recv()
-	// 		if errors.Is(err, io.EOF) {
-	// 			// stream is finished
-	// 			break
-	// 		}
-	// 		if err != nil {
-	// 			t.Errorf("failed to read fibonacci stream: %v", err)
-	// 			break
-	// 		}
-	// 		t.Logf("Received value %v", place.Value)
-	// 	}
-	// 	query := makeQueryForGRPC(&tcfg)
-	// 	validateAuditLogsWithRetries(ctx, t, &tcfg, query, places)
-	// })
+	t.Run("fibonacci_req_server_streaming_success", func(t *testing.T) {
+		t.Parallel()
+		tcfg := *tcfg // Make a shallow copy to avoid sharing trace ID.
+		tcfg.TraceID = uuid.New().String()
+		t.Logf("Using trace ID: %s", tcfg.TraceID)
+		places := 5
+		stream, err := tcfg.TalkerClient.Fibonacci(ctx, &talkerpb.FibonacciRequest{Places: uint32(places), Target: tcfg.TraceID})
+		if err != nil {
+			t.Errorf("fibonacci call failed: %v", err)
+		}
+		for {
+			place, err := stream.Recv()
+			if errors.Is(err, io.EOF) {
+				// stream is finished
+				break
+			}
+			if err != nil {
+				t.Errorf("failed to read fibonacci stream: %v", err)
+				break
+			}
+			t.Logf("Received value %v", place.Value)
+		}
+		query := makeQueryForGRPC(&tcfg)
+		validateAuditLogsWithRetries(ctx, t, &tcfg, query, places)
+	})
 
-	// t.Run("addition_req_client_streaming_success", func(t *testing.T) {
-	// 	t.Parallel()
-	// 	tcfg := *tcfg // Make a shallow copy to avoid sharing trace ID.
-	// 	tcfg.TraceID = uuid.New().String()
-	// 	t.Logf("Using trace ID: %s", tcfg.TraceID)
-	// 	stream, err := tcfg.TalkerClient.Addition(ctx)
-	// 	if err != nil {
-	// 		t.Errorf("addition call failed: %v", err)
-	// 	}
-	// 	totalNumbers := 5
-	// 	for i := 0; i < totalNumbers; i++ {
-	// 		if err := stream.Send(&talkerpb.AdditionRequest{
-	// 			Addend: uint32(i),
-	// 			Target: tcfg.TraceID,
-	// 		}); err != nil {
-	// 			t.Errorf("sending value to addition failed: %v", err)
-	// 		}
-	// 	}
-	// 	reply, err := stream.CloseAndRecv()
-	// 	if err != nil {
-	// 		t.Errorf("failed getting result from addition: %v", err)
-	// 	}
-	// 	t.Logf("Value returned: %d", reply.Sum)
+	t.Run("addition_req_client_streaming_success", func(t *testing.T) {
+		t.Parallel()
+		tcfg := *tcfg // Make a shallow copy to avoid sharing trace ID.
+		tcfg.TraceID = uuid.New().String()
+		t.Logf("Using trace ID: %s", tcfg.TraceID)
+		stream, err := tcfg.TalkerClient.Addition(ctx)
+		if err != nil {
+			t.Errorf("addition call failed: %v", err)
+		}
+		totalNumbers := 5
+		for i := 0; i < totalNumbers; i++ {
+			if err := stream.Send(&talkerpb.AdditionRequest{
+				Addend: uint32(i),
+				Target: tcfg.TraceID,
+			}); err != nil {
+				t.Errorf("sending value to addition failed: %v", err)
+			}
+		}
+		reply, err := stream.CloseAndRecv()
+		if err != nil {
+			t.Errorf("failed getting result from addition: %v", err)
+		}
+		t.Logf("Value returned: %d", reply.Sum)
 
-	// 	query := makeQueryForGRPC(&tcfg)
-	// 	validateAuditLogsWithRetries(ctx, t, &tcfg, query, totalNumbers)
-	// })
+		query := makeQueryForGRPC(&tcfg)
+		validateAuditLogsWithRetries(ctx, t, &tcfg, query, totalNumbers)
+	})
 
-	// t.Run("fail_on_four_req_client_stream_failure", func(t *testing.T) {
-	// 	t.Parallel()
-	// 	tcfg := *tcfg // Make a shallow copy to avoid sharing trace ID.
-	// 	tcfg.TraceID = uuid.New().String()
-	// 	t.Logf("Using trace ID: %s", tcfg.TraceID)
-	// 	stream, err := tcfg.TalkerClient.FailOnFour(ctx)
-	// 	if err != nil {
-	// 		t.Errorf("addition call failed: %v", err)
-	// 	}
-	// 	totalNumbers := 5
-	// 	for i := 1; i <= totalNumbers; i++ {
-	// 		if err := stream.Send(&talkerpb.FailOnFourRequest{
-	// 			Value:  uint32(i),
-	// 			Target: tcfg.TraceID,
-	// 		}); err != nil {
-	// 			t.Errorf("sending value to addition failed: %v", err)
-	// 		}
-	// 	}
-	// 	reply, err := stream.CloseAndRecv()
-	// 	if err != nil {
-	// 		returnStatus, ok := status.FromError(err)
-	// 		if !ok {
-	// 			t.Errorf("Could not convert err to status %v", err)
-	// 		}
-	// 		if int32(returnStatus.Code()) != int32(rpccode.Code_INVALID_ARGUMENT) {
-	// 			t.Errorf("Got unexpected Err. Got code %d but expected %d", int32(returnStatus.Code()),
-	// 				int32(rpccode.Code_INVALID_ARGUMENT))
-	// 		}
-	// 		t.Logf("Got Error as expected: %v", err)
-	// 	} else {
-	// 		t.Errorf("Did not get err as expected. Instead got reply: %v", reply)
-	// 	}
-	// 	query := makeQueryForGRPC(&tcfg)
-	// 	// we expect to have 4 audit logs - the last sent number (5) will be after the err occurred.
-	// 	validateAuditLogsWithRetries(ctx, t, &tcfg, query, 4)
-	// })
+	t.Run("fail_on_four_req_client_stream_failure", func(t *testing.T) {
+		t.Parallel()
+		tcfg := *tcfg // Make a shallow copy to avoid sharing trace ID.
+		tcfg.TraceID = uuid.New().String()
+		t.Logf("Using trace ID: %s", tcfg.TraceID)
+		stream, err := tcfg.TalkerClient.FailOnFour(ctx)
+		if err != nil {
+			t.Errorf("addition call failed: %v", err)
+		}
+		totalNumbers := 5
+		for i := 1; i <= totalNumbers; i++ {
+			if err := stream.Send(&talkerpb.FailOnFourRequest{
+				Value:  uint32(i),
+				Target: tcfg.TraceID,
+			}); err != nil {
+				t.Errorf("sending value to addition failed: %v", err)
+			}
+		}
+		reply, err := stream.CloseAndRecv()
+		if err != nil {
+			returnStatus, ok := status.FromError(err)
+			if !ok {
+				t.Errorf("Could not convert err to status %v", err)
+			}
+			if int32(returnStatus.Code()) != int32(rpccode.Code_INVALID_ARGUMENT) {
+				t.Errorf("Got unexpected Err. Got code %d but expected %d", int32(returnStatus.Code()),
+					int32(rpccode.Code_INVALID_ARGUMENT))
+			}
+			t.Logf("Got Error as expected: %v", err)
+		} else {
+			t.Errorf("Did not get err as expected. Instead got reply: %v", reply)
+		}
+		query := makeQueryForGRPC(&tcfg)
+		// we expect to have 4 audit logs - the last sent number (5) will be after the err occurred.
+		validateAuditLogsWithRetries(ctx, t, &tcfg, query, 4)
+	})
 }
 
 // Server is in cloud run. Example: https://cloud.google.com/run/docs/triggering/grpc#request-auth
