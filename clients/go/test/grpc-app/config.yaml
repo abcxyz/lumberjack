@@ -24,3 +24,4 @@ justification:
   enabled: true
   # fake public_keys_endpoint, will get overridden by environment variables.
   public_keys_endpoint: 'localhost:8080'
+log_mode: 'BEST_EFFORT'

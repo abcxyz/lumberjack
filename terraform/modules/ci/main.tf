@@ -91,6 +91,11 @@ resource "google_cloud_run_service" "cloudlogging_backend_client_services" {
   location = var.region
 
   template {
+    metadata {
+      annotations = {
+        "run.googleapis.com/cpu-throttling" = "false"
+      }
+    }
     spec {
 
       service_account_name = var.client_run_sa

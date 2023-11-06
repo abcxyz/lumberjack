@@ -19,14 +19,18 @@ package com.abcxyz.lumberjack.auditlogclient.modules;
 import com.abcxyz.lumberjack.auditlogclient.config.AuditLoggingConfiguration;
 import com.abcxyz.lumberjack.auditlogclient.utils.ConfigUtils;
 import com.google.api.client.util.Strings;
+import com.google.api.gax.batching.BatchingSettings;
 import com.google.cloud.logging.Logging;
 import com.google.cloud.logging.LoggingOptions;
 import com.google.cloud.logging.Synchronicity;
 import com.google.inject.AbstractModule;
 import com.google.inject.Provides;
+import com.google.inject.Singleton;
+import org.threeten.bp.Duration;
 
 public class CloudLoggingModule extends AbstractModule {
   @Provides
+  @Singleton
   Logging logging(AuditLoggingConfiguration configuration) {
     LoggingOptions.Builder loggingOptionsBuilder = LoggingOptions.newBuilder();
     if (configuration.getBackend().cloudLoggingEnabled()
@@ -34,7 +38,15 @@ public class CloudLoggingModule extends AbstractModule {
       if (configuration.getBackend().getCloudlogging().useDefaultProject()) {
         throw new IllegalStateException("Cannot set cloud logging project if default is enabled.");
       }
-      loggingOptionsBuilder.setProjectId(configuration.getBackend().getCloudlogging().getProject());
+      loggingOptionsBuilder
+          .setProjectId(configuration.getBackend().getCloudlogging().getProject())
+          .setBatchingSettings(
+              BatchingSettings.newBuilder()
+                  .setElementCountThreshold(10L)
+                  .setDelayThreshold(Duration.ofSeconds(1L))
+                  // LogEntry size limit ref: https://cloud.google.com/logging/quotas.
+                  .setRequestByteThreshold(2560000L)
+                  .build());
     }
     Logging logging = loggingOptionsBuilder.build().getService();
     if (ConfigUtils.shouldFailClose(configuration.getLogMode())) {

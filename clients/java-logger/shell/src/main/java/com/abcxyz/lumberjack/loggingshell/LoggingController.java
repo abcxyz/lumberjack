@@ -25,6 +25,7 @@ import com.google.cloud.audit.AuthenticationInfo;
 import com.google.protobuf.Timestamp;
 import java.time.Clock;
 import java.time.Instant;
+import javax.annotation.PreDestroy;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
@@ -43,6 +44,11 @@ public class LoggingController {
   private final LoggingClient loggingClient;
 
   private final Clock clock;
+
+  @PreDestroy
+  void destroy() {
+    loggingClient.close();
+  }
 
   @GetMapping
   @ResponseStatus(value = HttpStatus.OK)

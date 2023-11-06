@@ -345,4 +345,8 @@ public class AuditLoggingServerInterceptor<ReqT extends Message> implements Serv
     memo.putIfAbsent(methodIdentifier, mostApplicableSelector);
     return mostApplicableSelector;
   }
+
+  public void close() {
+    client.close();
+  }
 }
