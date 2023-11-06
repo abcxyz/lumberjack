@@ -20,20 +20,14 @@ import com.abcxyz.lumberjack.auditlogclient.config.AuditLoggingConfiguration;
 import com.abcxyz.lumberjack.auditlogclient.utils.ConfigUtils;
 import com.google.api.client.util.Strings;
 import com.google.api.gax.batching.BatchingSettings;
-import com.google.cloud.logging.LogEntry;
 import com.google.cloud.logging.Logging;
 import com.google.cloud.logging.LoggingOptions;
-import com.google.cloud.logging.Payload.StringPayload;
-import com.google.cloud.logging.Severity;
 import com.google.cloud.logging.Synchronicity;
 import com.google.inject.AbstractModule;
 import com.google.inject.Provides;
 import com.google.inject.Singleton;
-import java.util.Collections;
-import lombok.extern.slf4j.Slf4j;
 import org.threeten.bp.Duration;
 
-@Slf4j
 public class CloudLoggingModule extends AbstractModule {
   @Provides
   @Singleton
@@ -59,18 +53,6 @@ public class CloudLoggingModule extends AbstractModule {
       logging.setWriteSynchronicity(Synchronicity.SYNC);
     } else {
       logging.setWriteSynchronicity(Synchronicity.ASYNC);
-      // warmup request as a temporary workaround until this fixed:
-      // https://github.com/googleapis/java-logging/issues/1469.
-      try {
-        LogEntry entry =
-            LogEntry.newBuilder(StringPayload.of("warmup cloud logging"))
-                .setSeverity(Severity.INFO)
-                .setLogName(getClass().getSimpleName())
-                .build();
-        logging.write(Collections.singleton(entry));
-      } catch (Exception e) {
-        log.warn("failed to warmup cloud logging", e);
-      }
     }
     return logging;
   }
