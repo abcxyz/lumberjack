@@ -99,5 +99,5 @@ abc templates render \
  -input='cloud_audit_logs_filter_file=<YOUR_CLOUD_AUDIT_LOGS_FILTER_FILE>' \
  -input='terraform_state_bucket=<YOUR_TERRAFORM_STATE_BUCKET>' \
  -input='terraform_state_prefix=<YOUR_TERRAFORM_STATE_PREFIX>' \
- github.com/abcxyz/jvs.git//templates/lumberjack-e2e
+ github.com/abcxyz/lumberjack.git//templates/lumberjack-e2e
 ```
