@@ -101,10 +101,10 @@ func realMain(ctx context.Context) (retErr error) {
 	}
 
 	// TODO(b/202320320): Build interceptors for observability, logger, etc.
-	grpcServer := grpc.NewServer(grpc.ChainUnaryInterceptor(
-		otelgrpc.UnaryServerInterceptor(),
-		logging.GRPCUnaryInterceptor(logger, projectID),
-	))
+	grpcServer := grpc.NewServer(
+		grpc.UnaryInterceptor(logging.GRPCUnaryInterceptor(logger, projectID)),
+		grpc.StatsHandler(otelgrpc.NewServerHandler()),
+	)
 	api.RegisterAuditLogAgentServer(grpcServer, logAgent)
 	reflection.Register(grpcServer)
 
