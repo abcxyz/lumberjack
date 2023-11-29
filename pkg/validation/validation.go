@@ -20,10 +20,9 @@ import (
 	"fmt"
 	"strings"
 
-	"google.golang.org/protobuf/encoding/protojson"
-
 	lepb "cloud.google.com/go/logging/apiv2/loggingpb"
 	cal "google.golang.org/genproto/googleapis/cloud/audit"
+	"google.golang.org/protobuf/encoding/protojson"
 )
 
 var requiredLabels = map[string]struct{}{

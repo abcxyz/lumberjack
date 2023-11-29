@@ -20,14 +20,9 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/abcxyz/lumberjack/clients/go/pkg/justification"
-	"github.com/abcxyz/lumberjack/clients/go/pkg/remote"
-	"github.com/abcxyz/lumberjack/clients/go/pkg/security"
-	"github.com/abcxyz/lumberjack/clients/go/pkg/testutil"
-	"github.com/abcxyz/pkg/logging"
-	pkgtestutil "github.com/abcxyz/pkg/testutil"
 	"github.com/google/go-cmp/cmp"
 	"github.com/lestrrat-go/jwx/v2/jwt"
+	capi "google.golang.org/genproto/googleapis/cloud/audit"
 	rpcstatus "google.golang.org/genproto/googleapis/rpc/status"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -37,7 +32,12 @@ import (
 	"google.golang.org/protobuf/types/known/structpb"
 
 	api "github.com/abcxyz/lumberjack/clients/go/apis/v1alpha1"
-	capi "google.golang.org/genproto/googleapis/cloud/audit"
+	"github.com/abcxyz/lumberjack/clients/go/pkg/justification"
+	"github.com/abcxyz/lumberjack/clients/go/pkg/remote"
+	"github.com/abcxyz/lumberjack/clients/go/pkg/security"
+	"github.com/abcxyz/lumberjack/clients/go/pkg/testutil"
+	"github.com/abcxyz/pkg/logging"
+	pkgtestutil "github.com/abcxyz/pkg/testutil"
 )
 
 type fakeServer struct {

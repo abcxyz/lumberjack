@@ -24,8 +24,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/abcxyz/pkg/testutil"
 	"google.golang.org/api/idtoken"
+
+	"github.com/abcxyz/pkg/testutil"
 )
 
 // Global integration test config.

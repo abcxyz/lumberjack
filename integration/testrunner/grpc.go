@@ -24,16 +24,16 @@ import (
 	"testing"
 
 	"cloud.google.com/go/bigquery"
-	"github.com/abcxyz/lumberjack/internal/talkerpb"
 	"github.com/google/uuid"
 	"golang.org/x/oauth2"
+	rpccode "google.golang.org/genproto/googleapis/rpc/code"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/credentials/oauth"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
 
-	rpccode "google.golang.org/genproto/googleapis/rpc/code"
+	"github.com/abcxyz/lumberjack/internal/talkerpb"
 )
 
 // testGRPCEndpoint runs tests against a GRPC endpoint. The given GRPC must

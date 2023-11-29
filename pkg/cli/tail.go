@@ -21,13 +21,13 @@ import (
 	"strings"
 	"time"
 
+	logging "cloud.google.com/go/logging/apiv2"
 	"cloud.google.com/go/logging/apiv2/loggingpb"
+	"google.golang.org/protobuf/encoding/protojson"
+
 	"github.com/abcxyz/lumberjack/pkg/cloudlogging"
 	"github.com/abcxyz/lumberjack/pkg/validation"
 	"github.com/abcxyz/pkg/cli"
-	"google.golang.org/protobuf/encoding/protojson"
-
-	logging "cloud.google.com/go/logging/apiv2"
 	pkglogging "github.com/abcxyz/pkg/logging"
 )
 

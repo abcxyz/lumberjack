@@ -18,9 +18,10 @@ import (
 	"bytes"
 	"testing"
 
-	pkgtestutil "github.com/abcxyz/pkg/testutil"
 	"github.com/google/go-cmp/cmp"
 	"gopkg.in/yaml.v2"
+
+	pkgtestutil "github.com/abcxyz/pkg/testutil"
 )
 
 func TestConfig(t *testing.T) {

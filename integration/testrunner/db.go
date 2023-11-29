@@ -23,11 +23,12 @@ import (
 
 	"cloud.google.com/go/bigquery"
 	"cloud.google.com/go/logging/apiv2/loggingpb"
-	"github.com/abcxyz/pkg/bqutil"
-	"github.com/abcxyz/pkg/logging"
 	"github.com/sethvargo/go-retry"
 	"google.golang.org/genproto/googleapis/cloud/audit"
 	"google.golang.org/protobuf/encoding/protojson"
+
+	"github.com/abcxyz/pkg/bqutil"
+	"github.com/abcxyz/pkg/logging"
 )
 
 type bqResult struct {

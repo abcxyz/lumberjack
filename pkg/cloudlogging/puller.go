@@ -23,11 +23,10 @@ import (
 	"io"
 	"time"
 
+	logging "cloud.google.com/go/logging/apiv2"
 	"cloud.google.com/go/logging/apiv2/loggingpb"
 	"github.com/sethvargo/go-retry"
 	"google.golang.org/api/iterator"
-
-	logging "cloud.google.com/go/logging/apiv2"
 )
 
 // Puller pulls log entries of GCP organizations, folders, projects, and

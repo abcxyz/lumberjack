@@ -24,7 +24,6 @@ import (
 	"time"
 
 	"cloud.google.com/go/bigquery"
-	"github.com/abcxyz/lumberjack/internal/talkerpb"
 	"github.com/google/uuid"
 	"github.com/lestrrat-go/jwx/v2/jwa"
 	"github.com/lestrrat-go/jwx/v2/jws"
@@ -32,6 +31,7 @@ import (
 	"github.com/sethvargo/go-envconfig"
 
 	jvspb "github.com/abcxyz/jvs/apis/v0"
+	"github.com/abcxyz/lumberjack/internal/talkerpb"
 )
 
 // Config is the global configuration for integration tests.
