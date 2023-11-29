@@ -17,10 +17,10 @@
 package testutil
 
 import (
-	api "github.com/abcxyz/lumberjack/clients/go/apis/v1alpha1"
-
 	"google.golang.org/genproto/googleapis/cloud/audit"
 	"google.golang.org/protobuf/types/known/structpb"
+
+	api "github.com/abcxyz/lumberjack/clients/go/apis/v1alpha1"
 )
 
 type RequestOptions func(r *api.AuditLogRequest) *api.AuditLogRequest

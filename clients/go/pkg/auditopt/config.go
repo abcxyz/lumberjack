@@ -43,7 +43,10 @@ import (
 	"os"
 
 	"cloud.google.com/go/logging"
+	"github.com/sethvargo/go-envconfig"
+
 	"github.com/abcxyz/jvs/client-lib/go/client"
+	api "github.com/abcxyz/lumberjack/clients/go/apis/v1alpha1"
 	"github.com/abcxyz/lumberjack/clients/go/pkg/audit"
 	"github.com/abcxyz/lumberjack/clients/go/pkg/cloudlogging"
 	"github.com/abcxyz/lumberjack/clients/go/pkg/filtering"
@@ -51,9 +54,6 @@ import (
 	"github.com/abcxyz/lumberjack/clients/go/pkg/remote"
 	"github.com/abcxyz/lumberjack/clients/go/pkg/security"
 	"github.com/abcxyz/pkg/cfgloader"
-	"github.com/sethvargo/go-envconfig"
-
-	api "github.com/abcxyz/lumberjack/clients/go/apis/v1alpha1"
 )
 
 const DefaultConfigFilePath = "/etc/lumberjack/config.yaml"

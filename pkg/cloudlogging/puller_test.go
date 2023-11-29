@@ -20,15 +20,15 @@ import (
 	"testing"
 	"time"
 
+	logging "cloud.google.com/go/logging/apiv2"
 	"cloud.google.com/go/logging/apiv2/loggingpb"
-	"github.com/abcxyz/pkg/testutil"
 	"github.com/google/go-cmp/cmp"
 	"github.com/sethvargo/go-retry"
 	"google.golang.org/api/option"
 	"google.golang.org/grpc"
 	"google.golang.org/protobuf/testing/protocmp"
 
-	logging "cloud.google.com/go/logging/apiv2"
+	"github.com/abcxyz/pkg/testutil"
 )
 
 const (

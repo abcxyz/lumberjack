@@ -21,10 +21,11 @@ import (
 	"strings"
 
 	"cloud.google.com/go/compute/metadata"
-	api "github.com/abcxyz/lumberjack/clients/go/apis/v1alpha1"
 	mrpb "google.golang.org/genproto/googleapis/api/monitoredres"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/types/known/structpb"
+
+	api "github.com/abcxyz/lumberjack/clients/go/apis/v1alpha1"
 )
 
 // runtimeInfo is a processor that contains information about the application's

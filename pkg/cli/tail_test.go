@@ -22,9 +22,10 @@ import (
 	"time"
 
 	"cloud.google.com/go/logging/apiv2/loggingpb"
-	"github.com/abcxyz/pkg/testutil"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/types/known/structpb"
+
+	"github.com/abcxyz/pkg/testutil"
 )
 
 var (

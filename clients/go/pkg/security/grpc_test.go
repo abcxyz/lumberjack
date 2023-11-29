@@ -20,10 +20,11 @@ import (
 	"context"
 	"testing"
 
+	"google.golang.org/grpc/metadata"
+
 	"github.com/abcxyz/lumberjack/clients/go/apis/v1alpha1"
 	"github.com/abcxyz/lumberjack/clients/go/pkg/testutil"
 	pkgtestutil "github.com/abcxyz/pkg/testutil"
-	"google.golang.org/grpc/metadata"
 )
 
 func TestFromRawJWT_RequestPrincipal(t *testing.T) {
