@@ -17,6 +17,7 @@ package testrunner
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/mail"
 	"testing"
@@ -24,10 +25,10 @@ import (
 	"cloud.google.com/go/bigquery"
 	"cloud.google.com/go/logging/apiv2/loggingpb"
 	"github.com/sethvargo/go-retry"
+	"google.golang.org/api/iterator"
 	"google.golang.org/genproto/googleapis/cloud/audit"
 	"google.golang.org/protobuf/encoding/protojson"
 
-	"github.com/abcxyz/pkg/bqutil"
 	"github.com/abcxyz/pkg/logging"
 )
 
@@ -70,11 +71,55 @@ func validateAuditLogsWithRetries(ctx context.Context, tb testing.TB, tcfg *Test
 	ctx = logging.WithLogger(ctx, logging.TestLogger(tb))
 
 	backoff := retry.WithMaxRetries(tcfg.MaxDBQueryTries, retry.NewConstant(tcfg.LogRoutingWait))
-	q := bqutil.NewQuery[bqResult](bqQuery)
 
-	results, err := bqutil.RetryQueryEntries(ctx, q, wantNum, backoff)
-	if err != nil {
-		tb.Fatalf("query BigQuery failed: %v", err)
+	var results []*bqResult
+	if err := retry.Do(ctx, backoff, func(ctx context.Context) error {
+		entries, err := func() ([]*bqResult, error) {
+			job, err := bqQuery.Run(ctx)
+			if err != nil {
+				return nil, fmt.Errorf("failed to run query: %w", err)
+			}
+
+			if status, err := job.Wait(ctx); err != nil {
+				return nil, fmt.Errorf("failed to wait for query: %w", err)
+			} else if status.Err() != nil {
+				return nil, fmt.Errorf("query failed: %w", status.Err())
+			}
+
+			it, err := job.Read(ctx)
+			if err != nil {
+				return nil, fmt.Errorf("failed to read query result: %w", err)
+			}
+
+			var entries []*bqResult
+			for {
+				var r bqResult
+				err := it.Next(&r)
+				if errors.Is(err, iterator.Done) {
+					break
+				}
+				if err != nil {
+					return nil, fmt.Errorf("failed to get next entry: %w", err)
+				}
+
+				entries = append(entries, &r)
+			}
+			return entries, nil
+		}()
+		if err != nil {
+			return retry.RetryableError(fmt.Errorf("failed to execute query: %w", err))
+		}
+
+		got := len(entries)
+		if got >= wantNum {
+			results = entries
+			return nil
+		}
+
+		tb.Logf("not enough entries (got %d, want %d), will retry", got, wantNum)
+		return retry.RetryableError(fmt.Errorf("not enough entries (got %d, want %d)", got, wantNum))
+	}); err != nil {
+		tb.Fatalf("BigQuery query failed: %v", err)
 	}
 
 	for i, r := range results {
