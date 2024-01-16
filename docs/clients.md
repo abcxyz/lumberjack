@@ -155,7 +155,7 @@ your source code. You can override it with env var `AUDIT_CLIENT_CONFIG_NAME`.
 For example, if `AUDIT_CLIENT_CONFIG_NAME` is set to be `my_config.yml`, it is
 pointing to `src/main/resources/my_config.yml`.
 
-The example here is using [Guice](https://github.com/google/guice).
+The example below is using [Guice](https://github.com/google/guice).
 
 ```java
 Injector injector = Guice.createInjector(new AuditLoggingModule());
@@ -166,6 +166,17 @@ AuditLoggingServerInterceptor interceptor =
 
 // Otherwise, use LoggingClient directly.
 LoggingClient client = injector.getInstance(LoggingClient.class);
+```
+
+If you are using [Sping](https://spring.io/), you can use Guice to create the
+logging client and inject it as Bean.
+
+```java
+@Bean
+LoggingClient loggingClient() {
+  Injector injector = Guice.createInjector(new AuditLoggingModule());
+  return injector.getInstance(LoggingClient.class);
+}
 ```
 
 ### "Assemble" a client in code
