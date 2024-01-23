@@ -12,7 +12,7 @@ require (
 	github.com/abcxyz/pkg v0.7.1
 	github.com/google/go-cmp v0.6.0
 	github.com/google/uuid v1.3.1
-	github.com/lestrrat-go/jwx/v2 v2.0.13
+	github.com/lestrrat-go/jwx/v2 v2.0.18
 	github.com/microcosm-cc/bluemonday v1.0.26
 	github.com/sethvargo/go-envconfig v0.9.0
 	github.com/sethvargo/go-retry v0.2.4
