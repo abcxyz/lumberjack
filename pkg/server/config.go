@@ -33,7 +33,7 @@ type Config struct {
 // NewConfig initializes a server config from environment vars.
 func NewConfig(ctx context.Context) (*Config, error) {
 	var c Config
-	if err := envconfig.ProcessWith(ctx, &c, envconfig.OsLookuper()); err != nil {
+	if err := envconfig.Process(ctx, &c); err != nil {
 		return nil, fmt.Errorf("failed to process environment: %w", err)
 	}
 	return &c, nil
