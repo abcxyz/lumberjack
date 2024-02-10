@@ -84,7 +84,7 @@ func parsePrivateKey(path string) (*ecdsa.PrivateKey, error) {
 
 func newTestConfig(ctx context.Context) (*Config, error) {
 	var c Config
-	if err := envconfig.ProcessWith(ctx, &c, envconfig.OsLookuper()); err != nil {
+	if err := envconfig.Process(ctx, &c); err != nil {
 		return nil, fmt.Errorf("failed to process environment: %w", err)
 	}
 	pk, err := parsePrivateKey(c.PrivateKeyFilePath)
