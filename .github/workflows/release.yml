@@ -1,3 +1,17 @@
+# Copyright 2023 The Authors (see AUTHORS file)
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 name: 'release'
 
 on:
@@ -19,20 +33,21 @@ jobs:
 
   image-release:
     # Run tests before the release
-    needs: ['ci-test']
+    needs:
+      - 'ci-test'
     runs-on: 'ubuntu-latest'
     permissions:
       contents: 'read'
       id-token: 'write'
     steps:
       - id: 'auth'
-        uses: 'google-github-actions/auth@c4799db9111fba4461e9f9da8732e5057b394f72' # ratchet:google-github-actions/auth@v0
+        uses: 'google-github-actions/auth@55bd3a7c6e2ae7cf1877fd1ccb9d54c0503c457c' # ratchet:google-github-actions/auth@v2
         with:
           workload_identity_provider: '${{ env.WIF_PROVIDER }}'
           service_account: '${{ env.WIF_SERVICE_ACCOUNT }}'
 
       - name: 'Set up Cloud SDK'
-        uses: 'google-github-actions/setup-gcloud@62d4898025f6041e16b1068643bfc5a696863587' # ratchet:google-github-actions/setup-gcloud@v1
+        uses: 'google-github-actions/setup-gcloud@98ddc00a17442e89a24bbf282954a3b65ce6d200' # ratchet:google-github-actions/setup-gcloud@v2
 
       - name: 'Copy images to Release registry'
         run: |-
@@ -42,20 +57,21 @@ jobs:
 
   maven-release:
     # Run tests before the release
-    needs: ['ci-test']
+    needs:
+      - 'ci-test'
     runs-on: 'ubuntu-latest'
     permissions:
       contents: 'read'
       id-token: 'write'
     steps:
-      - uses: 'actions/checkout@755da8c3cf115ac066823e79a1e1788f8940201b' # ratchet:actions/checkout@v3
+      - uses: 'actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11' # ratchet:actions/checkout@v4
 
-      - uses: 'actions/setup-java@1df8dbefe2a8cbc99770194893dd902763bee34b' # ratchet:actions/setup-java@v3
+      - uses: 'actions/setup-java@9704b39bf258b59bc04b50fa2dd55e9ed76b47a8' # ratchet:actions/setup-java@v4
         with:
           java-version: '11'
           distribution: 'adopt'
 
-      - uses: 'google-github-actions/auth@c4799db9111fba4461e9f9da8732e5057b394f72' # ratchet:google-github-actions/auth@v0
+      - uses: 'google-github-actions/auth@55bd3a7c6e2ae7cf1877fd1ccb9d54c0503c457c' # ratchet:google-github-actions/auth@v2
         with:
           workload_identity_provider: '${{ env.WIF_PROVIDER }}'
           service_account: '${{ env.WIF_SERVICE_ACCOUNT }}'
@@ -70,21 +86,23 @@ jobs:
           mvn clean flatten:flatten deploy -Drevision=$(echo '${{ github.ref_name }}' | cut -c 2-) -f clients/java-logger/library
 
   github-release:
-    needs: ['image-release', 'maven-release']
+    needs:
+      - 'image-release'
+      - 'maven-release'
     runs-on: 'ubuntu-latest'
     permissions:
       contents: 'write'
       packages: 'write'
     steps:
-      - uses: 'actions/checkout@755da8c3cf115ac066823e79a1e1788f8940201b' # ratchet:actions/checkout@v3
+      - uses: 'actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11' # ratchet:actions/checkout@v4
         with:
           fetch-depth: 0
 
-      - uses: 'actions/setup-go@6edd4406fa81c3da01a34fa6f6343087c207a568' # ratchet:actions/setup-go@v3
+      - uses: 'actions/setup-go@0c52d547c9bc32b1aa3301fd7a9cb496313a4491' # ratchet:actions/setup-go@v5
         with:
-          go-version: '1.21'
+          go-version-file: 'go.mod'
 
-      - uses: 'goreleaser/goreleaser-action@b508e2e3ef3b19d4e4146d4f8fb3ba9db644a757' # ratchet:goreleaser/goreleaser-action@v3
+      - uses: 'goreleaser/goreleaser-action@7ec5c2b0c6cdda6e8bbb49444bc797dd33d74dd8' # ratchet:goreleaser/goreleaser-action@v5
         with:
           version: 'v1.16.1' # Manually pinned
           args: 'release --clean'

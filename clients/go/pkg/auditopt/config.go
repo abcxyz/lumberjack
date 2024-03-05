@@ -45,7 +45,7 @@ import (
 	"cloud.google.com/go/logging"
 	"github.com/sethvargo/go-envconfig"
 
-	"github.com/abcxyz/jvs/client-lib/go/client"
+	jvspb "github.com/abcxyz/jvs/apis/v0"
 	api "github.com/abcxyz/lumberjack/clients/go/apis/v1alpha1"
 	"github.com/abcxyz/lumberjack/clients/go/pkg/audit"
 	"github.com/abcxyz/lumberjack/clients/go/pkg/cloudlogging"
@@ -177,7 +177,7 @@ func clientFromConfig(ctx context.Context, c *audit.Client, cfg *api.Config) err
 		opts = append(opts, withPrincipalFilter)
 	}
 
-	withBackends, err := backendsFromConfig(cfg)
+	withBackends, err := backendsFromConfig(ctx, cfg)
 	if err != nil {
 		return err
 	}
@@ -222,7 +222,7 @@ func principalFilterFromConfig(cfg *api.Config) (audit.Option, error) {
 	return audit.WithValidator(m), nil
 }
 
-func backendsFromConfig(cfg *api.Config) ([]audit.Option, error) {
+func backendsFromConfig(ctx context.Context, cfg *api.Config) ([]audit.Option, error) {
 	var backendOpts []audit.Option
 
 	if cfg.Backend.Remote != nil {
@@ -233,7 +233,7 @@ func backendsFromConfig(cfg *api.Config) ([]audit.Option, error) {
 			if impersonate == "" {
 				authopts = append(authopts, remote.WithDefaultAuth())
 			} else {
-				authopts = append(authopts, remote.WithImpersonatedIDTokenAuth(context.Background(), impersonate))
+				authopts = append(authopts, remote.WithImpersonatedIDTokenAuth(ctx, impersonate))
 			}
 		}
 		b, err := remote.NewProcessor(addr, authopts...)
@@ -253,14 +253,14 @@ func backendsFromConfig(cfg *api.Config) ([]audit.Option, error) {
 		var perr error
 
 		if cfg.Backend.CloudLogging.DefaultProject {
-			p, perr = cloudlogging.NewProcessor(context.TODO(), opts...)
+			p, perr = cloudlogging.NewProcessor(ctx, opts...)
 		} else {
-			clc, err := logging.NewClient(context.TODO(), cfg.Backend.CloudLogging.Project)
+			clc, err := logging.NewClient(ctx, cfg.Backend.CloudLogging.Project)
 			if err != nil {
 				return nil, fmt.Errorf("failed to create cloud logging client: %w", err)
 			}
 			opts = append(opts, cloudlogging.WithLoggingClient(clc))
-			p, perr = cloudlogging.NewProcessor(context.TODO(), opts...)
+			p, perr = cloudlogging.NewProcessor(ctx, opts...)
 		}
 
 		if perr != nil {
@@ -278,14 +278,14 @@ func labelsFromConfig(ctx context.Context, cfg *api.Config) audit.Option {
 }
 
 func justificationFromConfig(ctx context.Context, cfg *api.Config) (audit.Option, error) {
-	jvsconfig := client.JVSConfig{
+	jvsconfig := jvspb.Config{
 		JWKSEndpoint:    cfg.Justification.PublicKeysEndpoint,
 		AllowBreakglass: cfg.Justification.AllowBreakglass,
 	}
 	if err := cfgloader.Load(ctx, &jvsconfig, cfgloader.WithEnvPrefix("AUDIT_CLIENT_")); err != nil {
 		return nil, fmt.Errorf("failed to load JVS config: %w", err)
 	}
-	jvsClient, err := client.NewJVSClient(ctx, &jvsconfig)
+	jvsClient, err := jvspb.NewClient(ctx, &jvsconfig)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create jvs client: %w", err)
 	}
