@@ -77,7 +77,7 @@ jobs:
       - uses: 'actions/setup-java@9704b39bf258b59bc04b50fa2dd55e9ed76b47a8' # ratchet:actions/setup-java@v4
         with:
           java-version: '11'
-          distribution: 'adopt'
+          distribution: 'temurin'
 
       # We don't actually need to authenticate here, but the Artifact Regsitry
       # Wagon[1] expects authentication and infinitely retries if it does not

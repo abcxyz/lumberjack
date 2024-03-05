@@ -80,7 +80,7 @@ jobs:
         uses: 'docker://us-docker.pkg.dev/gcr-cleaner/gcr-cleaner/gcr-cleaner-cli' # ratchet:exclude old image versions are removed
         with:
           args: >-
-            -repo=${{ env.DOCKER_REPO }}/lumberjack-server -repo=${{ env.DOCKER_REPO }}/ljc-go-grpc -repo=${{ env.DOCKER_REPO }}/ljc-go-http -repo=${{ env.DOCKER_REPO }}/ljc-java-grpc -repo=${{ env.DOCKER_REPO }}/ljc-java-http -grace=336h -tag-filter-any=(?i)[0-9a-f]{40}(-amd64|-arm64)?
+            -repo=${{ env.DOCKER_REPO }}/lumberjack-server
             -repo=${{ env.DOCKER_REPO }}/ljc-go-grpc
             -repo=${{ env.DOCKER_REPO }}/ljc-go-http
             -repo=${{ env.DOCKER_REPO }}/ljc-java-grpc
