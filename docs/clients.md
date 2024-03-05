@@ -168,7 +168,7 @@ AuditLoggingServerInterceptor interceptor =
 LoggingClient client = injector.getInstance(LoggingClient.class);
 ```
 
-If you are using [Sping](https://spring.io/), you can use Guice to create the
+If you are using [Spring](https://spring.io/), you can use Guice to create the
 logging client and inject it as Bean.
 
 ```java
