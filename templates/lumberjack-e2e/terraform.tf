@@ -1,4 +1,4 @@
-# Copyright 2023 The Authors (see AUTHORS file)
+# Copyright 2024 The Authors (see AUTHORS file)
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -13,7 +13,7 @@
 # limitations under the License.
 
 terraform {
-  required_version = ">= 1.5"
+  required_version = ">= 1.7"
 
   backend "gcs" {
     bucket = "REPLACE_TERRAFORM_STATE_BUCKET"
@@ -22,7 +22,7 @@ terraform {
 
   required_providers {
     google = {
-      version = "4.76.0"
+      version = ">= 5.19"
       source  = "hashicorp/google"
     }
   }
