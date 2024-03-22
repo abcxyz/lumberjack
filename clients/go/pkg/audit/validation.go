@@ -46,7 +46,7 @@ func (p *RequestValidator) process(ctx context.Context, logReq *api.AuditLogRequ
 		return fmt.Errorf("AuditLogRequest cannot be nil")
 	}
 
-	if err := validation.ValidateAuditLog(logReq.Payload); err != nil {
+	if err := validation.ValidateAuditLog(logReq.GetPayload()); err != nil {
 		return fmt.Errorf("AuditLogRequest does not have a valid payload: %w", err)
 	}
 	return nil

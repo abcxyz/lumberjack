@@ -104,12 +104,12 @@ func (p *PrincipalEmailMatcher) Process(_ context.Context, logReq *api.AuditLogR
 		return nil
 	}
 
-	if logReq.Payload == nil || logReq.Payload.AuthenticationInfo == nil {
+	if logReq.GetPayload() == nil || logReq.GetPayload().GetAuthenticationInfo() == nil {
 		return fmt.Errorf("request.Payload.AuthenticationInfo is missing to check principal email: %w", auditerrors.ErrInvalidRequest)
 	}
 
 	for _, r := range p.includes {
-		if r.MatchString(logReq.Payload.AuthenticationInfo.PrincipalEmail) {
+		if r.MatchString(logReq.GetPayload().GetAuthenticationInfo().GetPrincipalEmail()) {
 			return nil
 		}
 	}
@@ -120,7 +120,7 @@ func (p *PrincipalEmailMatcher) Process(_ context.Context, logReq *api.AuditLogR
 	}
 
 	for _, r := range p.excludes {
-		if r.MatchString(logReq.Payload.AuthenticationInfo.PrincipalEmail) {
+		if r.MatchString(logReq.GetPayload().GetAuthenticationInfo().GetPrincipalEmail()) {
 			// When explicitly excluded, drop the request.
 			return fmt.Errorf("request.Payload.AuthenticationInfo.PrincipalEmail matches exclude regexp %q: %w", r, auditerrors.ErrPreconditionFailed)
 		}

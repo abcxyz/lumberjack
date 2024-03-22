@@ -21,8 +21,8 @@ on:
 env:
   SOURCE_DOCKER_IMAGE: 'us-docker.pkg.dev/gh-lumberjack-ci-i-bbdb31/ci-images/lumberjack-server:${{ github.sha }}'
   TARGET_DOCKER_IMAGE: 'us-docker.pkg.dev/abcxyz-artifacts/docker-images/lumberjack-server:${{ github.ref_name }}'
-  WIF_PROVIDER: 'projects/85251969489/locations/global/workloadIdentityPools/gh-automation-p-3e87cd/providers/gh-automation-p-3e87cd'
-  WIF_SERVICE_ACCOUNT: 'gh-automation-p-sa@gh-lumberjack-ci-p-339f57.iam.gserviceaccount.com'
+  WIF_PROVIDER: 'projects/657282861732/locations/global/workloadIdentityPools/github-automation/providers/lumberjack-ci-p'
+  WIF_SERVICE_ACCOUNT: 'github-automation-bot@gha-lumberjack-ci-p-9d0848.iam.gserviceaccount.com'
 
 # Don't cancel in progress since we don't want to have half-baked release.
 concurrency: '${{ github.workflow }}-${{ github.head_ref || github.ref }}-release'

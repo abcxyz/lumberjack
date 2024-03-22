@@ -586,7 +586,7 @@ func TestUnaryInterceptor(t *testing.T) {
 			if diff := cmp.Diff(tc.wantLogReq, gotReq, protocmp.Transform(), protocmp.IgnoreFields(&api.AuditLogRequest{}, "timestamp")); diff != "" {
 				t.Errorf("UnaryInterceptor(...) got diff in automatically emitted LogReq (-want, +got): %v", diff)
 			}
-			if gotReq != nil && gotReq.Timestamp == nil {
+			if gotReq != nil && gotReq.GetTimestamp() == nil {
 				t.Error("UnaryInterceptor(...) gotReq missing timestamp")
 			}
 			if err := c.Stop(); err != nil {
@@ -1133,10 +1133,10 @@ func TestStreamInterceptor(t *testing.T) {
 			}
 
 			for i, lr := range r.gotReqs {
-				if lr.Operation == nil || lr.Operation.Id == "" {
+				if lr.GetOperation() == nil || lr.GetOperation().GetId() == "" {
 					t.Errorf("StreamInterceptor(...) gotReqs[%d] missing operation id", i)
 				}
-				if lr.Timestamp == nil {
+				if lr.GetTimestamp() == nil {
 					t.Errorf("StreamInterceptor(...) gotReqs[%d] missing timestamp", i)
 				}
 			}

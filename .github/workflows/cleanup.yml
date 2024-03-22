@@ -23,8 +23,8 @@ on:
   workflow_dispatch:
 
 env:
-  WIF_PROVIDER: 'projects/201020025366/locations/global/workloadIdentityPools/gh-automation-i-c38297/providers/gh-automation-i-c38297'
-  WIF_SERVICE_ACCOUNT: 'gh-automation-i-sa@gh-lumberjack-ci-i-bbdb31.iam.gserviceaccount.com'
+  WIF_PROVIDER: 'projects/567170510917/locations/global/workloadIdentityPools/github-automation/providers/lumberjack-ci-i'
+  WIF_SERVICE_ACCOUNT: 'github-automation-bot@gha-lumberjack-ci-i-9d0848.iam.gserviceaccount.com'
   REGION: 'us-central1'
   DOCKER_REPO: 'us-docker.pkg.dev/gh-lumberjack-ci-i-bbdb31/ci-images'
 

@@ -159,20 +159,20 @@ func diffLogEntry(tb testing.TB, logEntry *loggingpb.LogEntry) {
 		tb.Fatalf("failed to get jsonPayload from logEntry: %v", err)
 	}
 
-	if logEntry.LogName == "" {
+	if logEntry.GetLogName() == "" {
 		tb.Errorf("queryResult field %v is blank", "logName")
 	}
 
-	if logEntry.Timestamp == nil {
+	if logEntry.GetTimestamp() == nil {
 		tb.Errorf("queryResult field %v is blank", "timestamp")
 	}
-	if !isValidEmail(jsonPayloadInfo.AuthenticationInfo.PrincipalEmail) {
-		tb.Errorf("queryResult field %v is invalid, got %v", "jsonPayload.authentication_info.principal_email", jsonPayloadInfo.AuthenticationInfo.PrincipalEmail)
+	if !isValidEmail(jsonPayloadInfo.GetAuthenticationInfo().GetPrincipalEmail()) {
+		tb.Errorf("queryResult field %v is invalid, got %v", "jsonPayload.authentication_info.principal_email", jsonPayloadInfo.GetAuthenticationInfo().GetPrincipalEmail())
 	}
-	if jsonPayloadInfo.ServiceName == "" {
+	if jsonPayloadInfo.GetServiceName() == "" {
 		tb.Errorf("queryResult field %v is blank", "jsonPayload.service_name")
 	}
-	if jsonPayloadInfo.MethodName == "" {
+	if jsonPayloadInfo.GetMethodName() == "" {
 		tb.Errorf("queryResult field %v is blank", "jsonPayload.method_name")
 	}
 
@@ -181,7 +181,7 @@ func diffLogEntry(tb testing.TB, logEntry *loggingpb.LogEntry) {
 
 func checkJustification(tb testing.TB, jsonPayloadInfo *audit.AuditLog) {
 	tb.Helper()
-	justification, ok := jsonPayloadInfo.Metadata.AsMap()["justification"]
+	justification, ok := jsonPayloadInfo.GetMetadata().AsMap()["justification"]
 	if !ok {
 		tb.Fatalf("queryResult field %v doesn't exist", "jsonPayload.metadata.justification")
 	}

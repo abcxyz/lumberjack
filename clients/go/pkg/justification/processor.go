@@ -58,7 +58,7 @@ func NewProcessor(v Validator) *Processor {
 // Process populates the given audit log request with the justification info from the given token.
 // If the token is empty, this function does nothing.
 func (p *Processor) Process(ctx context.Context, logReq *api.AuditLogRequest) error {
-	jvsToken := logReq.JustificationToken
+	jvsToken := logReq.GetJustificationToken()
 	if jvsToken == "" {
 		return auditerrors.ErrJustificationMissing
 	}
@@ -78,11 +78,11 @@ func (p *Processor) Process(ctx context.Context, logReq *api.AuditLogRequest) er
 		return fmt.Errorf("failed to decode justification token: %w", err)
 	}
 
-	if logReq.Payload == nil {
+	if logReq.GetPayload() == nil {
 		return auditerrors.ErrLogRequestMissingPayload
 	}
 
-	if logReq.Payload.Metadata == nil {
+	if logReq.GetPayload().GetMetadata() == nil {
 		logReq.Payload.Metadata = &structpb.Struct{
 			Fields: map[string]*structpb.Value{},
 		}
@@ -103,10 +103,10 @@ func (p *Processor) Process(ctx context.Context, logReq *api.AuditLogRequest) er
 	if err != nil {
 		return fmt.Errorf("failed to marshal justifications: %w", err)
 	}
-	if logReq.Payload.RequestMetadata == nil {
+	if logReq.GetPayload().GetRequestMetadata() == nil {
 		logReq.Payload.RequestMetadata = &auditpb.RequestMetadata{}
 	}
-	if logReq.Payload.RequestMetadata.RequestAttributes == nil {
+	if logReq.GetPayload().GetRequestMetadata().GetRequestAttributes() == nil {
 		logReq.Payload.RequestMetadata.RequestAttributes = &attribute_context.AttributeContext_Request{}
 	}
 	logReq.Payload.RequestMetadata.RequestAttributes.Reason = string(justificationBytes)
@@ -118,11 +118,11 @@ func principalEmail(logReq *api.AuditLogRequest) string {
 	if logReq == nil {
 		return ""
 	}
-	if logReq.Payload == nil {
+	if logReq.GetPayload() == nil {
 		return ""
 	}
-	if logReq.Payload.AuthenticationInfo == nil {
+	if logReq.GetPayload().GetAuthenticationInfo() == nil {
 		return ""
 	}
-	return logReq.Payload.AuthenticationInfo.PrincipalEmail
+	return logReq.GetPayload().GetAuthenticationInfo().GetPrincipalEmail()
 }

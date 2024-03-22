@@ -101,25 +101,25 @@ type server struct {
 
 func (s *server) Hello(ctx context.Context, req *talkerpb.HelloRequest) (*talkerpb.HelloResponse, error) {
 	if logReq, ok := audit.LogReqFromCtx(ctx); ok {
-		logReq.Payload.ResourceName = req.Target
+		logReq.Payload.ResourceName = req.GetTarget()
 	}
 	return &talkerpb.HelloResponse{
-		Message: fmt.Sprintf("Hi, I'm %s!", req.Target),
+		Message: fmt.Sprintf("Hi, I'm %s!", req.GetTarget()),
 	}, nil
 }
 
 func (s *server) Whisper(ctx context.Context, req *talkerpb.WhisperRequest) (*talkerpb.WhisperResponse, error) {
 	if logReq, ok := audit.LogReqFromCtx(ctx); ok {
-		logReq.Payload.ResourceName = req.Target
+		logReq.Payload.ResourceName = req.GetTarget()
 	}
 	return &talkerpb.WhisperResponse{
-		Message: fmt.Sprintf("Shush, I'm %s.", req.Target),
+		Message: fmt.Sprintf("Shush, I'm %s.", req.GetTarget()),
 	}, nil
 }
 
 func (s *server) Bye(ctx context.Context, req *talkerpb.ByeRequest) (*talkerpb.ByeResponse, error) {
 	if logReq, ok := audit.LogReqFromCtx(ctx); ok {
-		logReq.Payload.ResourceName = req.Target
+		logReq.Payload.ResourceName = req.GetTarget()
 	}
 	return &talkerpb.ByeResponse{
 		Message: "Bye!",
@@ -128,11 +128,11 @@ func (s *server) Bye(ctx context.Context, req *talkerpb.ByeRequest) (*talkerpb.B
 
 func (s *server) Fibonacci(req *talkerpb.FibonacciRequest, svr talkerpb.Talker_FibonacciServer) error {
 	if logReq, ok := audit.LogReqFromCtx(svr.Context()); ok {
-		logReq.Payload.ResourceName = req.Target
+		logReq.Payload.ResourceName = req.GetTarget()
 	}
 
 	var x, y uint32 = 0, 1
-	for i := uint32(1); i <= req.Places; i++ {
+	for i := uint32(1); i <= req.GetPlaces(); i++ {
 		z := uint32(0)
 		if i == 2 {
 			z = 1
@@ -172,9 +172,9 @@ func (s *server) Addition(svr talkerpb.Talker_AdditionServer) error {
 		}
 
 		if logReq, ok := audit.LogReqFromCtx(svr.Context()); ok {
-			logReq.Payload.ResourceName = req.Target
+			logReq.Payload.ResourceName = req.GetTarget()
 		}
-		sum += int(req.Addend)
+		sum += int(req.GetAddend())
 	}
 
 	return nil
@@ -182,7 +182,7 @@ func (s *server) Addition(svr talkerpb.Talker_AdditionServer) error {
 
 func (s *server) Fail(ctx context.Context, req *talkerpb.FailRequest) (*talkerpb.FailResponse, error) {
 	if logReq, ok := audit.LogReqFromCtx(ctx); ok {
-		logReq.Payload.ResourceName = req.Target
+		logReq.Payload.ResourceName = req.GetMessage()
 	}
 	return nil, status.Errorf(codes.ResourceExhausted, "this call will always fail")
 }
@@ -201,10 +201,10 @@ func (s *server) FailOnFour(svr talkerpb.Talker_FailOnFourServer) error {
 		}
 
 		if logReq, ok := audit.LogReqFromCtx(svr.Context()); ok {
-			logReq.Payload.ResourceName = req.Target
+			logReq.Payload.ResourceName = req.GetTarget()
 		}
 
-		if req.Value == 4 {
+		if req.GetValue() == 4 {
 			return status.Errorf(codes.InvalidArgument, "this call will always fail on four")
 		}
 	}

@@ -249,7 +249,7 @@ func (c *TailCommand) list(ctx context.Context, extra []validation.Validator, pu
 		js, err := protojson.Marshal(l)
 		if err != nil {
 			failCount++
-			c.Errf("failed to marshal log to json (InsertId: %q): %w", l.InsertId, err)
+			c.Errf("failed to marshal log to json (InsertId: %q): %w", l.GetInsertId(), err)
 			continue
 		}
 
@@ -262,9 +262,9 @@ func (c *TailCommand) list(ctx context.Context, extra []validation.Validator, pu
 		if c.flagValidate {
 			if err := validation.Validate(string(js), extra...); err != nil {
 				failCount++
-				c.Errf("failed to validate log (InsertId: %q): %w\n", l.InsertId, err)
+				c.Errf("failed to validate log (InsertId: %q): %w\n", l.GetInsertId(), err)
 			} else {
-				c.Outf("Successfully validated log (InsertId: %q)\n", l.InsertId)
+				c.Outf("Successfully validated log (InsertId: %q)\n", l.GetInsertId())
 			}
 		}
 	}
@@ -293,16 +293,16 @@ func (c *TailCommand) stream(ctx context.Context, extra []validation.Validator, 
 		totalCount++
 		js, err := protojson.Marshal(l)
 		if err != nil {
-			c.Errf("failed to marshal log to json (InsertId: %q): %w", l.InsertId, err)
+			c.Errf("failed to marshal log to json (InsertId: %q): %w", l.GetInsertId(), err)
 			continue
 		}
 		c.Outf(stripSpaces(string(js)))
 		if c.flagValidate {
 			if err := validation.Validate(string(js), extra...); err != nil {
 				failCount++
-				c.Errf("failed to validate log (InsertId: %q): %w\n", l.InsertId, err)
+				c.Errf("failed to validate log (InsertId: %q): %w\n", l.GetInsertId(), err)
 			} else {
-				c.Outf("Successfully validated log (InsertId: %q)\n", l.InsertId)
+				c.Outf("Successfully validated log (InsertId: %q)\n", l.GetInsertId())
 			}
 		}
 	}

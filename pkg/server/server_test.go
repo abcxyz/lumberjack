@@ -50,8 +50,8 @@ func (p *fakeLogProcessor) Process(_ context.Context, logReq *api.AuditLogReques
 
 	p.gotReq = reqClone
 	if p.updateReq != nil {
-		logReq.Labels = p.updateReq.Labels
-		logReq.Payload = p.updateReq.Payload
+		logReq.Labels = p.updateReq.GetLabels()
+		logReq.Payload = p.updateReq.GetPayload()
 	}
 	return p.returnErr
 }
