@@ -19,7 +19,7 @@ on:
     tags:
       - 'v*'
 env:
-  SOURCE_DOCKER_IMAGE: 'us-docker.pkg.dev/gh-lumberjack-ci-i-bbdb31/ci-images/lumberjack-server:${{ github.sha }}'
+  SOURCE_DOCKER_IMAGE: 'us-docker.pkg.dev/lumberjack-ci-images-i-1f/ci-images/lumberjack-server:${{ github.sha }}'
   TARGET_DOCKER_IMAGE: 'us-docker.pkg.dev/abcxyz-artifacts/docker-images/lumberjack-server:${{ github.ref_name }}'
   WIF_PROVIDER: 'projects/657282861732/locations/global/workloadIdentityPools/github-automation/providers/lumberjack-ci-p'
   WIF_SERVICE_ACCOUNT: 'github-automation-bot@gha-lumberjack-ci-p-9d0848.iam.gserviceaccount.com'

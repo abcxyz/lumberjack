@@ -29,7 +29,7 @@ on:
 env:
   DOCKER_REGISTRY: 'us-docker.pkg.dev'
   DOCKER_TAG: '${{ github.sha }}'
-  DOCKER_REPO: 'us-docker.pkg.dev/gh-lumberjack-ci-i-bbdb31/ci-images'
+  DOCKER_REPO: 'us-docker.pkg.dev/lumberjack-ci-images-i-1f/ci-images'
   WIF_PROVIDER: 'projects/567170510917/locations/global/workloadIdentityPools/github-automation/providers/lumberjack-ci-i'
   WIF_SERVICE_ACCOUNT: 'github-automation-bot@gha-lumberjack-ci-i-9d0848.iam.gserviceaccount.com'
   SERVER_PROJECT_ID: 'lumberjack-server-i-8eb3ef'
