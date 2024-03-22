@@ -182,7 +182,7 @@ func (s *server) Addition(svr talkerpb.Talker_AdditionServer) error {
 
 func (s *server) Fail(ctx context.Context, req *talkerpb.FailRequest) (*talkerpb.FailResponse, error) {
 	if logReq, ok := audit.LogReqFromCtx(ctx); ok {
-		logReq.Payload.ResourceName = req.GetMessage()
+		logReq.Payload.ResourceName = req.GetTarget()
 	}
 	return nil, status.Errorf(codes.ResourceExhausted, "this call will always fail")
 }
