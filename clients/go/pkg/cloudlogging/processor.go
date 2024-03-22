@@ -116,25 +116,25 @@ func logNameFromLogType(t api.AuditLogRequest_LogType) string {
 
 // Process emits an audit logs to Cloud Logging synchronously.
 func (p *Processor) Process(ctx context.Context, logReq *api.AuditLogRequest) error {
-	logger, ok := p.loggerByLogType[logReq.Type]
+	logger, ok := p.loggerByLogType[logReq.GetType()]
 	if !ok {
 		// Hitting this code path would be unlikely because NewProcessor
 		// creates loggers for every log type in the AuditLogRequest proto.
 		logger = p.loggerByLogType[api.AuditLogRequest_UNSPECIFIED]
 	}
 	logEntry := logging.Entry{
-		Payload:   logReq.Payload,
-		Labels:    logReq.Labels,
-		Operation: logReq.Operation,
+		Payload:   logReq.GetPayload(),
+		Labels:    logReq.GetLabels(),
+		Operation: logReq.GetOperation(),
 	}
 
-	if logReq.Timestamp != nil {
-		logEntry.Timestamp = logReq.Timestamp.AsTime()
+	if logReq.GetTimestamp() != nil {
+		logEntry.Timestamp = logReq.GetTimestamp().AsTime()
 	}
 
 	bestEffort := p.bestEffort
-	if logReq.Mode != api.AuditLogRequest_LOG_MODE_UNSPECIFIED {
-		bestEffort = (logReq.Mode == api.AuditLogRequest_BEST_EFFORT)
+	if logReq.GetMode() != api.AuditLogRequest_LOG_MODE_UNSPECIFIED {
+		bestEffort = (logReq.GetMode() == api.AuditLogRequest_BEST_EFFORT)
 	}
 
 	if bestEffort {

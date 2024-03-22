@@ -53,7 +53,7 @@ func (p *LabelProcessor) Process(ctx context.Context, logReq *api.AuditLogReques
 	}
 
 	for key, val := range p.defaultLabels {
-		if _, exists := logReq.Labels[key]; !exists {
+		if _, exists := logReq.GetLabels()[key]; !exists {
 			logReq.Labels[key] = val
 		}
 	}

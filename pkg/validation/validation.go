@@ -55,7 +55,7 @@ func ValidateLabels(le *lepb.LogEntry) error {
 
 	var retErr error
 	for k := range requiredLabels {
-		if _, ok := le.Labels[k]; !ok {
+		if _, ok := le.GetLabels()[k]; !ok {
 			retErr = errors.Join(retErr, fmt.Errorf("missing required label: %q", k))
 		}
 	}
@@ -90,22 +90,22 @@ func ValidateAuditLog(payload *cal.AuditLog) error {
 	}
 
 	var retErr error
-	if payload.MethodName == "" {
+	if payload.GetMethodName() == "" {
 		retErr = errors.Join(retErr, fmt.Errorf("MethodName cannot be empty"))
 	}
 
-	if payload.ServiceName == "" {
+	if payload.GetServiceName() == "" {
 		retErr = errors.Join(retErr, fmt.Errorf("ServiceName cannot be empty"))
 	}
 
-	if payload.ResourceName == "" {
+	if payload.GetResourceName() == "" {
 		retErr = errors.Join(retErr, fmt.Errorf("ResourceName cannot be empty"))
 	}
 
-	if payload.AuthenticationInfo == nil {
+	if payload.GetAuthenticationInfo() == nil {
 		retErr = errors.Join(retErr, fmt.Errorf("AuthenticationInfo cannot be nil"))
 	} else {
-		email := payload.AuthenticationInfo.PrincipalEmail
+		email := payload.GetAuthenticationInfo().GetPrincipalEmail()
 		if err := validateEmail(email); err != nil {
 			retErr = errors.Join(retErr, err)
 		}

@@ -108,10 +108,10 @@ func (p *Processor) Process(ctx context.Context, logReq *api.AuditLogRequest) er
 		return fmt.Errorf("remote log processing failed: %w", err)
 	}
 
-	if resp.Result != nil {
-		logReq.Labels = resp.Result.Labels
-		logReq.Payload = resp.Result.Payload
-		logReq.Type = resp.Result.Type
+	if resp.GetResult() != nil {
+		logReq.Labels = resp.GetResult().GetLabels()
+		logReq.Payload = resp.GetResult().GetPayload()
+		logReq.Type = resp.GetResult().GetType()
 	}
 
 	return nil

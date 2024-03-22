@@ -121,7 +121,7 @@ func testGRPCEndpoint(ctx context.Context, t *testing.T, tcfg *TestCaseConfig) {
 				t.Errorf("failed to read fibonacci stream: %v", err)
 				break
 			}
-			t.Logf("Received value %v", place.Value)
+			t.Logf("Received value %v", place.GetValue())
 		}
 		query := makeQueryForGRPC(&tcfg)
 		validateAuditLogsWithRetries(ctx, t, &tcfg, query, places)
@@ -149,7 +149,7 @@ func testGRPCEndpoint(ctx context.Context, t *testing.T, tcfg *TestCaseConfig) {
 		if err != nil {
 			t.Errorf("failed getting result from addition: %v", err)
 		}
-		t.Logf("Value returned: %d", reply.Sum)
+		t.Logf("Value returned: %d", reply.GetSum())
 
 		query := makeQueryForGRPC(&tcfg)
 		validateAuditLogsWithRetries(ctx, t, &tcfg, query, totalNumbers)

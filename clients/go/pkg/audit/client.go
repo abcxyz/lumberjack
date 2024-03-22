@@ -139,7 +139,7 @@ func (c *Client) Stop() error {
 func (c *Client) Log(ctx context.Context, logReq *api.AuditLogRequest) error {
 	logger := logging.FromContext(ctx)
 
-	if logReq.Mode == api.AuditLogRequest_LOG_MODE_UNSPECIFIED {
+	if logReq.GetMode() == api.AuditLogRequest_LOG_MODE_UNSPECIFIED {
 		logReq.Mode = c.logMode
 	}
 
@@ -151,7 +151,7 @@ func (c *Client) Log(ctx context.Context, logReq *api.AuditLogRequest) error {
 					"error", err)
 				return nil
 			}
-			return c.handleReturn(ctx, fmt.Errorf("failed to execute validator %T: %w", p, err), logReq.Mode)
+			return c.handleReturn(ctx, fmt.Errorf("failed to execute validator %T: %w", p, err), logReq.GetMode())
 		}
 	}
 
@@ -163,7 +163,7 @@ func (c *Client) Log(ctx context.Context, logReq *api.AuditLogRequest) error {
 					"error", err)
 				return nil
 			}
-			return c.handleReturn(ctx, fmt.Errorf("failed to execute mutator %T: %w", p, err), logReq.Mode)
+			return c.handleReturn(ctx, fmt.Errorf("failed to execute mutator %T: %w", p, err), logReq.GetMode())
 		}
 	}
 
@@ -175,7 +175,7 @@ func (c *Client) Log(ctx context.Context, logReq *api.AuditLogRequest) error {
 					"error", err)
 				return nil
 			}
-			return c.handleReturn(ctx, fmt.Errorf("failed to execute backend %T: %w", p, err), logReq.Mode)
+			return c.handleReturn(ctx, fmt.Errorf("failed to execute backend %T: %w", p, err), logReq.GetMode())
 		}
 	}
 

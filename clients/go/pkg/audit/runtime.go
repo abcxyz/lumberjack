@@ -271,10 +271,10 @@ func (p *runtimeInfo) Process(ctx context.Context, logReq *api.AuditLogRequest) 
 		return nil
 	}
 	// Add monitored resource to Payload.Metadata as JSON.
-	if logReq.Payload.GetMetadata() == nil {
+	if logReq.GetPayload().GetMetadata() == nil {
 		logReq.Payload.Metadata = &structpb.Struct{}
 	}
-	if logReq.Payload.Metadata.GetFields() == nil {
+	if logReq.GetPayload().GetMetadata().GetFields() == nil {
 		logReq.Payload.Metadata.Fields = map[string]*structpb.Value{}
 	}
 	logReq.Payload.Metadata.Fields["originating_resource"] = p.monitoredResource
