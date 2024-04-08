@@ -37,35 +37,13 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	api "github.com/abcxyz/lumberjack/clients/go/apis/v1alpha1"
+	"github.com/abcxyz/lumberjack/clients/go/pkg/auditerrors"
 	"github.com/abcxyz/lumberjack/clients/go/pkg/justification"
 	"github.com/abcxyz/lumberjack/clients/go/pkg/security"
 	"github.com/abcxyz/pkg/logging"
 )
 
 type auditLogReqKey struct{}
-
-const (
-	interceptorErrPrefix = "audit interceptor: "
-)
-
-// IsInterceptorErr returns true if the grpc status error is an Lumberjack
-// interceptor error.
-func IsInterceptorErr(err error) bool {
-	// Because these errors are grpc status error, we can't assert their error type.
-	// We can only check the error code and message.
-	if status.Code(err) != codes.Internal && status.Code(err) != codes.FailedPrecondition {
-		return false
-	}
-	return strings.Contains(err.Error(), interceptorErrPrefix)
-}
-
-func internalErr(err error) error {
-	return status.Errorf(codes.Internal, "%s%v", interceptorErrPrefix, err)
-}
-
-func failedPreconditionErr(err error) error {
-	return status.Errorf(codes.FailedPrecondition, "%s%v", interceptorErrPrefix, err)
-}
 
 // InterceptorOption defines the option func to configure an interceptor.
 type InterceptorOption func(ctx context.Context, i *Interceptor) error
@@ -140,7 +118,7 @@ func (i *Interceptor) UnaryInterceptor(ctx context.Context, req any, info *grpc.
 
 	serviceName, err := serviceName(info.FullMethod)
 	if err != nil {
-		return i.handleReturnUnary(ctx, req, handler, failedPreconditionErr(err))
+		return i.handleReturnUnary(ctx, req, handler, auditerrors.InterceptorError(status.Errorf(codes.FailedPrecondition, err.Error())))
 	}
 
 	logReq := &api.AuditLogRequest{
@@ -167,16 +145,16 @@ func (i *Interceptor) UnaryInterceptor(ctx context.Context, req any, info *grpc.
 		logger.ErrorContext(ctx, "audit interceptor failed to get request principal",
 			"security_context", i.sc,
 			"error", err)
-		return i.handleReturnUnary(ctx, req, handler,
-			failedPreconditionErr(fmt.Errorf("failed to get request principal")))
+		serr := auditerrors.InterceptorError(status.Errorf(codes.FailedPrecondition, "failed to get request principal"))
+		return i.handleReturnUnary(ctx, req, handler, serr)
 	}
 	logReq.Payload.AuthenticationInfo = &capi.AuthenticationInfo{PrincipalEmail: principal}
 
 	// Autofill `Payload.Request`.
 	if shouldLogReq(r) {
 		if err := setReq(logReq, req); err != nil {
-			return i.handleReturnUnary(ctx, req, handler,
-				internalErr(fmt.Errorf("failed to convert req into a Google struct proto: %w", err)))
+			return i.handleReturnUnary(ctx, req, handler, auditerrors.InterceptorError(
+				status.Errorf(codes.Internal, "failed to convert req into a Google struct proto: %v", err)))
 		}
 	}
 
@@ -203,12 +181,13 @@ func (i *Interceptor) UnaryInterceptor(ctx context.Context, req any, info *grpc.
 	if shouldLogResp(r) {
 		if err := setResp(logReq, resp); err != nil {
 			return i.handleReturnWithResponse(ctx, resp,
-				internalErr(fmt.Errorf("failed to convert resp into a Google struct proto: %w", err)))
+				auditerrors.InterceptorError(status.Errorf(codes.Internal, "failed to convert resp into a Google struct proto: %v", err)))
 		}
 	}
 
 	if err := i.Log(ctx, logReq); err != nil {
-		return i.handleReturnWithResponse(ctx, resp, internalErr(fmt.Errorf("failed to emit log: %w", err)))
+		return i.handleReturnWithResponse(ctx, resp,
+			auditerrors.InterceptorError(status.Errorf(codes.Internal, "failed to emit log: %v", err)))
 	}
 
 	return resp, handlerErr
@@ -229,7 +208,7 @@ func (i *Interceptor) StreamInterceptor(srv interface{}, ss grpc.ServerStream, i
 
 	serviceName, err := serviceName(info.FullMethod)
 	if err != nil {
-		return i.handleReturnStream(ctx, ss, handler, failedPreconditionErr(err))
+		return i.handleReturnStream(ctx, ss, handler, auditerrors.InterceptorError(status.Errorf(codes.FailedPrecondition, err.Error())))
 	}
 
 	// Build a baseline log request to be shared by all stream calls.
@@ -261,8 +240,8 @@ func (i *Interceptor) StreamInterceptor(srv interface{}, ss grpc.ServerStream, i
 		logger.ErrorContext(ctx, "audit interceptor failed to get request principal",
 			"security_context", i.sc,
 			"error", err)
-		return i.handleReturnStream(ctx, ss, handler,
-			failedPreconditionErr(fmt.Errorf("failed to get request principal")))
+		serr := status.Errorf(codes.FailedPrecondition, "audit interceptor failed to get request principal")
+		return i.handleReturnStream(ctx, ss, handler, serr)
 	}
 	logReq.Payload.AuthenticationInfo = &capi.AuthenticationInfo{PrincipalEmail: principal}
 
@@ -343,22 +322,22 @@ func (ss *serverStreamWrapper) Context() context.Context {
 func (ss *serverStreamWrapper) RecvMsg(m interface{}) error {
 	logReq, ok := proto.Clone(ss.baselineLogReq).(*api.AuditLogRequest)
 	if !ok {
-		return internalErr(fmt.Errorf("expected *api.AuditLogRequest"))
+		return fmt.Errorf("expected *api.AuditLogRequest")
 	}
 
 	// RecvMsg is a blocking call until the next message is received into 'm'.
 	if err := ss.ServerStream.RecvMsg(m); err != nil {
-		return internalErr(fmt.Errorf("failed to receive message from server stream: %w", err))
+		return fmt.Errorf("failed to receive message from server stream: %w", err)
 	}
 
 	lr := ss.swapLastReq(m)
 	if lr != nil {
 		if shouldLogReq(ss.rule) {
 			if err := setReq(logReq, lr); err != nil {
-				return internalErr(err)
+				return err
 			}
 			if err := ss.c.Log(ss.ServerStream.Context(), logReq); err != nil {
-				return internalErr(fmt.Errorf("failed to emit log: %w", err))
+				return auditerrors.InterceptorError(status.Errorf(codes.Internal, "failed to emit log: %v", err))
 			}
 		}
 	}
@@ -372,7 +351,7 @@ func (ss *serverStreamWrapper) RecvMsg(m interface{}) error {
 func (ss *serverStreamWrapper) SendMsg(m interface{}) error {
 	logReq, ok := proto.Clone(ss.baselineLogReq).(*api.AuditLogRequest)
 	if !ok {
-		return internalErr(fmt.Errorf("expected *api.AuditLogRequest"))
+		return fmt.Errorf("expected *api.AuditLogRequest")
 	}
 
 	// If there is a last request, we log it with the response in the same log entry.
@@ -381,23 +360,23 @@ func (ss *serverStreamWrapper) SendMsg(m interface{}) error {
 	if lr != nil {
 		if shouldLogReq(ss.rule) {
 			if err := setReq(logReq, lr); err != nil {
-				return internalErr(fmt.Errorf("failed to set request: %w", err))
+				return fmt.Errorf("failed to set request: %w", err)
 			}
 		}
 	}
 
 	if shouldLogResp(ss.rule) {
 		if err := setResp(logReq, m); err != nil {
-			return internalErr(fmt.Errorf("failed to set response: %w", err))
+			return fmt.Errorf("failed to set response: %w", err)
 		}
 	}
 
 	if err := ss.c.Log(ss.ServerStream.Context(), logReq); err != nil {
-		return internalErr(fmt.Errorf("failed to emit log: %w", err))
+		return auditerrors.InterceptorError(status.Errorf(codes.Internal, "failed to emit log: %v", err))
 	}
 
 	if err := ss.ServerStream.SendMsg(m); err != nil {
-		return internalErr(fmt.Errorf("failed to send message to server stream: %w", err))
+		return fmt.Errorf("failed to send message to server stream: %w", err)
 	}
 	return nil
 }
@@ -405,7 +384,7 @@ func (ss *serverStreamWrapper) SendMsg(m interface{}) error {
 func setReq(logReq *api.AuditLogRequest, m interface{}) error {
 	ms, err := toProtoStruct(m)
 	if err != nil {
-		return internalErr(fmt.Errorf("failed to convert req into a Google struct proto: %w", err))
+		return auditerrors.InterceptorError(status.Errorf(codes.Internal, "failed to convert req into a proto struct: %v", err))
 	}
 	logReq.Payload.Request = ms
 	return nil
@@ -414,7 +393,7 @@ func setReq(logReq *api.AuditLogRequest, m interface{}) error {
 func setResp(logReq *api.AuditLogRequest, m interface{}) error {
 	ms, err := toProtoStruct(m)
 	if err != nil {
-		return internalErr(fmt.Errorf("failed to convert resp into a Google struct proto: %w", err))
+		return auditerrors.InterceptorError(status.Errorf(codes.Internal, "failed to convert resp into a proto struct: %v", err))
 	}
 	logReq.Payload.Response = ms
 	return nil
