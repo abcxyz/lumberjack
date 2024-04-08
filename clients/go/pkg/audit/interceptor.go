@@ -118,7 +118,7 @@ func (i *Interceptor) UnaryInterceptor(ctx context.Context, req any, info *grpc.
 
 	serviceName, err := serviceName(info.FullMethod)
 	if err != nil {
-		return i.handleReturnUnary(ctx, req, handler, auditerrors.InterceptorError(status.Errorf(codes.FailedPrecondition, err.Error()))) //nolint:wrapcheck
+		return i.handleReturnUnary(ctx, req, handler, auditerrors.InterceptorError(status.Errorf(codes.FailedPrecondition, err.Error())))
 	}
 
 	logReq := &api.AuditLogRequest{
@@ -145,7 +145,7 @@ func (i *Interceptor) UnaryInterceptor(ctx context.Context, req any, info *grpc.
 		logger.ErrorContext(ctx, "audit interceptor failed to get request principal",
 			"security_context", i.sc,
 			"error", err)
-		serr := auditerrors.InterceptorError(status.Errorf(codes.FailedPrecondition, "failed to get request principal")) //nolint:wrapcheck
+		serr := auditerrors.InterceptorError(status.Errorf(codes.FailedPrecondition, "failed to get request principal"))
 		return i.handleReturnUnary(ctx, req, handler, serr)
 	}
 	logReq.Payload.AuthenticationInfo = &capi.AuthenticationInfo{PrincipalEmail: principal}
@@ -181,13 +181,13 @@ func (i *Interceptor) UnaryInterceptor(ctx context.Context, req any, info *grpc.
 	if shouldLogResp(r) {
 		if err := setResp(logReq, resp); err != nil {
 			return i.handleReturnWithResponse(ctx, resp,
-				auditerrors.InterceptorError(status.Errorf(codes.Internal, "failed to convert resp into a Google struct proto: %v", err))) //nolint:wrapcheck
+				auditerrors.InterceptorError(status.Errorf(codes.Internal, "failed to convert resp into a Google struct proto: %v", err)))
 		}
 	}
 
 	if err := i.Log(ctx, logReq); err != nil {
 		return i.handleReturnWithResponse(ctx, resp,
-			auditerrors.InterceptorError(status.Errorf(codes.Internal, "failed to emit log: %v", err))) //nolint:wrapcheck
+			auditerrors.InterceptorError(status.Errorf(codes.Internal, "failed to emit log: %v", err)))
 	}
 
 	return resp, handlerErr
@@ -208,7 +208,7 @@ func (i *Interceptor) StreamInterceptor(srv interface{}, ss grpc.ServerStream, i
 
 	serviceName, err := serviceName(info.FullMethod)
 	if err != nil {
-		return i.handleReturnStream(ctx, ss, handler, auditerrors.InterceptorError(status.Errorf(codes.FailedPrecondition, err.Error()))) //nolint:wrapcheck
+		return i.handleReturnStream(ctx, ss, handler, auditerrors.InterceptorError(status.Errorf(codes.FailedPrecondition, err.Error())))
 	}
 
 	// Build a baseline log request to be shared by all stream calls.
