@@ -368,7 +368,7 @@ func TestUnaryInterceptor(t *testing.T) {
 				return nil, nil
 			},
 			jvs:           &fakeJVS{},
-			wantErrSubstr: `audit interceptor: failed capturing non-nil service name with regexp "^/{1,2}(.*?)/" from "bananas"`,
+			wantErrSubstr: `failed capturing non-nil service name with regexp "^/{1,2}(.*?)/" from "bananas"`,
 		},
 		{
 			name: "malformed_method_info_best_effort",
@@ -422,7 +422,7 @@ func TestUnaryInterceptor(t *testing.T) {
 				return nil, nil
 			},
 			jvs:           &fakeJVS{},
-			wantErrSubstr: `audit interceptor failed to get request principal`,
+			wantErrSubstr: `failed to get request principal`,
 		},
 		{
 			name: "unable_to_extract_principal_fail_close",
@@ -441,7 +441,7 @@ func TestUnaryInterceptor(t *testing.T) {
 				return nil, nil
 			},
 			jvs:           &fakeJVS{},
-			wantErrSubstr: `audit interceptor failed to get request principal`,
+			wantErrSubstr: `failed to get request principal`,
 		},
 		{
 			name: "unable_to_convert_req_to_proto_struct_fail_close",
@@ -464,7 +464,7 @@ func TestUnaryInterceptor(t *testing.T) {
 			},
 			jvs:           &fakeJVS{},
 			req:           "bananas",
-			wantErrSubstr: "audit interceptor failed converting req into a Google struct",
+			wantErrSubstr: "failed to convert req into a Google struct",
 		},
 		{
 			name: "unable_to_convert_req_to_proto_struct_best_effort",

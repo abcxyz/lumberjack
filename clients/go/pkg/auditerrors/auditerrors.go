@@ -15,6 +15,8 @@
 // Package auditerrors defines the sentinel errors for the project.
 package auditerrors
 
+import "fmt"
+
 // Error is a concrete error implementation.
 type Error string
 
@@ -46,4 +48,12 @@ const (
 	// ErrJustificationInvalid is the error returned when a justification token
 	// was present, but failed validation.
 	ErrJustificationInvalid = Error("invalid justification token")
+
+	// ErrInterceptor is used to assert whether an error is an interceptor error.
+	ErrInterceptor = Error("audit interceptor")
 )
+
+// InterceptorError wraps an error with ErrInterceptor.
+func InterceptorError(err error) error {
+	return fmt.Errorf("%w: %w", ErrInterceptor, err)
+}
