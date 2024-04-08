@@ -33,7 +33,7 @@ import (
 )
 
 type bqResult struct {
-	// We expect a single JSON column named "result" from all queries.
+	// We expect a single JSON column named "result" from all queries test.
 	Result string
 }
 
