@@ -113,16 +113,17 @@ func TestUnaryInterceptor(t *testing.T) {
 	})
 
 	cases := []struct {
-		name          string
-		ctx           context.Context //nolint:containedctx // Only for testing
-		auditRules    []*api.AuditRule
-		req           interface{}
-		logMode       api.AuditLogRequest_LogMode
-		info          *grpc.UnaryServerInfo
-		handler       grpc.UnaryHandler
-		jvs           *fakeJVS
-		wantLogReq    *api.AuditLogRequest
-		wantErrSubstr string
+		name               string
+		ctx                context.Context //nolint:containedctx // Only for testing
+		auditRules         []*api.AuditRule
+		req                interface{}
+		logMode            api.AuditLogRequest_LogMode
+		info               *grpc.UnaryServerInfo
+		handler            grpc.UnaryHandler
+		jvs                *fakeJVS
+		wantLogReq         *api.AuditLogRequest
+		wantErrSubstr      string
+		wantInterceptorErr bool
 	}{
 		{
 			name: "interceptor_autofills_successful_rpc",
@@ -367,8 +368,9 @@ func TestUnaryInterceptor(t *testing.T) {
 			handler: func(ctx context.Context, req interface{}) (interface{}, error) {
 				return nil, nil
 			},
-			jvs:           &fakeJVS{},
-			wantErrSubstr: `audit interceptor: failed capturing non-nil service name with regexp "^/{1,2}(.*?)/" from "bananas"`,
+			jvs:                &fakeJVS{},
+			wantErrSubstr:      `failed capturing non-nil service name with regexp "^/{1,2}(.*?)/" from "bananas"`,
+			wantInterceptorErr: true,
 		},
 		{
 			name: "malformed_method_info_best_effort",
@@ -421,8 +423,9 @@ func TestUnaryInterceptor(t *testing.T) {
 			handler: func(ctx context.Context, req interface{}) (interface{}, error) {
 				return nil, nil
 			},
-			jvs:           &fakeJVS{},
-			wantErrSubstr: `audit interceptor failed to get request principal`,
+			jvs:                &fakeJVS{},
+			wantErrSubstr:      `failed to get request principal`,
+			wantInterceptorErr: true,
 		},
 		{
 			name: "unable_to_extract_principal_fail_close",
@@ -440,8 +443,9 @@ func TestUnaryInterceptor(t *testing.T) {
 			handler: func(ctx context.Context, req interface{}) (interface{}, error) {
 				return nil, nil
 			},
-			jvs:           &fakeJVS{},
-			wantErrSubstr: `audit interceptor failed to get request principal`,
+			jvs:                &fakeJVS{},
+			wantErrSubstr:      `failed to get request principal`,
+			wantInterceptorErr: true,
 		},
 		{
 			name: "unable_to_convert_req_to_proto_struct_fail_close",
@@ -462,9 +466,10 @@ func TestUnaryInterceptor(t *testing.T) {
 				logReq.Payload.ResourceName = "ExampleResourceName"
 				return nil, nil
 			},
-			jvs:           &fakeJVS{},
-			req:           "bananas",
-			wantErrSubstr: "audit interceptor failed converting req into a Google struct",
+			jvs:                &fakeJVS{},
+			req:                "bananas",
+			wantErrSubstr:      "failed to convert req into a Google struct",
+			wantInterceptorErr: true,
 		},
 		{
 			name: "unable_to_convert_req_to_proto_struct_best_effort",
@@ -530,8 +535,9 @@ func TestUnaryInterceptor(t *testing.T) {
 				logReq.Payload.ResourceName = "ExampleResourceName"
 				return nil, nil
 			},
-			jvs:           &fakeJVS{returnErr: true},
-			wantErrSubstr: "validate jwt error",
+			jvs:                &fakeJVS{returnErr: true},
+			wantErrSubstr:      "validate jwt error",
+			wantInterceptorErr: true,
 		},
 	}
 
@@ -577,6 +583,9 @@ func TestUnaryInterceptor(t *testing.T) {
 			_, gotErr := i.UnaryInterceptor(tc.ctx, tc.req, tc.info, tc.handler)
 			if diff := pkgtestutil.DiffErrString(gotErr, tc.wantErrSubstr); diff != "" {
 				t.Errorf("UnaryInterceptor(...) got unexpected error substring: %v", diff)
+			}
+			if IsInterceptorErr(gotErr) != tc.wantInterceptorErr {
+				t.Errorf("IsInterceptorErr() got non-interceptor error: %v", gotErr)
 			}
 
 			var gotReq *api.AuditLogRequest
