@@ -118,7 +118,7 @@ func (i *Interceptor) UnaryInterceptor(ctx context.Context, req any, info *grpc.
 
 	serviceName, err := serviceName(info.FullMethod)
 	if err != nil {
-		return i.handleReturnUnary(ctx, req, handler, auditerrors.InterceptorError(status.Errorf(codes.FailedPrecondition, err.Error())))
+		return i.handleReturnUnary(ctx, req, handler, auditerrors.InterceptorError(status.Errorf(codes.FailedPrecondition, err.Error()))) //nolint:wrapcheck
 	}
 
 	logReq := &api.AuditLogRequest{
@@ -145,7 +145,7 @@ func (i *Interceptor) UnaryInterceptor(ctx context.Context, req any, info *grpc.
 		logger.ErrorContext(ctx, "audit interceptor failed to get request principal",
 			"security_context", i.sc,
 			"error", err)
-		serr := auditerrors.InterceptorError(status.Errorf(codes.FailedPrecondition, "failed to get request principal"))
+		serr := auditerrors.InterceptorError(status.Errorf(codes.FailedPrecondition, "failed to get request principal")) //nolint:wrapcheck
 		return i.handleReturnUnary(ctx, req, handler, serr)
 	}
 	logReq.Payload.AuthenticationInfo = &capi.AuthenticationInfo{PrincipalEmail: principal}
@@ -181,13 +181,13 @@ func (i *Interceptor) UnaryInterceptor(ctx context.Context, req any, info *grpc.
 	if shouldLogResp(r) {
 		if err := setResp(logReq, resp); err != nil {
 			return i.handleReturnWithResponse(ctx, resp,
-				auditerrors.InterceptorError(status.Errorf(codes.Internal, "failed to convert resp into a Google struct proto: %v", err)))
+				auditerrors.InterceptorError(status.Errorf(codes.Internal, "failed to convert resp into a Google struct proto: %v", err))) //nolint:wrapcheck
 		}
 	}
 
 	if err := i.Log(ctx, logReq); err != nil {
 		return i.handleReturnWithResponse(ctx, resp,
-			auditerrors.InterceptorError(status.Errorf(codes.Internal, "failed to emit log: %v", err)))
+			auditerrors.InterceptorError(status.Errorf(codes.Internal, "failed to emit log: %v", err))) //nolint:wrapcheck
 	}
 
 	return resp, handlerErr
@@ -208,7 +208,7 @@ func (i *Interceptor) StreamInterceptor(srv interface{}, ss grpc.ServerStream, i
 
 	serviceName, err := serviceName(info.FullMethod)
 	if err != nil {
-		return i.handleReturnStream(ctx, ss, handler, auditerrors.InterceptorError(status.Errorf(codes.FailedPrecondition, err.Error())))
+		return i.handleReturnStream(ctx, ss, handler, auditerrors.InterceptorError(status.Errorf(codes.FailedPrecondition, err.Error()))) //nolint:wrapcheck
 	}
 
 	// Build a baseline log request to be shared by all stream calls.
@@ -337,7 +337,7 @@ func (ss *serverStreamWrapper) RecvMsg(m interface{}) error {
 				return err
 			}
 			if err := ss.c.Log(ss.ServerStream.Context(), logReq); err != nil {
-				return auditerrors.InterceptorError(status.Errorf(codes.Internal, "failed to emit log: %v", err))
+				return auditerrors.InterceptorError(status.Errorf(codes.Internal, "failed to emit log: %v", err)) //nolint:wrapcheck
 			}
 		}
 	}
@@ -372,7 +372,7 @@ func (ss *serverStreamWrapper) SendMsg(m interface{}) error {
 	}
 
 	if err := ss.c.Log(ss.ServerStream.Context(), logReq); err != nil {
-		return auditerrors.InterceptorError(status.Errorf(codes.Internal, "failed to emit log: %v", err))
+		return auditerrors.InterceptorError(status.Errorf(codes.Internal, "failed to emit log: %v", err)) //nolint:wrapcheck
 	}
 
 	if err := ss.ServerStream.SendMsg(m); err != nil {
@@ -384,7 +384,7 @@ func (ss *serverStreamWrapper) SendMsg(m interface{}) error {
 func setReq(logReq *api.AuditLogRequest, m interface{}) error {
 	ms, err := toProtoStruct(m)
 	if err != nil {
-		return auditerrors.InterceptorError(status.Errorf(codes.Internal, "failed to convert req into a proto struct: %v", err))
+		return auditerrors.InterceptorError(status.Errorf(codes.Internal, "failed to convert req into a proto struct: %v", err)) //nolint:wrapcheck
 	}
 	logReq.Payload.Request = ms
 	return nil
@@ -393,7 +393,7 @@ func setReq(logReq *api.AuditLogRequest, m interface{}) error {
 func setResp(logReq *api.AuditLogRequest, m interface{}) error {
 	ms, err := toProtoStruct(m)
 	if err != nil {
-		return auditerrors.InterceptorError(status.Errorf(codes.Internal, "failed to convert resp into a proto struct: %v", err))
+		return auditerrors.InterceptorError(status.Errorf(codes.Internal, "failed to convert resp into a proto struct: %v", err)) //nolint:wrapcheck
 	}
 	logReq.Payload.Response = ms
 	return nil
