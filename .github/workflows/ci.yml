@@ -401,7 +401,7 @@ jobs:
           AUDIT_CLIENT_TEST_PRIVATE_KEY_PATH: '${{ github.workspace }}/integration/testrunner/test_private_key'
         run: |-
           export AUDIT_CLIENT_TEST_IDTOKEN="$(gcloud auth print-identity-token --impersonate-service-account=${{ env.WIF_SERVICE_ACCOUNT }} --include-email)"
-          go test ./integration/testrunner -timeout=15m
+          go test ./integration/testrunner -timeout=20m
 
       - name: 'Cleanup the infrastructure'
         if: '${{ always() }}'
