@@ -42,7 +42,7 @@ type Config struct {
 	GRPCEndpoints           string        `env:"GRPC_ENDPOINTS,required"`
 	LogRoutingWait          time.Duration `env:"AUDIT_CLIENT_TEST_AUDIT_LOG_ROUTING_WAIT,default=5s"`
 	MaxAuditLogRequestTries uint64        `env:"AUDIT_CLIENT_TEST_MAX_AUDIT_LOG_REQUEST_TRIES,default=4"`
-	MaxDBQueryTries         uint64        `env:"AUDIT_CLIENT_TEST_MAX_DB_QUERY_TRIES,default=60"`
+	MaxDBQueryTries         uint64        `env:"AUDIT_CLIENT_TEST_MAX_DB_QUERY_TRIES,default=100"`
 	JustificationSubject    string        `env:"AUDIT_CLIENT_TEST_JUSTIFICATION_SUB,required"`
 	IDToken                 string        `env:"AUDIT_CLIENT_TEST_IDTOKEN"`
 	ProjectID               string        `env:"AUDIT_CLIENT_TEST_PROJECT_ID,required"`
