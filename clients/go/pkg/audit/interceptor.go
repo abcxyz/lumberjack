@@ -118,7 +118,7 @@ func (i *Interceptor) UnaryInterceptor(ctx context.Context, req any, info *grpc.
 
 	serviceName, err := serviceName(info.FullMethod)
 	if err != nil {
-		return i.handleReturnUnary(ctx, req, handler, auditerrors.InterceptorError(status.Errorf(codes.FailedPrecondition, err.Error())))
+		return i.handleReturnUnary(ctx, req, handler, auditerrors.InterceptorError(status.Error(codes.FailedPrecondition, err.Error())))
 	}
 
 	logReq := &api.AuditLogRequest{
@@ -208,7 +208,7 @@ func (i *Interceptor) StreamInterceptor(srv interface{}, ss grpc.ServerStream, i
 
 	serviceName, err := serviceName(info.FullMethod)
 	if err != nil {
-		return i.handleReturnStream(ctx, ss, handler, auditerrors.InterceptorError(status.Errorf(codes.FailedPrecondition, err.Error())))
+		return i.handleReturnStream(ctx, ss, handler, auditerrors.InterceptorError(status.Error(codes.FailedPrecondition, err.Error())))
 	}
 
 	// Build a baseline log request to be shared by all stream calls.
