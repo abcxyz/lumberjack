@@ -83,7 +83,7 @@ func NewProcessor(address string, opts ...Option) (*Processor, error) {
 		// If no auth option is provided, fall back to insecure.
 		dialOpts = append(dialOpts, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	}
-	conn, err := grpc.Dial(address, dialOpts...)
+	conn, err := grpc.NewClient(address, dialOpts...)
 	if err != nil {
 		return nil, fmt.Errorf("dial remote log processor failed: %w", err)
 	}

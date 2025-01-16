@@ -46,7 +46,7 @@ func TestFakeGRPCServer(tb testing.TB, registerFunc func(*grpc.Server)) (string,
 	}()
 
 	addr := lis.Addr().String()
-	conn, err := grpc.Dial(addr, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	conn, err := grpc.NewClient(addr, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		tb.Fatalf("failed to dail %q: %s", addr, err)
 	}

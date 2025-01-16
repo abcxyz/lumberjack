@@ -57,8 +57,6 @@ func TestHTTPEndpoints(t *testing.T) {
 	}
 
 	for i, tc := range tests {
-		i, tc := i, tc
-
 		t.Run(tc, func(t *testing.T) {
 			t.Parallel()
 			if tc == "" {
@@ -91,8 +89,6 @@ func TestGRPCEndpoints(t *testing.T) {
 	}
 
 	for i, tc := range tests {
-		i, tc := i, tc
-
 		t.Run(tc, func(t *testing.T) {
 			t.Parallel()
 			if tc == "" {
