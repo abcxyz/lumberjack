@@ -59,8 +59,9 @@ jobs:
   java_lint:
     uses: 'abcxyz/pkg/.github/workflows/java-lint.yml@main' # ratchet:exclude
     with:
-      directory: 'clients/java-logger'
       java_version: '11'
+      google_java_format_version: '1.18.1'
+      java_distribution: 'temurin'
 
   # Unit tests - java, go
   go_test:
@@ -72,9 +73,9 @@ jobs:
       contents: 'read'
       id-token: 'write'
     steps:
-      - uses: 'actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11' # ratchet:actions/checkout@v4
+      - uses: 'actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683' # ratchet:actions/checkout@v4
 
-      - uses: 'actions/setup-java@9704b39bf258b59bc04b50fa2dd55e9ed76b47a8' # ratchet:actions/setup-java@v4
+      - uses: 'actions/setup-java@7a6d8a8234af8eb26422e24e3006232cccaa061b' # ratchet:actions/setup-java@v4
         with:
           java-version: '11'
           distribution: 'temurin'
@@ -84,7 +85,7 @@ jobs:
       # find any.
       #
       # [1]: https://github.com/GoogleCloudPlatform/artifact-registry-maven-tools
-      - uses: 'google-github-actions/auth@55bd3a7c6e2ae7cf1877fd1ccb9d54c0503c457c' # ratchet:google-github-actions/auth@v2
+      - uses: 'google-github-actions/auth@6fc4af4b145ae7821d527454aa9bd537d1f2dc5f' # ratchet:google-github-actions/auth@v2
         with:
           workload_identity_provider: '${{ env.WIF_PROVIDER }}'
           service_account: '${{ env.WIF_SERVICE_ACCOUNT }}'
@@ -117,22 +118,22 @@ jobs:
       contents: 'read'
       id-token: 'write'
     steps:
-      - uses: 'docker/setup-qemu-action@68827325e0b33c7199eb31dd4e31fbe9023e06e3' # ratchet:docker/setup-qemu-action@v3
+      - uses: 'docker/setup-qemu-action@53851d14592bedcffcf25ea515637cff71ef929a' # ratchet:docker/setup-qemu-action@v3
 
-      - uses: 'actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11' # ratchet:actions/checkout@v4
+      - uses: 'actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683' # ratchet:actions/checkout@v4
 
-      - uses: 'actions/setup-go@0c52d547c9bc32b1aa3301fd7a9cb496313a4491' # ratchet:actions/setup-go@v5
+      - uses: 'actions/setup-go@3041bf56c941b39c61721a86cd11f3bb1338122a' # ratchet:actions/setup-go@v5
         with:
           go-version-file: 'go.mod'
 
       - id: 'auth'
-        uses: 'google-github-actions/auth@55bd3a7c6e2ae7cf1877fd1ccb9d54c0503c457c' # ratchet:google-github-actions/auth@v2
+        uses: 'google-github-actions/auth@6fc4af4b145ae7821d527454aa9bd537d1f2dc5f' # ratchet:google-github-actions/auth@v2
         with:
           workload_identity_provider: '${{ env.WIF_PROVIDER }}'
           service_account: '${{ env.WIF_SERVICE_ACCOUNT }}'
           token_format: 'access_token'
 
-      - uses: 'docker/login-action@343f7c4344506bcbf9b4de18042ae17996df046d' # ratchet:docker/login-action@v3
+      - uses: 'docker/login-action@9780b0c442fbb1117ed29e0efdff1e18412f7567' # ratchet:docker/login-action@v3
         with:
           username: 'oauth2accesstoken'
           password: '${{ steps.auth.outputs.access_token }}'
@@ -146,7 +147,7 @@ jobs:
           git tag -f -a v0.0.0-ci -m "CI run"
 
       - name: 'Build the main server container and push to the registry with goreleaser'
-        uses: 'goreleaser/goreleaser-action@7ec5c2b0c6cdda6e8bbb49444bc797dd33d74dd8' # ratchet:goreleaser/goreleaser-action@v5
+        uses: 'goreleaser/goreleaser-action@9ed2f89a662bf1735a48bc8557fd212fa902bebf' # ratchet:goreleaser/goreleaser-action@v6
         with:
           version: 'v1.16.1' # Manually pinned
           args: 'release -f .goreleaser.docker.yaml --clean --skip-validate'
@@ -166,23 +167,23 @@ jobs:
       file: './clients/go/test/grpc-app/Dockerfile'
       run_from: './'
     steps:
-      - uses: 'actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11' # ratchet:actions/checkout@v4
+      - uses: 'actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683' # ratchet:actions/checkout@v4
 
       - id: 'auth'
-        uses: 'google-github-actions/auth@55bd3a7c6e2ae7cf1877fd1ccb9d54c0503c457c' # ratchet:google-github-actions/auth@v2
+        uses: 'google-github-actions/auth@6fc4af4b145ae7821d527454aa9bd537d1f2dc5f' # ratchet:google-github-actions/auth@v2
         with:
           workload_identity_provider: '${{ env.WIF_PROVIDER }}'
           service_account: '${{ env.WIF_SERVICE_ACCOUNT }}'
           token_format: 'access_token'
 
-      - uses: 'docker/login-action@343f7c4344506bcbf9b4de18042ae17996df046d' # ratchet:docker/login-action@v3
+      - uses: 'docker/login-action@9780b0c442fbb1117ed29e0efdff1e18412f7567' # ratchet:docker/login-action@v3
         with:
           username: 'oauth2accesstoken'
           password: '${{ steps.auth.outputs.access_token }}'
           registry: '${{ env.DOCKER_REGISTRY }}'
 
       - name: 'Build the integration test server container and push to the registry'
-        uses: 'docker/build-push-action@4a13e500e55cf31b7a5d59a38ab2040ab0f42f56' # ratchet:docker/build-push-action@v5
+        uses: 'docker/build-push-action@67a2d409c0a876cbe6b11854e3e25193efe4e62d' # ratchet:docker/build-push-action@v6
         with:
           push: true
           tags: '${{ env.DOCKER_REPO }}/${{env.prefix}}-${{env.lang}}-${{env.type}}:${{env.DOCKER_TAG}}'
@@ -203,23 +204,23 @@ jobs:
       file: './clients/go/test/shell/Dockerfile'
       run_from: './'
     steps:
-      - uses: 'actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11' # ratchet:actions/checkout@v4
+      - uses: 'actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683' # ratchet:actions/checkout@v4
 
       - id: 'auth'
-        uses: 'google-github-actions/auth@55bd3a7c6e2ae7cf1877fd1ccb9d54c0503c457c' # ratchet:google-github-actions/auth@v2
+        uses: 'google-github-actions/auth@6fc4af4b145ae7821d527454aa9bd537d1f2dc5f' # ratchet:google-github-actions/auth@v2
         with:
           workload_identity_provider: '${{ env.WIF_PROVIDER }}'
           service_account: '${{ env.WIF_SERVICE_ACCOUNT }}'
           token_format: 'access_token'
 
-      - uses: 'docker/login-action@343f7c4344506bcbf9b4de18042ae17996df046d' # ratchet:docker/login-action@v3
+      - uses: 'docker/login-action@9780b0c442fbb1117ed29e0efdff1e18412f7567' # ratchet:docker/login-action@v3
         with:
           username: 'oauth2accesstoken'
           password: '${{ steps.auth.outputs.access_token }}'
           registry: '${{ env.DOCKER_REGISTRY }}'
 
       - name: 'Build the integration test server container and push to the registry'
-        uses: 'docker/build-push-action@4a13e500e55cf31b7a5d59a38ab2040ab0f42f56' # ratchet:docker/build-push-action@v5
+        uses: 'docker/build-push-action@67a2d409c0a876cbe6b11854e3e25193efe4e62d' # ratchet:docker/build-push-action@v6
         with:
           push: true
           tags: '${{ env.DOCKER_REPO }}/${{env.prefix}}-${{env.lang}}-${{env.type}}:${{env.DOCKER_TAG}}'
@@ -240,23 +241,23 @@ jobs:
       file: './clients/java-logger/scripts/server_app.dockerfile'
       run_from: './'
     steps:
-      - uses: 'actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11' # ratchet:actions/checkout@v4
+      - uses: 'actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683' # ratchet:actions/checkout@v4
 
       - id: 'auth'
-        uses: 'google-github-actions/auth@55bd3a7c6e2ae7cf1877fd1ccb9d54c0503c457c' # ratchet:google-github-actions/auth@v2
+        uses: 'google-github-actions/auth@6fc4af4b145ae7821d527454aa9bd537d1f2dc5f' # ratchet:google-github-actions/auth@v2
         with:
           workload_identity_provider: '${{ env.WIF_PROVIDER }}'
           service_account: '${{ env.WIF_SERVICE_ACCOUNT }}'
           token_format: 'access_token'
 
-      - uses: 'docker/login-action@343f7c4344506bcbf9b4de18042ae17996df046d' # ratchet:docker/login-action@v3
+      - uses: 'docker/login-action@9780b0c442fbb1117ed29e0efdff1e18412f7567' # ratchet:docker/login-action@v3
         with:
           username: 'oauth2accesstoken'
           password: '${{ steps.auth.outputs.access_token }}'
           registry: '${{ env.DOCKER_REGISTRY }}'
 
       - name: 'Build the integration test server container and push to the registry'
-        uses: 'docker/build-push-action@4a13e500e55cf31b7a5d59a38ab2040ab0f42f56' # ratchet:docker/build-push-action@v5
+        uses: 'docker/build-push-action@67a2d409c0a876cbe6b11854e3e25193efe4e62d' # ratchet:docker/build-push-action@v6
         with:
           push: true
           tags: '${{ env.DOCKER_REPO }}/${{env.prefix}}-${{env.lang}}-${{env.type}}:${{env.DOCKER_TAG}}'
@@ -277,23 +278,23 @@ jobs:
       file: './clients/java-logger/scripts/shell_app.dockerfile'
       run_from: './'
     steps:
-      - uses: 'actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11' # ratchet:actions/checkout@v4
+      - uses: 'actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683' # ratchet:actions/checkout@v4
 
       - id: 'auth'
-        uses: 'google-github-actions/auth@55bd3a7c6e2ae7cf1877fd1ccb9d54c0503c457c' # ratchet:google-github-actions/auth@v2
+        uses: 'google-github-actions/auth@6fc4af4b145ae7821d527454aa9bd537d1f2dc5f' # ratchet:google-github-actions/auth@v2
         with:
           workload_identity_provider: '${{ env.WIF_PROVIDER }}'
           service_account: '${{ env.WIF_SERVICE_ACCOUNT }}'
           token_format: 'access_token'
 
-      - uses: 'docker/login-action@343f7c4344506bcbf9b4de18042ae17996df046d' # ratchet:docker/login-action@v3
+      - uses: 'docker/login-action@9780b0c442fbb1117ed29e0efdff1e18412f7567' # ratchet:docker/login-action@v3
         with:
           username: 'oauth2accesstoken'
           password: '${{ steps.auth.outputs.access_token }}'
           registry: '${{ env.DOCKER_REGISTRY }}'
 
       - name: 'Build the integration test server container and push to the registry'
-        uses: 'docker/build-push-action@4a13e500e55cf31b7a5d59a38ab2040ab0f42f56' # ratchet:docker/build-push-action@v5
+        uses: 'docker/build-push-action@67a2d409c0a876cbe6b11854e3e25193efe4e62d' # ratchet:docker/build-push-action@v6
         with:
           push: true
           tags: '${{ env.DOCKER_REPO }}/${{env.prefix}}-${{env.lang}}-${{env.type}}:${{env.DOCKER_TAG}}'
@@ -323,10 +324,10 @@ jobs:
     env:
       tf_module_dir: './terraform/modules/ci'
     steps:
-      - uses: 'actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11' # ratchet:actions/checkout@v4
+      - uses: 'actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683' # ratchet:actions/checkout@v4
 
       - id: 'auth'
-        uses: 'google-github-actions/auth@55bd3a7c6e2ae7cf1877fd1ccb9d54c0503c457c' # ratchet:google-github-actions/auth@v2
+        uses: 'google-github-actions/auth@6fc4af4b145ae7821d527454aa9bd537d1f2dc5f' # ratchet:google-github-actions/auth@v2
         with:
           workload_identity_provider: '${{ env.WIF_PROVIDER }}'
           service_account: '${{ env.WIF_SERVICE_ACCOUNT }}'
@@ -339,7 +340,7 @@ jobs:
         run: |-
           echo "GOOGLE_OAUTH_ACCESS_TOKEN=${{ steps.auth.outputs.access_token }}" >> $GITHUB_ENV
 
-      - uses: 'hashicorp/setup-terraform@a1502cd9e758c50496cc9ac5308c4843bcd56d36' # ratchet:hashicorp/setup-terraform@v3
+      - uses: 'hashicorp/setup-terraform@b9cd54a3c349d3f38e8881555d616ced269862dd' # ratchet:hashicorp/setup-terraform@v3
         with:
           terraform_wrapper: false
 
@@ -388,7 +389,7 @@ jobs:
           echo "GRPC_ENDPOINTS=${grpc_client_endpoints}" >> $GITHUB_ENV;
           echo "HTTP_ENDPOINTS=${http_client_endpoints}" >> $GITHUB_ENV;
 
-      - uses: 'actions/setup-go@0c52d547c9bc32b1aa3301fd7a9cb496313a4491' # ratchet:actions/setup-go@v5
+      - uses: 'actions/setup-go@3041bf56c941b39c61721a86cd11f3bb1338122a' # ratchet:actions/setup-go@v5
         with:
           go-version-file: 'go.mod'
 

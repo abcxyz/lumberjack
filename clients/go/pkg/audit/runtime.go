@@ -45,21 +45,21 @@ type runtimeInfo struct {
 // environments do not cause flakiness. In other words, detecting the runtime
 // environment never returns an error, no matter what environment is. Only
 // converting an *mrpb.MonitoredResource to *structpb.Value can return an error.
-func newRuntimeInfo() (*runtimeInfo, error) {
+func newRuntimeInfo(ctx context.Context) (*runtimeInfo, error) {
 	var mr *mrpb.MonitoredResource
 	switch {
 	// AppEngine, Functions, CloudRun, Kubernetes are detected first,
 	// as metadata.OnGCE() erroneously returns true on these runtimes.
-	case isAppEngine():
-		mr = detectAppEngineResource()
-	case isCloudFunction():
-		mr = detectCloudFunction()
-	case isCloudRun():
-		mr = detectCloudRunResource()
-	case isKubernetesEngine():
-		mr = detectKubernetesResource()
+	case isAppEngine(ctx):
+		mr = detectAppEngineResource(ctx)
+	case isCloudFunction(ctx):
+		mr = detectCloudFunction(ctx)
+	case isCloudRun(ctx):
+		mr = detectCloudRunResource(ctx)
+	case isKubernetesEngine(ctx):
+		mr = detectKubernetesResource(ctx)
 	case metadata.OnGCE():
-		mr = detectGCEResource()
+		mr = detectGCEResource(ctx)
 	}
 	if mr == nil {
 		return &runtimeInfo{}, nil
@@ -72,7 +72,7 @@ func newRuntimeInfo() (*runtimeInfo, error) {
 }
 
 // isAppEngine returns true for both standard and flex.
-func isAppEngine() bool {
+func isAppEngine(ctx context.Context) bool {
 	_, service := os.LookupEnv("GAE_SERVICE")
 	_, version := os.LookupEnv("GAE_VERSION")
 	_, instance := os.LookupEnv("GAE_INSTANCE")
@@ -80,15 +80,15 @@ func isAppEngine() bool {
 	return service && version && instance
 }
 
-func detectAppEngineResource() *mrpb.MonitoredResource {
-	projectID, err := metadata.ProjectID()
+func detectAppEngineResource(ctx context.Context) *mrpb.MonitoredResource {
+	projectID, err := metadata.ProjectIDWithContext(ctx)
 	if err != nil {
 		return nil
 	}
 	if projectID == "" {
 		projectID = os.Getenv("GOOGLE_CLOUD_PROJECT")
 	}
-	zone, err := metadata.Zone()
+	zone, err := metadata.ZoneWithContext(ctx)
 	if err != nil {
 		return nil
 	}
@@ -106,7 +106,7 @@ func detectAppEngineResource() *mrpb.MonitoredResource {
 	}
 }
 
-func isCloudFunction() bool {
+func isCloudFunction(ctx context.Context) bool {
 	// Reserved envvars in older function runtimes, e.g. Node.js 8, Python 3.7 and Go 1.11.
 	_, name := os.LookupEnv("FUNCTION_NAME")
 	_, region := os.LookupEnv("FUNCTION_REGION")
@@ -119,12 +119,12 @@ func isCloudFunction() bool {
 	return (name && region && entry) || (target && signature && service)
 }
 
-func detectCloudFunction() *mrpb.MonitoredResource {
-	projectID, err := metadata.ProjectID()
+func detectCloudFunction(ctx context.Context) *mrpb.MonitoredResource {
+	projectID, err := metadata.ProjectIDWithContext(ctx)
 	if err != nil {
 		return nil
 	}
-	zone, err := metadata.Zone()
+	zone, err := metadata.ZoneWithContext(ctx)
 	if err != nil {
 		return nil
 	}
@@ -143,19 +143,19 @@ func detectCloudFunction() *mrpb.MonitoredResource {
 	}
 }
 
-func isCloudRun() bool {
+func isCloudRun(ctx context.Context) bool {
 	_, config := os.LookupEnv("K_CONFIGURATION")
 	_, service := os.LookupEnv("K_SERVICE")
 	_, revision := os.LookupEnv("K_REVISION")
 	return config && service && revision
 }
 
-func detectCloudRunResource() *mrpb.MonitoredResource {
-	projectID, err := metadata.ProjectID()
+func detectCloudRunResource(ctx context.Context) *mrpb.MonitoredResource {
+	projectID, err := metadata.ProjectIDWithContext(ctx)
 	if err != nil {
 		return nil
 	}
-	zone, err := metadata.Zone()
+	zone, err := metadata.ZoneWithContext(ctx)
 	if err != nil {
 		return nil
 	}
@@ -171,8 +171,8 @@ func detectCloudRunResource() *mrpb.MonitoredResource {
 	}
 }
 
-func isKubernetesEngine() bool {
-	clusterName, err := metadata.InstanceAttributeValue("cluster-name")
+func isKubernetesEngine(ctx context.Context) bool {
+	clusterName, err := metadata.InstanceAttributeValueWithContext(ctx, "cluster-name")
 	// Note: InstanceAttributeValue can return "", nil
 	if err != nil || clusterName == "" {
 		return false
@@ -180,16 +180,16 @@ func isKubernetesEngine() bool {
 	return true
 }
 
-func detectKubernetesResource() *mrpb.MonitoredResource {
-	projectID, err := metadata.ProjectID()
+func detectKubernetesResource(ctx context.Context) *mrpb.MonitoredResource {
+	projectID, err := metadata.ProjectIDWithContext(ctx)
 	if err != nil {
 		return nil
 	}
-	zone, err := metadata.Zone()
+	zone, err := metadata.ZoneWithContext(ctx)
 	if err != nil {
 		return nil
 	}
-	clusterName, err := metadata.InstanceAttributeValue("cluster-name")
+	clusterName, err := metadata.InstanceAttributeValueWithContext(ctx, "cluster-name")
 	if err != nil {
 		return nil
 	}
@@ -212,20 +212,20 @@ func detectKubernetesResource() *mrpb.MonitoredResource {
 	}
 }
 
-func detectGCEResource() *mrpb.MonitoredResource {
-	projectID, err := metadata.ProjectID()
+func detectGCEResource(ctx context.Context) *mrpb.MonitoredResource {
+	projectID, err := metadata.ProjectIDWithContext(ctx)
 	if err != nil {
 		return nil
 	}
-	id, err := metadata.InstanceID()
+	id, err := metadata.InstanceIDWithContext(ctx)
 	if err != nil {
 		return nil
 	}
-	zone, err := metadata.Zone()
+	zone, err := metadata.ZoneWithContext(ctx)
 	if err != nil {
 		return nil
 	}
-	name, err := metadata.InstanceName()
+	name, err := metadata.InstanceNameWithContext(ctx)
 	if err != nil {
 		return nil
 	}

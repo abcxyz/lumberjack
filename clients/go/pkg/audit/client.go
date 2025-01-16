@@ -72,7 +72,7 @@ func WithMutator(p LogProcessor) Option {
 // WithRuntimeInfo adds the runtime info to all the audit log requests.
 func WithRuntimeInfo() Option {
 	return func(ctx context.Context, o *Client) error {
-		r, err := newRuntimeInfo()
+		r, err := newRuntimeInfo(ctx)
 		if err != nil {
 			return fmt.Errorf("error extracting runtime environment info: %w", err)
 		}

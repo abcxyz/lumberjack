@@ -215,7 +215,7 @@ func createConnection(ctx context.Context, t *testing.T, addr, idToken string) *
 	// expected url format: my-example-server.a.run.app:443
 	addr = strings.TrimPrefix(addr, "https://")
 	addr = addr + ":443"
-	conn, err := grpc.DialContext(ctx, addr, grpc.WithPerRPCCredentials(rpcCreds), grpc.WithTransportCredentials(creds))
+	conn, err := grpc.NewClient(addr, grpc.WithPerRPCCredentials(rpcCreds), grpc.WithTransportCredentials(creds))
 	if err != nil {
 		t.Fatalf("did not connect: %v", err)
 	}

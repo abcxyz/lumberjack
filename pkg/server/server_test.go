@@ -147,7 +147,7 @@ func TestAuditLogAgent_ProcessLog(t *testing.T) {
 				}
 			}()
 
-			conn, err := grpc.Dial(lis.Addr().String(), grpc.WithTransportCredentials(insecure.NewCredentials()))
+			conn, err := grpc.NewClient(lis.Addr().String(), grpc.WithTransportCredentials(insecure.NewCredentials()))
 			if err != nil {
 				t.Fatalf("Failed to establish gRPC conn: %v", err)
 			}
