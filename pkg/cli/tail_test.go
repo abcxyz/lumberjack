@@ -186,8 +186,6 @@ Validation failed for 1 logs (out of 2)
 	}
 
 	for _, tc := range cases {
-		tc := tc
-
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
@@ -374,8 +372,6 @@ Validation failed for 1 logs (out of 2)
 	}
 
 	for _, tc := range cases {
-		tc := tc
-
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 

@@ -174,8 +174,6 @@ func TestProcessor_Process(t *testing.T) {
 	}
 
 	for _, tc := range tests {
-		tc := tc
-
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
@@ -267,8 +265,6 @@ func TestProcessor_Stop(t *testing.T) {
 		},
 	}
 	for _, tc := range tests {
-		tc := tc
-
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
