@@ -20,12 +20,12 @@ import com.abcxyz.lumberjack.auditlogclient.LoggingClient;
 import com.google.cloud.logging.Logging;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
 @SpringBootTest
 class LoggingShellApplicationTests {
-  @MockBean private LoggingClient loggingClient;
-  @MockBean private Logging logging;
+  @MockitoBean private LoggingClient loggingClient;
+  @MockitoBean private Logging logging;
 
   @Test
   void contextLoads() {}

@@ -68,7 +68,7 @@ jobs:
 
       - uses: 'actions/setup-java@7a6d8a8234af8eb26422e24e3006232cccaa061b' # ratchet:actions/setup-java@v4
         with:
-          java-version: '11'
+          java-version: '17'
           distribution: 'temurin'
 
       - uses: 'google-github-actions/auth@6fc4af4b145ae7821d527454aa9bd537d1f2dc5f' # ratchet:google-github-actions/auth@v2

@@ -35,7 +35,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Captor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 
@@ -61,10 +61,10 @@ public class LoggingControllerTest {
               .header(LoggingController.JUSTIFICATION_TOKEN_HEADER_NAME, TEST_JVS_TOKEN);
 
   @Autowired private MockMvc mockMvc;
-  @MockBean private LoggingClient loggingClient;
-  @MockBean private Clock clock;
-  @MockBean private TokenInterceptor interceptor;
-  @MockBean private Logging logging;
+  @MockitoBean private LoggingClient loggingClient;
+  @MockitoBean private Clock clock;
+  @MockitoBean private TokenInterceptor interceptor;
+  @MockitoBean private Logging logging;
   @Captor private ArgumentCaptor<AuditLogRequest> auditLogRequestCaptor;
 
   @BeforeEach
