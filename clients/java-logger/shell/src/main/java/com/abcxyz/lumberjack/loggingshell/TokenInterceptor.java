@@ -35,6 +35,9 @@ public class TokenInterceptor implements HandlerInterceptor {
   @Override
   public boolean preHandle(
       HttpServletRequest request, @Nonnull HttpServletResponse response, @Nonnull Object handler) {
+    if (request.getRequestURI().equals("/.well-known/jwks")) {
+      return true;
+    }
     String bearerAccessToken = parseBearerAccessToken(request.getHeader(AUTHORIZATION_HEADER_NAME));
     Jwt<?, Claims> jwt = Jwts.parserBuilder().build().parseClaimsJwt(bearerAccessToken);
     Claims claims = jwt.getBody();

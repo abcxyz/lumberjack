@@ -26,33 +26,36 @@ import com.google.protobuf.Timestamp;
 import java.time.Clock;
 import java.time.Instant;
 import javax.annotation.PreDestroy;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.http.HttpStatus;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.web.bind.annotation.*;
 
 /** Endpoints for the shell app that imports/uses the Audit Logging client library. */
-@Slf4j
-@RequiredArgsConstructor
 @RestController
+@RequestMapping(path = "/")
 public class LoggingController {
-
   static final String JUSTIFICATION_TOKEN_HEADER_NAME = "justification-token";
   static final String TRACE_ID_PARAMETER_KEY = "trace_id";
+
+  private static final Logger log = LoggerFactory.getLogger(LoggingController.class);
   private static final String SERVICE_NAME = "java-shell-app";
 
   private final LoggingClient loggingClient;
 
   private final Clock clock;
 
+  public LoggingController(LoggingClient loggingClient, Clock clock) {
+    this.loggingClient = loggingClient;
+    this.clock = clock;
+  }
+
   @PreDestroy
-  void destroy() {
+  public void destroy() {
     loggingClient.close();
   }
 
   @GetMapping
-  @ResponseStatus(value = HttpStatus.OK)
-  void loggingShell(
+  public void loggingShell(
       @RequestParam(value = TRACE_ID_PARAMETER_KEY) String traceId,
       @RequestAttribute(TokenInterceptor.INTERCEPTOR_USER_EMAIL_KEY) String userEmail,
       @RequestHeader(JUSTIFICATION_TOKEN_HEADER_NAME) String jvsToken)

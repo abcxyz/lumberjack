@@ -16,16 +16,19 @@
 
 package com.abcxyz.lumberjack.loggingshell;
 
-import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
 /** Customizes Spring's MVC configuration. */
-@RequiredArgsConstructor
 @Configuration
 public class WebMvcConfiguration implements WebMvcConfigurer {
+
   private final TokenInterceptor tokenInterceptor;
+
+  public WebMvcConfiguration(TokenInterceptor tokenInterceptor) {
+    this.tokenInterceptor = tokenInterceptor;
+  }
 
   @Override
   public void addInterceptors(InterceptorRegistry registry) {
