@@ -227,80 +227,6 @@ jobs:
           file: '${{ env.file }}'
           context: '${{ env.run_from }}'
 
-  build-java-grpc-client:
-    runs-on: 'ubuntu-latest'
-    needs:
-      - 'lint_and_unit'
-    permissions:
-      contents: 'read'
-      id-token: 'write'
-    env:
-      prefix: 'ljc'
-      lang: 'java'
-      type: 'grpc'
-      file: './clients/java-logger/scripts/server_app.dockerfile'
-      run_from: './'
-    steps:
-      - uses: 'actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683' # ratchet:actions/checkout@v4
-
-      - id: 'auth'
-        uses: 'google-github-actions/auth@6fc4af4b145ae7821d527454aa9bd537d1f2dc5f' # ratchet:google-github-actions/auth@v2
-        with:
-          workload_identity_provider: '${{ env.WIF_PROVIDER }}'
-          service_account: '${{ env.WIF_SERVICE_ACCOUNT }}'
-          token_format: 'access_token'
-
-      - uses: 'docker/login-action@9780b0c442fbb1117ed29e0efdff1e18412f7567' # ratchet:docker/login-action@v3
-        with:
-          username: 'oauth2accesstoken'
-          password: '${{ steps.auth.outputs.access_token }}'
-          registry: '${{ env.DOCKER_REGISTRY }}'
-
-      - name: 'Build the integration test server container and push to the registry'
-        uses: 'docker/build-push-action@67a2d409c0a876cbe6b11854e3e25193efe4e62d' # ratchet:docker/build-push-action@v6
-        with:
-          push: true
-          tags: '${{ env.DOCKER_REPO }}/${{env.prefix}}-${{env.lang}}-${{env.type}}:${{env.DOCKER_TAG}}'
-          file: '${{ env.file }}'
-          context: '${{ env.run_from }}'
-
-  build-java-http-client:
-    runs-on: 'ubuntu-latest'
-    needs:
-      - 'lint_and_unit'
-    permissions:
-      contents: 'read'
-      id-token: 'write'
-    env:
-      prefix: 'ljc'
-      lang: 'java'
-      type: 'http'
-      file: './clients/java-logger/scripts/shell_app.dockerfile'
-      run_from: './'
-    steps:
-      - uses: 'actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683' # ratchet:actions/checkout@v4
-
-      - id: 'auth'
-        uses: 'google-github-actions/auth@6fc4af4b145ae7821d527454aa9bd537d1f2dc5f' # ratchet:google-github-actions/auth@v2
-        with:
-          workload_identity_provider: '${{ env.WIF_PROVIDER }}'
-          service_account: '${{ env.WIF_SERVICE_ACCOUNT }}'
-          token_format: 'access_token'
-
-      - uses: 'docker/login-action@9780b0c442fbb1117ed29e0efdff1e18412f7567' # ratchet:docker/login-action@v3
-        with:
-          username: 'oauth2accesstoken'
-          password: '${{ steps.auth.outputs.access_token }}'
-          registry: '${{ env.DOCKER_REGISTRY }}'
-
-      - name: 'Build the integration test server container and push to the registry'
-        uses: 'docker/build-push-action@67a2d409c0a876cbe6b11854e3e25193efe4e62d' # ratchet:docker/build-push-action@v6
-        with:
-          push: true
-          tags: '${{ env.DOCKER_REPO }}/${{env.prefix}}-${{env.lang}}-${{env.type}}:${{env.DOCKER_TAG}}'
-          file: '${{ env.file }}'
-          context: '${{ env.run_from }}'
-
   # build is a virtual job that is used as dependencies for later jobs.
   build:
     runs-on: 'ubuntu-latest'
@@ -308,8 +234,6 @@ jobs:
       - 'build-lumberjack-server'
       - 'build-go-grpc-client'
       - 'build-go-http-client'
-      - 'build-java-grpc-client'
-      - 'build-java-http-client'
     steps:
       - run: 'echo build complete'
 
@@ -346,7 +270,7 @@ jobs:
 
       - name: 'Write tfvars file'
         env:
-          client_images: '\{\"ljc-go-grpc\":\"${{env.DOCKER_REPO}}/ljc-go-grpc:${{env.DOCKER_TAG}}\",\"ljc-go-http\":\"${{env.DOCKER_REPO}}/ljc-go-http:${{env.DOCKER_TAG}}\",\"ljc-java-grpc\":\"${{env.DOCKER_REPO}}/ljc-java-grpc:${{env.DOCKER_TAG}}\",\"ljc-java-http\":\"${{env.DOCKER_REPO}}/ljc-java-http:${{env.DOCKER_TAG}}\"\}'
+          client_images: '\{\"ljc-go-grpc\":\"${{env.DOCKER_REPO}}/ljc-go-grpc:${{env.DOCKER_TAG}}\",\"ljc-go-http\":\"${{env.DOCKER_REPO}}/ljc-go-http:${{env.DOCKER_TAG}}\"\}'
           server_image: '${{env.DOCKER_REPO}}/lumberjack-server:${{env.DOCKER_TAG}}'
         run: |-
           var_file=/tmp/ci.tfvars
@@ -376,12 +300,6 @@ jobs:
           terraform -chdir=${{ env.tf_module_dir}} output -json ingestion_backend_client_endpoints | jq -c > ingestion_backend_client_output.json;
 
           terraform -chdir=${{ env.tf_module_dir}} output -json cloudlogging_backend_client_endpoints | jq -c > cloudlogging_backend_client_output.json;
-
-          ingestion_backend_grpc_client_endpoints=$(jq -c '{"ljc-go-grpc","ljc-java-grpc"} | to_entries | map(.value|tostring)' < ingestion_backend_client_output.json);
-          ingestion_backend_http_client_endpoints=$(jq -c '{"ljc-go-http","ljc-java-http"} | to_entries | map(.value|tostring)' < ingestion_backend_client_output.json);
-
-          cloudlogging_backend_grpc_client_endpoints=$(jq -c '{"ljc-go-grpc","ljc-java-grpc"} | to_entries | map(.value|tostring)' < cloudlogging_backend_client_output.json);
-          cloudlogging_backend_http_client_endpoints=$(jq -c '{"ljc-go-http","ljc-java-http"} | to_entries | map(.value|tostring)' < cloudlogging_backend_client_output.json);
 
           grpc_client_endpoints=$(echo -e "${ingestion_backend_grpc_client_endpoints}${cloudlogging_backend_grpc_client_endpoints}" | jq -cs 'flatten(1)')
           http_client_endpoints=$(echo -e "${ingestion_backend_http_client_endpoints}${cloudlogging_backend_http_client_endpoints}" | jq -cs 'flatten(1)')
