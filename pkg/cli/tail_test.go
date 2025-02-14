@@ -189,7 +189,7 @@ Validation failed for 1 logs (out of 2)
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
-			ctx := context.Background()
+			ctx := t.Context()
 
 			var cmd TailCommand
 			cmd.testPuller = tc.puller
@@ -375,7 +375,7 @@ Validation failed for 1 logs (out of 2)
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
-			ctx := context.Background()
+			ctx := t.Context()
 
 			ctx, cancel := context.WithTimeout(ctx, 2*time.Second)
 

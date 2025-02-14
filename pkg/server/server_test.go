@@ -59,7 +59,7 @@ func (p *fakeLogProcessor) Process(_ context.Context, logReq *api.AuditLogReques
 func TestAuditLogAgent_ProcessLog(t *testing.T) {
 	t.Parallel()
 
-	ctx := logging.WithLogger(context.Background(), logging.TestLogger(t))
+	ctx := logging.WithLogger(t.Context(), logging.TestLogger(t))
 
 	cases := []struct {
 		name        string
@@ -153,7 +153,7 @@ func TestAuditLogAgent_ProcessLog(t *testing.T) {
 			}
 
 			client := api.NewAuditLogAgentClient(conn)
-			gotResp, err := client.ProcessLog(context.Background(), tc.req)
+			gotResp, err := client.ProcessLog(t.Context(), tc.req)
 
 			if diff := cmp.Diff(tc.wantErr, err, cmpopts.EquateErrors()); diff != "" {
 				t.Errorf("ProcessLog() error (-want,+got):\n%s", diff)

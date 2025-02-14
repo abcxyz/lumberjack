@@ -15,7 +15,6 @@
 package filtering
 
 import (
-	"context"
 	"errors"
 	"testing"
 
@@ -190,7 +189,7 @@ func TestPrincipalEmailMatcher_Process(t *testing.T) {
 				t.Fatalf("NewPrincipalEmailMatcher(%v) unexpected err: %v", tc.opts, err)
 			}
 
-			err = m.Process(context.Background(), tc.logReq)
+			err = m.Process(t.Context(), tc.logReq)
 			if !errors.Is(err, tc.wantErr) {
 				t.Errorf("Process(%+v) error got %T want %T", tc.logReq, err, tc.wantErr)
 			}
