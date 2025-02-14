@@ -125,7 +125,7 @@ func TestProcessor_Process_Insecure(t *testing.T) {
 				}
 			})
 
-			gotErr := p.Process(context.Background(), tc.req)
+			gotErr := p.Process(t.Context(), tc.req)
 			if !cmp.Equal(tc.wantErr, gotErr, cmpopts.EquateErrors()) {
 				t.Errorf("Process() error got=%v, want=%v", gotErr, tc.wantErr)
 			}

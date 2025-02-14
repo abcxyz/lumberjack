@@ -48,7 +48,7 @@ func (p testOrderProcessor) Process(_ context.Context, logReq *api.AuditLogReque
 func TestLog(t *testing.T) {
 	t.Parallel()
 
-	ctx := logging.WithLogger(context.Background(), logging.TestLogger(t))
+	ctx := logging.WithLogger(t.Context(), logging.TestLogger(t))
 
 	cases := []struct {
 		name          string
@@ -199,7 +199,7 @@ func TestLog(t *testing.T) {
 func TestHandleReturn_Client(t *testing.T) {
 	t.Parallel()
 
-	ctx := logging.WithLogger(context.Background(), logging.TestLogger(t))
+	ctx := logging.WithLogger(t.Context(), logging.TestLogger(t))
 
 	cases := []struct {
 		name    string

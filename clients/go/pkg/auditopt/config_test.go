@@ -47,7 +47,7 @@ func (s *fakeServer) ProcessLog(_ context.Context, logReq *api.AuditLogRequest) 
 func TestFromConfigFile(t *testing.T) {
 	t.Parallel()
 
-	ctx := logging.WithLogger(context.Background(), logging.TestLogger(t))
+	ctx := logging.WithLogger(t.Context(), logging.TestLogger(t))
 
 	configFileContentByName := map[string]string{
 		"valid.yaml": `
@@ -167,7 +167,7 @@ backend:
 func TestFromConfig(t *testing.T) {
 	t.Parallel()
 
-	ctx := logging.WithLogger(context.Background(), logging.TestLogger(t))
+	ctx := logging.WithLogger(t.Context(), logging.TestLogger(t))
 
 	r := &fakeServer{}
 	addr, _ := testutil.TestFakeGRPCServer(t, func(s *grpc.Server) {
@@ -376,7 +376,7 @@ justification:
 			if err != nil {
 				t.Fatal(err)
 			}
-			cfg, err := loadConfig(context.Background(), fc, envconfig.MapLookuper(nil))
+			cfg, err := loadConfig(t.Context(), fc, envconfig.MapLookuper(nil))
 			if err != nil {
 				t.Errorf("loadConfig() got unexpected error: %v", err)
 			}
@@ -390,7 +390,7 @@ justification:
 func TestInterceptorFromConfigFile(t *testing.T) {
 	t.Parallel()
 
-	ctx := logging.WithLogger(context.Background(), logging.TestLogger(t))
+	ctx := logging.WithLogger(t.Context(), logging.TestLogger(t))
 
 	cases := []struct {
 		name          string

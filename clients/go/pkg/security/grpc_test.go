@@ -39,7 +39,7 @@ func TestFromRawJWT_RequestPrincipal(t *testing.T) {
 	}{
 		{
 			name: "valid_jwt",
-			ctx: metadata.NewIncomingContext(context.Background(), metadata.New(map[string]string{
+			ctx: metadata.NewIncomingContext(t.Context(), metadata.New(map[string]string{
 				"authorization": "Bearer " + testutil.JWTFromClaims(t, map[string]interface{}{
 					"email": "user@example.com",
 				}),
@@ -52,7 +52,7 @@ func TestFromRawJWT_RequestPrincipal(t *testing.T) {
 		},
 		{
 			name: "valid_jwt_with_capitalized_config",
-			ctx: metadata.NewIncomingContext(context.Background(), metadata.New(map[string]string{
+			ctx: metadata.NewIncomingContext(t.Context(), metadata.New(map[string]string{
 				"authorization": "bearer " + testutil.JWTFromClaims(t, map[string]interface{}{
 					"email": "user@example.com",
 				}),
@@ -65,7 +65,7 @@ func TestFromRawJWT_RequestPrincipal(t *testing.T) {
 		},
 		{
 			name: "multi_jwts",
-			ctx: metadata.NewIncomingContext(context.Background(), metadata.New(map[string]string{
+			ctx: metadata.NewIncomingContext(t.Context(), metadata.New(map[string]string{
 				"x-jwt-assertion": testutil.JWTFromClaims(t, map[string]interface{}{
 					"email": "user@example.com",
 				}),
@@ -80,7 +80,7 @@ func TestFromRawJWT_RequestPrincipal(t *testing.T) {
 		},
 		{
 			name: "error_from_missing_jwt_email_claim",
-			ctx: metadata.NewIncomingContext(context.Background(), metadata.New(map[string]string{
+			ctx: metadata.NewIncomingContext(t.Context(), metadata.New(map[string]string{
 				"authorization": "Bearer " + testutil.JWTFromClaims(t, map[string]interface{}{}),
 			})),
 			fromRawJWT: []*v1alpha1.FromRawJWT{{
@@ -91,7 +91,7 @@ func TestFromRawJWT_RequestPrincipal(t *testing.T) {
 		},
 		{
 			name: "error_from_slice_as_jwt_email_claim",
-			ctx: metadata.NewIncomingContext(context.Background(), metadata.New(map[string]string{
+			ctx: metadata.NewIncomingContext(t.Context(), metadata.New(map[string]string{
 				"authorization": "Bearer " + testutil.JWTFromClaims(t, map[string]interface{}{
 					"email": []string{"foo", "bar"},
 				}),
@@ -104,12 +104,12 @@ func TestFromRawJWT_RequestPrincipal(t *testing.T) {
 		},
 		{
 			name:          "error_from_missing_grpc_metadata",
-			ctx:           context.Background(),
+			ctx:           t.Context(),
 			wantErrSubstr: "gRPC metadata in incoming context is missing",
 		},
 		{
 			name: "error_from_inexistent_jwt_key",
-			ctx:  metadata.NewIncomingContext(context.Background(), metadata.New(map[string]string{})),
+			ctx:  metadata.NewIncomingContext(t.Context(), metadata.New(map[string]string{})),
 			fromRawJWT: []*v1alpha1.FromRawJWT{{
 				Key:    "authorization",
 				Prefix: "Bearer ",
@@ -118,7 +118,7 @@ func TestFromRawJWT_RequestPrincipal(t *testing.T) {
 		},
 		{
 			name: "error_from_prefix_longer_than_jwt",
-			ctx: metadata.NewIncomingContext(context.Background(), metadata.New(map[string]string{
+			ctx: metadata.NewIncomingContext(t.Context(), metadata.New(map[string]string{
 				"authorization": "short",
 			})),
 			fromRawJWT: []*v1alpha1.FromRawJWT{{
@@ -129,7 +129,7 @@ func TestFromRawJWT_RequestPrincipal(t *testing.T) {
 		},
 		{
 			name: "error_from_empty_string_as_jwt",
-			ctx: metadata.NewIncomingContext(context.Background(), metadata.New(map[string]string{
+			ctx: metadata.NewIncomingContext(t.Context(), metadata.New(map[string]string{
 				"authorization": "",
 			})),
 			fromRawJWT: []*v1alpha1.FromRawJWT{{
@@ -140,7 +140,7 @@ func TestFromRawJWT_RequestPrincipal(t *testing.T) {
 		},
 		{
 			name: "error_from_unparsable_jwt",
-			ctx: metadata.NewIncomingContext(context.Background(), metadata.New(map[string]string{
+			ctx: metadata.NewIncomingContext(t.Context(), metadata.New(map[string]string{
 				"authorization": "bananas",
 			})),
 			fromRawJWT: []*v1alpha1.FromRawJWT{{

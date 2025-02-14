@@ -15,7 +15,6 @@
 package cli
 
 import (
-	"context"
 	"io"
 	"strings"
 	"testing"
@@ -140,7 +139,7 @@ func TestValidateCommand(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
-			ctx := logging.WithLogger(context.Background(), logging.TestLogger(t))
+			ctx := logging.WithLogger(t.Context(), logging.TestLogger(t))
 
 			var cmd ValidateCommand
 			stdin, stdout, _ := cmd.Pipe()

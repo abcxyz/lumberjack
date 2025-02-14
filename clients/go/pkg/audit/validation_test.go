@@ -15,7 +15,6 @@
 package audit
 
 import (
-	"context"
 	"errors"
 	"testing"
 
@@ -30,7 +29,7 @@ import (
 func TestRequestValidation_Process(t *testing.T) {
 	t.Parallel()
 
-	ctx := context.Background()
+	ctx := t.Context()
 	tests := []struct {
 		name       string
 		logReq     *api.AuditLogRequest

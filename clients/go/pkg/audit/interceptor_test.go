@@ -98,7 +98,7 @@ func (j *fakeJVS) ValidateJWT(ctx context.Context, _, _ string) (jwt.Token, erro
 func TestUnaryInterceptor(t *testing.T) {
 	t.Parallel()
 
-	ctx := logging.WithLogger(context.Background(), logging.TestLogger(t))
+	ctx := logging.WithLogger(t.Context(), logging.TestLogger(t))
 
 	jwt := "Bearer " + testutil.JWTFromClaims(t, map[string]interface{}{
 		"email": "user@example.com",
@@ -597,7 +597,7 @@ func TestUnaryInterceptor(t *testing.T) {
 func TestStreamInterceptor(t *testing.T) {
 	t.Parallel()
 
-	ctx := logging.WithLogger(context.Background(), logging.TestLogger(t))
+	ctx := logging.WithLogger(t.Context(), logging.TestLogger(t))
 
 	jwt := "Bearer " + testutil.JWTFromClaims(t, map[string]interface{}{
 		"email": "user@example.com",
@@ -1208,7 +1208,7 @@ func TestHandleReturnUnary(t *testing.T) {
 	t.Parallel()
 
 	req := "test_request"
-	ctx := logging.WithLogger(context.Background(), logging.TestLogger(t))
+	ctx := logging.WithLogger(t.Context(), logging.TestLogger(t))
 
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		logReq, _ := LogReqFromCtx(ctx)
@@ -1281,7 +1281,7 @@ func TestHandleReturnUnary(t *testing.T) {
 func TestHandleReturnStream(t *testing.T) {
 	t.Parallel()
 
-	ctx := logging.WithLogger(context.Background(), logging.TestLogger(t))
+	ctx := logging.WithLogger(t.Context(), logging.TestLogger(t))
 
 	ss := &fakeServerStream{}
 
@@ -1340,7 +1340,7 @@ func TestHandleReturnStream(t *testing.T) {
 func TestHandleReturnWithResponse(t *testing.T) {
 	t.Parallel()
 
-	ctx := logging.WithLogger(context.Background(), logging.TestLogger(t))
+	ctx := logging.WithLogger(t.Context(), logging.TestLogger(t))
 
 	response := "test_response"
 	errStr := "test error"
