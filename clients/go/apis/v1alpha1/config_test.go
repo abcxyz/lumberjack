@@ -33,73 +33,6 @@ func TestConfig(t *testing.T) {
 		wantConfig  *Config
 		wantLogMode AuditLogRequest_LogMode
 	}{{
-		name: "full_config",
-		cfg: `version: v1alpha1
-backend:
-  remote:
-    address: service:80
-    impersonate_account: "foo@example.com"
-condition:
-  regex:
-    principal_include: "@example.com$"
-security_context:
-  from_raw_jwt:
-  - key: x-auth
-    prefix: bar
-    jwks:
-      endpoint: example.com/jwks
-rules:
-- selector: com.example.*
-  directive: AUDIT
-  log_type: ADMIN_ACTIVITY
-labels:
-  mylabel1: myvalue1
-  mylabel2: myvalue2
-log_mode: BEST_EFFORT
-justification:
-  public_keys_endpoint: example.com
-  enabled: true
-  allow_breakglass: true`,
-		wantConfig: &Config{
-			Version: "v1alpha1",
-			Backend: &Backend{
-				Remote: &Remote{
-					Address:            "service:80",
-					ImpersonateAccount: "foo@example.com",
-				},
-			},
-			Condition: &Condition{
-				Regex: &RegexCondition{
-					PrincipalInclude: "@example.com$",
-				},
-			},
-			SecurityContext: &SecurityContext{
-				FromRawJWT: []*FromRawJWT{{
-					Key:    "x-auth",
-					Prefix: "bar",
-					JWKs: &JWKs{
-						Endpoint: "example.com/jwks",
-					},
-				}},
-			},
-			Rules: []*AuditRule{{
-				Selector:  "com.example.*",
-				Directive: "AUDIT",
-				LogType:   "ADMIN_ACTIVITY",
-			}},
-			Labels: map[string]string{
-				"mylabel1": "myvalue1",
-				"mylabel2": "myvalue2",
-			},
-			LogMode: "BEST_EFFORT",
-			Justification: &Justification{
-				PublicKeysEndpoint: "example.com",
-				Enabled:            true,
-				AllowBreakglass:    true,
-			},
-		},
-		wantLogMode: AuditLogRequest_BEST_EFFORT,
-	}, {
 		name: "minimal_config",
 		cfg: `version: v1alpha1
 security_context:
@@ -155,37 +88,6 @@ func TestValidate(t *testing.T) {
 		cfg     *Config
 		wantErr string
 	}{
-		{
-			name: "valid",
-			cfg: &Config{
-				Version: "v1alpha1",
-				SecurityContext: &SecurityContext{
-					FromRawJWT: []*FromRawJWT{{
-						Key: "authorization",
-					}},
-				},
-				Backend: &Backend{
-					Remote: &Remote{
-						Address: "foo",
-					},
-					CloudLogging: &CloudLogging{
-						DefaultProject: true,
-					},
-				},
-				Condition: &Condition{
-					Regex: &RegexCondition{},
-				},
-				Rules: []*AuditRule{{
-					Selector:  "*",
-					Directive: "AUDIT_REQUEST_ONLY",
-					LogType:   "DATA_ACCESS",
-				}},
-				Justification: &Justification{
-					PublicKeysEndpoint: "example.com",
-					Enabled:            true,
-				},
-			},
-		},
 		{
 			name: "invalid_version",
 			cfg: &Config{
@@ -251,48 +153,6 @@ func TestValidate(t *testing.T) {
 			wantErr: `unexpected rule.LogType "random" want one of ["ADMIN_ACTIVITY", "DATA_ACCESS"]`,
 		},
 		{
-			name: "combination_of_errors",
-			cfg: &Config{
-				Version: "random",
-				Backend: &Backend{
-					Remote: &Remote{Address: "fake"},
-				},
-				Rules: []*AuditRule{{}},
-			},
-			wantErr: `unexpected Version "random" want "v1alpha1"
-audit rule selector is empty`,
-		},
-		{
-			name: "invalid_security_context",
-			cfg: &Config{
-				Version: "v1alpha1",
-				SecurityContext: &SecurityContext{
-					FromRawJWT: []*FromRawJWT{{
-						Key: "",
-					}},
-				},
-				Backend: &Backend{
-					Remote: &Remote{
-						Address: "foo",
-					},
-				},
-			},
-			wantErr: `FromRawJWT[0]: key must be specified`,
-		},
-		{
-			name: "invalid_log_mode",
-			cfg: &Config{
-				Version: "v1alpha1",
-				Backend: &Backend{
-					Remote: &Remote{
-						Address: "foo",
-					},
-				},
-				LogMode: "random",
-			},
-			wantErr: `invalid LogMode "random"`,
-		},
-		{
 			name: "invalid_backend_cloudlogging_use_default",
 			cfg: &Config{
 				Version: "v1alpha1",
@@ -317,37 +177,6 @@ audit rule selector is empty`,
 				}},
 			},
 			wantErr: `backend cloudlogging project is set while using default project`,
-		},
-		{
-			name: "invalid_justification",
-			cfg: &Config{
-				Version: "v1alpha1",
-				SecurityContext: &SecurityContext{
-					FromRawJWT: []*FromRawJWT{{
-						Key: "authorization",
-					}},
-				},
-				Backend: &Backend{
-					Remote: &Remote{
-						Address: "foo",
-					},
-					CloudLogging: &CloudLogging{
-						DefaultProject: true,
-					},
-				},
-				Condition: &Condition{
-					Regex: &RegexCondition{},
-				},
-				Rules: []*AuditRule{{
-					Selector:  "*",
-					Directive: "AUDIT_REQUEST_ONLY",
-					LogType:   "DATA_ACCESS",
-				}},
-				Justification: &Justification{
-					Enabled: true,
-				},
-			},
-			wantErr: `public_keys_endpoint must be specified when justification is enabled`,
 		},
 	}
 

@@ -51,7 +51,6 @@ import (
 	"github.com/abcxyz/lumberjack/clients/go/pkg/cloudlogging"
 	"github.com/abcxyz/lumberjack/clients/go/pkg/filtering"
 	"github.com/abcxyz/lumberjack/clients/go/pkg/justification"
-	"github.com/abcxyz/lumberjack/clients/go/pkg/remote"
 	"github.com/abcxyz/lumberjack/clients/go/pkg/security"
 	"github.com/abcxyz/pkg/cfgloader"
 )
@@ -224,24 +223,6 @@ func principalFilterFromConfig(cfg *api.Config) (audit.Option, error) {
 
 func backendsFromConfig(ctx context.Context, cfg *api.Config) ([]audit.Option, error) {
 	var backendOpts []audit.Option
-
-	if cfg.Backend.Remote != nil {
-		addr := cfg.Backend.Remote.Address
-		authopts := []remote.Option{}
-		if !cfg.Backend.Remote.InsecureEnabled {
-			impersonate := cfg.Backend.Remote.ImpersonateAccount
-			if impersonate == "" {
-				authopts = append(authopts, remote.WithDefaultAuth())
-			} else {
-				authopts = append(authopts, remote.WithImpersonatedIDTokenAuth(ctx, impersonate))
-			}
-		}
-		b, err := remote.NewProcessor(addr, authopts...)
-		if err != nil {
-			return nil, fmt.Errorf("failed to create remote processor: %w", err)
-		}
-		backendOpts = append(backendOpts, audit.WithBackend(b))
-	}
 
 	if cfg.Backend.CloudLogging != nil {
 		var opts []cloudlogging.Option

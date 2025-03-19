@@ -142,7 +142,6 @@ func (cfg *Config) GetLogMode() AuditLogRequest_LogMode {
 
 // Backend holds information on the backends to send logs to.
 type Backend struct {
-	Remote       *Remote       `yaml:"remote,omitempty" env:",noinit"`
 	CloudLogging *CloudLogging `yaml:"cloudlogging,omitempty" env:",noinit"`
 }
 
@@ -158,12 +157,6 @@ func (b *Backend) Validate() error {
 	backendSet := false
 
 	var merr error
-	if b.Remote != nil {
-		backendSet = true
-		if err := b.Remote.Validate(); err != nil {
-			merr = errors.Join(merr, err)
-		}
-	}
 
 	if b.CloudLogging != nil {
 		backendSet = true
@@ -177,29 +170,6 @@ func (b *Backend) Validate() error {
 	}
 
 	return merr
-}
-
-// Remote is the remote backend service to send audit logs to.
-// The backend must be a gRPC service that implements protos/v1alpha1/audit_log_agent.proto.
-type Remote struct {
-	// Address is the remote backend address. It must be set.
-	Address string `yaml:"address,omitempty" env:"BACKEND_REMOTE_ADDRESS,overwrite"`
-
-	// InsecureEnabled indicates whether to insecurely connect to the backend.
-	// This should be set to false for production usage.
-	InsecureEnabled bool `yaml:"insecure_enabled,omitempty" env:"BACKEND_REMOTE_INSECURE_ENABLED,overwrite"`
-
-	// ImpersonateAccount specifies which service account to impersonate to call the backend.
-	// If empty, there will be no impersonation.
-	ImpersonateAccount string `yaml:"impersonate_account,omitempty" env:"BACKEND_REMOTE_IMPERSONATE_ACCOUNT,overwrite"`
-}
-
-// Validate validates the backend.
-func (b *Remote) Validate() error {
-	if b.Address == "" {
-		return fmt.Errorf("backend address is nil")
-	}
-	return nil
 }
 
 // CloudLogging is the GCP cloud logging backend to send audit logs to.
