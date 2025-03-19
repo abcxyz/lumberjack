@@ -31,8 +31,3 @@ message AuditLogResponse {
   // which means the audit log entry has been written.
   AuditLogRequest result = 1;
 }
-
-// Service for processing an audit log request.
-service AuditLogAgent {
-  rpc ProcessLog(AuditLogRequest) returns (AuditLogResponse) {};
-}
