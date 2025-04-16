@@ -45,19 +45,19 @@ concurrency:
 jobs:
   # Linting jobs - terraform, java, go
   terraform_lint:
-    uses: 'abcxyz/pkg/.github/workflows/terraform-lint.yml@main' # ratchet:exclude
+    uses: 'abcxyz/actions/.github/workflows/terraform-lint.yml@main' # ratchet:exclude
     with:
       directory: 'terraform'
       terraform_version: '1.2'
 
   yaml_lint:
-    uses: 'abcxyz/pkg/.github/workflows/yaml-lint.yml@main' # ratchet:exclude
+    uses: 'abcxyz/actions/.github/workflows/yaml-lint.yml@main' # ratchet:exclude
 
   go_lint:
-    uses: 'abcxyz/pkg/.github/workflows/go-lint.yml@main' # ratchet:exclude
+    uses: 'abcxyz/actions/.github/workflows/go-lint.yml@main' # ratchet:exclude
 
   java_lint:
-    uses: 'abcxyz/pkg/.github/workflows/java-lint.yml@main' # ratchet:exclude
+    uses: 'abcxyz/actions/.github/workflows/java-lint.yml@main' # ratchet:exclude
     with:
       java_version: '11'
       google_java_format_version: '1.18.1'
@@ -65,7 +65,7 @@ jobs:
 
   # Unit tests - java, go
   go_test:
-    uses: 'abcxyz/pkg/.github/workflows/go-test.yml@main' # ratchet:exclude
+    uses: 'abcxyz/actions/.github/workflows/go-test.yml@main' # ratchet:exclude
 
   java_test:
     runs-on: 'ubuntu-latest'
