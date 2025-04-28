@@ -56,12 +56,14 @@ jobs:
           # tested in the same manner).
           match_files() {
             local filepattern="${1}"
-            git ls-tree -r --name-only "${REF}" | grep -m 1 -E "${filepattern}"
+            matches="$(git ls-tree -r --name-only "${REF}" | grep -m 1 -E "${filepattern}")"
             code="$?"
-            echo "EXIT_CODE_1=${code}"
-            wait
-            echo "EXIT_CODE_2=$?"
-            exit "${code}"
+            if [[ -n "${matches}" ]]; then
+              # Ignore exit codes because we found a match.
+              # Exit code 141 and higher may occur because we exit early.
+              return 0
+            fi
+            return "${code}"
           }
           find_dirs() {
             local filepattern="${1}"
