@@ -49,6 +49,7 @@ jobs:
           LC_ALL: 'C'
         shell: 'bash'
         run: |-
+          set -euxo pipefail
           # match_files determines if the current git repository has any files
           # matching the given pattern. This has been performance tested
           # against a shallow checkout of chromium (future changes should be
