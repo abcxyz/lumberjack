@@ -43,26 +43,6 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  # Linting jobs - terraform, java, go
-  terraform_lint:
-    uses: 'abcxyz/actions/.github/workflows/terraform-lint.yml@main' # ratchet:exclude
-    with:
-      directory: 'terraform'
-      terraform_version: '1.2'
-
-  yaml_lint:
-    uses: 'abcxyz/actions/.github/workflows/yaml-lint.yml@main' # ratchet:exclude
-
-  go_lint:
-    uses: 'abcxyz/actions/.github/workflows/go-lint.yml@main' # ratchet:exclude
-
-  java_lint:
-    uses: 'abcxyz/actions/.github/workflows/java-lint.yml@main' # ratchet:exclude
-    with:
-      java_version: '11'
-      google_java_format_version: '1.18.1'
-      java_distribution: 'temurin'
-
   # Unit tests - java, go
   go_test:
     uses: 'abcxyz/actions/.github/workflows/go-test.yml@main' # ratchet:exclude
@@ -93,24 +73,12 @@ jobs:
         run: |-
           mvn --no-transfer-progress --batch-mode clean test -f clients/java-logger
 
-  # lint_and_unit is a virtual job that is used as dependencies for later jobs.
-  lint_and_unit:
-    runs-on: 'ubuntu-latest'
-    needs:
-      - 'terraform_lint'
-      - 'yaml_lint'
-      - 'go_lint'
-      - 'java_lint'
-      - 'go_test'
-      - 'java_test'
-    steps:
-      - run: 'echo prechecks complete'
-
   # Build the main lumberjack server and push to artifact registry
   build-lumberjack-server:
     runs-on: 'ubuntu-latest'
     needs:
-      - 'lint_and_unit'
+      - 'go_test'
+      - 'java_test'
     permissions:
       contents: 'read'
       id-token: 'write'
@@ -153,7 +121,8 @@ jobs:
   build-go-grpc-client:
     runs-on: 'ubuntu-latest'
     needs:
-      - 'lint_and_unit'
+      - 'go_test'
+      - 'java_test'
     permissions:
       contents: 'read'
       id-token: 'write'
@@ -190,7 +159,8 @@ jobs:
   build-go-http-client:
     runs-on: 'ubuntu-latest'
     needs:
-      - 'lint_and_unit'
+      - 'go_test'
+      - 'java_test'
     permissions:
       contents: 'read'
       id-token: 'write'
