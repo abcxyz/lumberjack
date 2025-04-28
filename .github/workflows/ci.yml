@@ -237,7 +237,7 @@ jobs:
 
       - name: 'Write tfvars file'
         env:
-          client_images: '\{"ljc-go-grpc":"${{env.DOCKER_REPO}}/ljc-go-grpc:${{env.DOCKER_TAG}}","ljc-go-http":"${{env.DOCKER_REPO}}/ljc-go-http:${{env.DOCKER_TAG}}"\}'
+          client_images: '{"ljc-go-grpc":"${{env.DOCKER_REPO}}/ljc-go-grpc:${{env.DOCKER_TAG}}","ljc-go-http":"${{env.DOCKER_REPO}}/ljc-go-http:${{env.DOCKER_TAG}}"}'
           server_image: '${{env.DOCKER_REPO}}/lumberjack-server:${{env.DOCKER_TAG}}'
         run: |
           var_file=/tmp/ci.tfvars
