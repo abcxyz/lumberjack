@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-name: 'lint'
+name: 'temp-lint'
 
 # NOTE: This workflow is NOT intended to be a reusable workflow via
 # workflow_call. Instead it will be "reused" by configuring via organization
