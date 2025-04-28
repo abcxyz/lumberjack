@@ -57,10 +57,11 @@ jobs:
           match_files() {
             local filepattern="${1}"
             git ls-tree -r --name-only "${REF}" | grep -m 1 -E "${filepattern}"
-            pid="$!"
-            echo "EXIT_CODE_1=$?"
-            wait "${pid}"
+            code="$?"
+            echo "EXIT_CODE_1=${code}"
+            wait
             echo "EXIT_CODE_2=$?"
+            exit "${code}"
           }
           find_dirs() {
             local filepattern="${1}"
