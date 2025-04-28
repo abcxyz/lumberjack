@@ -75,10 +75,7 @@ jobs:
     steps:
       - uses: 'actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683' # ratchet:actions/checkout@v4
 
-      - uses: 'actions/setup-java@3a4f6e1af504cf6a31855fa899c6aa5355ba6c12' # ratchet:actions/setup-java@v4
-        with:
-          java-version: '11'
-          distribution: 'temurin'
+      - uses: 'abcxyz/actions/.github/actions/setup-java-strict@4fc7cc98f78e76307d3f1ee4367a4db03aef429c' # ratchet:exclude
 
       # We don't actually need to authenticate here, but the Artifact Regsitry
       # Wagon[1] expects authentication and infinitely retries if it does not
