@@ -23,7 +23,7 @@ set -eEuo pipefail
 
 
 # terraform validation for level 1 folders inside terrform dir
-terraform_dirs=($(ls -d terraform/*))
+mapfile -t terraform_dirs < <(ls -d terraform/*)
 
 for dir in "${terraform_dirs[@]}"; do
   echo "terraform validating ${dir}"
