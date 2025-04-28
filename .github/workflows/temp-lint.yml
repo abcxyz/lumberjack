@@ -57,6 +57,7 @@ jobs:
           match_files() {
             local filepattern="${1}"
             git ls-tree -r --name-only "${REF}" | grep -m 1 -E "${filepattern}"
+            wait
           }
           find_dirs() {
             local filepattern="${1}"
