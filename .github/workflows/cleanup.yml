@@ -60,5 +60,5 @@ jobs:
           # List and delete all services that were deployed 5 days ago or later.
           (IFS=$'\n'; for NAME in $(gcloud run services list --format="value(name)" --filter="metadata.creationTimestamp < '-p5d'"); do
             echo "Deleting ${NAME}..."
-            gcloud run services delete ${NAME} --quiet --async
+            gcloud run services delete "${NAME}" --quiet --async
           done)

@@ -23,13 +23,13 @@ set -eEuo pipefail
 
 
 # terraform validation for level 1 folders inside terrform dir
-terraform_dirs=$(ls -d terraform/*)
+mapfile -t terraform_dirs < <(ls -d terraform/* || true)
 
-for dir in ${terraform_dirs[@]}; do
-  echo "terraform validating $dir"
-  terraform -chdir=$dir fmt -check
-  terraform -chdir=$dir init -backend=false
-  terraform -chdir=$dir validate
+for dir in "${terraform_dirs[@]}"; do
+  echo "terraform validating ${dir}"
+  terraform -chdir="${dir}" fmt -check
+  terraform -chdir="${dir}" init -backend=false
+  terraform -chdir="${dir}" validate
 done
 
 # Run tests in java/maven projects.
