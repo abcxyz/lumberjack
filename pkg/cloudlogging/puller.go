@@ -91,12 +91,7 @@ func (p *Puller) Pull(ctx context.Context, filter string, maxCount int) ([]*logg
 	}
 	if err := retry.Do(ctx, p.retry, func(ctx context.Context) error {
 		it := p.client.ListLogEntries(ctx, req)
-		for {
-			// Stop if it reaches maxCount.
-			if len(ls) == maxCount {
-				break
-			}
-
+		for len(ls) < maxCount {
 			l, err := it.Next()
 			if errors.Is(err, iterator.Done) {
 				break
