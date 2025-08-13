@@ -66,10 +66,7 @@ jobs:
     steps:
       - uses: 'actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683' # ratchet:actions/checkout@v4
 
-      - uses: 'actions/setup-java@7a6d8a8234af8eb26422e24e3006232cccaa061b' # ratchet:actions/setup-java@v4
-        with:
-          java-version: '11'
-          distribution: 'temurin'
+      - uses: 'abcxyz/actions/.github/actions/setup-java-strict@27f8c90b29ea811a4b13c271608ee97cb3fb7ffd' # ratchet:exclude
 
       - uses: 'google-github-actions/auth@6fc4af4b145ae7821d527454aa9bd537d1f2dc5f' # ratchet:google-github-actions/auth@v2
         with:
@@ -83,7 +80,7 @@ jobs:
         # Even though Artifact Registry allows versions starts with "v",
         # Maven's convention is to have versions without "v".
         run: |-
-          mvn clean flatten:flatten deploy -Drevision=$(echo '${{ github.ref_name }}' | cut -c 2-) -f clients/java-logger/library
+          mvn clean flatten:flatten deploy -Drevision="$(echo '${{ github.ref_name }}' | cut -c 2-)" -f clients/java-logger/library
 
   github-release:
     needs:
@@ -98,11 +95,11 @@ jobs:
         with:
           fetch-depth: 0
 
-      - uses: 'actions/setup-go@3041bf56c941b39c61721a86cd11f3bb1338122a' # ratchet:actions/setup-go@v5
+      - uses: 'actions/setup-go@f111f3307d8850f501ac008e886eec1fd1932a34' # ratchet:actions/setup-go@v5
         with:
           go-version-file: 'go.mod'
 
-      - uses: 'goreleaser/goreleaser-action@9ed2f89a662bf1735a48bc8557fd212fa902bebf' # ratchet:goreleaser/goreleaser-action@v6
+      - uses: 'goreleaser/goreleaser-action@90a3faa9d0182683851fbfa97ca1a2cb983bfca3' # ratchet:goreleaser/goreleaser-action@v6
         with:
           version: 'v1.16.1' # Manually pinned
           args: 'release --clean'

@@ -49,7 +49,7 @@ func TestNewProcessor(t *testing.T) {
 	t.Parallel()
 
 	opts := []Option{WithLoggingClient(&logging.Client{})}
-	p, err := NewProcessor(context.Background(), opts...)
+	p, err := NewProcessor(t.Context(), opts...)
 	if err != nil {
 		t.Errorf("NewProcessor(%v) unexpected error: %v", opts, err)
 	}
@@ -183,7 +183,7 @@ func TestProcessor_Process(t *testing.T) {
 			})
 
 			// Setup fake Cloud Logging client.
-			ctx := context.Background()
+			ctx := t.Context()
 			loggingClient, err := logging.NewClient(ctx, "testProjectID", option.WithGRPCConn(conn))
 			if err != nil {
 				t.Fatalf("creating client for fake at %q: %v", addr, err)
@@ -274,7 +274,7 @@ func TestProcessor_Stop(t *testing.T) {
 			})
 
 			// Setup fake Cloud Logging client.
-			ctx := context.Background()
+			ctx := t.Context()
 			loggingClient, err := logging.NewClient(ctx, "testProjectID", option.WithGRPCConn(conn))
 			if err != nil {
 				t.Fatalf("creating client for fake at %q: %v", addr, err)

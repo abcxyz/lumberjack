@@ -43,29 +43,9 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  # Linting jobs - terraform, java, go
-  terraform_lint:
-    uses: 'abcxyz/pkg/.github/workflows/terraform-lint.yml@main' # ratchet:exclude
-    with:
-      directory: 'terraform'
-      terraform_version: '1.2'
-
-  yaml_lint:
-    uses: 'abcxyz/pkg/.github/workflows/yaml-lint.yml@main' # ratchet:exclude
-
-  go_lint:
-    uses: 'abcxyz/pkg/.github/workflows/go-lint.yml@main' # ratchet:exclude
-
-  java_lint:
-    uses: 'abcxyz/pkg/.github/workflows/java-lint.yml@main' # ratchet:exclude
-    with:
-      java_version: '11'
-      google_java_format_version: '1.18.1'
-      java_distribution: 'temurin'
-
   # Unit tests - java, go
   go_test:
-    uses: 'abcxyz/pkg/.github/workflows/go-test.yml@main' # ratchet:exclude
+    uses: 'abcxyz/actions/.github/workflows/go-test.yml@main' # ratchet:exclude
 
   java_test:
     runs-on: 'ubuntu-latest'
@@ -75,10 +55,7 @@ jobs:
     steps:
       - uses: 'actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683' # ratchet:actions/checkout@v4
 
-      - uses: 'actions/setup-java@7a6d8a8234af8eb26422e24e3006232cccaa061b' # ratchet:actions/setup-java@v4
-        with:
-          java-version: '11'
-          distribution: 'temurin'
+      - uses: 'abcxyz/actions/.github/actions/setup-java-strict@27f8c90b29ea811a4b13c271608ee97cb3fb7ffd' # ratchet:exclude
 
       # We don't actually need to authenticate here, but the Artifact Regsitry
       # Wagon[1] expects authentication and infinitely retries if it does not
@@ -96,33 +73,21 @@ jobs:
         run: |-
           mvn --no-transfer-progress --batch-mode clean test -f clients/java-logger
 
-  # lint_and_unit is a virtual job that is used as dependencies for later jobs.
-  lint_and_unit:
-    runs-on: 'ubuntu-latest'
-    needs:
-      - 'terraform_lint'
-      - 'yaml_lint'
-      - 'go_lint'
-      - 'java_lint'
-      - 'go_test'
-      - 'java_test'
-    steps:
-      - run: 'echo prechecks complete'
-
   # Build the main lumberjack server and push to artifact registry
   build-lumberjack-server:
     runs-on: 'ubuntu-latest'
     needs:
-      - 'lint_and_unit'
+      - 'go_test'
+      - 'java_test'
     permissions:
       contents: 'read'
       id-token: 'write'
     steps:
-      - uses: 'docker/setup-qemu-action@53851d14592bedcffcf25ea515637cff71ef929a' # ratchet:docker/setup-qemu-action@v3
+      - uses: 'docker/setup-qemu-action@4574d27a4764455b42196d70a065bc6853246a25' # ratchet:docker/setup-qemu-action@v3
 
       - uses: 'actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683' # ratchet:actions/checkout@v4
 
-      - uses: 'actions/setup-go@3041bf56c941b39c61721a86cd11f3bb1338122a' # ratchet:actions/setup-go@v5
+      - uses: 'actions/setup-go@f111f3307d8850f501ac008e886eec1fd1932a34' # ratchet:actions/setup-go@v5
         with:
           go-version-file: 'go.mod'
 
@@ -147,7 +112,7 @@ jobs:
           git tag -f -a v0.0.0-ci -m "CI run"
 
       - name: 'Build the main server container and push to the registry with goreleaser'
-        uses: 'goreleaser/goreleaser-action@9ed2f89a662bf1735a48bc8557fd212fa902bebf' # ratchet:goreleaser/goreleaser-action@v6
+        uses: 'goreleaser/goreleaser-action@90a3faa9d0182683851fbfa97ca1a2cb983bfca3' # ratchet:goreleaser/goreleaser-action@v6
         with:
           version: 'v1.16.1' # Manually pinned
           args: 'release -f .goreleaser.docker.yaml --clean --skip-validate'
@@ -156,7 +121,8 @@ jobs:
   build-go-grpc-client:
     runs-on: 'ubuntu-latest'
     needs:
-      - 'lint_and_unit'
+      - 'go_test'
+      - 'java_test'
     permissions:
       contents: 'read'
       id-token: 'write'
@@ -183,7 +149,7 @@ jobs:
           registry: '${{ env.DOCKER_REGISTRY }}'
 
       - name: 'Build the integration test server container and push to the registry'
-        uses: 'docker/build-push-action@67a2d409c0a876cbe6b11854e3e25193efe4e62d' # ratchet:docker/build-push-action@v6
+        uses: 'docker/build-push-action@ca877d9245402d1537745e0e356eab47c3520991' # ratchet:docker/build-push-action@v6
         with:
           push: true
           tags: '${{ env.DOCKER_REPO }}/${{env.prefix}}-${{env.lang}}-${{env.type}}:${{env.DOCKER_TAG}}'
@@ -193,7 +159,8 @@ jobs:
   build-go-http-client:
     runs-on: 'ubuntu-latest'
     needs:
-      - 'lint_and_unit'
+      - 'go_test'
+      - 'java_test'
     permissions:
       contents: 'read'
       id-token: 'write'
@@ -220,81 +187,7 @@ jobs:
           registry: '${{ env.DOCKER_REGISTRY }}'
 
       - name: 'Build the integration test server container and push to the registry'
-        uses: 'docker/build-push-action@67a2d409c0a876cbe6b11854e3e25193efe4e62d' # ratchet:docker/build-push-action@v6
-        with:
-          push: true
-          tags: '${{ env.DOCKER_REPO }}/${{env.prefix}}-${{env.lang}}-${{env.type}}:${{env.DOCKER_TAG}}'
-          file: '${{ env.file }}'
-          context: '${{ env.run_from }}'
-
-  build-java-grpc-client:
-    runs-on: 'ubuntu-latest'
-    needs:
-      - 'lint_and_unit'
-    permissions:
-      contents: 'read'
-      id-token: 'write'
-    env:
-      prefix: 'ljc'
-      lang: 'java'
-      type: 'grpc'
-      file: './clients/java-logger/scripts/server_app.dockerfile'
-      run_from: './'
-    steps:
-      - uses: 'actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683' # ratchet:actions/checkout@v4
-
-      - id: 'auth'
-        uses: 'google-github-actions/auth@6fc4af4b145ae7821d527454aa9bd537d1f2dc5f' # ratchet:google-github-actions/auth@v2
-        with:
-          workload_identity_provider: '${{ env.WIF_PROVIDER }}'
-          service_account: '${{ env.WIF_SERVICE_ACCOUNT }}'
-          token_format: 'access_token'
-
-      - uses: 'docker/login-action@9780b0c442fbb1117ed29e0efdff1e18412f7567' # ratchet:docker/login-action@v3
-        with:
-          username: 'oauth2accesstoken'
-          password: '${{ steps.auth.outputs.access_token }}'
-          registry: '${{ env.DOCKER_REGISTRY }}'
-
-      - name: 'Build the integration test server container and push to the registry'
-        uses: 'docker/build-push-action@67a2d409c0a876cbe6b11854e3e25193efe4e62d' # ratchet:docker/build-push-action@v6
-        with:
-          push: true
-          tags: '${{ env.DOCKER_REPO }}/${{env.prefix}}-${{env.lang}}-${{env.type}}:${{env.DOCKER_TAG}}'
-          file: '${{ env.file }}'
-          context: '${{ env.run_from }}'
-
-  build-java-http-client:
-    runs-on: 'ubuntu-latest'
-    needs:
-      - 'lint_and_unit'
-    permissions:
-      contents: 'read'
-      id-token: 'write'
-    env:
-      prefix: 'ljc'
-      lang: 'java'
-      type: 'http'
-      file: './clients/java-logger/scripts/shell_app.dockerfile'
-      run_from: './'
-    steps:
-      - uses: 'actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683' # ratchet:actions/checkout@v4
-
-      - id: 'auth'
-        uses: 'google-github-actions/auth@6fc4af4b145ae7821d527454aa9bd537d1f2dc5f' # ratchet:google-github-actions/auth@v2
-        with:
-          workload_identity_provider: '${{ env.WIF_PROVIDER }}'
-          service_account: '${{ env.WIF_SERVICE_ACCOUNT }}'
-          token_format: 'access_token'
-
-      - uses: 'docker/login-action@9780b0c442fbb1117ed29e0efdff1e18412f7567' # ratchet:docker/login-action@v3
-        with:
-          username: 'oauth2accesstoken'
-          password: '${{ steps.auth.outputs.access_token }}'
-          registry: '${{ env.DOCKER_REGISTRY }}'
-
-      - name: 'Build the integration test server container and push to the registry'
-        uses: 'docker/build-push-action@67a2d409c0a876cbe6b11854e3e25193efe4e62d' # ratchet:docker/build-push-action@v6
+        uses: 'docker/build-push-action@ca877d9245402d1537745e0e356eab47c3520991' # ratchet:docker/build-push-action@v6
         with:
           push: true
           tags: '${{ env.DOCKER_REPO }}/${{env.prefix}}-${{env.lang}}-${{env.type}}:${{env.DOCKER_TAG}}'
@@ -308,8 +201,6 @@ jobs:
       - 'build-lumberjack-server'
       - 'build-go-grpc-client'
       - 'build-go-http-client'
-      - 'build-java-grpc-client'
-      - 'build-java-http-client'
     steps:
       - run: 'echo build complete'
 
@@ -338,7 +229,7 @@ jobs:
       - name: 'Workaround Terraform issue'
         shell: 'bash'
         run: |-
-          echo "GOOGLE_OAUTH_ACCESS_TOKEN=${{ steps.auth.outputs.access_token }}" >> $GITHUB_ENV
+          echo "GOOGLE_OAUTH_ACCESS_TOKEN=${{ steps.auth.outputs.access_token }}" >> "${GITHUB_ENV}"
 
       - uses: 'hashicorp/setup-terraform@b9cd54a3c349d3f38e8881555d616ced269862dd' # ratchet:hashicorp/setup-terraform@v3
         with:
@@ -346,50 +237,50 @@ jobs:
 
       - name: 'Write tfvars file'
         env:
-          client_images: '\{\"ljc-go-grpc\":\"${{env.DOCKER_REPO}}/ljc-go-grpc:${{env.DOCKER_TAG}}\",\"ljc-go-http\":\"${{env.DOCKER_REPO}}/ljc-go-http:${{env.DOCKER_TAG}}\",\"ljc-java-grpc\":\"${{env.DOCKER_REPO}}/ljc-java-grpc:${{env.DOCKER_TAG}}\",\"ljc-java-http\":\"${{env.DOCKER_REPO}}/ljc-java-http:${{env.DOCKER_TAG}}\"\}'
+          client_images: '{"ljc-go-grpc":"${{env.DOCKER_REPO}}/ljc-go-grpc:${{env.DOCKER_TAG}}","ljc-go-http":"${{env.DOCKER_REPO}}/ljc-go-http:${{env.DOCKER_TAG}}"}'
           server_image: '${{env.DOCKER_REPO}}/lumberjack-server:${{env.DOCKER_TAG}}'
-        run: |-
+        run: |
           var_file=/tmp/ci.tfvars
 
-          touch /tmp/ci.tfvars
-          echo commit_sha=\"${{ env.DOCKER_TAG }}\" >> ${var_file};
-          echo server_project_id=\"${{ env.SERVER_PROJECT_ID }}\" >> ${var_file};
-          echo server_image=\"${{ env.server_image }}\" >> ${var_file};
-          echo server_run_sa=\"${{ env.SERVER_RUN_SA }}\" >> ${var_file};
-          echo server_service_name=\"lumberjack-server\" >> ${var_file};
-          echo client_project_id=\"${{ env.CLIENT_PROJECT_ID }}\" >> ${var_file};
-          echo client_run_sa=\"${{ env.CLIENT_RUN_SA }}\" >> ${var_file};
-          echo client_images=${{ env.client_images }} >> ${var_file};
-          echo >> ${var_file};
+          cat > "${var_file}" <<EOF
+          commit_sha="${{ env.DOCKER_TAG }}"
+          server_project_id="${{ env.SERVER_PROJECT_ID }}"
+          server_image="${{ env.server_image }}"
+          server_run_sa="${{ env.SERVER_RUN_SA }}"
+          server_service_name="lumberjack-server"
+          client_project_id="${{ env.CLIENT_PROJECT_ID }}"
+          client_run_sa="${{ env.CLIENT_RUN_SA }}"
+          client_images=${{ env.client_images }}
+          EOF
 
-          cat ${var_file};
-          echo "tfvar_file=${var_file}" >> $GITHUB_ENV;
+          cat ${var_file}
+          echo "tfvar_file=${var_file}" >> "${GITHUB_ENV}"
 
       - name: 'Init the terraform infrastructure'
         run: 'terraform -chdir=${{ env.tf_module_dir }} init'
 
       - name: 'Apply the infrastructure updates'
         id: 'tf_apply'
-        run: |-
-          terraform -chdir=${{ env.tf_module_dir}} apply -auto-approve -var-file=${{env.tfvar_file}};
+        run: |
+          terraform -chdir=${{ env.tf_module_dir}} apply -auto-approve -var-file=${{env.tfvar_file}}
 
-          terraform -chdir=${{ env.tf_module_dir}} output -json ingestion_backend_client_endpoints | jq -c > ingestion_backend_client_output.json;
+          terraform -chdir=${{ env.tf_module_dir}} output -json ingestion_backend_client_endpoints | jq -c > ingestion_backend_client_output.json
 
-          terraform -chdir=${{ env.tf_module_dir}} output -json cloudlogging_backend_client_endpoints | jq -c > cloudlogging_backend_client_output.json;
+          terraform -chdir=${{ env.tf_module_dir}} output -json cloudlogging_backend_client_endpoints | jq -c > cloudlogging_backend_client_output.json
 
-          ingestion_backend_grpc_client_endpoints=$(jq -c '{"ljc-go-grpc","ljc-java-grpc"} | to_entries | map(.value|tostring)' < ingestion_backend_client_output.json);
-          ingestion_backend_http_client_endpoints=$(jq -c '{"ljc-go-http","ljc-java-http"} | to_entries | map(.value|tostring)' < ingestion_backend_client_output.json);
+          ingestion_backend_grpc_client_endpoints=$(jq -c '{"ljc-go-grpc"} | to_entries | map(.value|tostring)' < ingestion_backend_client_output.json)
+          ingestion_backend_http_client_endpoints=$(jq -c '{"ljc-go-http"} | to_entries | map(.value|tostring)' < ingestion_backend_client_output.json)
 
-          cloudlogging_backend_grpc_client_endpoints=$(jq -c '{"ljc-go-grpc","ljc-java-grpc"} | to_entries | map(.value|tostring)' < cloudlogging_backend_client_output.json);
-          cloudlogging_backend_http_client_endpoints=$(jq -c '{"ljc-go-http","ljc-java-http"} | to_entries | map(.value|tostring)' < cloudlogging_backend_client_output.json);
+          cloudlogging_backend_grpc_client_endpoints=$(jq -c '{"ljc-go-grpc"} | to_entries | map(.value|tostring)' < cloudlogging_backend_client_output.json)
+          cloudlogging_backend_http_client_endpoints=$(jq -c '{"ljc-go-http"} | to_entries | map(.value|tostring)' < cloudlogging_backend_client_output.json)
 
           grpc_client_endpoints=$(echo -e "${ingestion_backend_grpc_client_endpoints}${cloudlogging_backend_grpc_client_endpoints}" | jq -cs 'flatten(1)')
           http_client_endpoints=$(echo -e "${ingestion_backend_http_client_endpoints}${cloudlogging_backend_http_client_endpoints}" | jq -cs 'flatten(1)')
 
-          echo "GRPC_ENDPOINTS=${grpc_client_endpoints}" >> $GITHUB_ENV;
-          echo "HTTP_ENDPOINTS=${http_client_endpoints}" >> $GITHUB_ENV;
+          echo "GRPC_ENDPOINTS=${grpc_client_endpoints}" >> "${GITHUB_ENV}"
+          echo "HTTP_ENDPOINTS=${http_client_endpoints}" >> "${GITHUB_ENV}"
 
-      - uses: 'actions/setup-go@3041bf56c941b39c61721a86cd11f3bb1338122a' # ratchet:actions/setup-go@v5
+      - uses: 'actions/setup-go@f111f3307d8850f501ac008e886eec1fd1932a34' # ratchet:actions/setup-go@v5
         with:
           go-version-file: 'go.mod'
 
@@ -401,10 +292,11 @@ jobs:
           AUDIT_CLIENT_TEST_BIGQUERY_DATASET: '${{ env.BIGQUERY_DATASET_ID }}'
           AUDIT_CLIENT_TEST_PRIVATE_KEY_PATH: '${{ github.workspace }}/integration/testrunner/test_private_key'
         run: |-
-          export AUDIT_CLIENT_TEST_IDTOKEN="$(gcloud auth print-identity-token --impersonate-service-account=${{ env.WIF_SERVICE_ACCOUNT }} --include-email)"
+          IDENTITY_TOKEN="$(gcloud auth print-identity-token --impersonate-service-account=${{ env.WIF_SERVICE_ACCOUNT }} --include-email)"
+          export AUDIT_CLIENT_TEST_IDTOKEN="${IDENTITY_TOKEN}"
           go test ./integration/testrunner -timeout=20m
 
       - name: 'Cleanup the infrastructure'
         if: '${{ always() }}'
-        run: |-
-          terraform -chdir=${{ env.tf_module_dir}} apply -destroy -auto-approve -var-file=${{env.tfvar_file}};
+        run: |
+          terraform -chdir=${{ env.tf_module_dir}} apply -destroy -auto-approve -var-file=${{env.tfvar_file}}

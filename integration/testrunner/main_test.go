@@ -63,7 +63,7 @@ func TestHTTPEndpoints(t *testing.T) {
 				t.Fatalf("URL for test with index %v not found.", i)
 			}
 
-			ctx := context.Background()
+			ctx := t.Context()
 			tcfg := &TestCaseConfig{
 				Config:         cfg,
 				Endpoint:       tc,
@@ -95,7 +95,7 @@ func TestGRPCEndpoints(t *testing.T) {
 				t.Fatalf("URL for test with index %v not found.", i)
 			}
 
-			ctx := context.Background()
+			ctx := t.Context()
 			tcfg := &TestCaseConfig{
 				Config:         cfg,
 				Endpoint:       tc,

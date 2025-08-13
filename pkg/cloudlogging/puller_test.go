@@ -82,7 +82,7 @@ func TestPull(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
-			ctx := context.Background()
+			ctx := t.Context()
 			fakeClient := setupFakeClient(t, ctx, tc.server)
 			p := NewPuller(
 				ctx,
@@ -151,7 +151,7 @@ func TestStreamPull(t *testing.T) {
 			ch := make(chan *loggingpb.LogEntry)
 			var gotLogs []*loggingpb.LogEntry
 
-			ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+			ctx, cancel := context.WithTimeout(t.Context(), 2*time.Second)
 
 			go func() {
 				for l := range ch {
