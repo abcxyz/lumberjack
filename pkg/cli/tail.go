@@ -337,5 +337,5 @@ func (c *TailCommand) queryFilter() string {
 }
 
 func stripSpaces(s string) string {
-	return strings.Replace(s, " ", "", -1)
+	return strings.ReplaceAll(s, " ", "")
 }
